@@ -34,7 +34,8 @@ async function build() {
     const r = buildRoute(gpx, lines, { speedKmh: +$('speed').value, id, title: gpx.name, nameImage });
     const model = readFile(r.file), check = verify(r, model);
     if (check) throw new Error('Prüfung fehlgeschlagen: ' + check);
-    built = { ...r, model, name: `route_${id}.bin`, title: gpx.name };
+    const label = (gpx.name || id).replace(/[^\p{L}\p{N} ._-]/gu, '').trim().slice(0, 40) || id;   // file name = name shown on the CC700
+    built = { ...r, model, name: `route_${label}.bin`, title: gpx.name };
     $('sum').textContent = `${gpx.name} · ${(r.distance / 1000).toFixed(1)} km · ${r.sections.length} Abschnitte · ${(r.file.length / 1024).toFixed(0)} KB`;
     $('turns').innerHTML = r.sections.map(s => `<li>${s.type === 2 ? '🏁' : ARROW[s.dir]} ${s.text.replace(/</g, '&lt;')}</li>`).join('');
     $('cv').hidden = $('pos').hidden = false; $('pos').max = Math.floor(r.distance); $('pos').value = 0; show();

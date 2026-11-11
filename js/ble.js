@@ -50,7 +50,7 @@ export class CC700 {
     // answer: b0f5 0142 06 <count> 00 01 01 <name>\0<name>\0...; keep clean names only
     const r = await this.cmdOn(this.cmd, [0xb0, 0xf1, 0x01, 0x42, 0x06], v => v[2] === 0x01 && v[3] === 0x42);
     if (!r) return [];
-    const names = new TextDecoder('latin1').decode(r.slice(9)).split('\0').filter(n => /^route_[\w-]+\.bin$/.test(n));
+    const names = new TextDecoder('latin1').decode(r.slice(9)).split('\0').filter(n => /^route_[^\x00-\x1f/]+\.bin$/.test(n));
     this.log('route files on device: ' + JSON.stringify(names));
     return names;
   }
