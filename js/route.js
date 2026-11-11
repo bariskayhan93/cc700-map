@@ -7,7 +7,7 @@ export const lo_hi = a => { let lo = Infinity, hi = -Infinity; for (const v of a
 // header template from a server route file, route-specific values cleared (all set in buildRoute)
 const HEADER = Uint8Array.from(atob('AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAANAAAAAAAAAAAAAAD//wAAPv///wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAKVaVao='), c => c.charCodeAt(0));
 export const TURN = { STRAIGHT: 0, LEFT: 1, SLIGHT_LEFT: 2, RIGHT: 3, SLIGHT_RIGHT: 4, UTURN: 5 };
-const UNNAMED = { 1: 'Straße', 2: 'Straße', 3: 'Straße', 4: 'Zufahrt', 5: 'Radweg', 6: 'Schotterweg' };
+const UNNAMED = { 1: 'Straße', 2: 'Straße', 3: 'Straße', 4: 'Zufahrt', 5: 'Radweg', 6: 'Schotterweg', 7: 'Fußweg' };
 export function parseGPX(text) {
   const doc = new DOMParser().parseFromString(text, 'application/xml');
   const num = (e, a) => parseFloat(e.getAttribute(a));
@@ -29,7 +29,8 @@ function turnCode(a) {                        // a: degrees, + = right
 // nearest road for each point (name, kind, roundabout)
 function matchRoads(P, lines, F) {
   const G = new Map(), cell = 50;
-  lines.forEach((L, li) => { for (let i = 1; i < L.pts.length; i++) {
+  lines.forEach((L, li) => { if ((L.kind & 0x7f) === 8) return;      // motorways are not ridden: no name match
+    for (let i = 1; i < L.pts.length; i++) {
     const a = F.m(...L.pts[i - 1]), b = F.m(...L.pts[i]);
     for (let x = Math.floor(Math.min(a[0], b[0]) / cell); x <= Math.floor(Math.max(a[0], b[0]) / cell); x++)
       for (let y = Math.floor(Math.min(a[1], b[1]) / cell); y <= Math.floor(Math.max(a[1], b[1]) / cell); y++) { const k = x + ',' + y; (G.get(k) || G.set(k, []).get(k)).push([li, a, b]); }
@@ -170,6 +171,6 @@ export function buildRoute(gpx, lines, opt) {
   const ioa = out.n; out.push(map.bytes);
   const file = out.bytes.slice(); new DataView(file.buffer).setUint32(0x5c, ioa, true); file.set(h.subarray(0, 0x5c), 0); file.set(h.subarray(0x60, 0x80), 0x60);
   const padded = new Uint8Array(Math.ceil(file.length / 4096) * 4096); padded.set(file);
-  return { file: padded, sections: secs, distance: total, mapBlocks: map.blocks, maxBlock: map.maxBlock };
+  return { file: padded, sections: secs, distance: total, mapBlocks: map.blocks, maxBlock: map.maxBlock, mapStat: map.stat };
 }
 function box(pts, F) { let b = [1e18, 1e18, -1e18, -1e18]; for (const p of pts) { const [x, y] = F.m(p[0], p[1]); b = [Math.min(b[0], x), Math.min(b[1], y), Math.max(b[2], x), Math.max(b[3], y)]; } return b; }

@@ -1,5 +1,5 @@
 // Road pack reader (format: tools/build_pack.py). Data is cached on the phone (Cache API) after one download.
-const CACHE = 'cc700-roads-v2';
+const CACHE = 'cc700-roads-v3';
 function decodeTile(b, olat, olon, scale) {
   let i = 0; const vi = () => { let r = 0, m = 1, x; do { x = b[i++]; r += (x & 127) * m; m *= 128; } while (x & 128); return r; };
   const uz = v => (v % 2) ? -(v + 1) / 2 : v / 2, dec = new TextDecoder(), names = [], lines = [];
@@ -58,6 +58,7 @@ export class RoadPack {
   static files(idx) { const f = ['index.json']; for (let n = 0; n < idx.chunks; n++) f.push(`c${n}.bin`); if (idx.areas) f.push(idx.areas.file); return f; }
   // browser only: download all chunks once into Cache Storage (offline afterwards)
   static async install(base, onProgress) {
+    await caches.delete('cc700-roads-v2');                      // old pack (file names are the same, content is not)
     const cache = await caches.open(CACHE); const idx = await (await fetch(base + 'index.json')).json();
     await cache.put(base + 'index.json', new Response(JSON.stringify(idx)));
     const files = RoadPack.files(idx).slice(1);                 // only missing files are downloaded (update = new files only)

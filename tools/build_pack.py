@@ -6,7 +6,7 @@ Pack format (little endian):
   'CC7M' u16 ver=1 | f64 lat0 lon0 dlat dlon | u16 rows cols | rows*cols * (u32 off, u32 len) | tiles
   out dir: index.json (grid, tile -> [chunk, offset, length]) + c<N>.bin chunks
   tile = varint nnames | nnames * (varint len, utf8) | lines
-  line = u8 kind (1 main,2 tertiary,3 street,4 service,5 path,6 track; bit7 roundabout) | varint name+1 (0 none) | varint n
+  line = u8 kind (1 main,2 tertiary,3 street,4 service,5 path,6 track,7 foot,8 motorway; bit7 roundabout) | varint name+1 (0 none) | varint n
          | n * (zigzag dlat, zigzag dlon) in 1e-5 deg; first point relative to the tile origin, then to the previous point."""
 import sys,struct,math,collections,array,time
 import osmium
@@ -14,7 +14,7 @@ from roadclass import kind,hav,KIND_CODE
 from generalize import generalize
 TL,TO=0.05,0.08          # tile size deg (~5.5 km)
 MARGIN=0.004             # ~400 m context for generalization
-KEEP_TAGS=('junction','highway','name','oneway','footway','cycleway','access','bicycle','vehicle','service','surface','tracktype')
+KEEP_TAGS=('junction','highway','name','oneway','footway','cycleway','access','bicycle','vehicle','service','surface','tracktype','tunnel','motorroad')
 def zz(v): return (v<<1)^(v>>63)
 def uv(v):
     o=bytearray()

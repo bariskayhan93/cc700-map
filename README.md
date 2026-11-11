@@ -20,7 +20,12 @@ Everything runs on the phone. The road data is downloaded once and kept offline;
 ## How it works
 - `js/route.js` – GPX → route file (sections, turns, name images, header); route points at most 20 m apart,
   because the CC700 measures "off route" as the distance to the nearest route point
-- `js/mapsec.js` – map layer (junction section): main roads 3 lines, tertiary 2, streets 1, paths/tracks dashed
+- `js/mapsec.js` – map layer (junction section): main roads and motorways 3 lines (to 375 m), tertiary and streets
+  2, service roads 1, paths/tracks light dashes (all to 300 m), pedestrian streets and named footways light dashes
+  (to 150 m). Motorways are drawn but never used for turn prompts; tunnels closed to bicycles are not in the pack.
+  The CC700 draws every line grey 8 px with a white 4 px core (fixed in the firmware), so width can only come from
+  parallel lines. A map block holds at most 1200 entries: the grey fill shrinks first (300 → 250 → 200 → 150 →
+  100 m), roads only as the last step. Grey rows that continue each other are stored as fans (2 entries fill 5 rows)
 - `js/ble.js` – file transfer protocol (begin / info / 200-byte packets with ack every 10 / end, CRC-16/XMODEM);
   a lost ack restarts the transfer (3 attempts)
 - `js/preview.js` – preview read back from the built file

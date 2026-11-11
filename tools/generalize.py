@@ -40,13 +40,14 @@ def generalize(ways):
     # connectors: footway/pedestrian pieces that join two drawn roads become paths (otherwise the network breaks)
     refs=collections.Counter()
     for w in ways:
-        if w['kind']:
+        if w['kind'] and w['kind']!='foot':
             for r,_,_ in w['nodes']: refs[r]+=1
     for w in ways:
         t=w['tags']; h=t.get('highway')
-        if w['kind'] or h not in ('footway','pedestrian'): continue
-        if t.get('footway') in ('sidewalk','crossing') or t.get('access') in ('no','private') or t.get('bicycle')=='no': continue
+        if w['kind']!='foot' or t.get('bicycle')=='no': continue
         if h=='pedestrian' or (refs[w['nodes'][0][0]] and refs[w['nodes'][-1][0]] and w['len']<80): w['kind']='path'
+    # footways without bicycle permission: only pedestrian streets/areas and named footways (not park or garden paths)
+    ways=[w for w in ways if w['kind']!='foot' or w['tags'].get('highway')=='pedestrian' or w['tags'].get('name')]
     W=[w for w in ways if w['kind'] and (not w['tags'].get('highway','').endswith('_link') or w['tags'].get('name') or w['len']>=60)]
     # zoom-13 rule for paths: keep only named paths, or connected path networks >= PATH_NET m
     par={id(w):id(w) for w in W}
@@ -55,14 +56,14 @@ def generalize(ways):
         return a
     ends=collections.defaultdict(list)
     for w in W:
-        if w['kind'] in ('path','track'):
+        if w['kind'] in ('path','track','foot'):
             for r,_,_ in w['nodes']: ends[r].append(id(w))
     for ids in ends.values():
         for x in ids[1:]: par[f(x)]=f(ids[0])
     comp=collections.Counter()
     for w in W:
-        if w['kind'] in ('path','track'): comp[f(id(w))]+=w['len']
-    W=[w for w in W if w['kind'] not in ('path','track') or w['tags'].get('name') or comp[f(id(w))]>=PATH_NET]
+        if w['kind'] in ('path','track','foot'): comp[f(id(w))]+=w['len']
+    W=[w for w in W if w['kind'] not in ('path','track','foot') or w['tags'].get('name') or comp[f(id(w))]>=PATH_NET]
     P={id(w):[M(la,lo) for _,la,lo in w['nodes']] for w in W}
     G=SegGrid(M)
     for w in W: G.add(id(w),P[id(w)])
@@ -72,7 +73,7 @@ def generalize(ways):
     for w in W:
         t=w['tags']; pts=P[id(w)]
         # 3. sidewalk-like paths along streets
-        if w['kind'] in ('path','track') or t.get('footway')=='sidewalk' or t.get('cycleway')=='sidepath':
+        if w['kind'] in ('path','track','foot') or t.get('footway')=='sidewalk' or t.get('cycleway')=='sidepath':
             near=0
             for (x,y),(x2,y2) in zip(pts,pts[1:]+pts[-1:]):
                 h=math.atan2(y2-y,x2-x) if (x2,y2)!=(x,y) else None
@@ -80,7 +81,7 @@ def generalize(ways):
                 if r and r[0]<22 and (h is None or abs((math.degrees(h-r[3])+90)%180-90)<25): near+=1
             if near>=0.6*len(pts): dropped['sidewalk']+=1; continue
         # 1. dual carriageway -> centreline. Both carriageways move to the middle; one is dropped only if fully paired
-        if t.get('oneway') in ('yes','-1','1') and w['kind'] in STREETS and len(pts)>=2:
+        if t.get('oneway') in ('yes','-1','1') and (w['kind'] in STREETS or w['kind']=='motorway') and len(pts)>=2:
             same=lambda i:i!=id(w) and byid[i]['kind']==w['kind'] and byid[i]['tags'].get('oneway') in ('yes','-1','1') and byid[i]['tags'].get('name')==t.get('name')
             newp=[]; paired=0
             for n,(x,y) in enumerate(pts):

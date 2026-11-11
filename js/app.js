@@ -11,7 +11,7 @@ let pack, built, dev, gpxFile;
 const ARROW = ['↑', '↰', '↖', '↱', '↗', '↶'];
 async function dataReady() {
   try {
-    const cache = await caches.open('cc700-roads-v2'), idx = await cache.match(DATA + 'index.json');
+    const cache = await caches.open('cc700-roads-v3'), idx = await cache.match(DATA + 'index.json');
     if (!idx) throw 0;
     let I = await idx.clone().json();
     try { const N = await (await fetch(DATA + 'index.json', { cache: 'no-store' })).json(); if (RoadPack.files(N).length > RoadPack.files(I).length) I = N; } catch {}   // offline: keep cached
@@ -57,8 +57,8 @@ async function build() {
 $('buildBtn').onclick = build;
 function verify(r, model) {                    // the same limits that were tested on the device
   if (model.secs.length !== r.sections.length) return 'Abschnitte';
-  if (r.maxBlock > 800) return 'Kartenblock zu groß';
-  if (r.file.length > 2_000_000) return 'Datei zu groß';
+  if (r.maxBlock > 1200) return 'Kartenblock zu groß';
+  if (r.file.length > 4_000_000) return 'Datei zu groß';
   if (model.blocks.length !== r.sections.length) return 'Kartenindex';
   return null;
 }
