@@ -66,4 +66,5 @@ $('sendBtn').onclick = async () => {
     $('dev').textContent = 'Gesendet. Navigation auf dem CC700 starten.';
   } catch (e) { $('dev').textContent = 'Fehler beim Senden: ' + e.message; log(e.stack || e.message); } finally { $('sendProg').hidden = true; upd(); }
 };
+window.cc700 = { get built() { return built; }, get dev() { return dev; } };   // debug access (remote DevTools)
 dataReady().then(upd);
