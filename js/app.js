@@ -4,7 +4,9 @@ import { nameImage } from './names.js';
 import { readFile, draw } from './preview.js';
 import { CC700 } from './ble.js';
 const $ = id => document.getElementById(id), DATA = 'data/nrw/';
-const log = s => { $('log').textContent = (new Date().toLocaleTimeString() + ' ' + s + '\n' + $('log').textContent).slice(0, 20000); };
+const DEBUG = new URLSearchParams(location.search).has('debug');     // ?debug: Bluetooth log + remote DevTools access
+const log = s => { if (DEBUG) $('log').textContent = (new Date().toLocaleTimeString() + ' ' + s + '\n' + $('log').textContent).slice(0, 20000); };
+$('log').hidden = !DEBUG;
 let pack, built, dev, gpxFile;
 const ARROW = ['↑', '↰', '↖', '↱', '↗', '↶'];
 async function dataReady() {
@@ -72,9 +74,9 @@ async function sharedGPX() {
   if (!new URLSearchParams(location.search).has('shared')) return;
   const c = await caches.open('cc700-share'), r = await c.match('shared.gpx'); if (!r) return;
   gpxFile = new File([await r.blob()], decodeURIComponent(r.headers.get('x-name') || 'shared.gpx')); await c.delete('shared.gpx');
-  history.replaceState(null, '', location.pathname);
+  history.replaceState(null, '', location.pathname + (DEBUG ? '?debug' : ''));
   $('sum').textContent = 'GPX empfangen: ' + gpxFile.name; if (pack) await build();
 }
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
-window.cc700 = { get built() { return built; }, get dev() { return dev; } };   // debug access (remote DevTools)
+if (DEBUG) window.cc700 = { get built() { return built; }, get dev() { return dev; } };
 dataReady().then(sharedGPX).then(upd);

@@ -9,7 +9,7 @@ const hex = b => [...b].map(x => x.toString(16).padStart(2, '0')).join('');
 const le = (v, n) => Array.from({ length: n }, (_, i) => (v >>> (8 * i)) & 255);
 const sleep = ms => new Promise(r => setTimeout(r, ms));
 export class CC700 {
-  constructor(log) { this.log = log || console.log; this.q = []; }
+  constructor(log) { this.log = log || (() => {}); this.q = []; }
   async connect() {
     this.dev = await navigator.bluetooth.requestDevice({ filters: [{ namePrefix: 'CC700' }], optionalServices: [SERVICE] });
     this.dev.addEventListener('gattserverdisconnected', () => this.log('disconnected'));
