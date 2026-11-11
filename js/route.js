@@ -94,7 +94,9 @@ export function buildRoute(gpx, lines, opt) {
   // 5. assemble
   const out = new Bytes(); const h = HEADER.slice(); const dv = new DataView(h.buffer);
   dv.setUint32(0, Math.floor(Date.now() / 1000), true);
-  const id = new TextEncoder().encode(String(opt.id).slice(0, 8)); h.fill(0, 4, 0x24); h.set(id, 4);
+  let id = new TextEncoder().encode(String(opt.label || opt.id));   // 0x04..0x23: name shown in the CC700 route menu
+  while (id.length > 31) id = new TextEncoder().encode([...new TextDecoder().decode(id)].slice(0, -1).join(''));
+  h.fill(0, 4, 0x24); h.set(id, 4);
   const total = D.at(-1), ups = ele.slice(1).reduce((s, e, i) => s + Math.max(0, e - ele[i]), 0), downs = ele.slice(1).reduce((s, e, i) => s + Math.min(0, e - ele[i]), 0);
   dv.setUint32(0x24, Math.round(total / speed), true); dv.setUint32(0x28, Math.round(total), true);
   dv.setInt32(0x2c, Math.round(ups * 100), true); dv.setInt32(0x30, Math.round(downs * 100), true);
