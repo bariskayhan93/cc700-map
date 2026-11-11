@@ -43,32 +43,65 @@ function matchRoads(P, lines, F) {
     return L ? { name: L.name, kind: L.kind & 0x7f, round: !!(L.kind & 0x80) } : { name: '', kind: 0, round: false };
   });
 }
+// is there a road branching off the track near point i? (junction = another road that leaves the track corridor)
+function junctionAt(i, P, D, lines, F, grid) {
+  const [x, y] = F.m(P[i][0], P[i][1]), cell = 50, near = new Set();
+  for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) for (const [li, a, b] of grid.get((Math.floor(x / cell) + dx) + ',' + (Math.floor(y / cell) + dy)) || []) {
+    const vx = b[0] - a[0], vy = b[1] - a[1], L2 = vx * vx + vy * vy || 1e-9, t = Math.max(0, Math.min(1, ((x - a[0]) * vx + (y - a[1]) * vy) / L2));
+    if (Math.hypot(x - a[0] - t * vx, y - a[1] - t * vy) < 25) near.add(li);
+  }
+  if (!near.size) return false;
+  const T = []; for (let k = i; k >= 0 && D[i] - D[k] < 150; k--) T.push(F.m(P[k][0], P[k][1])); for (let k = i + 1; k < P.length && D[k] - D[i] < 150; k++) T.push(F.m(P[k][0], P[k][1]));
+  const offTrack = (px, py) => { let m = 1e9; for (let k = 1; k < T.length; k++) { const a = T[k - 1], b = T[k], vx = b[0] - a[0], vy = b[1] - a[1], L2 = vx * vx + vy * vy || 1e-9, t = Math.max(0, Math.min(1, ((px - a[0]) * vx + (py - a[1]) * vy) / L2)); m = Math.min(m, Math.hypot(px - a[0] - t * vx, py - a[1] - t * vy)); } return m; };
+  for (const li of near) for (const q of lines[li].pts) {           // a vertex of this road within 80 m of the point, but 20 m away from the track
+    const [px, py] = F.m(q[0], q[1]); if (Math.hypot(px - x, py - y) < 80 && offTrack(px, py) > 20) return true;
+  }
+  return false;
+}
+function roadGrid(lines, F) {
+  const G = new Map(), cell = 50;
+  lines.forEach((L, li) => { for (let i = 1; i < L.pts.length; i++) {
+    const a = F.m(...L.pts[i - 1]), b = F.m(...L.pts[i]);
+    for (let x = Math.floor(Math.min(a[0], b[0]) / cell); x <= Math.floor(Math.max(a[0], b[0]) / cell); x++)
+      for (let y = Math.floor(Math.min(a[1], b[1]) / cell); y <= Math.floor(Math.max(a[1], b[1]) / cell); y++) { const k = x + ',' + y; (G.get(k) || G.set(k, []).get(k)).push([li, a, b]); }
+  } });
+  return G;
+}
+const short = t => t.replace(/straße\b/g, 'str.').replace(/Straße\b/g, 'Str.').replace(/strasse\b/g, 'str.').replace(/Strasse\b/g, 'Str.');
 export function buildRoute(gpx, lines, opt) {
   const speed = (opt.speedKmh || 18) / 3.6, F = frame(gpx.pts[0][0]);
   // 1. clean points + cumulative distance
   const P = []; for (const p of gpx.pts) if (!P.length || hav(P.at(-1), p) >= 1) P.push(p);
   const D = [0]; for (let i = 1; i < P.length; i++) D.push(D[i - 1] + hav(P[i - 1], P[i]));
   const at = d => { let i = D.findIndex(x => x >= d); if (i < 0) return P.at(-1); if (i === 0) return P[0]; const f = (d - D[i - 1]) / ((D[i] - D[i - 1]) || 1); return [P[i - 1][0] + (P[i][0] - P[i - 1][0]) * f, P[i - 1][1] + (P[i][1] - P[i - 1][1]) * f]; };
-  const angle = i => adiff(brg(at(D[i]), at(D[i] + 25)), brg(at(D[i] - 25), at(D[i])));
-  const road = matchRoads(P, lines, F);
+  const road = matchRoads(P, lines, F), grid = roadGrid(lines, F);
   // smooth road names (majority of 5)
   const nm = road.map((_, i) => { const c = {}; for (let k = Math.max(0, i - 2); k <= Math.min(P.length - 1, i + 2); k++) c[road[k].name] = (c[road[k].name] || 0) + 1; return Object.entries(c).sort((a, b) => b[1] - a[1])[0][0]; });
-  // 2. section boundaries: turns, name changes, checkpoints
-  const A = P.map((_, i) => (D[i] > 10 && D[i] < D.at(-1) - 10) ? angle(i) : 0), cut = new Set();
+  const T = Object.assign({ win: 25, sep: 12, hi: 35, lo: 20, jog: 45, jogWin: 10, jogSep: 8, minSec: 5 }, opt.turn);   // tuned against server (Mapbox) turns
+  const angle = (i, w) => adiff(brg(at(D[i]), at(D[i] + w)), brg(at(D[i] - w), at(D[i])));
+  const inner = i => D[i] > 10 && D[i] < D.at(-1) - 10;
+  const A = P.map((_, i) => inner(i) ? angle(i, T.win) : 0), J = P.map((_, i) => inner(i) ? angle(i, T.jogWin) : 0);
+  const peak = (X, i, sep) => { for (let k = i - 1; k >= 0 && D[i] - D[k] < sep; k--) if (Math.abs(X[k]) > Math.abs(X[i])) return false;
+    for (let k = i + 1; k < P.length && D[k] - D[i] < sep; k++) if (Math.abs(X[k]) >= Math.abs(X[i])) return false; return true; };
+  const junctionNear = i => { for (let k = i; k >= 0 && D[i] - D[k] <= 20; k--) if (junctionAt(k, P, D, lines, F, grid)) return true;
+    for (let k = i + 1; k < P.length && D[k] - D[i] <= 20; k++) if (junctionAt(k, P, D, lines, F, grid)) return true; return false; };
+  const cut = new Set(), turnAngle = {};
   for (let i = 1; i < P.length - 1; i++) {
-    if (Math.abs(A[i]) >= 30) { let m = true; for (let k = i - 1; k >= 0 && D[i] - D[k] < 20; k--) if (Math.abs(A[k]) > Math.abs(A[i])) m = false; for (let k = i + 1; k < P.length && D[k] - D[i] < 20; k++) if (Math.abs(A[k]) >= Math.abs(A[i])) m = false; if (m) cut.add(i); }
+    const a = Math.abs(A[i]);
+    if (a >= T.lo && peak(A, i, T.sep) && (a >= T.hi || junctionNear(i))) { cut.add(i); turnAngle[i] = A[i]; }
+    else if (Math.abs(J[i]) >= T.jog && peak(J, i, T.jogSep) && ![...cut].some(c => Math.abs(D[c] - D[i]) < T.jogSep)) { cut.add(i); turnAngle[i] = J[i]; }   // jogs, close double turns
     if (nm[i] !== nm[i - 1] && nm[i] && nm[i - 1]) cut.add(i);
   }
   const wp = {}; for (const w of gpx.wpts || []) { let bi = -1, bd = 40; P.forEach((p, i) => { const d = hav(p, [w.lat, w.lon]); if (d < bd) { bd = d; bi = i; } }); if (bi > 0 && bi < P.length - 1) { cut.add(bi); wp[bi] = w.name; } }
   let B = [0, ...[...cut].sort((a, b) => a - b), P.length - 1].filter((v, k, a) => k === 0 || v !== a[k - 1]);
-  B = B.filter((v, k) => k === 0 || k === B.length - 1 || (D[v] - D[B[k - 1]] >= 15 || wp[v]));
+  B = B.filter((v, k) => k === 0 || k === B.length - 1 || (D[v] - D[B[k - 1]] >= (turnAngle[v] !== undefined ? T.minSec : 15) || wp[v]));
   for (let k = 0; k < B.length - 1; k++) while (B[k + 1] - B[k] > 150) B.splice(k + 1, 0, B[k] + 150), k++;   // record size limit
   // 3. sections
   const secs = [];
   for (let k = 0; k < B.length - 1; k++) {
     const i0 = B[k], i1 = B[k + 1], r = road[Math.min(i1 - 1, i0 + Math.floor((i1 - i0) / 2))];
-    const [dir, q] = k + 1 < B.length - 1 ? turnCode(A[i1]) : [0, ''];
-    secs.push({ i0, i1, name: nm[Math.floor((i0 + i1) / 2)] || UNNAMED[r.kind] || 'Weg', round: r.round, type: k + 1 < B.length - 1 ? 1 : 2, dir, q });
+    const [dir, q] = k + 1 < B.length - 1 ? turnCode(turnAngle[i1] ?? A[i1]) : [0, ''];
+    secs.push({ dist: D[i1], i0, i1, name: nm[Math.floor((i0 + i1) / 2)] || UNNAMED[r.kind] || 'Weg', round: r.round, type: k + 1 < B.length - 1 ? 1 : 2, dir, q });
   }
   // text shown for a section: street name; unnamed ways by type; checkpoints. The map and the icon show the rest.
   secs.forEach((s, k) => {
@@ -81,7 +114,7 @@ export function buildRoute(gpx, lines, opt) {
   const ele = P.map(p => p[2] == null ? 0 : p[2]);
   const pt = i => [...fs(1, sc(P[i][0])), ...fs(2, sc(P[i][1])), ...fs(3, Math.round(ele[i] * 100)), ...fu(4, 0), ...fu(5, Math.round(D[i] * 100)),
     ...f32(8, brg(P[i], P[Math.min(P.length - 1, i + 1)]))];
-  const imgs = secs.map(s => opt.nameImage(s.text)); let off = 0;
+  const imgs = secs.map(s => opt.nameImage(short(s.text))); let off = 0;
   const recs = new Bytes();
   secs.forEach((s, k) => {
     const len = D[s.i1] - D[s.i0];

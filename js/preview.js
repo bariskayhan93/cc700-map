@@ -35,10 +35,9 @@ export function draw(canvas, model, distM) {
     return [W / 2 + e * Math.cos(hd) - nn * Math.sin(hd), H * POSY - (e * Math.sin(hd) + nn * Math.cos(hd))]; };
   g.fillStyle = '#eef0f2'; g.fillRect(0, 0, W, H); g.lineCap = 'butt';
   const js = blocks[n] || [];
-  for (const [w, col] of [[8, '#c8d0de'], [4, '#ffffff']]) {
-    g.strokeStyle = col; g.lineWidth = w; g.beginPath();
-    for (const [c, pts] of js) for (const p of pts) { const a = X(c), b = X(p); g.moveTo(...a); g.lineTo(...b); }
-    g.stroke();
+  for (const [c, pts] of js) for (const p of pts) {          // like the firmware: each line grey 8 px, then white 4 px, in file order
+    const a = X(c), b = X(p);
+    for (const [w, col] of [[8, '#c8d0de'], [4, '#ffffff']]) { g.strokeStyle = col; g.lineWidth = w; g.beginPath(); g.moveTo(...a); g.lineTo(...b); g.stroke(); }
   }
   g.strokeStyle = '#1f6fe0'; g.lineWidth = 6; g.lineJoin = 'round'; g.beginPath(); all.forEach((p, i) => i ? g.lineTo(...X(p)) : g.moveTo(...X(p))); g.stroke();
   const x = W / 2, y = H * POSY; g.fillStyle = '#1f6fe0'; g.beginPath(); g.moveTo(x, y - 9); g.lineTo(x - 7, y + 7); g.lineTo(x + 7, y + 7); g.fill();

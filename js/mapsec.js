@@ -75,7 +75,9 @@ function entries(lines, cor) {
   return out;
 }
 // sections: [[ [lat,lon,dist_cm], ... ], ...]; lines: [{kind, pts:[[lat,lon]], box:[x0,y0,x1,y1] (local m)}]
+const RANK = { 6: 0, 5: 0, 4: 1, 3: 2, 2: 3, 1: 4 };   // draw order: paths first, main roads last (on top at crossings)
 export function buildMapSection(sections, lines, F) {
+  lines = [...lines].sort((a, b) => RANK[a.kind & 0x7f] - RANK[b.kind & 0x7f]);
   const all = sections.flat();
   const win = (i, j) => { const a = sections[i][0][2] - BEHIND * 100, b = sections[j].at(-1)[2] + AHEAD * 100; return all.filter(p => p[2] >= a && p[2] <= b); };
   const groups = [];
