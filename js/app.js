@@ -28,7 +28,7 @@ const upd = () => { $('buildBtn').disabled = !(pack && gpxFile); $('sendBtn').di
 $('gpx').onchange = () => { gpxFile = $('gpx').files[0]; upd(); };
 async function build() {
   try {
-    $('buildBtn').disabled = true; $('sum').textContent = 'rechne …';
+    $('buildBtn').disabled = true; $('sum').textContent = 'rechne … (lange Routen bis ca. 30 s)'; await new Promise(r => setTimeout(r, 30));
     const gpx = parseGPX(await gpxFile.text()); if (gpx.pts.length < 2) throw new Error('GPX ohne Trackpunkte');
     const la = gpx.pts.map(p => p[0]), lo = gpx.pts.map(p => p[1]), m = 0.01;
     const lines = await pack.lines([Math.min(...la) - m, Math.min(...lo) - m * 1.6, Math.max(...la) + m, Math.max(...lo) + m * 1.6]);

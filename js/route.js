@@ -1,7 +1,7 @@
 // GPX -> complete CC700 route file (sections, turn icons, name images, map layer).
 // Layout: header(0x80) | records | 16xFF | name images | 16xFF | u32 0x80 + 128-byte title | map section
 import { fu, fs, fb, f32, u32le, sc, Bytes } from './pb.js';
-import { hav, brg, adiff, frame } from './geo.js';
+import { hav, brg, adiff, frame, rdp } from './geo.js';
 import { buildMapSection } from './mapsec.js';
 // header template from a server route file, route-specific values cleared (all set in buildRoute)
 const HEADER = Uint8Array.from(atob('AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAANAAAAAAAAAAAAAAD//wAAPv///wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAKVaVao='), c => c.charCodeAt(0));
@@ -71,7 +71,8 @@ const short = t => t.replace(/straße\b/g, 'str.').replace(/Straße\b/g, 'Str.')
 export function buildRoute(gpx, lines, opt) {
   const speed = (opt.speedKmh || 18) / 3.6, F = frame(gpx.pts[0][0]);
   // 1. clean points + cumulative distance
-  const P = []; for (const p of gpx.pts) if (!P.length || hav(P.at(-1), p) >= 1) P.push(p);
+  const P0 = []; for (const p of gpx.pts) if (!P0.length || hav(P0.at(-1), p) >= 1) P0.push(p);
+  const P = rdp(P0, 2.5, F.m);                                  // like server routes: ~1 point per 10-20 m; shape kept within 2.5 m
   const D = [0]; for (let i = 1; i < P.length; i++) D.push(D[i - 1] + hav(P[i - 1], P[i]));
   const at = d => { let i = D.findIndex(x => x >= d); if (i < 0) return P.at(-1); if (i === 0) return P[0]; const f = (d - D[i - 1]) / ((D[i] - D[i - 1]) || 1); return [P[i - 1][0] + (P[i][0] - P[i - 1][0]) * f, P[i - 1][1] + (P[i][1] - P[i - 1][1]) * f]; };
   const road = matchRoads(P, lines, F), grid = roadGrid(lines, F);
@@ -95,7 +96,10 @@ export function buildRoute(gpx, lines, opt) {
   const wp = {}; for (const w of gpx.wpts || []) { let bi = -1, bd = 40; P.forEach((p, i) => { const d = hav(p, [w.lat, w.lon]); if (d < bd) { bd = d; bi = i; } }); if (bi > 0 && bi < P.length - 1) { cut.add(bi); wp[bi] = w.name; } }
   let B = [0, ...[...cut].sort((a, b) => a - b), P.length - 1].filter((v, k, a) => k === 0 || v !== a[k - 1]);
   B = B.filter((v, k) => k === 0 || k === B.length - 1 || (D[v] - D[B[k - 1]] >= (turnAngle[v] !== undefined ? T.minSec : 15) || wp[v]));
-  for (let k = 0; k < B.length - 1; k++) while (B[k + 1] - B[k] > 150) B.splice(k + 1, 0, B[k] + 150), k++;   // record size limit
+  for (let k = 0; k < B.length - 1; k++) {                      // record size (<= 150 points) and map block area (<= 600 m per section)
+    const lim = B[k] + 150; let j = B[k] + 1; while (j < B[k + 1] && j < lim && D[j] - D[B[k]] < 600) j++;
+    if (j < B[k + 1]) B.splice(k + 1, 0, j);
+  }
   // 3. sections
   const secs = [];
   for (let k = 0; k < B.length - 1; k++) {
@@ -119,7 +123,7 @@ export function buildRoute(gpx, lines, opt) {
   secs.forEach((s, k) => {
     const len = D[s.i1] - D[s.i0];
     const info = [...fu(1, Math.round(len)), ...fu(2, Math.round(len / speed)), ...fb(3, pt(s.i0)), ...fb(4, pt(s.i1)),
-      ...fb(5, [...fu(1, s.type), ...fu(2, s.dir)]), ...fb(6, [...new TextEncoder().encode(s.name)]), ...fu(7, off)];
+      ...fb(5, [...fu(1, s.type), ...fu(2, s.dir)]), ...fb(6, [...new TextEncoder().encode([...s.name].slice(0, 48).join(''))]), ...fu(7, off)];
     off += imgs[k].length;
     const m = [...fb(1, info), ...fu(2, s.i1 - s.i0 + 1)]; for (let i = s.i0; i <= s.i1; i++) m.push(...fb(3, pt(i)));
     recs.push(u32le(m.length)).push(m);
@@ -147,7 +151,10 @@ export function buildRoute(gpx, lines, opt) {
   while (out.n % 4) out.push([0]);
   // 6. map layer
   const sections = secs.map(s => { const a = []; for (let i = s.i0; i <= s.i1; i++) a.push([P[i][0], P[i][1], D[i] * 100]); return a; });
-  const map = buildMapSection(sections, lines.map(L => ({ ...L, box: box(L.pts, F) })), F);
+  const RG = new Map(); for (let i = 0; i < P.length; i++) { const [x, y] = F.m(P[i][0], P[i][1]); RG.set(Math.floor(x / 600) + ',' + Math.floor(y / 600), 1); }
+  const nearRoute = L => L.pts.some(q => { const [x, y] = F.m(q[0], q[1]), gx = Math.floor(x / 600), gy = Math.floor(y / 600);
+    for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) if (RG.has((gx + dx) + ',' + (gy + dy))) return true; return false; });
+  const map = buildMapSection(sections, lines.filter(nearRoute), F, opt.map || {});   // only roads near the route (600 m grid)
   const ioa = out.n; out.push(map.bytes);
   const file = out.bytes.slice(); new DataView(file.buffer).setUint32(0x5c, ioa, true); file.set(h.subarray(0, 0x5c), 0); file.set(h.subarray(0x60, 0x80), 0x60);
   const padded = new Uint8Array(Math.ceil(file.length / 4096) * 4096); padded.set(file);
