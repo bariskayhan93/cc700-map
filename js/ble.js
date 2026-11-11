@@ -46,12 +46,13 @@ export class CC700 {
     return c.writeValueWithResponse(v);
   }
   async cmdOn(u, b, pred, ms = 3000) { this.q = []; await this.write(u, b); return this.wait(pred, ms); }
-  async routeName() {                          // name of the route file on the device, e.g. route_123456.bin
+  async routeName() {                          // route file on the device, e.g. route_123456.bin
+    // answer: b0f5 0142 06 <count> ... <names, \0-terminated>; take the clean names, ignore the bytes between
     const r = await this.cmdOn(this.cmd, [0xb0, 0xf1, 0x01, 0x42, 0x06], v => v[2] === 0x01 && v[3] === 0x42);
-    if (!r) return null;   // b0f5 0142 <type> <status 4 bytes> <name>\0
-    const s = new TextDecoder().decode(r.slice(9)).replace(/\0.*$/s, '');
-    if (!/^route_[\w-]+\.bin$/.test(s)) { this.log('unexpected route name: ' + JSON.stringify(s)); return null; }
-    return s || null;
+    if (!r) return null;
+    const names = [...new TextDecoder('latin1').decode(r.slice(5)).matchAll(/(?<![\x01-\x1f])route_[\w-]+\.bin/g)].map(m => m[0]);
+    this.log('route files on device: ' + JSON.stringify(names));
+    return names[0] || null;
   }
   async sendFile(name, file, ts, onProgress) {
     const n = Math.ceil(file.length / 200), crc = crc16xmodem(file);
