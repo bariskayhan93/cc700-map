@@ -48,7 +48,9 @@ export class CC700 {
   async cmdOn(u, b, pred, ms = 3000) { this.q = []; await this.write(u, b); return this.wait(pred, ms); }
   async routeName() {                          // name of the route file on the device, e.g. route_123456.bin
     const r = await this.cmdOn(this.cmd, [0xb0, 0xf1, 0x01, 0x42, 0x06], v => v[2] === 0x01 && v[3] === 0x42);
-    if (!r) return null; const s = new TextDecoder().decode(r.slice(8)).replace(/\0.*$/s, '');
+    if (!r) return null;   // b0f5 0142 <type> <status 4 bytes> <name>\0
+    const s = new TextDecoder().decode(r.slice(9)).replace(/\0.*$/s, '');
+    if (!/^route_[\w-]+\.bin$/.test(s)) { this.log('unexpected route name: ' + JSON.stringify(s)); return null; }
     return s || null;
   }
   async sendFile(name, file, ts, onProgress) {
