@@ -6,7 +6,7 @@ import { buildMapSection } from './mapsec.js';
 // header template from a server route file, route-specific values cleared (all set in buildRoute)
 const HEADER = Uint8Array.from(atob('AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAANAAAAAAAAAAAAAAD//wAAPv///wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAKVaVao='), c => c.charCodeAt(0));
 export const TURN = { STRAIGHT: 0, LEFT: 1, SLIGHT_LEFT: 2, RIGHT: 3, SLIGHT_RIGHT: 4, UTURN: 5 };
-const UNNAMED = { 1: 'Hauptstraße', 2: 'Straße', 3: 'Straße', 4: 'Zufahrt', 5: 'Radweg', 6: 'Schotterweg' };
+const UNNAMED = { 1: 'Straße', 2: 'Straße', 3: 'Straße', 4: 'Zufahrt', 5: 'Radweg', 6: 'Schotterweg' };
 export function parseGPX(text) {
   const doc = new DOMParser().parseFromString(text, 'application/xml');
   const num = (e, a) => parseFloat(e.getAttribute(a));
@@ -70,12 +70,10 @@ export function buildRoute(gpx, lines, opt) {
     const [dir, q] = k + 1 < B.length - 1 ? turnCode(A[i1]) : [0, ''];
     secs.push({ i0, i1, name: nm[Math.floor((i0 + i1) / 2)] || UNNAMED[r.kind] || 'Weg', round: r.round, type: k + 1 < B.length - 1 ? 1 : 2, dir, q });
   }
-  // text shown for a section: qualifier of the turn INTO it, checkpoint, roundabout
+  // text shown for a section: street name; unnamed ways by type; checkpoints. The map and the icon show the rest.
   secs.forEach((s, k) => {
-    const prev = secs[k - 1]; let t = s.name;
-    if (s.round) t = 'Kreisverkehr';
-    else if (prev && prev.round) t = 'Kreisel-Ausfahrt · ' + t;
-    else if (prev && prev.q) t = prev.q + ' · ' + t;
+    let t = s.name;
+    if (s.round && secs[k + 1]) t = secs[k + 1].name;          // roundabout: show the exit road
     if (wp[s.i0]) t = '▶ ' + wp[s.i0];
     s.text = t;
   });

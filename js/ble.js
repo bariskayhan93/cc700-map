@@ -46,13 +46,13 @@ export class CC700 {
     return c.writeValueWithResponse(v);
   }
   async cmdOn(u, b, pred, ms = 3000) { this.q = []; await this.write(u, b); return this.wait(pred, ms); }
-  async routeName() {                          // route file on the device, e.g. route_123456.bin
+  async routeList() {                         // route files on the device
     // answer: b0f5 0142 06 <count> 00 01 01 <name>\0<name>\0...; keep clean names only
     const r = await this.cmdOn(this.cmd, [0xb0, 0xf1, 0x01, 0x42, 0x06], v => v[2] === 0x01 && v[3] === 0x42);
-    if (!r) return null;
-    const names = new TextDecoder('latin1').decode(r.slice(9)).split('\0').filter(n => /^route_[\w-]+\.bin$/.test(n));   // 4 header bytes: count,00,01,01
+    if (!r) return [];
+    const names = new TextDecoder('latin1').decode(r.slice(9)).split('\0').filter(n => /^route_[\w-]+\.bin$/.test(n));
     this.log('route files on device: ' + JSON.stringify(names));
-    return names[0] || null;
+    return names;
   }
   async sendFile(name, file, ts, onProgress) {
     const n = Math.ceil(file.length / 200), crc = crc16xmodem(file);
