@@ -18,16 +18,20 @@ export class CC700 {
     for (const u of CHARS) {
       try {
         const c = await srv.getCharacteristic(u); this.ch[u] = c;
-        if (c.properties.notify) { await c.startNotifications(); c.addEventListener('characteristicvaluechanged', e => this.onNote(u, new Uint8Array(e.target.value.buffer))); }
+        const pr = c.properties; this.log('char ' + u.slice(4, 8) + ' props: ' + ['read', 'write', 'writeWithoutResponse', 'notify', 'indicate'].filter(k => pr[k]).join(','));
+        if (c.properties.notify || c.properties.indicate) { await c.startNotifications(); c.addEventListener('characteristicvaluechanged', e => this.onNote(u, new Uint8Array(e.target.value.buffer))); }
       } catch (e) { this.log('char ' + u.slice(4, 8) + ': ' + e.message); }
     }
     // find the command channel: the one that answers the hello
     for (const u of Object.keys(this.ch)) {
-      const r = await this.cmdOn(u, [0x80, 0xf1, 0x01, 0x01, 0, 0, 0, 0, 0, 0, 0, 0, 0], x => x[0] === 0xb0 && x[1] === 0xf5, 1500);
-      if (r) { this.cmd = u; break; }
+      if (!this.ch[u].properties.write && !this.ch[u].properties.writeWithoutResponse) continue;
+      try {
+        const r = await this.cmdOn(u, [0x80, 0xf1, 0x01, 0x01, 0, 0, 0, 0, 0, 0, 0, 0, 0], x => x[0] === 0xb0 && x[1] === 0xf5, 1500);
+        if (r) { this.cmd = u; break; }
+      } catch (e) { this.log('hello on ' + u.slice(4, 8) + ': ' + e.message); }
     }
     if (!this.cmd) throw new Error('CC700 did not answer');
-    this.data = Object.keys(this.ch).find(u => u !== this.cmd && this.ch[u].properties.writeWithoutResponse);
+    this.data = Object.keys(this.ch).find(u => u !== this.cmd && (this.ch[u].properties.writeWithoutResponse || this.ch[u].properties.write));
     this.log('connected: ' + this.dev.name + ' cmd=' + this.cmd.slice(4, 8) + ' data=' + (this.data || '?').slice(4, 8));
   }
   onNote(u, v) { this.log('<- ' + u.slice(4, 8) + ' ' + hex(v).slice(0, 80)); this.q.push([u, v]); }
@@ -36,7 +40,11 @@ export class CC700 {
     while (Date.now() - t < ms) { const i = this.q.findIndex(([u, v]) => pred(v, u)); if (i >= 0) return this.q.splice(i, 1)[0][1]; await sleep(20); }
     return null;
   }
-  async write(u, b) { this.log('-> ' + u.slice(4, 8) + ' ' + hex(b).slice(0, 80)); await this.ch[u].writeValueWithoutResponse(new Uint8Array(b)); }
+  async write(u, b) {
+    this.log('-> ' + u.slice(4, 8) + ' ' + hex(b).slice(0, 80)); const c = this.ch[u], v = new Uint8Array(b);
+    if (c.properties.writeWithoutResponse) { try { return await c.writeValueWithoutResponse(v); } catch (e) { if (!c.properties.write) throw e; this.log('retry with response: ' + e.message); } }
+    return c.writeValueWithResponse(v);
+  }
   async cmdOn(u, b, pred, ms = 3000) { this.q = []; await this.write(u, b); return this.wait(pred, ms); }
   async routeName() {                          // name of the route file on the device, e.g. route_123456.bin
     const r = await this.cmdOn(this.cmd, [0xb0, 0xf1, 0x01, 0x42, 0x06], v => v[2] === 0x01 && v[3] === 0x42);
