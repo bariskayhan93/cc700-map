@@ -1,6 +1,6 @@
 // Service worker: receives GPX files shared from other apps (Web Share Target) and keeps the app usable offline.
 const APP = 'cc700-app-v1';
-const FILES = ['./', 'index.html', 'manifest.webmanifest', 'js/app.js', 'js/pb.js', 'js/geo.js', 'js/pack.js', 'js/mapsec.js', 'js/route.js', 'js/names.js', 'js/preview.js', 'js/ble.js', 'icons/icon-192.png'];
+const FILES = ['./', 'index.html', 'manifest.webmanifest', 'js/app.js', 'js/pb.js', 'js/geo.js', 'js/osm.js', 'js/mapsec.js', 'js/route.js', 'js/names.js', 'js/preview.js', 'js/ble.js', 'icons/icon-192.png'];
 self.addEventListener('install', e => { self.skipWaiting(); e.waitUntil(caches.open(APP).then(c => c.addAll(FILES))); });
 self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
 self.addEventListener('fetch', e => {
@@ -13,7 +13,7 @@ self.addEventListener('fetch', e => {
     })());
     return;
   }
-  if (e.request.method !== 'GET' || u.origin !== location.origin || u.pathname.includes('/data/')) return;   // road data: Cache API in the page
+  if (e.request.method !== 'GET' || u.origin !== location.origin) return;
   e.respondWith(fetch(e.request).then(r => { const c = r.clone(); caches.open(APP).then(x => x.put(e.request, c)); return r; })
     .catch(() => caches.match(e.request)));    // network first, cache when offline
 });

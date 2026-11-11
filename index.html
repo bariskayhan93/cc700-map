@@ -14,44 +14,40 @@
   main { max-width:520px; margin:0 auto; padding:16px; }
   h1 { font-size:20px; margin:4px 0 12px; }
   section { background:var(--card); border:1px solid var(--bd); border-radius:12px; padding:14px; margin-bottom:12px; }
-  h2 { font-size:15px; margin:0 0 8px; }
-  button { font:inherit; padding:10px 14px; border-radius:9px; border:0; background:var(--acc); color:#fff; width:100%; margin-top:8px; }
+  button, .btn { display:block; box-sizing:border-box; width:100%; font:inherit; text-align:center; padding:12px 14px; border-radius:9px; border:0; background:var(--acc); color:#fff; }
   button:disabled { opacity:.45; }
-  .row { display:flex; gap:8px; align-items:center; } .row > * { flex:1; }
-  input[type=number] { width:70px; font:inherit; padding:6px; }
-  .mut { color:var(--mut); font-size:13px; } canvas { width:100%; max-width:360px; border-radius:8px; display:block; margin:8px auto; image-rendering:pixelated; }
-  ol { padding-left:20px; margin:6px 0; max-height:220px; overflow:auto; font-size:13px; }
+  .mut { color:var(--mut); font-size:13px; margin-top:8px; }
+  canvas { width:100%; max-width:360px; border-radius:8px; display:block; margin:10px auto 4px; image-rendering:pixelated; }
+  input[type=range], progress { width:100%; margin-top:8px; }
+  input[type=number] { width:64px; font:inherit; padding:4px 6px; }
+  details { margin-top:10px; } summary { color:var(--mut); font-size:13px; padding:4px 0; }
+  details label { display:block; margin-top:8px; }
+  ol { padding-left:24px; margin:6px 0; max-height:220px; overflow:auto; font-size:13px; }
   pre { font-size:11px; max-height:160px; overflow:auto; white-space:pre-wrap; color:var(--mut); }
-  progress { width:100%; }
 </style>
 </head>
 <body>
 <main>
   <h1>CC700 Map</h1>
   <section>
-    <h2>1 · Kartendaten</h2>
-    <div id="dataState" class="mut">prüfe …</div>
-    <progress id="dataProg" max="1" value="0" hidden></progress>
-    <button id="dataBtn" hidden>Kartendaten NRW laden (einmalig)</button>
+    <label class="btn">GPX wählen<input id="gpx" type="file" accept=".gpx,application/gpx+xml" hidden></label>
+    <div id="sum" class="mut">Aus einem GPX wird eine CC700-Route mit Abbiegehinweisen, Straßennamen und Karte.</div>
+    <div id="out" hidden>
+      <canvas id="cv" width="240" height="250"></canvas>
+      <input id="pos" type="range" min="0" max="1" value="0">
+      <details><summary id="turnsN">Abbiegungen</summary><ol id="turns"></ol></details>
+    </div>
+    <details>
+      <summary>Einstellungen</summary>
+      <label>Tempo km/h <input id="speed" type="number" value="18" min="8" max="45"></label>
+      <label><input id="ground" type="checkbox"> Bebauung grau (Test, noch nicht auf dem Gerät geprüft)</label>
+      <div class="mut">Straßendaten kommen beim Erstellen aus OpenStreetMap (Overpass-Server). Abgefragt werden nur grobe Kacheln von ca. 5 km um die Route; das Ergebnis bleibt auf dem Handy.</div>
+    </details>
   </section>
   <section>
-    <h2>2 · Route (GPX)</h2>
-    <input id="gpx" type="file" accept=".gpx,application/gpx+xml">
-    <div class="row" style="margin-top:8px"><span class="mut">Tempo km/h</span><input id="speed" type="number" value="18" min="8" max="45"></div>
-    <label class="mut" style="display:flex;gap:8px;align-items:center;margin-top:8px"><input id="ground" type="checkbox" style="width:auto">Bebauung grau (Test, noch nicht auf dem Gerät geprüft)</label>
-    <button id="buildBtn" disabled>Route erstellen</button>
-    <div id="sum" class="mut"></div>
-    <canvas id="cv" width="240" height="250" hidden></canvas>
-    <input id="pos" type="range" min="0" max="1" value="0" style="width:100%" hidden>
-    <ol id="turns"></ol>
-  </section>
-  <section>
-    <h2>3 · An CC700 senden</h2>
-    <div class="mut">OnelapFit schließen und Navigation auf dem CC700 beenden. Die Route kommt als neue Route auf das Gerät.</div>
-    <button id="connBtn">Mit CC700 verbinden</button>
-    <div id="dev" class="mut"></div>
-    <button id="sendBtn" disabled>Senden</button>
+    <button id="sendBtn" disabled>An CC700 senden</button>
     <progress id="sendProg" max="1" value="0" hidden></progress>
+    <div id="dev" class="mut">Vorher OnelapFit schließen und die Navigation auf dem CC700 beenden. Die Route kommt als neue Route auf das Gerät.</div>
   </section>
   <pre id="log" hidden></pre>
   <p class="mut">Kartendaten © <a href="https://www.openstreetmap.org/copyright">OpenStreetMap-Mitwirkende</a> (ODbL). Inoffizielles Projekt, nicht verbunden mit Magene/GEOID. Nutzung auf eigene Gefahr. <a href="https://github.com/bariskayhan93/cc700-map">Quellcode</a></p>
