@@ -1,5 +1,5 @@
 import { RoadPack } from './pack.js';
-import { parseGPX, buildRoute } from './route.js';
+import { parseGPX, buildRoute, lo_hi } from './route.js';
 import { nameImage } from './names.js';
 import { readFile, draw } from './preview.js';
 import { CC700 } from './ble.js';
@@ -13,32 +13,43 @@ async function dataReady() {
   try {
     const cache = await caches.open('cc700-roads-v2'), idx = await cache.match(DATA + 'index.json');
     if (!idx) throw 0;
-    const I = await idx.clone().json();
-    for (let i = 0; i < I.chunks; i++) if (!(await cache.match(DATA + `c${i}.bin`))) throw 0;
-    pack = await new RoadPack(DATA, await RoadPack.cachedFetcher()).init();
+    let I = await idx.clone().json();
+    try { const N = await (await fetch(DATA + 'index.json', { cache: 'no-store' })).json(); if (RoadPack.files(N).length > RoadPack.files(I).length) I = N; } catch {}   // offline: keep cached
+    const missing = []; for (const f of RoadPack.files(I).slice(1)) if (!(await cache.match(DATA + f))) missing.push(f);
+    const roadsOk = !missing.some(f => f.startsWith('c'));
+    if (roadsOk) pack = await new RoadPack(DATA, await RoadPack.cachedFetcher()).init();
+    if (!roadsOk) throw 0;
+    if (missing.length) { $('dataState').textContent = 'Update der Kartendaten: graue Bebauungsflächen (≈ 4 MB).'; $('dataBtn').textContent = 'Update laden'; $('dataBtn').hidden = false; return true; }
     $('dataState').textContent = 'Kartendaten offline verfügbar (' + I.source + ').'; $('dataBtn').hidden = true; return true;
-  } catch { $('dataState').textContent = 'Kartendaten fehlen (≈ 86 MB, einmalig, WLAN empfohlen).'; $('dataBtn').hidden = false; return false; }
+  } catch { $('dataState').textContent = 'Kartendaten fehlen (≈ 90 MB, einmalig, WLAN empfohlen).'; $('dataBtn').hidden = false; return false; }
 }
 $('dataBtn').onclick = async () => {
   $('dataBtn').disabled = true; $('dataProg').hidden = false;
   try { await RoadPack.install(DATA, (i, n) => { $('dataProg').max = n; $('dataProg').value = i; }); await dataReady(); }
-  catch (e) { log('Download: ' + e.message); } finally { $('dataBtn').disabled = false; $('dataProg').hidden = true; upd(); }
+  catch (e) { log('Download: ' + e.message); } finally { $('dataBtn').disabled = false; $('dataProg').hidden = true; pack = null; await dataReady(); upd(); }
 };
+try { $('ground').checked = localStorage.getItem('cc700-ground') === '1'; } catch {}
+$('ground').onchange = () => { try { localStorage.setItem('cc700-ground', $('ground').checked ? '1' : '0'); } catch {} if (built && gpxFile) build(); };
 const upd = () => { $('buildBtn').disabled = !(pack && gpxFile); $('sendBtn').disabled = !(built && dev); };
 $('gpx').onchange = () => { gpxFile = $('gpx').files[0]; upd(); };
 async function build() {
   try {
     $('buildBtn').disabled = true; $('sum').textContent = 'rechne … (lange Routen bis ca. 30 s)'; await new Promise(r => setTimeout(r, 30));
     const gpx = parseGPX(await gpxFile.text()); if (gpx.pts.length < 2) throw new Error('GPX ohne Trackpunkte');
-    const la = gpx.pts.map(p => p[0]), lo = gpx.pts.map(p => p[1]), m = 0.01;
-    const lines = await pack.lines([Math.min(...la) - m, Math.min(...lo) - m * 1.6, Math.max(...la) + m, Math.max(...lo) + m * 1.6]);
+    const cov = pack.coverage(gpx.pts);        // share of track points inside the road data region
+    if (cov < 0.05) throw new Error('Route liegt außerhalb der Kartendaten (' + pack.idx.source + '): keine Straßen, keine Karte.');
+    const [la0, la1] = lo_hi(gpx.pts.map(p => p[0])), [lo0, lo1] = lo_hi(gpx.pts.map(p => p[1])), m = 0.01;
+    const lines = await pack.lines([la0 - m, lo0 - m * 1.6, la1 + m, lo1 + m * 1.6]);
     const d = new Date(), z = n => String(n).padStart(2, '0');
     const id = z(d.getMonth() + 1) + z(d.getDate()) + z(d.getHours()) + z(d.getMinutes());   // MMDDhhmm: the CC700 menu shows only this number
-    const r = buildRoute(gpx, lines, { speedKmh: +$('speed').value, id, label: gpx.name, title: gpx.name, nameImage });
+    const ground = $('ground').checked && !!pack.idx.areas, box = [la0 - m, lo0 - m * 1.6, la1 + m, lo1 + m * 1.6];
+    const areas = ground ? await pack.areas(box) : [];
+    const r = buildRoute(gpx, lines, { speedKmh: +$('speed').value, id, label: gpx.name, title: gpx.name, nameImage, areas, map: { ground } });
     const model = readFile(r.file), check = verify(r, model);
     if (check) throw new Error('Prüfung fehlgeschlagen: ' + check);
     built = { ...r, model, name: `route_${id}.bin`, title: gpx.name };
-    $('sum').textContent = `${gpx.name} → CC700 Route ${id} · ${(r.distance / 1000).toFixed(1)} km · ${r.sections.length} Abschnitte · ${(r.file.length / 1024).toFixed(0)} KB`;
+    $('sum').textContent = `${gpx.name} → CC700 Route ${id} · ${(r.distance / 1000).toFixed(1)} km · ${r.sections.length} Abschnitte · ${(r.file.length / 1024).toFixed(0)} KB`
+      + (cov < 0.98 ? ` · Achtung: ${Math.round((1 - cov) * 100)} % der Route außerhalb der Kartendaten (dort ohne Karte und Straßennamen)` : '');
     $('turns').innerHTML = r.sections.map(s => `<li>${s.type === 2 ? '🏁' : ARROW[s.dir]} ${s.text.replace(/</g, '&lt;')}</li>`).join('');
     $('cv').hidden = $('pos').hidden = false; $('pos').max = Math.floor(r.distance); $('pos').value = 0; show();
   } catch (e) { $('sum').textContent = e.message; log(e.stack || e.message); } finally { upd(); }

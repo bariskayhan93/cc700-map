@@ -20,6 +20,15 @@ class Corridor {                              // route window, densified, with h
     for (const k of this.G.keys()) { const [x, y] = k.split(',').map(Number); for (let dx = -5; dx <= 5; dx++) for (let dy = -5; dy <= 5; dy++) this.zone.add((x + dx) + ',' + (y + dy)); }
     this.box = P.reduce((b, [x, y]) => [Math.min(b[0], x), Math.min(b[1], y), Math.max(b[2], x), Math.max(b[3], y)], [1e18, 1e18, -1e18, -1e18]);
   }
+  within(R) {                                 // -> (x, y) => within R m of the route; 10 m raster, made once per R
+    if (this.wR && this.wR[0] === R) return this.wR[1];
+    const C = 10, x0 = this.box[0] - R - C, y0 = this.box[1] - R - C, w = Math.ceil((this.box[2] - this.box[0] + 2 * R) / C) + 3, h = Math.ceil((this.box[3] - this.box[1] + 2 * R) / C) + 3;
+    const g = new Uint8Array(w * h), r = Math.floor(R / C);
+    for (const v of this.G.values()) for (const [x, y] of v) { const cx = Math.floor((x - x0) / C), cy = Math.floor((y - y0) / C);
+      for (let dy = -r; dy <= r; dy++) { const dx = Math.floor(Math.sqrt(r * r - dy * dy)), row = (cy + dy) * w; g.fill(1, row + cx - dx, row + cx + dx + 1); } }
+    const f = (x, y) => { const cx = Math.floor((x - x0) / C), cy = Math.floor((y - y0) / C); return cx >= 0 && cy >= 0 && cx < w && cy < h && g[cy * w + cx] === 1; };
+    this.wR = [R, f]; return f;
+  }
   add(x, y, h) { const k = Math.floor(x / 100) + ',' + Math.floor(y / 100); (this.G.get(k) || this.G.set(k, []).get(k)).push([x, y, h]); }
   near(x, y, maxd = 1e9) {                    // -> [distance m, route heading rad]; stops beyond maxd
     const gx = Math.floor(x / 100), gy = Math.floor(y / 100); let best = [1e9, 0];
@@ -71,7 +80,7 @@ function entries(lines, cor, scale = 1) {
       for (let k = 0; k < n; k++) nodes.push([a[0] + (b[0] - a[0]) * k / n, a[1] + (b[1] - a[1]) * k / n]);
     }
     const info = nodes.map(q => cor.near(...F.m(q[0], q[1]), lim));
-    if (Math.min(...info.map(i => i[0])) > lim) continue;
+    if (!info.some(i => i[0] <= lim)) continue;
     const keep = info.map(i => i[0] <= lim), street = (L.kind & 0x7f) <= 3; let run = [];
     const flush = () => { if (run.length >= 2 && lineLen(run) >= 10) for (const p of draw(st, rdp(run, 4, F.m), F)) polySegs(p, byRank[RANK[L.kind & 0x7f]]); run = []; };
     for (let i = 0; i < nodes.length - 1; i++) {
@@ -87,6 +96,62 @@ function entries(lines, cor, scale = 1) {
   }
   for (const segs of byRank) encodeSegments(segs, out);
   return out;
+}
+// Ground layer (option B): built-up land as grey. Lines 5 m apart merge into one grey area, because every line's
+// grey edge (8 px = 20 m) covers the white core of the line before it; streets drawn later show white on it.
+// All areas of a block are filled as one shape, with rows parallel to the block's main direction (long rows =
+// few entries). Gaps up to 20 m between areas are filled too (usually the street between them).
+// Each area also gets one extra row on its last side, so the last white core lies outside the area and shows
+// as a thin outline, not as a white stripe in the area. Roads are never dropped for ground: ground only uses the
+// entries the roads leave; if it does not fit, the ground radius gets smaller.
+const GROUND_R = 300, PITCH = 4, BRIDGE = 20;   // 4 m, not 5: at 5 m single pixels of the white cores stay visible on angled rows
+function groundRows(rings, cor, R) {
+  const all = []; for (const v of cor.G.values()) for (const p of v) all.push(p);
+  let mx = 0, my = 0; for (const [x, y] of all) { mx += x; my += y; } mx /= all.length; my /= all.length;
+  let sxx = 0, syy = 0, sxy = 0; for (const [x, y] of all) { sxx += (x - mx) ** 2; syy += (y - my) ** 2; sxy += (x - mx) * (y - my); }
+  const th = 0.5 * Math.atan2(2 * sxy, sxx - syy), c = Math.cos(th), s = Math.sin(th);
+  const rot = ([x, y]) => [x * c + y * s, -x * s + y * c], back = ([x, y]) => [x * c - y * s, x * s + y * c];
+  const RR = rings.map(r => r.map(rot)); let y0 = Infinity, y1 = -Infinity;
+  for (const p of all) { const y = rot(p)[1]; if (y < y0) y0 = y; if (y > y1) y1 = y; }
+  const rows = [], ys = Math.floor((y0 - R) / PITCH) * PITCH, nrow = Math.floor((y1 + R - ys) / PITCH) + 1, bucket = Array.from({ length: nrow }, () => []);
+  for (const r of RR) for (let i = 1; i < r.length; i++) { const a = r[i - 1], b = r[i];   // edges by the rows they cross
+    const k0 = Math.max(0, Math.ceil((Math.min(a[1], b[1]) - ys) / PITCH)), k1 = Math.min(nrow - 1, Math.floor((Math.max(a[1], b[1]) - ys) / PITCH));
+    for (let k = k0; k <= k1; k++) bucket[k].push([a, b]); }
+  const inR = cor.within(R);
+  for (let k = 0; k < nrow; k++) {
+    const y = ys + k * PITCH, X = [];
+    for (const [[ax, ay], [bx, by]] of bucket[k]) if ((ay <= y) !== (by <= y)) X.push([ax + (y - ay) * (bx - ax) / (by - ay), by > ay ? 1 : -1]);
+    X.sort((a, b) => a[0] - b[0]); let w = 0; const runs = [];
+    for (let i = 0; i < X.length - 1; i++) { w += X[i][1]; if (!w) continue;
+      const last = runs.at(-1); if (last && X[i][0] - last[1] <= BRIDGE) last[1] = Math.max(last[1], X[i + 1][0]); else runs.push([X[i][0], X[i + 1][0]]); }
+    rows.push([y, runs]);
+  }
+  const merge = (A, B) => { const r = [...A, ...B].map(x => x.slice()).sort((a, b) => a[0] - b[0]), o = [];
+    for (const x of r) { const l = o.at(-1); if (l && x[0] <= l[1]) l[1] = Math.max(l[1], x[1]); else o.push(x); } return o; };
+  const out = [];
+  for (let k = 0; k < rows.length; k++) {
+    const [y, runs] = rows[k], drawn = k ? merge(runs, rows[k - 1][1]) : runs;   // + one extra row past each area's last row
+    for (const [xa, xb] of drawn) {
+      const m = Math.max(1, Math.ceil((xb - xa) / 10)); let run = null;
+      for (let t = 0; t <= m; t++) {           // keep only the parts within R of the route
+        const x = xa + (xb - xa) * t / m, ok = inR(...back([x, y]));
+        if (ok) { if (run) run[1] = x; else run = [x, x]; }
+        if ((!ok || t === m) && run) { if (run[1] - run[0] >= 8) out.push([back([run[0], y]), back([run[1], y])]); run = null; }
+      }
+    }
+  }
+  return out;
+}
+function ringsNear(areas, cor) {
+  const [bx0, by0, bx1, by1] = cor.box, rings = [];
+  for (const A of areas) { const [x0, y0, x1, y1] = A.box; if (x1 < bx0 - GROUND_R || x0 > bx1 + GROUND_R || y1 < by0 - GROUND_R || y0 > by1 + GROUND_R) continue; rings.push(...A.m); }
+  return rings;
+}
+const segEntries = (segs, F) => segs.map(([a, b]) => entry(F.g(...a), [F.g(...b)]));
+function ground(areas, cor, budget, radii = [GROUND_R]) {     // largest radius that fits the budget
+  const rings = ringsNear(areas, cor); if (!rings.length) return [];
+  for (const R of radii) { const segs = groundRows(rings, cor, R); if (segs.length <= budget) return segEntries(segs, cor.F); }
+  return [];
 }
 // sections: [[ [lat,lon,dist_cm], ... ], ...]; lines: [{kind, pts:[[lat,lon]], box:[x0,y0,x1,y1] (local m)}]
 const RANK = { 6: 0, 5: 0, 4: 1, 3: 2, 2: 3, 1: 4 };   // draw order: paths first, main roads last (on top at crossings)
@@ -140,7 +205,11 @@ export function buildMapSection(sections, lines, F, opt = {}) {
   const near = cor => { const m = 450, ids = new Set(), [x0, y0, x1, y1] = cor.box;
     for (let x = Math.floor((x0 - m) / C); x <= Math.floor((x1 + m) / C); x++) for (let y = Math.floor((y0 - m) / C); y <= Math.floor((y1 + m) / C); y++) for (const n of LG.get(x + ',' + y) || []) ids.add(n);
     return [...ids].sort((a, b) => a - b).map(n => lines[n]); };            // keep draw order
-  const ent = (i, j, scale = 1) => { const cor = new Corridor(win(i, j), F); return entries(near(cor), cor, scale); };
+  const areas = opt.ground && opt.areas && opt.areas.length ? opt.areas.map(rs => ({ m: rs.map(r => r.map(q => F.m(q[0], q[1]))), box: box(rs[0], F) })) : null;
+  // with ground on, a block counts roads + full ground, so dense blocks get fewer sections (smaller window);
+  // with a smaller road radius (scale < 1) only roads are counted
+  const ent = (i, j, scale = 1) => { const cor = new Corridor(win(i, j), F), r = entries(near(cor), cor, scale);
+    return areas && scale === 1 ? [...ground(areas, cor, 1e9), ...r] : r; };
   // each section once (its own window); the overlap ratio between sum and real union is learned block by block
   const one = sections.map((_, i) => ent(i, i).length), groups = []; let ratio = 0.5;
   for (let i = 0; i < sections.length;) {
@@ -148,7 +217,11 @@ export function buildMapSection(sections, lines, F, opt = {}) {
     while (j + 1 < sections.length && (sum + one[j + 1]) * ratio <= CAP) sum += one[++j];
     let scale = 1, e = ent(i, j);
     while (e.length > CAP && j > i) { sum -= one[j--]; e = ent(i, j); }                        // too big: shrink
-    while (e.length > CAP && scale > 0.3) { scale *= 0.85; e = ent(i, j, scale); }              // one dense section: smaller radius
+    if (areas && e.length > CAP) {                                                               // one dense section: smaller ground radius first
+      const cor = new Corridor(win(i, j), F), r = entries(near(cor), cor);
+      if (r.length <= CAP) e = [...ground(areas, cor, CAP - r.length, [250, 200, 150, 100]), ...r];
+    }
+    while (e.length > CAP && scale > 0.3) { scale *= 0.85; e = ent(i, j, scale); }              // still too big: smaller road radius
     for (let t = 0; t < 3 && scale === 1 && j + 1 < sections.length && e.length < CAP * 0.85; t++) { // too small: try to grow
       const e2 = ent(i, j + 1); if (e2.length > CAP) break; sum += one[++j]; e = e2;
     }

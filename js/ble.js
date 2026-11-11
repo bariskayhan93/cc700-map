@@ -54,7 +54,15 @@ export class CC700 {
     this.log('route files on device: ' + JSON.stringify(names));
     return names;
   }
-  async sendFile(name, file, ts, onProgress) {
+  // one lost ack must not lose the route: the device CRC-checks TMP/TEMP_<name> before it moves it into NAVIGATION,
+  // so a failed attempt never becomes a route. Retry the whole transfer (known commands only).
+  async sendFile(name, file, ts, onProgress, tries = 3) {
+    for (let t = 1; ; t++) {
+      try { return await this.sendOnce(name, file, ts, onProgress); }
+      catch (e) { if (t >= tries || !this.dev.gatt.connected) throw e; this.log(`attempt ${t} failed: ${e.message}; retry`); await sleep(2000); }
+    }
+  }
+  async sendOnce(name, file, ts, onProgress) {
     const n = Math.ceil(file.length / 200), crc = crc16xmodem(file);
     const ok = v => v[0] === 0xb0 && v[1] === 0xf5;
     if (!await this.cmdOn(this.cmd, [0xb0, 0xf2, 0x01, 0x24, 0x01, 0, 0, 0, 0, 0x01, 0x00, ...le(ts, 4), 0, 0, 0, 0, 0, 0], ok)) throw new Error('no answer to begin');
