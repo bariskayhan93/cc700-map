@@ -30,13 +30,13 @@ async function build() {
     const gpx = parseGPX(await gpxFile.text()); if (gpx.pts.length < 2) throw new Error('GPX ohne Trackpunkte');
     const la = gpx.pts.map(p => p[0]), lo = gpx.pts.map(p => p[1]), m = 0.01;
     const lines = await pack.lines([Math.min(...la) - m, Math.min(...lo) - m * 1.6, Math.max(...la) + m, Math.max(...lo) + m * 1.6]);
-    const id = String(Math.floor(Date.now() / 1000) % 1e7).padStart(7, '0');      // new route each time: route_<id>.bin
+    const d = new Date(), z = n => String(n).padStart(2, '0');
+    const id = z(d.getMonth() + 1) + z(d.getDate()) + z(d.getHours()) + z(d.getMinutes());   // MMDDhhmm: the CC700 menu shows only this number
     const r = buildRoute(gpx, lines, { speedKmh: +$('speed').value, id, title: gpx.name, nameImage });
     const model = readFile(r.file), check = verify(r, model);
     if (check) throw new Error('Prüfung fehlgeschlagen: ' + check);
-    const label = (gpx.name || id).replace(/[^\p{L}\p{N} ._-]/gu, '').trim().slice(0, 40) || id;   // file name = name shown on the CC700
-    built = { ...r, model, name: `route_${label}.bin`, title: gpx.name };
-    $('sum').textContent = `${gpx.name} · ${(r.distance / 1000).toFixed(1)} km · ${r.sections.length} Abschnitte · ${(r.file.length / 1024).toFixed(0)} KB`;
+    built = { ...r, model, name: `route_${id}.bin`, title: gpx.name };
+    $('sum').textContent = `${gpx.name} → CC700 Route ${id} · ${(r.distance / 1000).toFixed(1)} km · ${r.sections.length} Abschnitte · ${(r.file.length / 1024).toFixed(0)} KB`;
     $('turns').innerHTML = r.sections.map(s => `<li>${s.type === 2 ? '🏁' : ARROW[s.dir]} ${s.text.replace(/</g, '&lt;')}</li>`).join('');
     $('cv').hidden = $('pos').hidden = false; $('pos').max = Math.floor(r.distance); $('pos').value = 0; show();
   } catch (e) { $('sum').textContent = e.message; log(e.stack || e.message); } finally { upd(); }
