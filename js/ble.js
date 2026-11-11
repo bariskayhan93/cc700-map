@@ -47,10 +47,10 @@ export class CC700 {
   }
   async cmdOn(u, b, pred, ms = 3000) { this.q = []; await this.write(u, b); return this.wait(pred, ms); }
   async routeName() {                          // route file on the device, e.g. route_123456.bin
-    // answer: b0f5 0142 06 <count> ... <names, \0-terminated>; take the clean names, ignore the bytes between
+    // answer: b0f5 0142 06 <count> 00 01 01 <name>\0<name>\0...; keep clean names only
     const r = await this.cmdOn(this.cmd, [0xb0, 0xf1, 0x01, 0x42, 0x06], v => v[2] === 0x01 && v[3] === 0x42);
     if (!r) return null;
-    const names = [...new TextDecoder('latin1').decode(r.slice(5)).matchAll(/(?<![\x01-\x1f])route_[\w-]+\.bin/g)].map(m => m[0]);
+    const names = new TextDecoder('latin1').decode(r.slice(9)).split('\0').filter(n => /^route_[\w-]+\.bin$/.test(n));   // 4 header bytes: count,00,01,01
     this.log('route files on device: ' + JSON.stringify(names));
     return names[0] || null;
   }
