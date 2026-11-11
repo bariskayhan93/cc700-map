@@ -28,7 +28,8 @@ Format notes: the route file is nanopb 0.3 protobuf (CC700 firmware 1.414); name
 - Unofficial, independent project for interoperability with a device you own. Not affiliated with or endorsed by
   Magene, GEOID or Onelap; product names are used only to describe compatibility.
 - The page contains no firmware, app code, icons, fonts or map data from the manufacturer. The file and Bluetooth
-  formats were documented from the owner's own device and its traffic, for interoperability.
+  formats were documented from the owner's own device and its traffic, for interoperability. The only copied
+  bytes are format constants in the route header template (`js/route.js`; all route-specific values cleared).
 - Debug mode: add `?debug` to the page address to see the Bluetooth log.
 - Use at your own risk. A faulty route can at worst stop navigation; delete the route or send another one.
 
