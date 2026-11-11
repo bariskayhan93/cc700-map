@@ -31,7 +31,7 @@ async function build() {
     const la = gpx.pts.map(p => p[0]), lo = gpx.pts.map(p => p[1]), m = 0.01;
     const lines = await pack.lines([Math.min(...la) - m, Math.min(...lo) - m * 1.6, Math.max(...la) + m, Math.max(...lo) + m * 1.6]);
     const id = String(Math.floor(Date.now() / 1000) % 1e7).padStart(7, '0');      // new route each time: route_<id>.bin
-    const r = buildRoute(gpx, lines, { speedKmh: +$('speed').value, id, nameImage });
+    const r = buildRoute(gpx, lines, { speedKmh: +$('speed').value, id, title: gpx.name, nameImage });
     const model = readFile(r.file), check = verify(r, model);
     if (check) throw new Error('Prüfung fehlgeschlagen: ' + check);
     built = { ...r, model, name: `route_${id}.bin`, title: gpx.name };

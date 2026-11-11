@@ -105,7 +105,9 @@ export function buildRoute(gpx, lines, opt) {
   out.push(h).push(recs.bytes).push(new Array(16).fill(0xff));
   const base = out.n; dv.setUint32(0x60, base, true); dv.setUint32(0x64, base, true);
   imgs.forEach(b => out.push(b));
-  const title = new Uint8Array(128); title.set(new TextEncoder().encode(String(opt.id)).slice(0, 127));
+  const title = new Uint8Array(128); let tb = new TextEncoder().encode(String(opt.title || opt.id));
+  while (tb.length > 127) tb = new TextEncoder().encode([...new TextDecoder().decode(tb)].slice(0, -1).join(''));   // cut on a character boundary
+  title.set(tb);
   out.push(new Array(16).fill(0xff)).push(u32le(0x80)).push(title);
   while (out.n % 4) out.push([0]);
   // 6. map layer
