@@ -5,59 +5,70 @@ Use it in Chrome on Android. Select a GPX file. The page makes the route file an
 
 ## Watch the ride preview
 
-![Animated three-panel ride preview near the Hofgarten. OnelapFit junction hints, the Junction map, and Sunlight rotate together as the turn card and compass update.](docs/comparison/tour-d3-three-mode-replay.webp)
+![Animated three-panel ride preview near the Hofgarten. OnelapFit junction hints, the Junction map, and Sunlight rotate together as the turn card and compass update.](docs/comparison/tour-d3-device-replay.webp)
 
 All three views replay the same section of Düsseldorf’s public Tour D3 at 4× speed. Each uses the
-Pages-style turn window, compass, 100 m scale, heading, progress bar and distance to the finish.
+Pages preview’s proportions for the turn window, compass, 100 m scale, heading, progress and distance
+to the finish.
 [Open the interactive CC700 Map app](https://bariskayhan93.github.io/cc700-map/)
 
 ## Compare the three navigation views
 
-Five heading-up scenes from Tour D3. The rider’s direction of travel points toward the top of the
+Six heading-up scenes from Tour D3. The rider’s direction of travel points toward the top of the
 screen, and the compass shows where north is. Each excerpt is generated as its own route file.
-All three panels in a scene share the same position, heading, scale and guidance. Open any image to zoom in.
+The panels share the same position, heading and scale. Their turn windows follow their route
+records. Open any image to zoom in.
 [City of Düsseldorf Tour D3 and GPX](https://www.duesseldorf.de/radverkehr/fahrradtouren/tour-d)
 
 | Navigation mode | What the CC700 displays |
 |---|---|
 | **OnelapFit with stock firmware** | Blue route line with straight, equal-length grey spokes at junctions. Driveways, garage exits, streets and paths use the same size. Closely spaced spokes overlap. |
-| **CC700 Map Junction map with stock firmware** | Blue route line over a grey and white road network. The web app encodes OpenStreetMap road shapes as connected segments that the stock firmware can draw. |
+| **CC700 Map Junction map with stock firmware** | Blue route line over connected grey and white roads, with grey built-up blocks, striped water and long-dashed railways enabled for these examples. |
 | **CC700 Map Full Sunlight map with patched firmware** | Red route line over a colour map with distinct road classes, outlined green areas and water, and optional street names, tram layers and amber traffic signals. |
 
 The OnelapFit schematic uses mapped OpenStreetMap connections near Tour D3. Each arm is drawn
 at about 100 m, so nearby entrances and paths can stack into a dense cluster, as at the Hofgarten.
 The Junction and Sunlight panels use the GitHub Pages map renderer with their generated route files.
-Blue or red marks the route ahead, and grey marks the part already ridden.
+The Junction map examples have **Bebauung grau**, **Wasser gestreift (Test)** and
+**Bahnlinien lang gestrichelt (Test)** enabled. Blue or red marks the route ahead, and grey marks
+the part already ridden.
 
 ### Graf-Adolf-Platz
 
 The route turns at a wide junction where tram tracks and traffic signals cross the Königsallee corridor.
 
-![Graf-Adolf-Platz in three views. The Sunlight map shows tram tracks and amber signals at the turn.](docs/comparison/graf-adolf-platz-device-view.webp)
+![Graf-Adolf-Platz in three views. The Sunlight map shows tram tracks and amber signals at the turn.](docs/comparison/graf-adolf-platz-device-layers.webp)
 
 ### Altstadt near Liefergasse
 
 Connected side streets and bends show the shape of the Old Town street network.
 
-![Altstadt in three views. The Junction map and Sunlight map show connected side streets around Liefergasse.](docs/comparison/altstadt-liefergasse-device-view.webp)
+![Altstadt in three views. The Junction map and Sunlight map show connected side streets around Liefergasse.](docs/comparison/altstadt-liefergasse-device-layers.webp)
 
 ### Hofgarten and the Landskrone pond
 
 The park paths, water edge and city streets meet near the Kö-Bogen.
 
-![Hofgarten in three views. The Sunlight map distinguishes the Landskrone pond, park paths and nearby streets.](docs/comparison/hofgarten-landskrone-device-view.webp)
+![Hofgarten in three views. The Sunlight map distinguishes the Landskrone pond, park paths and nearby streets.](docs/comparison/hofgarten-landskrone-device-layers.webp)
 
 ### Rhine at Rheinkniebrücke
 
 The river, promenade and bridge approach are visible together at the riverbank.
 
-![Rhine riverbank in three views. The Sunlight map shows the river, promenade and Rheinkniebrücke.](docs/comparison/rhine-rheinkniebruecke-device-view.webp)
+![Rhine riverbank in three views. The Sunlight map shows the river, promenade and Rheinkniebrücke.](docs/comparison/rhine-rheinkniebruecke-device-layers.webp)
 
 ### MedienHafen
 
 The harbour entrance puts the path between two water edges, making the shape of the waterfront visible.
 
-![MedienHafen in three views. The Sunlight map shows the path between the harbour water and the Rhine.](docs/comparison/medienhafen-device-view.webp)
+![MedienHafen in three views. The Sunlight map shows the path between the harbour water and the Rhine.](docs/comparison/medienhafen-device-layers.webp)
+
+### Railway near Bilk
+
+The long white dashes across the blue route show how the experimental railway layer reads on
+stock firmware. The grey blocks show built-up areas around the crossing.
+
+![Railway near Bilk in three views. The Junction map draws grey blocks and long railway dashes across the route.](docs/comparison/railway-near-bilk-device-layers.webp)
 
 ## What the page does
 
