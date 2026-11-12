@@ -10,6 +10,16 @@ export function brg(a, b) {
   const y = Math.sin(dl) * Math.cos(p2), x = Math.cos(p1) * Math.sin(p2) - Math.sin(p1) * Math.cos(p2) * Math.cos(dl);
   return (Math.atan2(y, x) / D2R + 360) % 360;
 }
+// geohash of a position (base 32, n characters); the CC700 finds the rider's place in a route record with 6-character cells
+export function geohash(lat, lon, n = 6) {
+  const B = '0123456789bcdefghjkmnpqrstuvwxyz', la = [-90, 90], lo = [-180, 180]; let out = '', ch = 0, bit = 0, even = true;
+  while (out.length < n) {
+    const r = even ? lo : la, v = even ? lon : lat, m = (r[0] + r[1]) / 2;
+    if (v >= m) { ch = ch * 2 + 1; r[0] = m; } else { ch *= 2; r[1] = m; }
+    even = !even; if (++bit === 5) { out += B[ch]; bit = 0; ch = 0; }
+  }
+  return out;
+}
 export const adiff = (a, b) => ((a - b + 540) % 360) - 180;        // signed, + = right turn
 export function frame(lat0) {                                     // local metres <-> lat/lon
   const k = Math.cos(lat0 * D2R);
@@ -21,9 +31,9 @@ export function rdp(p, eps, M) {                                  // Douglas-Peu
   const P = p.map(q => M(q[0], q[1])), keep = new Uint8Array(p.length); keep[0] = keep[p.length - 1] = 1;
   const st = [[0, p.length - 1]];
   while (st.length) {
-    const [a, b] = st.pop(); const [ax, ay] = P[a], [bx, by] = P[b]; const dx = bx - ax, dy = by - ay, L = Math.hypot(dx, dy) || 1e-9;
-    let dm = -1, im = -1;
-    for (let i = a + 1; i < b; i++) { const d = Math.abs((P[i][0] - ax) * dy - (P[i][1] - ay) * dx) / L; if (d > dm) { dm = d; im = i; } }
+    const [a, b] = st.pop(); const [ax, ay] = P[a], [bx, by] = P[b]; const dx = bx - ax, dy = by - ay, L = Math.hypot(dx, dy);
+    let dm = -1, im = -1;   // start = end (round trip): distance to the point, else the whole loop was dropped (0 km)
+    for (let i = a + 1; i < b; i++) { const d = L < 1 ? Math.hypot(P[i][0] - ax, P[i][1] - ay) : Math.abs((P[i][0] - ax) * dy - (P[i][1] - ay) * dx) / L; if (d > dm) { dm = d; im = i; } }
     if (dm > eps) { keep[im] = 1; st.push([a, im], [im, b]); }
   }
   return p.filter((_, i) => keep[i]);
