@@ -20,6 +20,7 @@ function updateFirmware() {
   $('optOrig').hidden = patched;
   $('fwWarning').hidden = !patched;
   $('fwOriginal').hidden = patched;
+  $('fw').setAttribute('aria-describedby', patched ? 'fwWarning' : 'fwOriginal');
 }
 try {
   if (localStorage.getItem('cc700-fw') === 'patch') $('fw').value = 'patch';
