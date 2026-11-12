@@ -22,8 +22,45 @@
   .firmware .mut { margin:0; }
   .firmware .warning { margin:4px 0 0; padding:8px 10px; border-inline-start:3px solid #c7821a; background:var(--bg); font-size:13px; }
   #previewTitle { font-size:15px; margin:14px 0 0; }
+  .playback { display:flex; align-items:center; flex-wrap:wrap; gap:8px; margin-top:10px; }
+  .playback button { width:auto; min-width:100px; padding:6px 12px; }
+  .playback select { font:inherit; padding:5px 7px; border:1px solid var(--bd); border-radius:7px; background:var(--bg); color:var(--fg); }
+  #playDistance { margin-inline-start:auto; color:var(--mut); font-size:13px; font-variant-numeric:tabular-nums; }
   .mut { color:var(--mut); font-size:13px; margin-top:8px; }
-  canvas { width:100%; max-width:360px; border-radius:8px; display:block; margin:10px auto 4px; }
+  .device-screen { width:min(100%, 360px); box-sizing:border-box; margin:10px auto 4px; overflow:hidden; border:6px solid #26313d; border-radius:15px; color:#16212c; background:#f6f8fa; }
+  .device-map { position:relative; }
+  .device-map canvas { display:block; width:100%; height:auto; }
+  .turn-card { position:absolute; inset:8px 8px auto; display:flex; align-items:center; gap:10px; box-sizing:border-box; padding:7px 9px; border:1px solid #cdd6df; border-radius:8px; background:#fbfdff; box-shadow:0 2px 5px #1d2b3d25; }
+  .turn-arrow { display:grid; place-items:center; flex:0 0 42px; height:42px; color:#165fc7; font-size:35px; font-weight:700; line-height:1; }
+  .turn-arrow::before { content:""; width:100%; height:100%; background:currentColor; clip-path:polygon(50% 5%, 91% 46%, 66% 46%, 66% 94%, 34% 94%, 34% 46%, 9% 46%); }
+  .turn-arrow[data-dir="1"]::before, .turn-arrow[data-dir="3"]::before { clip-path:polygon(60% 5%, 98% 39%, 60% 73%, 60% 53%, 34% 53%, 34% 94%, 10% 94%, 10% 37%, 60% 37%); }
+  .turn-arrow[data-dir="1"]::before { transform:scaleX(-1); }
+  .turn-arrow[data-dir="2"]::before { transform:rotate(-40deg); }
+  .turn-arrow[data-dir="4"]::before { transform:rotate(40deg); }
+  .turn-arrow[data-dir="5"]::before, .turn-arrow[data-dir="6"]::before { background:none; clip-path:none; }
+  .turn-arrow[data-dir="5"]::before { content:"↶"; }
+  .turn-arrow[data-dir="6"]::before { content:"⚑"; }
+  .turn-copy { min-width:0; }
+  .turn-distance { font-size:clamp(22px, 6vw, 30px); font-weight:750; line-height:1.05; font-variant-numeric:tabular-nums; }
+  .turn-distance small { font-size:13px; font-weight:650; }
+  #turnInstruction { font-size:14px; line-height:1.2; font-weight:650; }
+  #turnStreet, #turnNext { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#455564; font-size:11px; line-height:1.3; }
+  #turnNext { color:#16509a; font-weight:650; }
+  .map-scale, .map-remaining { position:absolute; bottom:7px; padding:3px 5px; background:#fbfdfff0; border-radius:4px; font-size:11px; font-weight:600; }
+  .map-scale { left:7px; width:calc(100% / 6); text-align:center; }
+  .map-scale::after { content:""; display:block; height:3px; border:solid #273545; border-width:0 1px 1px; }
+  .map-remaining { right:7px; text-align:right; line-height:1.15; }
+  .map-remaining strong { font-size:17px; font-variant-numeric:tabular-nums; }
+  .map-compass { position:absolute; bottom:33px; left:9px; width:25px; height:25px; display:grid; place-items:center; border:1px solid #f6f8fa; border-radius:50%; background:#3e4854; }
+  .map-compass i { display:block; width:10px; height:18px; background:linear-gradient(#e34842 50%, #fff 50%); clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%); }
+  .ride-track { height:4px; background:#d1e9db; }
+  #rideProgress { height:100%; background:#168856; transform:scaleX(0); transform-origin:left; }
+  .ride-metrics { display:grid; grid-template-columns:1fr 1fr; margin:0; }
+  .ride-metrics div { padding:4px 8px 6px; text-align:center; }
+  .ride-metrics div + div { border-inline-start:1px solid #dae2e9; }
+  .ride-metrics dt { color:#455564; font-size:11px; }
+  .ride-metrics dd { margin:0; font-size:22px; font-weight:750; line-height:1.15; font-variant-numeric:tabular-nums; }
+  .ride-metrics small { font-size:11px; font-weight:600; }
   input[type=range], progress { width:100%; margin-top:8px; }
   input[type=number] { width:64px; font:inherit; padding:4px 6px; }
   details { margin-top:10px; } summary { color:var(--mut); font-size:13px; padding:4px 0; }
@@ -49,7 +86,37 @@
     <div id="sum" class="mut" role="status">Aus einem GPX wird eine CC700-Route mit Abbiegehinweisen, Straßennamen und Karte.</div>
     <div id="out" hidden>
       <h2 id="previewTitle">Kartenvorschau</h2>
-      <canvas id="cv" width="240" height="250" role="img" aria-labelledby="previewTitle"></canvas>
+      <div class="device-screen">
+        <div class="device-map">
+          <canvas id="cv" width="240" height="250" role="img" aria-labelledby="previewTitle"></canvas>
+          <div class="turn-card">
+            <span id="turnArrow" class="turn-arrow" data-dir="0" aria-hidden="true"></span>
+            <div class="turn-copy">
+              <div class="turn-distance"><span id="turnDistance"></span> <small id="turnUnit"></small></div>
+              <div id="turnInstruction"></div>
+              <div id="turnStreet"></div>
+              <div id="turnNext" hidden></div>
+            </div>
+          </div>
+          <div class="map-compass" aria-hidden="true"><i id="rideCompass"></i></div>
+          <div class="map-scale" aria-hidden="true">100 m</div>
+          <div class="map-remaining">Zum Ziel<br><strong id="rideRemaining"></strong> km</div>
+        </div>
+        <div class="ride-track" aria-hidden="true"><div id="rideProgress"></div></div>
+        <dl class="ride-metrics">
+          <div><dt>Tempo</dt><dd><span id="rideSpeed"></span> <small>km/h</small></dd></div>
+          <div><dt>Kurs</dt><dd id="rideHeading"></dd></div>
+        </dl>
+      </div>
+      <div class="playback">
+        <button id="play" type="button" aria-controls="cv pos">Abspielen</button>
+        <select id="playRate" aria-label="Wiedergabetempo">
+          <option value="1">1×</option>
+          <option value="4" selected>4×</option>
+          <option value="8">8×</option>
+        </select>
+        <span id="playDistance"></span>
+      </div>
       <input id="pos" type="range" min="0" max="1" value="0" aria-label="Position entlang der Route">
       <details><summary id="turnsN">Abbiegungen</summary><ol id="turns"></ol></details>
     </div>

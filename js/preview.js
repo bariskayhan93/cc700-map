@@ -216,13 +216,14 @@ export function draw(canvas, model, distM, styled = model.styled) {
   g.scale(PIXEL_RATIO, PIXEL_RATIO);
   g.fillStyle = styled ? '#f2efe9' : '#eef0f2';
   g.fillRect(0, 0, W, H);
-  if (!all.length) return { section: 0, entries: 0 };
+  if (!all.length) return { section: 0, entries: 0, heading: 0 };
 
   let section = 0;
   secs.forEach((points, i) => { if (points[0]?.[2] <= distM * 100) section = i; });
   const { point: me, next } = sample(all, distM);
-  const heading = brg(sample(all, distM - 30).point, sample(all, distM + 30).point) * Math.PI / 180;
-  const k = Math.cos(me[0] * Math.PI / 180), sin = Math.sin(heading), cos = Math.cos(heading);
+  const heading = brg(sample(all, distM - 30).point, sample(all, distM + 30).point);
+  const radians = heading * Math.PI / 180, k = Math.cos(me[0] * Math.PI / 180);
+  const sin = Math.sin(radians), cos = Math.cos(radians);
   const project = p => {
     const e = (p[1] - me[1]) * 111320 * k / MPP, n = (p[0] - me[0]) * 111320 / MPP;
     return [W / 2 + e * cos - n * sin, H * POSY - e * sin - n * cos];
@@ -243,5 +244,5 @@ export function draw(canvas, model, distM, styled = model.styled) {
   path(g, [[x, y - 9], [x - 7, y + 7], [x + 7, y + 7]]);
   g.fillStyle = ORIGINAL_ROUTE;
   g.fill();
-  return { section, entries: entries.length };
+  return { section, entries: entries.length, heading };
 }

@@ -61,6 +61,9 @@ The harbour entrance puts the path between two water edges, making the shape of 
 
 The app starts in **Original (Kreuzungskarte)**. Select **Patch v12 (farbige Sunlight-Karte)** only if
 your CC700 has the v12 patch for firmware V1.414. The preview updates from the generated route file.
+Choose **Abspielen** to replay the route at 1×, 4×, or 8× the speed set in **Einstellungen**.
+The slider lets you move to any point during playback. The ride preview shows the next instruction,
+distance, heading and route progress using the generated route.
 
 | | Junction map (Original) | Full Sunlight map (Patch) |
 |---|---|---|
