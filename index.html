@@ -16,8 +16,14 @@
   section { background:var(--card); border:1px solid var(--bd); border-radius:12px; padding:14px; margin-bottom:12px; }
   button, .btn { display:block; box-sizing:border-box; width:100%; font:inherit; text-align:center; padding:12px 14px; border-radius:9px; border:0; background:var(--acc); color:#fff; }
   button:disabled { opacity:.45; }
+  .firmware { display:grid; gap:4px; margin-bottom:14px; }
+  .firmware label, #previewTitle { font-weight:600; }
+  .firmware select { width:100%; box-sizing:border-box; font:inherit; padding:8px; border:1px solid var(--bd); border-radius:7px; background:var(--bg); color:var(--fg); }
+  .firmware .mut { margin:0; }
+  .firmware .warning { margin:4px 0 0; padding:8px 10px; border-inline-start:3px solid #c7821a; background:var(--bg); font-size:13px; }
+  #previewTitle { font-size:15px; margin:14px 0 0; }
   .mut { color:var(--mut); font-size:13px; margin-top:8px; }
-  canvas { width:100%; max-width:360px; border-radius:8px; display:block; margin:10px auto 4px; image-rendering:pixelated; }
+  canvas { width:100%; max-width:360px; border-radius:8px; display:block; margin:10px auto 4px; }
   input[type=range], progress { width:100%; margin-top:8px; }
   input[type=number] { width:64px; font:inherit; padding:4px 6px; }
   details { margin-top:10px; } summary { color:var(--mut); font-size:13px; padding:4px 0; }
@@ -30,19 +36,27 @@
 <main>
   <h1>CC700 Map</h1>
   <section>
+    <div class="firmware">
+      <label for="fw">Firmware auf dem CC700</label>
+      <select id="fw" aria-describedby="fwOriginal fwWarning">
+        <option value="orig" selected>Original (Kreuzungskarte)</option>
+        <option value="patch">Patch v12 (farbige Sunlight-Karte)</option>
+      </select>
+      <p id="fwOriginal" class="mut">Für Geräte mit unveränderter Firmware.</p>
+      <p id="fwWarning" class="warning" hidden>Nur für Geräte mit installiertem Patch v12 für Firmware V1.414.</p>
+    </div>
     <label class="btn">GPX wählen<input id="gpx" type="file" accept=".gpx,application/gpx+xml" hidden></label>
-    <div id="sum" class="mut">Aus einem GPX wird eine CC700-Route mit Abbiegehinweisen, Straßennamen und Karte.</div>
+    <div id="sum" class="mut" role="status">Aus einem GPX wird eine CC700-Route mit Abbiegehinweisen, Straßennamen und Karte.</div>
     <div id="out" hidden>
-      <canvas id="cv" width="240" height="250"></canvas>
-      <input id="pos" type="range" min="0" max="1" value="0">
+      <h2 id="previewTitle">Kartenvorschau</h2>
+      <canvas id="cv" width="240" height="250" role="img" aria-labelledby="previewTitle"></canvas>
+      <input id="pos" type="range" min="0" max="1" value="0" aria-label="Position entlang der Route">
       <details><summary id="turnsN">Abbiegungen</summary><ol id="turns"></ol></details>
     </div>
     <details>
       <summary>Einstellungen</summary>
       <label>Tempo km/h <input id="speed" type="number" value="18" min="8" max="45"></label>
-      <label>Firmware <select id="fw"><option value="patch">Patch (farbige Karte)</option><option value="orig">Original</option></select></label>
-      <input id="styled" type="checkbox" hidden>
-      <fieldset id="optPatch"><legend>Kartenebenen (Patch)</legend>
+      <fieldset id="optPatch" hidden><legend>Kartenebenen (Patch)</legend>
         <label><input id="names" type="checkbox"> Straßennamen</label>
         <label><input id="signals" type="checkbox"> Ampeln</label>
         <label><input id="stops" type="checkbox"> Straßenbahn-Haltestellen</label>

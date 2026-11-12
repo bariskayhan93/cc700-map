@@ -59,7 +59,8 @@ The harbour entrance puts the path between two water edges, making the shape of 
 
 ## CC700 Map settings
 
-Select **Original** for the Junction map or **Patch (farbige Karte)** for the Full Sunlight map in **Einstellungen**.
+The app starts in **Original (Kreuzungskarte)**. Select **Patch v12 (farbige Sunlight-Karte)** only if
+your CC700 has the v12 patch for firmware V1.414. The preview updates from the generated route file.
 
 | | Junction map (Original) | Full Sunlight map (Patch) |
 |---|---|---|
@@ -80,7 +81,7 @@ tracks, footways and paths.
 ## How to use
 
 1. Open https://bariskayhan93.github.io/cc700-map/ in Chrome on Android.
-2. Choose the firmware and map layers in **Einstellungen**.
+2. Select the firmware installed on your CC700. Open **Einstellungen** to change the optional map layers.
 3. Select a GPX file, or share it to the page from another app. The page makes the route immediately.
    For a new region, the page needs internet.
 4. Close OnelapFit, because it holds the Bluetooth connection. Stop the navigation on the CC700.

@@ -293,6 +293,7 @@ export { frame };
 // An entry is a polyline (roads, rails, tram, rivers) or an area [outer ring, holes...] as [centre = first point, points...].
 // The original firmware would draw these as stars, so this map is only for the patched firmware (opt.styled).
 const S = { BUILT: 1, GREEN: 2, WATER: 3, WLINE: 4, MAJ: 5, MIN: 6, SRV: 7, PTH: 8, RAIL: 9, CYC: 10, TRAM: 11, LABEL: 12, SIG: 13, STOP: 14 };
+export { S as MAP_CLASS };
 const SR = { [S.MAJ]: 1000, [S.MIN]: 400, [S.SRV]: 300, [S.PTH]: 300, [S.CYC]: 350, [S.RAIL]: 450, [S.TRAM]: 450, [S.WLINE]: 450 };   // range from the route (m)
 const AREA_R = 450, MAXPTS = 60, BLOCK_PTS = 9000, BLOCK_ENT = 1000, BLOCK_LEN = 1500;
 function lineClass(L) {
