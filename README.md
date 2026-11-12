@@ -32,31 +32,31 @@ part already ridden.
 
 The route turns at a wide junction where tram tracks and traffic signals cross the Königsallee corridor.
 
-![Graf-Adolf-Platz in three views. The Sunlight map shows tram tracks and amber signals at the turn.](docs/comparison/graf-adolf-platz.webp)
+![Graf-Adolf-Platz in three views. The Sunlight map shows tram tracks and amber signals at the turn.](docs/comparison/graf-adolf-platz-heading-up.webp)
 
 ### Altstadt near Liefergasse
 
 Connected side streets and bends show the shape of the Old Town street network.
 
-![Altstadt in three views. The Junction map and Sunlight map show connected side streets around Liefergasse.](docs/comparison/altstadt-liefergasse.webp)
+![Altstadt in three views. The Junction map and Sunlight map show connected side streets around Liefergasse.](docs/comparison/altstadt-liefergasse-heading-up.webp)
 
 ### Hofgarten and the Landskrone pond
 
 The park paths, water edge and city streets meet near the Kö-Bogen.
 
-![Hofgarten in three views. The Sunlight map distinguishes the Landskrone pond, park paths and nearby streets.](docs/comparison/hofgarten-landskrone.webp)
+![Hofgarten in three views. The Sunlight map distinguishes the Landskrone pond, park paths and nearby streets.](docs/comparison/hofgarten-landskrone-heading-up.webp)
 
 ### Rhine at Rheinkniebrücke
 
 The river, promenade and bridge approach are visible together at the riverbank.
 
-![Rhine riverbank in three views. The Sunlight map shows the river, promenade and Rheinkniebrücke.](docs/comparison/rhine-rheinkniebruecke.webp)
+![Rhine riverbank in three views. The Sunlight map shows the river, promenade and Rheinkniebrücke.](docs/comparison/rhine-rheinkniebruecke-heading-up.webp)
 
 ### MedienHafen
 
 The harbour entrance puts the path between two water edges, making the shape of the waterfront visible.
 
-![MedienHafen in three views. The Sunlight map shows the path between the harbour water and the Rhine.](docs/comparison/medienhafen.webp)
+![MedienHafen in three views. The Sunlight map shows the path between the harbour water and the Rhine.](docs/comparison/medienhafen-heading-up.webp)
 
 ## What the page does
 
