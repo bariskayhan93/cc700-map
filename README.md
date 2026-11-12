@@ -3,10 +3,18 @@
 This web page makes navigation routes for the GEOID / Magene **CC700** bike computer and sends them over Bluetooth.
 Use it in Chrome on Android. Select a GPX file. The page makes the route file and sends it to the device.
 
+## Watch the ride preview
+
+![Animated side-by-side ride preview near the Hofgarten. Both views rotate with the route and update turn distance, instruction, heading and progress.](docs/comparison/tour-d3-replay.webp)
+
+The Junction and Sunlight maps replay the same section of Düsseldorf’s public Tour D3 at 4× speed.
+The turn card, heading and distance to the finish update as the maps move.
+[Open the interactive CC700 Map app](https://bariskayhan93.github.io/cc700-map/)
+
 ## Compare the three navigation views
 
-Five scenes from Düsseldorf’s public Tour D3. Each scene shows the same position, orientation and
-scale across all three panels. Open any image to zoom in.
+Five north-up scenes from Tour D3. Each excerpt is generated as its own route file. All three panels
+in a scene show the same position, scale and guidance. Open any image to zoom in.
 [City of Düsseldorf Tour D3 and GPX](https://www.duesseldorf.de/radverkehr/fahrradtouren/tour-d)
 
 | Navigation mode | What the CC700 displays |
@@ -15,8 +23,9 @@ scale across all three panels. Open any image to zoom in.
 | **CC700 Map Junction map with stock firmware** | Blue route line over a grey and white road network. The web app encodes OpenStreetMap road shapes as connected segments that the stock firmware can draw. |
 | **CC700 Map Full Sunlight map with patched firmware** | Red route line over a colour map with distinct road classes, outlined green areas and water, and optional street names, tram layers and amber traffic signals. |
 
-The OnelapFit panel is a schematic. The Junction and Sunlight panels render CC700 Map route files
-on a desktop. Blue or red marks the route ahead, and grey marks the part already ridden.
+The OnelapFit panel illustrates the stock junction hints. The Junction and Sunlight panels are
+desktop renders of CC700 Map route files. Blue or red marks the route ahead, and grey marks the
+part already ridden.
 
 ### Graf-Adolf-Platz
 
