@@ -11,23 +11,23 @@ const ARROW = ['↑', '↰', '↖', '↱', '↗', '↶'];
 let built, dev, gpxFile, busy;
 $('log').hidden = !DEBUG;
 if (self.caches) { caches.delete('cc700-roads-v2'); caches.delete('cc700-roads-v3'); caches.delete('cc700-osm-v1'); }   // road pack of earlier versions (90 MB)
-const LAYERS = ['ground', 'water', 'rails'];                          // optional map layers
+const LAYERS = ['styled', 'ground', 'water', 'rails'];                          // optional map layers
 const upd = () => { $('sendBtn').disabled = !built || busy; };
 // a GPX, or a changed setting, builds the route
 $('gpx').onchange = () => { gpxFile = $('gpx').files[0]; build(); };
 $('speed').onchange = build;
-for (const k of LAYERS) { try { $(k).checked = localStorage.getItem('cc700-' + k) === '1'; } catch {}
+for (const k of LAYERS) { try { const v = localStorage.getItem('cc700-' + k); $(k).checked = v === null ? k === 'styled' : v === '1'; } catch { $(k).checked = k === 'styled'; }   // coloured map on by default
   $(k).onchange = () => { try { localStorage.setItem('cc700-' + k, $(k).checked ? '1' : '0'); } catch {} build(); }; }
 async function build() {
   if (!gpxFile || busy) return;
   busy = true; built = null; $('out').hidden = true; upd();
   try {
     const gpx = parseGPX(await gpxFile.text()); if (gpx.pts.length < 2) throw new Error('GPX ohne Trackpunkte');
-    const { lines, areas, water, rails } = await loadOSM(gpx.pts, (i, n) => say('sum', `Kartendaten ${i + 1}/${n} …`));   // OpenStreetMap, only the cells of this route
+    const { lines, areas, water, rails, green, trams, wlines, signals, stops } = await loadOSM(gpx.pts, (i, n) => say('sum', `Kartendaten ${i + 1}/${n} …`));   // OpenStreetMap, only the cells of this route
     say('sum', 'rechne … (lange Routen bis ca. 30 s)'); await new Promise(r => setTimeout(r, 30));
     const d = new Date(), z = n => String(n).padStart(2, '0');
     const id = z(d.getMonth() + 1) + z(d.getDate()) + z(d.getHours()) + z(d.getMinutes());   // MMDDhhmm: the CC700 menu shows only this number
-    const r = buildRoute(gpx, lines, { speedKmh: +$('speed').value, id, label: gpx.name, title: gpx.name, nameImage, areas, water, rails,
+    const r = buildRoute(gpx, lines, { speedKmh: +$('speed').value, id, label: gpx.name, title: gpx.name, nameImage, areas, water, rails, green, trams, wlines, signals, stops, noF9: $('styled').checked,   // patched firmware: field 9 off, as tested on the device
       map: { ...Object.fromEntries(LAYERS.map(k => [k, $(k).checked])), ...(LIMIT > 1200 ? { cap: LIMIT, capMax: LIMIT } : {}) } });
     const model = readFile(r.file), check = verify(r, model);
     if (check) throw new Error('Prüfung fehlgeschlagen: ' + check);

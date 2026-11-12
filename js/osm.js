@@ -4,10 +4,16 @@
 import { frame, rdp, lineLen } from './geo.js';
 const DLAT = 0.05, DLON = 0.08, MARGIN = 0.004;     // cell size; context around a cell for generalization (~400 m)
 const REACH = 0.005;                                // cells within ~550 m of the route are loaded
-const CACHE = 'cc700-osm-v2', MAX_AGE = 30 * 864e5; // a cell is loaded again after 30 days
+const CACHE = 'cc700-osm-v3', MAX_AGE = 30 * 864e5; // a cell is loaded again after 30 days
 const API = ['https://overpass.openstreetmap.fr/api/interpreter', 'https://overpass-api.de/api/interpreter', 'https://overpass.private.coffee/api/interpreter'];   // fastest first
 const HIGHWAY = 'motorway|trunk|primary|secondary|tertiary|residential|unclassified|living_street|road|service|track|cycleway|path|footway|pedestrian|bridleway';
 const BUILT = 'residential|commercial|retail|industrial|garages|railway|construction';
+const GREEN_LU = 'forest|grass|meadow|recreation_ground|village_green|allotments|cemetery|orchard|vineyard|greenfield', GREEN_LEI = 'park|garden|playground|pitch|golf_course|nature_reserve', GREEN_NAT = 'wood|scrub|grassland|heath|wetland';
+const isBuilt = t => new RegExp('^(' + BUILT + ')$').test(t.landuse || ''), isGreen = t => new RegExp('^(' + GREEN_LU + ')$').test(t.landuse || '') || new RegExp('^(' + GREEN_LEI + ')$').test(t.leisure || '') || new RegExp('^(' + GREEN_NAT + ')$').test(t.natural || '');
+// line flags for the styled map (patched firmware): bit 0 bridge, bit 1 tunnel, bits 2-4 layer + 2, bit 5 cycleway
+const lflags = t => { const L = Math.max(-2, Math.min(2, parseInt(t.layer) || 0)), br = /^(yes|viaduct|boardwalk)$/.test(t.bridge || ''), tu = /^(yes|culvert)$/.test(t.tunnel || '') || L < 0;
+  const cyc = t.highway === 'cycleway' || ((t.highway === 'path' || t.highway === 'footway') && t.bicycle === 'designated');
+  return (br ? 1 : 0) | (tu ? 2 : 0) | ((L + 2) << 2) | (cyc ? 32 : 0); };
 const KIND = { main: 1, tertiary: 2, street: 3, service: 4, path: 5, track: 6, foot: 7, motorway: 8 };
 const set = s => new Set(s.split(' '));
 const NO = set('no private agricultural forestry delivery use_sidepath'), YES = set('yes permissive designated');
@@ -129,33 +135,52 @@ const inside = ([y, x], r) => { let c = false; for (let i = 0, j = r.length - 1;
 // Overpass elements of one cell (+ margin) -> { lines: [[id, kind, name, flat points]], areas and water: [[id, [flat ring, ...]]], rails: [[id, flat points]] }
 export function buildCell(els, r, c) {
   const F = frame((r + 0.5) * DLAT), here = p => Math.floor(p[0] / DLAT) === r && Math.floor(p[1] / DLON) === c;
-  const ll = g => g.map(q => [q.lat, q.lon]), ways = [], lines = [], areas = [], water = [], tracks = [];
+  const ll = g => g.map(q => [q.lat, q.lon]), ways = [], lines = [], areas = [], water = [], tracks = [], green = [], trams = [], wlines = [];
   for (const e of els) {
     const t = e.tags || {};
     if (e.type === 'way' && t.highway && e.geometry.length > 1) {
       const k = kind(t), pts = ll(e.geometry); if (k) ways.push({ id: e.id, t, kind: k, refs: e.nodes, pts, len: lineLen(pts), here: pts.some(here) });
+    } else if (e.type === 'way' && /^(tram|light_rail)$/.test(t.railway || '')) {
+      const pts = ll(e.geometry); if (t.tunnel !== 'yes' && pts.length > 1 && pts.some(here)) trams.push([e.id, flat(rdp(pts, 2, F.m))]);
     } else if (e.type === 'way' && t.railway) {
       const pts = ll(e.geometry); if (!t.service && t.tunnel !== 'yes' && pts.length > 1) tracks.push({ id: e.id, pts, len: lineLen(pts), here: pts.some(here) });
-    } else if (t.landuse || t.natural || t.waterway) {
+    } else if (e.type === 'way' && /^(river|canal|stream)$/.test(t.waterway || '') && t.tunnel !== 'culvert' && t.tunnel !== 'yes') {
+      const pts = ll(e.geometry); if (pts.length > 1 && pts.some(here)) wlines.push([e.id, flat(rdp(pts, 3, F.m))]);
+    } else if (t.landuse || t.natural || t.waterway || t.leisure) {
       const part = inner => stitch(e.type === 'way' ? (inner ? [] : [ll(e.geometry)]) : e.members.filter(m => m.type === 'way' && m.geometry && (m.role === 'inner') === inner).map(m => ll(m.geometry)));
       const holes = part(true).map(h => ring(h, F, false)).filter(Boolean);
-      part(false).forEach((raw, n) => { const o = ring(raw, F, true); if (o) (t.landuse ? areas : water).push([e.type[0] + e.id + '.' + n, [o, ...holes.filter(h => inside(h[0], raw))].map(flat)]); });
+      const to = isBuilt(t) ? areas : isGreen(t) ? green : (t.natural === 'water' || t.waterway) ? water : null;
+      if (to) part(false).forEach((raw, n) => { const o = ring(raw, F, true); if (o) to.push([e.type[0] + e.id + '.' + n, [o, ...holes.filter(h => inside(h[0], raw))].map(flat)]); });
     }
   }
   for (const g of generalize(ways, F)) {
     if (!g.here || !KIND[g.kind] || (g.kind === 'service' && lineLen(g.pts) < 50)) continue;
-    const f = flat(g.pts); if (f.length >= 4) lines.push([g.id, KIND[g.kind] | (/^(roundabout|circular)$/.test(g.t.junction) ? 0x80 : 0), g.t.name || '', f]);
+    const f = flat(g.pts); if (f.length >= 4) lines.push([g.id, KIND[g.kind] | (/^(roundabout|circular)$/.test(g.t.junction) ? 0x80 : 0), g.t.name || '', f, lflags(g.t)]);
   }
   const rails = mainTracks(tracks, F).filter(w => w.here).map(w => [w.id, flat(rdp(w.pts, 3, F.m))]);
-  return { lines, areas, water, rails };
+  return { lines, areas, water, rails, green, trams, wlines };
 }
 async function overpass(r, c) {
   const box = [r * DLAT - MARGIN, c * DLON - MARGIN, (r + 1) * DLAT + MARGIN, (c + 1) * DLON + MARGIN].map(v => v.toFixed(4)).join(',');
-  const q = `[out:json][timeout:90][bbox:${box}];(way[highway~"^(${HIGHWAY})(_link)?$"];way[landuse~"^(${BUILT})$"];rel[landuse~"^(${BUILT})$"];way[natural=water];rel[natural=water];way[waterway~"^(dock|riverbank)$"];way[railway=rail];);out geom;`;
+  const q = `[out:json][timeout:90][bbox:${box}];(way[highway~"^(${HIGHWAY})(_link)?$"];way[landuse~"^(${BUILT})$"];rel[landuse~"^(${BUILT})$"];way[natural=water];rel[natural=water];way[waterway~"^(dock|riverbank|river|canal|stream)$"];way[railway~"^(rail|tram|light_rail)$"];way[landuse~"^(${GREEN_LU})$"];rel[landuse~"^(${GREEN_LU})$"];way[leisure~"^(${GREEN_LEI})$"];rel[leisure~"^(${GREEN_LEI})$"];way[natural~"^(${GREEN_NAT})$"];rel[natural~"^(${GREEN_NAT})$"];);out geom;`;
   let err;
   for (let n = 0; n < 2 * API.length; n++) {         // server busy or down: the next server; after all of them one more round
     try {
       const res = await fetch(API[n % API.length], { method: 'POST', body: new URLSearchParams({ data: q }), signal: AbortSignal.timeout(100000) });
+      const j = res.ok ? await res.json() : {}; if (res.ok && !j.remark) return j.elements;
+      err = new Error('Overpass ' + (j.remark || res.status));
+    } catch (e) { err = e; }
+    if (n === API.length - 1) await new Promise(ok => setTimeout(ok, 5000));
+  }
+  throw err;
+}
+async function overpassNodes(r, c) {                  // traffic signals and tram stops of a cell
+  const box = [r * DLAT, c * DLON, (r + 1) * DLAT, (c + 1) * DLON].map(v => v.toFixed(4)).join(',');
+  const q = `[out:json][timeout:60][bbox:${box}];(node[highway=traffic_signals];node[railway=tram_stop];node[public_transport=stop_position][tram=yes];);out;`;
+  let err;
+  for (let n = 0; n < 2 * API.length; n++) {
+    try {
+      const res = await fetch(API[n % API.length], { method: 'POST', body: new URLSearchParams({ data: q }), signal: AbortSignal.timeout(70000) });
       const j = res.ok ? await res.json() : {}; if (res.ok && !j.remark) return j.elements;
       err = new Error('Overpass ' + (j.remark || res.status));
     } catch (e) { err = e; }
@@ -169,7 +194,8 @@ const phone = {                                       // processed cells on the 
 };
 // roads { kind, name, pts }, built-up areas and water [outer ring, ...holes], railways [points] around a track [[lat, lon]]
 export async function loadOSM(track, onProgress, store = phone) {
-  const cells = new Set(), lines = new Map(), areas = new Map(), water = new Map(), rails = new Map(); let n = 0;
+  const cells = new Set(), lines = new Map(), areas = new Map(), water = new Map(), rails = new Map(), green = new Map(), trams = new Map(), wlines = new Map(); let n = 0;
+  const signals = new Map(), stops = new Map();
   for (const [la, lo] of track) for (const a of [la - REACH, la + REACH]) for (const o of [lo - REACH * 1.6, lo + REACH * 1.6]) cells.add(Math.floor(a / DLAT) + ',' + Math.floor(o / DLON));
   for (const key of cells) {
     onProgress?.(n++, cells.size);
@@ -177,10 +203,23 @@ export async function loadOSM(track, onProgress, store = phone) {
     if (!cell || (Date.now() - cell.t > MAX_AGE && navigator.onLine !== false)) try {
       const [r, c] = key.split(',').map(Number); cell = { t: Date.now(), ...buildCell(await overpass(r, c), r, c) }; await store.put(key, cell);
     } catch (e) { if (!cell) throw new Error('Kartendaten nicht geladen (' + e.message + '). Für eine neue Region ist Internet nötig.'); }   // old cell: still good
-    for (const [id, kind, name, f] of cell.lines) if (!lines.has(id)) lines.set(id, { kind, name, pts: unflat(f) });   // a road that crosses cells is in each of them
+    for (const [id, kind, name, f, fl] of cell.lines) if (!lines.has(id)) lines.set(id, { kind, name, pts: unflat(f), fl: fl || 0 });   // a road that crosses cells is in each of them
     for (const [id, rings] of cell.areas) if (!areas.has(id)) areas.set(id, rings.map(unflat));
     for (const [id, rings] of cell.water) if (!water.has(id)) water.set(id, rings.map(unflat));
     for (const [id, f] of cell.rails) if (!rails.has(id)) rails.set(id, unflat(f));
+    for (const [id, rings] of cell.green || []) if (!green.has(id)) green.set(id, rings.map(unflat));
+    for (const [id, f] of cell.trams || []) if (!trams.has(id)) trams.set(id, unflat(f));
+    for (const [id, f] of cell.wlines || []) if (!wlines.has(id)) wlines.set(id, unflat(f));
+    let nc = await store.get('n' + key);                // nodes: optional, a failed load only drops the dots
+    if (!nc || (Date.now() - nc.t > MAX_AGE && navigator.onLine !== false)) try {
+      const [r, c] = key.split(',').map(Number), els = await overpassNodes(r, c);
+      nc = { t: Date.now(), sig: els.filter(e => e.tags?.highway === 'traffic_signals').map(e => [e.id, e.lat, e.lon]),
+        stop: els.filter(e => e.tags?.railway === 'tram_stop' || e.tags?.tram === 'yes').map(e => [e.id, e.lat, e.lon]) };
+      await store.put('n' + key, nc);
+    } catch {}
+    for (const [id, la, lo] of nc?.sig || []) signals.set(id, [la, lo]);
+    for (const [id, la, lo] of nc?.stop || []) stops.set(id, [la, lo]);
   }
-  return { lines: [...lines.values()], areas: [...areas.values()], water: [...water.values()], rails: [...rails.values()] };
+  return { lines: [...lines.values()], areas: [...areas.values()], water: [...water.values()], rails: [...rails.values()],
+    green: [...green.values()], trams: [...trams.values()], wlines: [...wlines.values()], signals: [...signals.values()], stops: [...stops.values()] };
 }
