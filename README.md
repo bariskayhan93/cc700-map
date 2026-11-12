@@ -13,8 +13,9 @@ The turn card, heading and distance to the finish update as the maps move.
 
 ## Compare the three navigation views
 
-Five north-up scenes from Tour D3. Each excerpt is generated as its own route file. All three panels
-in a scene show the same position, scale and guidance. Open any image to zoom in.
+Five heading-up scenes from Tour D3. The rider’s direction of travel points toward the top of the
+screen, and the compass shows where north is. Each excerpt is generated as its own route file.
+All three panels in a scene share the same position, heading, scale and guidance. Open any image to zoom in.
 [City of Düsseldorf Tour D3 and GPX](https://www.duesseldorf.de/radverkehr/fahrradtouren/tour-d)
 
 | Navigation mode | What the CC700 displays |
