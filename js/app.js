@@ -11,12 +11,16 @@ const ARROW = ['↑', '↰', '↖', '↱', '↗', '↶'];
 let built, dev, gpxFile, busy;
 $('log').hidden = !DEBUG;
 if (self.caches) { caches.delete('cc700-roads-v2'); caches.delete('cc700-roads-v3'); caches.delete('cc700-osm-v1'); }   // road pack of earlier versions (90 MB)
-const LAYERS = ['styled', 'ground', 'water', 'rails'];                          // optional map layers
+const LAYERS = ['ground', 'water', 'rails', 'names', 'signals', 'stops', 'trams', 'rough', 'paths'];   // optional map layers
+const ON = new Set(['names', 'signals', 'stops', 'trams', 'rough', 'paths']);    // default on (patch layers)
+const fwSet = v => { $('styled').checked = v === 'patch'; $('optPatch').hidden = v !== 'patch'; $('optOrig').hidden = v === 'patch'; };
+{ let v = 'patch'; try { v = localStorage.getItem('cc700-fw') || 'patch'; } catch {} $('fw').value = v; fwSet(v); }
+$('fw').onchange = () => { try { localStorage.setItem('cc700-fw', $('fw').value); } catch {} fwSet($('fw').value); build(); };
 const upd = () => { $('sendBtn').disabled = !built || busy; };
 // a GPX, or a changed setting, builds the route
 $('gpx').onchange = () => { gpxFile = $('gpx').files[0]; build(); };
 $('speed').onchange = build;
-for (const k of LAYERS) { try { const v = localStorage.getItem('cc700-' + k); $(k).checked = v === null ? k === 'styled' : v === '1'; } catch { $(k).checked = k === 'styled'; }   // coloured map on by default
+for (const k of LAYERS) { try { const v = localStorage.getItem('cc700-' + k); $(k).checked = v === null ? ON.has(k) : v === '1'; } catch { $(k).checked = ON.has(k); }
   $(k).onchange = () => { try { localStorage.setItem('cc700-' + k, $(k).checked ? '1' : '0'); } catch {} build(); }; }
 async function build() {
   if (!gpxFile || busy) return;
@@ -27,8 +31,8 @@ async function build() {
     say('sum', 'rechne … (lange Routen bis ca. 30 s)'); await new Promise(r => setTimeout(r, 30));
     const d = new Date(), z = n => String(n).padStart(2, '0');
     const id = z(d.getMonth() + 1) + z(d.getDate()) + z(d.getHours()) + z(d.getMinutes());   // MMDDhhmm: the CC700 menu shows only this number
-    const r = buildRoute(gpx, lines, { speedKmh: +$('speed').value, id, label: gpx.name, title: gpx.name, nameImage, areas, water, rails, green, trams, wlines, signals, stops, noF9: $('styled').checked,   // patched firmware: field 9 off, as tested on the device
-      map: { ...Object.fromEntries(LAYERS.map(k => [k, $(k).checked])), ...(LIMIT > 1200 ? { cap: LIMIT, capMax: LIMIT } : {}) } });
+    const r = buildRoute(gpx, lines, { speedKmh: +$('speed').value, id, label: gpx.name, title: gpx.name, nameImage, areas, water, rails, green, wlines, trams: $('trams').checked ? trams : [], signals: $('signals').checked ? signals : [], stops: $('stops').checked ? stops : [], noF9: $('styled').checked,   // patched firmware: field 9 off, as tested on the device
+      map: { styled: $('styled').checked, ...Object.fromEntries(LAYERS.map(k => [k, $(k).checked])), ...(LIMIT > 1200 ? { cap: LIMIT, capMax: LIMIT } : {}) } });
     const model = readFile(r.file), check = verify(r, model);
     if (check) throw new Error('Prüfung fehlgeschlagen: ' + check);
     built = { ...r, model, name: `route_${id}.bin` };

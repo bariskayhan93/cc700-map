@@ -40,10 +40,21 @@
     <details>
       <summary>Einstellungen</summary>
       <label>Tempo km/h <input id="speed" type="number" value="18" min="8" max="45"></label>
-      <label><input id="styled" type="checkbox"> Farbige Karte (nur mit Patch-Firmware)</label>
-      <label><input id="ground" type="checkbox"> Bebauung grau</label>
-      <label><input id="water" type="checkbox"> Wasser gestreift (Test)</label>
-      <label><input id="rails" type="checkbox"> Bahnlinien lang gestrichelt (Test)</label>
+      <label>Firmware <select id="fw"><option value="patch">Patch (farbige Karte)</option><option value="orig">Original</option></select></label>
+      <input id="styled" type="checkbox" hidden>
+      <fieldset id="optPatch"><legend>Kartenebenen (Patch)</legend>
+        <label><input id="names" type="checkbox"> Straßennamen</label>
+        <label><input id="signals" type="checkbox"> Ampeln</label>
+        <label><input id="stops" type="checkbox"> Straßenbahn-Haltestellen</label>
+        <label><input id="trams" type="checkbox"> Straßenbahnlinien</label>
+        <label><input id="rough" type="checkbox"> Unbefestigte Wege markieren</label>
+        <label><input id="paths" type="checkbox"> Fußwege und Pfade</label>
+      </fieldset>
+      <fieldset id="optOrig"><legend>Kartenebenen (Original)</legend>
+        <label><input id="ground" type="checkbox"> Bebauung grau</label>
+        <label><input id="water" type="checkbox"> Wasser gestreift (Test)</label>
+        <label><input id="rails" type="checkbox"> Bahnlinien lang gestrichelt (Test)</label>
+      </fieldset>
       <div class="mut">Straßendaten kommen beim Erstellen aus OpenStreetMap (Overpass-Server). Abgefragt werden nur grobe Kacheln von ca. 5 km um die Route; das Ergebnis bleibt auf dem Handy.</div>
     </details>
   </section>

@@ -285,7 +285,7 @@ export function buildRoute(gpx, lines, opt) {
     ? buildStyledSection(sections, { lines: lines.filter(nearRoute), areas: (opt.areas || []).filter(a => nearRoute({ pts: a[0] })),
         green: (opt.green || []).filter(a => nearRoute({ pts: a[0] })), water: (opt.water || []).filter(a => nearRoute({ pts: a[0] })),
         rails: (opt.rails || []).filter(pts => nearRoute({ pts })), trams: (opt.trams || []).filter(pts => nearRoute({ pts })), wlines: (opt.wlines || []).filter(pts => nearRoute({ pts })),
-        signals: (opt.signals || []).filter(p => nearRoute({ pts: [p] })), stops: (opt.stops || []).filter(p => nearRoute({ pts: [p] })) }, F)
+        signals: (opt.signals || []).filter(p => nearRoute({ pts: [p] })), stops: (opt.stops || []).filter(p => nearRoute({ pts: [p] })), opt: mopt }, F)
     : buildMapSection(sections, lines.filter(nearRoute), F, mopt);   // only roads near the route (600 m grid)
   const ioa = out.n; out.push(map.bytes);
   const file = out.bytes.slice(); new DataView(file.buffer).setUint32(0x5c, ioa, true); file.set(h.subarray(0, 0x5c), 0); file.set(h.subarray(0x60, 0x80), 0x60);

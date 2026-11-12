@@ -325,7 +325,7 @@ function clipRing(r, [x0, y0, x1, y1]) {                 // Sutherland-Hodgman, 
   }
   return P;
 }
-function styledEntries(data, cor) {
+function styledEntries(data, cor, o = {}) {
   const F = cor.F, out = [], labels = [], [bx0, by0, bx1, by1] = cor.box;
   const nearBox = (b, m) => !(b[2] < bx0 - m || b[0] > bx1 + m || b[3] < by0 - m || b[1] > by1 + m);
   // areas: built-up, green, water; each [outer, holes...] clipped to the window, holes joined by a doubled edge (even-odd fill)
@@ -338,7 +338,7 @@ function styledEntries(data, cor) {
     out.push(sentry(styleOf(cls), pts.map(p => F.g(...p))));
   }
   // lines
-  const lines = [...(data.lines || []).map(L => ({ L, cls: lineClass(L), fl: (L.fl || 0) | ((L.kind & 0x7f) === 6 ? 64 : 0) })), ...(data.rails || []).map(pts => ({ L: { pts }, cls: S.RAIL, fl: 0 })),
+  const lines = [...(data.lines || []).map(L => ({ L, cls: lineClass(L), fl: (L.fl || 0) | ((L.kind & 0x7f) === 6 && o.rough !== false ? 64 : 0) })).filter(x => o.paths !== false || x.cls !== S.PTH), ...(data.rails || []).map(pts => ({ L: { pts }, cls: S.RAIL, fl: 0 })),
     ...(data.trams || []).map(pts => ({ L: { pts }, cls: S.TRAM, fl: 0 })), ...(data.wlines || []).map(pts => ({ L: { pts }, cls: S.WLINE, fl: 0 }))];
   for (const { L, cls, fl } of lines) {
     if (!cls) continue; const lim = SR[cls], b = L.box || (L.box = box(L.pts, F)); if (!nearBox(b, lim)) continue;
@@ -347,7 +347,7 @@ function styledEntries(data, cor) {
       for (let k = 0; k < n; k++) nodes.push([a[0] + (c[0] - a[0]) * k / n, a[1] + (c[1] - a[1]) * k / n]); }
     const keep = nodes.map(q => cor.near(...F.m(q[0], q[1]), lim)[0] <= lim); let run = [];
     const flush = () => { if (run.length >= 2 && lineLen(run) >= 8) { const p = rdp(run, 1.5, F.m);
-      if (L.name && cls >= S.MAJ && cls <= S.SRV) {          // label candidate: the run point nearest to the route
+      if (o.names !== false && L.name && cls >= S.MAJ && cls <= S.SRV) {          // label candidate: the run point nearest to the route
         let best = null; for (const q of run) { const d = cor.near(...F.m(q[0], q[1]), LABEL_R)[0]; if (d >= 30 && d <= LABEL_R && (!best || d < best[0])) best = [d, q]; }   // off the route line, which is drawn over it
         if (best) labels.push({ name: L.name, cls, d: best[0], q: best[1], m: F.m(best[1][0], best[1][1]) }); }
       for (let s = 0; s < p.length - 1; s += MAXPTS - 1) out.push(sentry(styleOf(cls, fl), p.slice(s, s + MAXPTS))); } run = []; };
@@ -374,7 +374,7 @@ export function buildStyledSection(sections, data, F) {
   const D = { ...data, areas: (data.areas || []).map(toM), green: (data.green || []).map(toM), water: (data.water || []).map(toM) };
   const all = sections.flat();
   const win = (i, j) => { const a = sections[i][0][2] - BEHIND * 100, b = sections[j].at(-1)[2] + AHEAD * 100; return all.filter(p => p[2] >= a && p[2] <= b); };
-  const ent = (i, j) => styledEntries(D, new Corridor(win(i, j), F));
+  const ent = (i, j) => styledEntries(D, new Corridor(win(i, j), F), data.opt || {});
   const groups = [];
   for (let i = 0; i < sections.length;) {
     let j = i, e = ent(i, i);

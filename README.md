@@ -1,62 +1,94 @@
 # CC700 Map
 
-Web page (Chrome on Android) that turns a GPX track into a complete navigation route for the
-GEOID / Magene **CC700** bike computer and sends it over Bluetooth:
+This web page makes navigation routes for the GEOID / Magene **CC700** bike computer and sends them over Bluetooth.
+Use it in Chrome on Android. Select a GPX file. The page makes the route file and sends it to the device.
 
-- turn icons (straight, left, slight left, right, slight right, U-turn) from the track geometry
-- street names from OpenStreetMap, with extra hints: `scharf links`, `Kreisverkehr`, `Radweg`, `Schotterweg`, `▶ checkpoint`
-- a road map around the route, drawn in the device's junction layer (the CC700 has no map of its own)
+![Original firmware and patch, on a route through Düsseldorf](docs/ride.gif)
 
-Everything runs on the phone and the GPX never leaves it. The page holds no map data: when a route is built, it
-asks a public Overpass server for the OpenStreetMap roads of the grid cells (about 5.5 km) that the route crosses,
-and keeps the processed cells on the phone. The server sees the cells, not the route.
+*Route example: Düsseldorf Hauptbahnhof, Königsallee, old town, Rhine promenade, Rheinpark, Nordpark (Japanese
+Garden), 7.1 km. Left: the original firmware. Right: the patched firmware. The map drawing comes from the patch code
+(`map.c`), compiled for the PC.*
 
-## Use
-1. Open the page in Chrome on Android and choose a GPX (or share it to the page from another app). The route is
-   built immediately; a region that is new to the phone needs internet (a dense city cell is up to 13 MB and
-   takes some seconds). Check the preview and the turn list.
-2. Close OnelapFit (it holds the Bluetooth connection), stop navigation on the CC700, then press "An CC700 senden".
-   Each send adds a new route `route_<MMDDhhmm>.bin`; the CC700 route menu shows the GPX name.
-   Two builds in the same minute get the same file name, and the second replaces the first.
+## What the page does
+
+- **Turn prompts at real decision points.** The page finds the junctions in the OpenStreetMap road network. It
+  gives a prompt only where the rider must choose a road. A bend without a junction is not a turn.
+- **Turn prompts that move forward.** Each route record has a geohash index. The CC700 uses this index to find the
+  rider on the route. Without it, the CC700 stays on the first section and shows "Go straight" for the full route.
+- **Street names** in the top widget, with a "dann links" hint when a second turn comes within 50 m.
+- **A map around the route.** The CC700 has no map of its own. The page puts OpenStreetMap data into the route file.
+
+## Two firmware choices
+
+Select the firmware in "Einstellungen".
+
+| | Original firmware | Patched firmware |
+|---|---|---|
+| Map drawing | grey lines with a white core, one star per junction | coloured map |
+| Roads | all the same | main, minor, service, path, cycleway, track |
+| Areas | no (option: built-up grey) | built-up, green, water, with outlines |
+| Rail and tram | option: long dash | rail, tram lines, tram stops |
+| Bridges, tunnels | no | black edge for bridges, dashed edge for tunnels |
+| Street names on the map | no | yes |
+| Traffic signals | no | yes |
+| Route line | blue | red |
+| Turn arrow on the map | no | yes, 150 m before the turn |
+| Map when off route or riding backwards | can disappear | stays |
+
+For the patched firmware, these layers are options: street names, traffic signals, tram stops, tram lines, rough
+tracks, footways and paths.
+
+## Snapshots
+
+| Case | Picture |
+|---|---|
+| Station area: many junctions close together. The original junction stars cover each other. | ![](docs/at_300.png) |
+| Main road with tram and traffic signals (Graf-Adolf-Straße) | ![](docs/at_1900.png) |
+| Rhine promenade: river, park, tram, footpaths | ![](docs/at_3600.png) |
+| Riverside path: the original shows the route line only | ![](docs/at_5200.png) |
+| Nordpark: street name and turn arrow | ![](docs/at_6900.png) |
+
+## How to use
+
+1. Open https://bariskayhan93.github.io/cc700-map/ in Chrome on Android.
+2. Select a GPX file, or share it to the page from another app. The page makes the route immediately.
+   For a new region, the page needs internet.
+3. Close OnelapFit, because it holds the Bluetooth connection. Stop the navigation on the CC700.
+4. Push "An CC700 senden". The route menu of the CC700 shows the GPX name.
 
 ## How it works
-- `js/route.js` – GPX → route file (sections, turns, name images, header); route points at most 20 m apart,
-  because the CC700 measures "off route" as the distance to the nearest route point
-- `js/osm.js` – road data on demand: one Overpass query per grid cell (0.05° × 0.08°), road classes (OSRM bicycle
-  access rules, OpenMapTiles zoom-13 selection), dual-carriageway centrelines, sidewalk removal, path networks,
-  smoothing, built-up areas, water areas, railways. Processed cells stay in the phone's Cache Storage and are loaded again after 30 days.
-  Servers, in this order: `overpass.openstreetmap.fr`, `overpass-api.de`, `overpass.private.coffee`
-- `js/mapsec.js` – map layer (junction section): main roads and motorways 3 lines (to 375 m), tertiary and streets
-  2, service roads 1, paths/tracks light dashes (all to 300 m), pedestrian streets and named footways light dashes
-  (to 150 m). Motorways are drawn but never used for turn prompts; tunnels closed to bicycles are not drawn.
-  The CC700 draws every line grey 8 px with a white 4 px core (fixed in the firmware), so width can only come from
-  parallel lines. A map block holds at most 1200 entries: the grey fill shrinks first (300 → 250 → 200 → 150 →
-  100 m), roads only as the last step. Grey rows that continue each other are stored as fans (2 entries fill 5 rows)
-- `js/ble.js` – file transfer protocol (begin / info / 200-byte packets with ack every 10 / end, CRC-16/XMODEM);
-  a lost ack restarts the transfer (3 attempts)
-- `js/preview.js` – preview read back from the built file
-- Settings "Wasser gestreift" and "Bahnlinien lang gestrichelt" (test, off by default): water areas (OSM natural=water,
-  docks) as east-west stripes 20 m apart, and cut out of the grey; main railway tracks as a long dash (25 m on, 15 m
-  off; parallel tracks become one line, no tunnels). They lie on the grey and below the roads and use only the
-  entries that roads and grey leave in a block; a full block leaves them out. Roads and grey do not change.
-- Setting "Bebauung grau" (off by default): built-up land (OSM landuse residential/commercial/retail/industrial/
-  garages/railway/construction) drawn grey under the roads, with rows 4 m apart that merge into one area.
-  Roads are never dropped for it; dense blocks get a smaller grey radius.
-- `tools/test_route.mjs` – builds a route file in Node with the page code
 
-Format notes: the route file is nanopb 0.3 protobuf (CC700 firmware 1.414); name images are LVGL `INDEXED_2BIT`.
+| File | Function |
+|---|---|
+| `js/route.js` | GPX to route file: sections, turns, name images, geohash index, header |
+| `js/osm.js` | OpenStreetMap data from Overpass, one query for each grid cell (about 5.5 km). The phone keeps the cells for 30 days. |
+| `js/mapsec.js` | map layer: junction stars (original) or styled entries (patch) |
+| `js/ble.js` | Bluetooth file transfer, CRC-16/XMODEM |
+| `js/preview.js` | preview from the finished file |
+| `tools/test_route.mjs` | makes a route file in Node with the page code |
+
+The GPX stays on the phone. The Overpass server sees only the grid cells, not the route.
+
+The route file is nanopb 0.3 protobuf (firmware 1.414). Name images are LVGL `INDEXED_2BIT`.
+
+## Patched firmware
+
+The patch changes the map drawing of firmware V1.414. It is not part of this repository.
+Route files for the patched firmware do not show a usable map on the original firmware.
 
 ## Legal
-- Unofficial, independent project for interoperability with a device you own. Not affiliated with or endorsed by
-  Magene, GEOID or Onelap; product names are used only to describe compatibility.
-- The page contains no firmware, app code, icons, fonts or map data from the manufacturer. The file and Bluetooth
-  formats were documented from the owner's own device and its traffic, for interoperability. The only copied
-  bytes are format constants in the route header template (`js/route.js`; all route-specific values cleared).
-- Debug mode: add `?debug` to the page address to see the Bluetooth log.
-- Use at your own risk. A faulty route can at worst stop navigation; delete the route or send another one.
+
+- This is an unofficial and independent project, for interoperability with a device that you own. Magene, GEOID
+  and Onelap do not support or approve it. Product names only identify the device.
+- The page contains no firmware, app code, icons, fonts or map data from the manufacturer. The file format and the
+  Bluetooth protocol come from the owner's own device and its traffic. The only copied bytes are format constants
+  in the route header template (`js/route.js`).
+- Add `?debug` to the page address to see the Bluetooth log.
+- Use it at your own risk. A bad route file can stop the navigation. Then delete the route or send a new one.
 
 ## License
+
 - Code: MIT, see `LICENSE`.
-- Road data: © OpenStreetMap contributors, Open Database License 1.0 (https://www.openstreetmap.org/copyright).
-  The page downloads it at run time; the repository holds none. A route file made with the page contains
-  OpenStreetMap data: keep the attribution "© OpenStreetMap contributors" when you share it.
+- Map data: © OpenStreetMap contributors, Open Database License 1.0 (https://www.openstreetmap.org/copyright).
+  A route file from this page contains OpenStreetMap data. Keep the attribution "© OpenStreetMap contributors"
+  when you share it. The pictures in `docs/` also contain OpenStreetMap data.
