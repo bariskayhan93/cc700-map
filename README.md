@@ -24,7 +24,7 @@ and keeps the processed cells on the phone. The server sees the cells, not the r
   because the CC700 measures "off route" as the distance to the nearest route point
 - `js/osm.js` – road data on demand: one Overpass query per grid cell (0.05° × 0.08°), road classes (OSRM bicycle
   access rules, OpenMapTiles zoom-13 selection), dual-carriageway centrelines, sidewalk removal, path networks,
-  smoothing, built-up areas. Processed cells stay in the phone's Cache Storage and are loaded again after 30 days.
+  smoothing, built-up areas, water areas, railways. Processed cells stay in the phone's Cache Storage and are loaded again after 30 days.
   Servers, in this order: `overpass.openstreetmap.fr`, `overpass-api.de`, `overpass.private.coffee`
 - `js/mapsec.js` – map layer (junction section): main roads and motorways 3 lines (to 375 m), tertiary and streets
   2, service roads 1, paths/tracks light dashes (all to 300 m), pedestrian streets and named footways light dashes
@@ -35,7 +35,11 @@ and keeps the processed cells on the phone. The server sees the cells, not the r
 - `js/ble.js` – file transfer protocol (begin / info / 200-byte packets with ack every 10 / end, CRC-16/XMODEM);
   a lost ack restarts the transfer (3 attempts)
 - `js/preview.js` – preview read back from the built file
-- Setting "Bebauung grau" (test, off by default): built-up land (OSM landuse residential/commercial/retail/industrial/
+- Settings "Wasser gestreift" and "Bahnlinien lang gestrichelt" (test, off by default): water areas (OSM natural=water,
+  docks) as east-west stripes 20 m apart, and cut out of the grey; main railway tracks as a long dash (25 m on, 15 m
+  off; parallel tracks become one line, no tunnels). They lie on the grey and below the roads and use only the
+  entries that roads and grey leave in a block; a full block leaves them out. Roads and grey do not change.
+- Setting "Bebauung grau" (off by default): built-up land (OSM landuse residential/commercial/retail/industrial/
   garages/railway/construction) drawn grey under the roads, with rows 4 m apart that merge into one area.
   Roads are never dropped for it; dense blocks get a smaller grey radius.
 - `tools/test_route.mjs` – builds a route file in Node with the page code

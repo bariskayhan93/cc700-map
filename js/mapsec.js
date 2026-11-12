@@ -9,6 +9,7 @@ export const STYLE = {                       // kind: [draw, param, max distance
   1: ['triple', 10, R + 75], 2: ['casing', 6, R], 3: ['casing', 3, R], 4: ['single', 0, R],
   5: ['dash', [10, 20], R], 6: ['dash', [10, 20], R],
   7: ['dash', [10, 20], 150], 8: ['triple', 10, R + 75],   // 7 footways / pedestrian areas, 8 motorways (orientation only)
+  9: ['dash', [25, 15], R],                                // railways (extra layer): long dash
 };
 const CAP_STD = 800, CAP_HI = 1200, AHEAD = 300, BEHIND = 50;   // CAP_MAX: only for one section that alone is over CAP (dense city)
 class Corridor {                              // route window, densified, with headings; grid lookup
@@ -84,7 +85,7 @@ function entries(lines, cor, scale = 1) {
     }
     const info = nodes.map(q => cor.near(...F.m(q[0], q[1]), lim));
     if (!info.some(i => i[0] <= lim)) continue;
-    const keep = info.map(i => i[0] <= lim), street = (L.kind & 0x7f) <= 3; let run = [];
+    const keep = info.map(i => i[0] <= lim), street = (L.kind & 0x7f) <= 3 || L.kind === 9; let run = [];
     const flush = () => { if (run.length >= 2 && lineLen(run) >= 10) for (const p of draw(st, rdp(run, 4, F.m), F)) polySegs(p, byRank[RANK[L.kind & 0x7f]]); run = []; };
     for (let i = 0; i < nodes.length - 1; i++) {
       let ok = keep[i] || keep[i + 1];
@@ -107,13 +108,14 @@ function entries(lines, cor, scale = 1) {
 // Each area also gets one extra row on its last side, so the last white core lies outside the area and shows
 // as a thin outline, not as a white stripe in the area. Roads are never dropped for ground: ground only uses the
 // entries the roads leave; if it does not fit, the ground radius gets smaller.
-let FAN = true; export const setFan = v => { FAN = v; };   // test switch
-const GROUND_R = 300, PITCH = 4; let BRIDGE = 20; export const setBridge = v => { BRIDGE = v; };   // 4 m, not 5: at 5 m single pixels of the white cores stay visible on angled rows
-function groundRows(rings, cor, R) {
+let CUT = false, FAN = true; export const setFan = v => { FAN = v; };   // test switch
+const GROUND_R = 300, GROUND_PITCH = 4, WATER_PITCH = 20; let BRIDGE = 20; export const setBridge = v => { BRIDGE = v; };   // 4 m, not 5: at 5 m single pixels of the white cores stay visible on angled rows
+function groundRows(rings, cor, R, hatch = 0) {                // hatch: plain east-west rows that far apart (water)
+  const PITCH = hatch || GROUND_PITCH;
   const all = []; for (const v of cor.G.values()) for (const p of v) all.push(p);
   let mx = 0, my = 0; for (const [x, y] of all) { mx += x; my += y; } mx /= all.length; my /= all.length;
   let sxx = 0, syy = 0, sxy = 0; for (const [x, y] of all) { sxx += (x - mx) ** 2; syy += (y - my) ** 2; sxy += (x - mx) * (y - my); }
-  const th = 0.5 * Math.atan2(2 * sxy, sxx - syy), c = Math.cos(th), s = Math.sin(th);
+  const th = hatch ? 0 : 0.5 * Math.atan2(2 * sxy, sxx - syy), c = Math.cos(th), s = Math.sin(th);
   const rot = ([x, y]) => [x * c + y * s, -x * s + y * c], back = ([x, y]) => [x * c - y * s, x * s + y * c];
   const RR = rings.map(r => r.map(rot)); let y0 = Infinity, y1 = -Infinity;
   for (const p of all) { const y = rot(p)[1]; if (y < y0) y0 = y; if (y > y1) y1 = y; }
@@ -126,15 +128,15 @@ function groundRows(rings, cor, R) {
     const y = ys + k * PITCH, X = [];
     for (const [[ax, ay], [bx, by]] of bucket[k]) if ((ay <= y) !== (by <= y)) X.push([ax + (y - ay) * (bx - ax) / (by - ay), by > ay ? 1 : -1]);
     X.sort((a, b) => a[0] - b[0]); let w = 0; const runs = [];
-    for (let i = 0; i < X.length - 1; i++) { w += X[i][1]; if (!w) continue;
-      const last = runs.at(-1); if (last && X[i][0] - last[1] <= BRIDGE) last[1] = Math.max(last[1], X[i + 1][0]); else runs.push([X[i][0], X[i + 1][0]]); }
+    for (let i = 0; i < X.length - 1; i++) { w += X[i][1]; if (CUT || hatch ? w >= 0 : !w) continue;   // with water: outer rings count -1, water rings +1 (no grey on water)
+      const last = runs.at(-1); if (last && X[i][0] - last[1] <= (hatch ? 0 : BRIDGE)) last[1] = Math.max(last[1], X[i + 1][0]); else runs.push([X[i][0], X[i + 1][0]]); }
     rows.push([y, runs]);
   }
   const merge = (A, B) => { const r = [...A, ...B].map(x => x.slice()).sort((a, b) => a[0] - b[0]), o = [];
     for (const x of r) { const l = o.at(-1); if (l && x[0] <= l[1]) l[1] = Math.max(l[1], x[1]); else o.push(x); } return o; };
   const segRows = [];
   for (let k = 0; k < rows.length; k++) {
-    const [y, runs] = rows[k], drawn = k ? merge(runs, rows[k - 1][1]) : runs, sr = [];   // + one extra row past each area's last row
+    const [y, runs] = rows[k], drawn = k && !hatch ? merge(runs, rows[k - 1][1]) : runs, sr = [];   // + one extra row past each area's last row
     for (const [xa, xb] of drawn) {
       const m = Math.max(1, Math.ceil((xb - xa) / 10)); let run = null;
       for (let t = 0; t <= m; t++) {           // keep only the parts within R of the route
@@ -145,7 +147,7 @@ function groundRows(rings, cor, R) {
     }
     segRows.push(sr);
   }
-  if (!FAN) return segRows.flat().map(([a, b, y]) => [back([a, y]), [back([b, y])]]);
+  if (!FAN || hatch) return segRows.flat().map(([a, b, y]) => [back([a, y]), [back([b, y])]]);
   // Fans: rows that continue each other (ends move <= 15 m) make a chain. In a chain, 2 entries of 4 lines fill
   // 5 rows: one fan from the left end of a row to 4 right ends, the next from a right end to 4 left ends.
   // Lines stay <= 4 m apart, so the grey still merges. Right ends lie half a pitch higher.
@@ -184,7 +186,7 @@ function ground(areas, cor, budget, radii = [GROUND_R], stat) {     // largest r
   return [];
 }
 // sections: [[ [lat,lon,dist_cm], ... ], ...]; lines: [{kind, pts:[[lat,lon]], box:[x0,y0,x1,y1] (local m)}]
-const RANK = { 7: 0, 6: 0, 5: 0, 4: 1, 3: 2, 2: 3, 1: 4, 8: 4 };   // draw order: paths first, main roads last (on top at crossings)
+const RANK = { 9: 0, 7: 0, 6: 0, 5: 0, 4: 1, 3: 2, 2: 3, 1: 4, 8: 4 };   // draw order: paths first, main roads last (on top at crossings)
 // topology clean-up before simplifying: join pieces of the same road, snap dangling ends onto main roads
 function topology(lines, F) {
   const key = q => Math.round(q[0] * 1e5) + ',' + Math.round(q[1] * 1e5), ends = new Map();
@@ -236,13 +238,19 @@ export function buildMapSection(sections, lines, F, opt = {}) {
   const near = cor => { const m = 450, ids = new Set(), [x0, y0, x1, y1] = cor.box;
     for (let x = Math.floor((x0 - m) / C); x <= Math.floor((x1 + m) / C); x++) for (let y = Math.floor((y0 - m) / C); y <= Math.floor((y1 + m) / C); y++) for (const n of LG.get(x + ',' + y) || []) ids.add(n);
     return [...ids].sort((a, b) => a - b).map(n => lines[n]); };            // keep draw order
-  const areas = opt.ground && opt.areas && opt.areas.length ? opt.areas.map(rs => ({ m: rs.map(r => r.map(q => F.m(q[0], q[1]))), box: box(rs[0], F) })) : null;
+  const toM = rs => ({ m: rs.map(r => r.map(q => F.m(q[0], q[1]))), box: box(rs[0], F) });
+  // extra layers (opt.water, opt.rails): they never change roads, grey range or block grouping; a block takes them only if they fit
+  const water = opt.water && opt.water.length ? opt.water.map(toM) : null, pitch = opt.waterPitch || WATER_PITCH;
+  const rails = opt.rails && opt.rails.length ? opt.rails.map(pts => ({ kind: 9, pts, box: box(pts, F) })) : null;
+  const cut = water ? water.map(w => ({ box: w.box, m: w.m.map(r => r.slice().reverse()) })) : [];   // water is cut out of the grey
+  const areas = opt.ground && opt.areas && opt.areas.length ? [...opt.areas.map(toM), ...cut] : null;
+  CUT = cut.length > 0;
   // with ground on, a block counts roads + full ground, so dense blocks get fewer sections (smaller window);
   // with a smaller road radius (scale < 1) only roads are counted
   const ent = (i, j, scale = 1) => { const cor = new Corridor(win(i, j), F), r = entries(near(cor), cor, scale);
-    return areas && scale === 1 ? [...ground(areas, cor, 1e9), ...r] : r; };
+    const g = areas && scale === 1 ? ground(areas, cor, 1e9) : []; return Object.assign([...g, ...r], { ng: g.length }); };
   // each section once (its own window); the overlap ratio between sum and real union is learned block by block
-  const one = sections.map((_, i) => ent(i, i).length), groups = [], stat = { over: 0, ground: 0, scaled: 0, minScale: 1, minGround: GROUND_R }; let ratio = 0.5;
+  const one = sections.map((_, i) => ent(i, i).length), groups = [], stat = { over: 0, ground: 0, scaled: 0, minScale: 1, minGround: GROUND_R, extra: 0, extraDropped: 0 }; let ratio = 0.5;
   for (let i = 0; i < sections.length;) {
     let j = i, sum = one[i];
     while (j + 1 < sections.length && (sum + one[j + 1]) * ratio <= CAP) sum += one[++j];
@@ -251,14 +259,21 @@ export function buildMapSection(sections, lines, F, opt = {}) {
     // one dense section: the block can go to CAP_MAX with the full range; only above that the range becomes smaller
     if (areas && e.length > CAP_MAX) {                                                           // smaller ground radius first
       const cor = new Corridor(win(i, j), F), r = entries(near(cor), cor);
-      if (r.length <= CAP_MAX) { e = [...ground(areas, cor, CAP_MAX - r.length, [250, 200, 150, 100], stat), ...r]; stat.ground++; }
+      if (r.length <= CAP_MAX) { const g = ground(areas, cor, CAP_MAX - r.length, [250, 200, 150, 100], stat); e = Object.assign([...g, ...r], { ng: g.length }); stat.ground++; }
     }
     while (e.length > CAP_MAX && scale > 0.3) { scale *= 0.85; e = ent(i, j, scale); }          // still too big: smaller road radius
     if (e.length > CAP) stat.over++; if (scale < 1) { stat.scaled++; stat.minScale = Math.min(stat.minScale, scale); }
     for (let t = 0; t < 3 && scale === 1 && j + 1 < sections.length && e.length < CAP * 0.85; t++) { // too small: try to grow
       const e2 = ent(i, j + 1); if (e2.length > CAP) break; sum += one[++j]; e = e2;
     }
-    ratio = Math.min(1, Math.max(0.15, e.length / sum)); groups.push([i, j, e]); i = j + 1;
+    ratio = Math.min(1, Math.max(0.15, e.length / sum));
+    if (water || rails) {                                          // drawn on the grey, below the roads
+      const cor = new Corridor(win(i, j), F), ng = e.ng, x = [];
+      for (const l of [water && segEntries(groundRows(ringsNear(water, cor), cor, R, pitch), F), rails && entries(rails, cor)])
+        if (l && l.length) { if (e.length + x.length + l.length <= CAP_MAX) x.push(...l); else stat.extraDropped++; }
+      e = [...e.slice(0, ng), ...x, ...e.slice(ng)]; stat.extra += x.length;
+    }
+    groups.push([i, j, e]); i = j + 1;
   }
   const body = new Bytes(), offs = new Array(sections.length).fill(0);
   for (const [i, j, es] of groups) {

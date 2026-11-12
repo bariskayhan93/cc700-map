@@ -167,6 +167,8 @@ export function buildRoute(gpx, lines, opt) {
   const nearRoute = L => L.pts.some(q => { const [x, y] = F.m(q[0], q[1]), gx = Math.floor(x / 600), gy = Math.floor(y / 600);
     for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) if (RG.has((gx + dx) + ',' + (gy + dy))) return true; return false; });
   const mopt = { ...(opt.map || {}) }; if (mopt.ground) mopt.areas = (opt.areas || []).filter(a => nearRoute({ pts: a[0] }));   // option B ground
+  if (mopt.water) mopt.water = (opt.water || []).filter(a => nearRoute({ pts: a[0] }));
+  if (mopt.rails) mopt.rails = (opt.rails || []).filter(pts => nearRoute({ pts }));
   const map = buildMapSection(sections, lines.filter(nearRoute), F, mopt);   // only roads near the route (600 m grid)
   const ioa = out.n; out.push(map.bytes);
   const file = out.bytes.slice(); new DataView(file.buffer).setUint32(0x5c, ioa, true); file.set(h.subarray(0, 0x5c), 0); file.set(h.subarray(0x60, 0x80), 0x60);

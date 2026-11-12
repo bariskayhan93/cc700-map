@@ -4,7 +4,7 @@
 import { frame, rdp, lineLen } from './geo.js';
 const DLAT = 0.05, DLON = 0.08, MARGIN = 0.004;     // cell size; context around a cell for generalization (~400 m)
 const REACH = 0.005;                                // cells within ~550 m of the route are loaded
-const CACHE = 'cc700-osm-v1', MAX_AGE = 30 * 864e5; // a cell is loaded again after 30 days
+const CACHE = 'cc700-osm-v2', MAX_AGE = 30 * 864e5; // a cell is loaded again after 30 days
 const API = ['https://overpass.openstreetmap.fr/api/interpreter', 'https://overpass-api.de/api/interpreter', 'https://overpass.private.coffee/api/interpreter'];   // fastest first
 const HIGHWAY = 'motorway|trunk|primary|secondary|tertiary|residential|unclassified|living_street|road|service|track|cycleway|path|footway|pedestrian|bridleway';
 const BUILT = 'residential|commercial|retail|industrial|garages|railway|construction';
@@ -102,6 +102,19 @@ function stitch(parts) {
   }
   return rings;
 }
+// railways: main tracks only; of tracks that run side by side (< 15-30 m) the longest stays
+function mainTracks(ways, F) {
+  const C = 15, seen = new Set(), out = [];
+  for (const w of ways.sort((a, b) => b.len - a.len)) {
+    const ks = [];
+    for (let i = 1; i < w.pts.length; i++) { const [ax, ay] = F.m(...w.pts[i - 1]), [bx, by] = F.m(...w.pts[i]), n = Math.max(1, Math.ceil(Math.hypot(bx - ax, by - ay) / 10));
+      for (let k = 0; k <= n; k++) ks.push([Math.floor((ax + (bx - ax) * k / n) / C), Math.floor((ay + (by - ay) * k / n) / C)]); }
+    if (ks.filter(([x, y]) => seen.has(x + ',' + y)).length >= 0.6 * ks.length) continue;
+    for (const [x, y] of ks) for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) seen.add((x + dx) + ',' + (y + dy));
+    out.push(w);
+  }
+  return out;
+}
 // ring for the grey ground: simplified to 8 m, >= 1500 m², outer rings counter-clockwise and holes clockwise (non-zero fill)
 function ring(r, F, outer) {
   r = unflat(flat(r)); if (r.length < 4) return;
@@ -113,29 +126,32 @@ function ring(r, F, outer) {
   if (Math.abs(a) / 2 >= 1500) return (a > 0) !== outer ? r.reverse() : r;
 }
 const inside = ([y, x], r) => { let c = false; for (let i = 0, j = r.length - 1; i < r.length; j = i++) if ((r[i][0] > y) !== (r[j][0] > y) && x < (r[j][1] - r[i][1]) * (y - r[i][0]) / (r[j][0] - r[i][0]) + r[i][1]) c = !c; return c; };
-// Overpass elements of one cell (+ margin) -> { lines: [[id, kind, name, flat points]], areas: [[id, [flat ring, ...]]] }
+// Overpass elements of one cell (+ margin) -> { lines: [[id, kind, name, flat points]], areas and water: [[id, [flat ring, ...]]], rails: [[id, flat points]] }
 export function buildCell(els, r, c) {
   const F = frame((r + 0.5) * DLAT), here = p => Math.floor(p[0] / DLAT) === r && Math.floor(p[1] / DLON) === c;
-  const ll = g => g.map(q => [q.lat, q.lon]), ways = [], lines = [], areas = [];
+  const ll = g => g.map(q => [q.lat, q.lon]), ways = [], lines = [], areas = [], water = [], tracks = [];
   for (const e of els) {
     const t = e.tags || {};
     if (e.type === 'way' && t.highway && e.geometry.length > 1) {
       const k = kind(t), pts = ll(e.geometry); if (k) ways.push({ id: e.id, t, kind: k, refs: e.nodes, pts, len: lineLen(pts), here: pts.some(here) });
-    } else if (t.landuse) {
+    } else if (e.type === 'way' && t.railway) {
+      const pts = ll(e.geometry); if (!t.service && t.tunnel !== 'yes' && pts.length > 1) tracks.push({ id: e.id, pts, len: lineLen(pts), here: pts.some(here) });
+    } else if (t.landuse || t.natural || t.waterway) {
       const part = inner => stitch(e.type === 'way' ? (inner ? [] : [ll(e.geometry)]) : e.members.filter(m => m.type === 'way' && m.geometry && (m.role === 'inner') === inner).map(m => ll(m.geometry)));
       const holes = part(true).map(h => ring(h, F, false)).filter(Boolean);
-      part(false).forEach((raw, n) => { const o = ring(raw, F, true); if (o) areas.push([e.type[0] + e.id + '.' + n, [o, ...holes.filter(h => inside(h[0], raw))].map(flat)]); });
+      part(false).forEach((raw, n) => { const o = ring(raw, F, true); if (o) (t.landuse ? areas : water).push([e.type[0] + e.id + '.' + n, [o, ...holes.filter(h => inside(h[0], raw))].map(flat)]); });
     }
   }
   for (const g of generalize(ways, F)) {
     if (!g.here || !KIND[g.kind] || (g.kind === 'service' && lineLen(g.pts) < 50)) continue;
     const f = flat(g.pts); if (f.length >= 4) lines.push([g.id, KIND[g.kind] | (/^(roundabout|circular)$/.test(g.t.junction) ? 0x80 : 0), g.t.name || '', f]);
   }
-  return { lines, areas };
+  const rails = mainTracks(tracks, F).filter(w => w.here).map(w => [w.id, flat(rdp(w.pts, 3, F.m))]);
+  return { lines, areas, water, rails };
 }
 async function overpass(r, c) {
   const box = [r * DLAT - MARGIN, c * DLON - MARGIN, (r + 1) * DLAT + MARGIN, (c + 1) * DLON + MARGIN].map(v => v.toFixed(4)).join(',');
-  const q = `[out:json][timeout:90][bbox:${box}];(way[highway~"^(${HIGHWAY})(_link)?$"];way[landuse~"^(${BUILT})$"];rel[landuse~"^(${BUILT})$"];);out geom;`;
+  const q = `[out:json][timeout:90][bbox:${box}];(way[highway~"^(${HIGHWAY})(_link)?$"];way[landuse~"^(${BUILT})$"];rel[landuse~"^(${BUILT})$"];way[natural=water];rel[natural=water];way[waterway~"^(dock|riverbank)$"];way[railway=rail];);out geom;`;
   let err;
   for (let n = 0; n < 2 * API.length; n++) {         // server busy or down: the next server; after all of them one more round
     try {
@@ -151,9 +167,9 @@ const phone = {                                       // processed cells on the 
   get: async k => (await (await caches.open(CACHE)).match('osm/' + k))?.json(),
   put: async (k, v) => (await caches.open(CACHE)).put('osm/' + k, new Response(JSON.stringify(v))),
 };
-// roads { kind, name, pts } and built-up areas [outer ring, ...holes] around a track [[lat, lon]]
+// roads { kind, name, pts }, built-up areas and water [outer ring, ...holes], railways [points] around a track [[lat, lon]]
 export async function loadOSM(track, onProgress, store = phone) {
-  const cells = new Set(), lines = new Map(), areas = new Map(); let n = 0;
+  const cells = new Set(), lines = new Map(), areas = new Map(), water = new Map(), rails = new Map(); let n = 0;
   for (const [la, lo] of track) for (const a of [la - REACH, la + REACH]) for (const o of [lo - REACH * 1.6, lo + REACH * 1.6]) cells.add(Math.floor(a / DLAT) + ',' + Math.floor(o / DLON));
   for (const key of cells) {
     onProgress?.(n++, cells.size);
@@ -163,6 +179,8 @@ export async function loadOSM(track, onProgress, store = phone) {
     } catch (e) { if (!cell) throw new Error('Kartendaten nicht geladen (' + e.message + '). Für eine neue Region ist Internet nötig.'); }   // old cell: still good
     for (const [id, kind, name, f] of cell.lines) if (!lines.has(id)) lines.set(id, { kind, name, pts: unflat(f) });   // a road that crosses cells is in each of them
     for (const [id, rings] of cell.areas) if (!areas.has(id)) areas.set(id, rings.map(unflat));
+    for (const [id, rings] of cell.water) if (!water.has(id)) water.set(id, rings.map(unflat));
+    for (const [id, f] of cell.rails) if (!rails.has(id)) rails.set(id, unflat(f));
   }
-  return { lines: [...lines.values()], areas: [...areas.values()] };
+  return { lines: [...lines.values()], areas: [...areas.values()], water: [...water.values()], rails: [...rails.values()] };
 }

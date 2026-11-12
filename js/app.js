@@ -4,28 +4,31 @@ import { nameImage } from './names.js';
 import { readFile, draw } from './preview.js';
 import { CC700 } from './ble.js';
 const $ = id => document.getElementById(id), say = (id, s) => { $(id).textContent = s; };
-const DEBUG = new URLSearchParams(location.search).has('debug');     // ?debug: Bluetooth log + remote DevTools access
+const Q = new URLSearchParams(location.search), DEBUG = Q.has('debug');   // ?debug: Bluetooth log + remote DevTools access
+const LIMIT = DEBUG && +Q.get('cap') || 1200;                          // ?debug&cap=1500: device limit test
 const log = s => { if (DEBUG) say('log', (new Date().toLocaleTimeString() + ' ' + s + '\n' + $('log').textContent).slice(0, 20000)); };
 const ARROW = ['↑', '↰', '↖', '↱', '↗', '↶'];
 let built, dev, gpxFile, busy;
 $('log').hidden = !DEBUG;
-if (self.caches) { caches.delete('cc700-roads-v2'); caches.delete('cc700-roads-v3'); }   // road pack of earlier versions (90 MB)
-try { $('ground').checked = localStorage.getItem('cc700-ground') === '1'; } catch {}
+if (self.caches) { caches.delete('cc700-roads-v2'); caches.delete('cc700-roads-v3'); caches.delete('cc700-osm-v1'); }   // road pack of earlier versions (90 MB)
+const LAYERS = ['ground', 'water', 'rails'];                          // optional map layers
 const upd = () => { $('sendBtn').disabled = !built || busy; };
 // a GPX, or a changed setting, builds the route
 $('gpx').onchange = () => { gpxFile = $('gpx').files[0]; build(); };
 $('speed').onchange = build;
-$('ground').onchange = () => { try { localStorage.setItem('cc700-ground', $('ground').checked ? '1' : '0'); } catch {} build(); };
+for (const k of LAYERS) { try { $(k).checked = localStorage.getItem('cc700-' + k) === '1'; } catch {}
+  $(k).onchange = () => { try { localStorage.setItem('cc700-' + k, $(k).checked ? '1' : '0'); } catch {} build(); }; }
 async function build() {
   if (!gpxFile || busy) return;
   busy = true; built = null; $('out').hidden = true; upd();
   try {
     const gpx = parseGPX(await gpxFile.text()); if (gpx.pts.length < 2) throw new Error('GPX ohne Trackpunkte');
-    const { lines, areas } = await loadOSM(gpx.pts, (i, n) => say('sum', `Kartendaten ${i + 1}/${n} …`));   // OpenStreetMap, only the cells of this route
+    const { lines, areas, water, rails } = await loadOSM(gpx.pts, (i, n) => say('sum', `Kartendaten ${i + 1}/${n} …`));   // OpenStreetMap, only the cells of this route
     say('sum', 'rechne … (lange Routen bis ca. 30 s)'); await new Promise(r => setTimeout(r, 30));
     const d = new Date(), z = n => String(n).padStart(2, '0');
     const id = z(d.getMonth() + 1) + z(d.getDate()) + z(d.getHours()) + z(d.getMinutes());   // MMDDhhmm: the CC700 menu shows only this number
-    const r = buildRoute(gpx, lines, { speedKmh: +$('speed').value, id, label: gpx.name, title: gpx.name, nameImage, areas, map: { ground: $('ground').checked } });
+    const r = buildRoute(gpx, lines, { speedKmh: +$('speed').value, id, label: gpx.name, title: gpx.name, nameImage, areas, water, rails,
+      map: { ...Object.fromEntries(LAYERS.map(k => [k, $(k).checked])), ...(LIMIT > 1200 ? { cap: LIMIT, capMax: LIMIT } : {}) } });
     const model = readFile(r.file), check = verify(r, model);
     if (check) throw new Error('Prüfung fehlgeschlagen: ' + check);
     built = { ...r, model, name: `route_${id}.bin` };
@@ -37,7 +40,7 @@ async function build() {
 }
 function verify(r, model) {                    // the same limits that were tested on the device
   if (model.secs.length !== r.sections.length) return 'Abschnitte';
-  if (r.maxBlock > 1200) return 'Kartenblock zu groß';
+  if (r.maxBlock > LIMIT) return 'Kartenblock zu groß';
   if (r.file.length > 4_000_000) return 'Datei zu groß';
   if (model.blocks.length !== r.sections.length) return 'Kartenindex';
   return null;
@@ -56,7 +59,7 @@ $('sendBtn').onclick = async () => {             // one button: connect when nec
 };
 // GPX shared from another app (Web Share Target, see sw.js)
 async function sharedGPX() {
-  if (!new URLSearchParams(location.search).has('shared')) return;
+  if (!Q.has('shared')) return;
   const c = await caches.open('cc700-share'), r = await c.match('shared.gpx'); if (!r) return;
   gpxFile = new File([await r.blob()], decodeURIComponent(r.headers.get('x-name') || 'shared.gpx')); await c.delete('shared.gpx');
   history.replaceState(null, '', location.pathname + (DEBUG ? '?debug' : ''));
