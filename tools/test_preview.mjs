@@ -78,6 +78,9 @@ test('the patched preview draws the turn arrow at a nearby corner', () => {
     blocks: [[], []],
     styled: true,
   };
+  assert(!render(corner, 50).stroke.includes('#111111'));             // arrow option off: the file has no arrow entries
+  const arrow = { style: 15 | (2 << 4) | (1 << 16), center: at(0, 100), points: [at(0, 80), at(0, 100), at(20, 100)] };
+  corner.blocks = [[arrow], [arrow]];                                   // arrow option on: class 15 entries in the file
   assert(render(corner, 50).stroke.includes('#111111'));
   assert(!render(corner, 150).stroke.includes('#111111'));
   assert(!render(corner, 50, false).stroke.includes('#111111'));

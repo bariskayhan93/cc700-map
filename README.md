@@ -3,26 +3,6 @@
 This web page makes navigation routes for the GEOID / Magene **CC700** bike computer and sends them over Bluetooth.
 Use it in Chrome on Android. Select a GPX file. The page makes the route file and sends it to the device.
 
-## How the device draws it
-
-![CC700 screen in three views on a public route through Düsseldorf: OnelapFit file and Junction map on the stock firmware, Full Sunlight map on patch v16.](docs/device/ride.webp)
-
-Route: Düsseldorf Hauptbahnhof, Königsallee, old town, Rhine promenade, Rheinpark, Nordpark (Japanese Garden),
-7.1 km, one frame every 50 m. The maps come from the drawing code of the patch (`map.c`, the stock drawing is
-its style 0), run on a PC with the device rules: heading up, the rider in the lower third, about 1.6 m per pixel.
-
-- **OnelapFit:** junction hints as the stock firmware shows them with an OnelapFit file: short forks from
-  junctions on the route along the side roads, untidy, and at most junctions none.
-- **Junction map:** the stock firmware with a route file from this page.
-- **Full Sunlight map:** patch v16 with a route file from this page: areas with outlines, road classes,
-  separate carriageways, trams, cycle tracks, park paths, bridges, signals, street names.
-
-| Königsallee | Rhine, Oberkasseler Brücke | Rheinpark |
-|---|---|---|
-| ![](docs/device/at_2600.webp) | ![](docs/device/at_4160.webp) | ![](docs/device/at_6300.webp) |
-
-The patched firmware is not part of this repository.
-
 ## Watch the ride preview
 
 ![Animated three-panel ride preview near the Hofgarten. OnelapFit junction hints, the Junction map, and Sunlight rotate together as the turn card and compass update.](docs/comparison/tour-d3-device-replay.webp)
@@ -101,8 +81,8 @@ stock firmware. The grey blocks show built-up areas around the crossing.
 
 ## CC700 Map settings
 
-The app starts in **Original (Kreuzungskarte)**. Select **Patch v12 (farbige Sunlight-Karte)** only if
-your CC700 has the v12 patch for firmware V1.414. The preview updates from the generated route file.
+The app starts in **Original (Kreuzungskarte)**. Select **Patch v16 (farbige Sunlight-Karte)** only if
+your CC700 has the v16 patch for firmware V1.414. The preview updates from the generated route file.
 Choose **Abspielen** to replay the route at 1×, 4×, or 8× the speed set in **Einstellungen**.
 The slider lets you move to any point during playback. The ride preview shows the next instruction,
 distance, heading and route progress using the generated route.
@@ -117,11 +97,11 @@ distance, heading and route progress using the generated route.
 | Street names on the map | no | yes |
 | Traffic signals | no | yes |
 | Route line | blue | red |
-| Turn arrow on the map | no | yes, 150 m before the turn |
+| Turn arrow on the map | no | option (off by default), 150 m before the turn |
 | Map when off route or riding backwards | can disappear | can stay visible within the area stored in the route file |
 
 For the patched firmware, these layers are options: street names, traffic signals, tram stops, tram lines, rough
-tracks, footways and paths.
+tracks, footways and paths, park paths and cycle tracks next to streets, separate carriageways, turn arrow.
 
 ## How to use
 
@@ -149,7 +129,7 @@ The route file is nanopb 0.3 protobuf (firmware 1.414). Name images are LVGL `IN
 
 ## Patched firmware
 
-The v12 patch changes the map drawing of firmware V1.414. It is not part of this repository.
+The v16 patch changes the map drawing of firmware V1.414. It is not part of this repository.
 Route files for the patched firmware do not show a usable map on the original firmware.
 
 ## Legal

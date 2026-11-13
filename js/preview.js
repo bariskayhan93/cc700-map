@@ -91,7 +91,7 @@ function drawOriginal(g, entries, project) {
   }
 }
 
-// The Sunlight palette and drawing order follow map.c in the v12 firmware patch.
+// The Sunlight palette and drawing order follow map.c in the v16 firmware patch.
 const AREAS = [
   [C.BUILT, '#d4d4d4'], [C.GREEN, '#a2d683', '#5f9e45'], [C.WATER, '#72b8f2', '#2f7fcf'],
 ];
@@ -112,13 +112,13 @@ function drawStyled(g, entries, project) {
   }
 
   for (const [kind, fill, outline] of AREAS) {
-    for (const { points } of layers.get(kind) ?? []) {
+    for (const { style, points } of layers.get(kind) ?? []) {
       if (points.length < 3) continue;
       path(g, points);
       g.closePath();
       g.fillStyle = fill;
       g.fill('evenodd');
-      if (outline) stroke(g, points, outline, 1);
+      if (outline && !(style & 0x400)) stroke(g, points, outline, 1);   // no outline: holes or cut at the window
     }
   }
   g.lineCap = g.lineJoin = 'round';
@@ -129,6 +129,10 @@ function drawStyled(g, entries, project) {
         if (((style >> 4) & 7) !== level) continue;
         const bridge = style & 0x80, tunnel = style & 0x100, rough = kind === C.PTH && (style & 0x200);
         g.globalAlpha = tunnel && !edge ? 0.45 : 1;
+        if (!edge && bridge && color !== '#ffffff' && (kind === C.PTH || kind === C.CYC || kind === C.RAIL)) {   // bridge base
+          stroke(g, points, '#111111', 7); stroke(g, points, '#ffffff', 5); }
+        const far = style & 0x800, fw = { [C.MIN]: edge ? [6, '#7a7e83'] : [3, '#f4f4f4'], [C.SRV]: edge ? [4, '#9a9ea3'] : [2, '#f4f4f4'] }[kind];
+        if (far && fw && !bridge) { stroke(g, points, fw[1], fw[0]); continue; }   // far from the route: thinner, lighter
         if (edge && bridge) stroke(g, points, '#000000', width + 2);
         else if (edge && tunnel) stroke(g, points, color, width, [3, 2]);
         else if (rough) stroke(g, points, '#6b4a2b', 2, [2, 3]);
@@ -160,11 +164,9 @@ function drawLabels(g, labels) {
   const drawn = [];
   for (const { label, points: [[x, y]] } of labels) {
     if (!label || x < 0 || x > W || y < 8 || y > H - 8) continue;
-    const half = g.measureText(label).width / 2 + 2;
-    if (half * 2 > W) continue;
-    const center = Math.max(half, Math.min(W - half, x));
-    const left = center - half, right = center + half;
-    if (drawn.some(box => Math.abs(box.y - y) < 14 && left < box.right && right > box.left)) continue;
+    const half = g.measureText(label).width / 2 + 2, center = x, left = x - half, right = x + half;
+    if (left < 1 || right > W - 1) continue;                            // as the device: only names fully on the screen
+    if (left < 90 && y + 8 > H - 100) continue;                          // not over the compass and the scale bar
     g.strokeText(label, center, y);
     g.fillText(label, center, y);
     drawn.push({ left, right, y });
@@ -236,8 +238,13 @@ export function draw(canvas, model, distM, styled = model.styled) {
   const routeColor = styled ? PATCH_ROUTE : ORIGINAL_ROUTE;
   g.lineCap = g.lineJoin = 'round';
   stroke(g, [...all.slice(0, next), me].map(project), ROAD_EDGE, 6);
-  stroke(g, [me, ...all.slice(next)].map(project), routeColor, 6);
-  if (styled) drawTurn(g, secs, section, project, project(me));
+  if (styled) g.globalAlpha = 0.7;                // patch: route 70 % opacity, 2 px narrower, the map stays visible
+  stroke(g, [me, ...all.slice(next)].map(project), routeColor, styled ? 4 : 6);
+  g.globalAlpha = 1;
+  if (styled) {                                   // rough parts of the route: dots over the route line
+    for (const { style, points } of entries) if ((style & 15) === 15 && (style & 0x8000) && points?.length > 1) stroke(g, points.map(project), '#3a2410', 3, [2, 4]);
+  }
+  if (styled && entries.some(e => (e.style & 15) === 15 && !(e.style & 0x8000))) drawTurn(g, secs, section, project, project(me));   // arrow: only when the file has arrows (option)
   drawLabels(g, labels);
 
   const [x, y] = project(me);
