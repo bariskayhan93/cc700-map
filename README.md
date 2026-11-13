@@ -11,7 +11,8 @@ Route: Düsseldorf Hauptbahnhof, Königsallee, old town, Rhine promenade, Rheinp
 7.1 km, one frame every 50 m. The maps come from the drawing code of the patch (`map.c`, the stock drawing is
 its style 0), run on a PC with the device rules: heading up, the rider in the lower third, about 1.6 m per pixel.
 
-- **OnelapFit:** a route file with the rules of a real OnelapFit server file (road segments of about 26 m).
+- **OnelapFit:** junction hints as the stock firmware shows them with an OnelapFit file: short forks from
+  junctions on the route along the side roads, untidy, and at most junctions none.
 - **Junction map:** the stock firmware with a route file from this page.
 - **Full Sunlight map:** patch v16 with a route file from this page: areas with outlines, road classes,
   separate carriageways, trams, cycle tracks, park paths, bridges, signals, street names.
