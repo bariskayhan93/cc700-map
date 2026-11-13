@@ -336,7 +336,7 @@ function styledEntries(data, cor, o = {}) {
     const rings = A.m.map(r => clipRing(r, win)).filter(Boolean); if (!rings.length || !rings[0]) continue;
     const o = rings[0], pts = [...o, o[0]];
     for (const h of rings.slice(1)) pts.push(...h, h[0], o[0]);
-    out.push(sentry(styleOf(cls), pts.map(p => F.g(...p))));
+    out.push(sentry(styleOf(cls) | (rings.length > 1 ? 0x400 : 0), pts.map(p => F.g(...p))));   // bit 10: has holes (no outline: the join edge would show)
   }
   // lines
   const lines = [...(data.lines || []).map(L => ({ L, cls: lineClass(L), fl: (L.fl || 0) | ((L.kind & 0x7f) === 6 && o.rough !== false ? 64 : 0) })).filter(x => o.paths !== false || x.cls !== S.PTH), ...(data.rails || []).map(pts => ({ L: { pts }, cls: S.RAIL, fl: 0 })),
@@ -384,6 +384,17 @@ export function buildStyledSection(sections, data, F) {
     }
     groups.push([i, j, e]); i = j + 1;
   }
+  // turn arrows (class 15): the route shape from 22 m before a turn to 22 m after it (through a turn <= 50 m later),
+  // style bits 16+: index of the turn point in the inflection list (= section k + 1). The patch draws the next ones.
+  const turns = data.turns || [], arrow = k => {
+    const dT = sections[k].at(-1)[2], k2 = turns.find(t => t > k && sections[t].at(-1)[2] - dT <= 5000), a = dT - 2200, b = (k2 !== undefined ? sections[k2].at(-1)[2] : dT) + 2200;
+    const at = d => { for (let i = 1; i < all.length; i++) if (all[i][2] >= d) { const p = all[i - 1], q = all[i], t = (d - p[2]) / ((q[2] - p[2]) || 1); return [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t]; } return all.at(-1); };
+    let ps = [at(Math.max(0, a)), ...all.filter(p => p[2] > a && p[2] < b).map(p => [p[0], p[1]]), at(b)];
+    while (ps.length > 20) ps = ps.filter((_, i) => i % 2 === 0 || i === ps.length - 1);
+    const T = sections[k].at(-1);
+    return [...fu(2, 15 | (2 << 4) | ((k + 1) << 16)), ...fs(3, sc(T[0])), ...fs(4, sc(T[1])), ...fu(5, ps.length), ...ps.flatMap(q => fb(6, [...fs(1, sc(q[0])), ...fs(2, sc(q[1]))]))];
+  };
+  for (const g of groups) for (const k of turns) if (k >= g[0] - 1 && k <= g[1] + 1) g[2].push(arrow(k));
   const body = new Bytes(), offs = new Array(sections.length).fill(0);
   for (const [i, j, es] of groups) {
     const m = es.length ? [...fu(1, es.length), ...es.flatMap((e, n) => fb(2, [...fu(1, n), ...e]))] : [8, 0x80, 0x80, 0x80, 0];
