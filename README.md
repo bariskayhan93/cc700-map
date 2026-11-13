@@ -3,6 +3,21 @@
 This web page makes navigation routes for the GEOID / Magene **CC700** bike computer and sends them over Bluetooth.
 Use it in Chrome on Android. Select a GPX file. The page makes the route file and sends it to the device.
 
+## How the device draws it
+
+![CC700 screen, two views side by side, on a public route through Düsseldorf. Left: the original firmware with an OnelapFit route file. Right: the patched firmware with a route file from this page.](docs/device/ride.webp)
+
+Route: Düsseldorf Hauptbahnhof, Königsallee, old town, Rhine promenade, Rheinpark, Nordpark (Japanese Garden),
+7.1 km, one frame every 60 m. The map is drawn by the patch code (`map.c`) on a PC, with the device's
+rules: heading up, the rider in the lower third, 0.9 m per pixel, 240 × 320 screen. The left side follows the
+rules of a real OnelapFit route file: road segments of about 26 m, drawn as grey lines with a white core.
+
+| Königsallee | Rhine, Oberkasseler Brücke | Rheinpark |
+|---|---|---|
+| ![](docs/device/at_2600.webp) | ![](docs/device/at_4160.webp) | ![](docs/device/at_6300.webp) |
+
+The patched firmware is not part of this repository.
+
 ## Watch the ride preview
 
 ![Animated three-panel ride preview near the Hofgarten. OnelapFit junction hints, the Junction map, and Sunlight rotate together as the turn card and compass update.](docs/comparison/tour-d3-device-replay.webp)
