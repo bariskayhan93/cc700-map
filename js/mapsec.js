@@ -294,15 +294,18 @@ export { frame };
 // The original firmware would draw these as stars, so this map is only for the patched firmware (opt.styled).
 const S = { BUILT: 1, GREEN: 2, WATER: 3, WLINE: 4, MAJ: 5, MIN: 6, SRV: 7, PTH: 8, RAIL: 9, CYC: 10, TRAM: 11, LABEL: 12, SIG: 13, STOP: 14 };
 export { S as MAP_CLASS };
-const SR = { [S.MAJ]: 1000, [S.MIN]: 400, [S.SRV]: 300, [S.PTH]: 300, [S.CYC]: 350, [S.RAIL]: 450, [S.TRAM]: 450, [S.WLINE]: 450 };   // range from the route (m)
-const AREA_R = 450, MAXPTS = 60, BLOCK_PTS = 9000, BLOCK_ENT = 1000, BLOCK_LEN = 1500;
+const SR = { [S.MAJ]: 1000, [S.MIN]: 550, [S.SRV]: 350, [S.PTH]: 300, [S.CYC]: 350, [S.RAIL]: 450, [S.TRAM]: 450, [S.WLINE]: 450 };   // range from the route (m)
+const AREA_R = 600, MAXPTS = 60, BLOCK_PTS = 9000, BLOCK_ENT = 1150 /* device drew 1346 entries in one block (2026-11-12) */, BLOCK_LEN = 1500;
 function lineClass(L) {
   const k = L.kind & 0x7f;
-  return k === 1 || k === 8 ? S.MAJ : k === 2 || k === 3 ? S.MIN : k === 4 ? S.SRV : k === 5 ? (L.fl & 32 ? S.CYC : S.PTH) : k === 6 || k === 7 ? S.PTH : k === 9 ? S.RAIL : 0;
+  return k === 8 ? S.SRV : k === 1 ? S.MAJ :   // A1: motorways grey and thin, landmarks only
+     k === 2 || k === 3 ? S.MIN : k === 4 ? S.SRV : k === 5 ? (L.fl & 32 ? S.CYC : S.PTH) : k === 6 || k === 7 ? S.PTH : k === 9 ? S.RAIL : 0;
 }
 // bit 9: rough surface (tracks). Class 12 label: the points carry the UTF-8 name (4 bytes per int32, 0-terminated). 13 signal, 14 tram stop: one point.
-const styleOf = (cls, fl = 0) => cls | ((((fl >> 2) & 7) || 2) << 4) | (fl & 1 ? 0x80 : 0) | (fl & 2 ? 0x100 : 0) | (fl & 64 ? 0x200 : 0);
-const LABEL_R = 300, LABEL_GAP = 230, LABEL_SAME = 450, LABEL_MAX = 12, DOT_R = 300, LABEL_BYTES = 23;
+// level: OSM layer + 2; a bridge or tunnel without a layer tag is one level above or below the ground (F1)
+const lvOf = fl => { const v = (fl >> 2) & 7; return v && v !== 2 ? v : fl & 1 ? 3 : fl & 2 ? 1 : 2; };
+const styleOf = (cls, fl = 0) => cls | (lvOf(fl) << 4) | (fl & 1 ? 0x80 : 0) | (fl & 2 ? 0x100 : 0) | (fl & 64 ? 0x200 : 0) | (fl & 128 ? 0x800 : 0);   // bit 11: far from the route (A2: thinner, lighter)
+const FAR = 150, LABEL_R = 300, LABEL_GAP = 230, LABEL_SAME = 450, LABEL_MAX = 12, DOT_R = 300, LABEL_BYTES = 23;
 const ASCII = { ä: 'ae', ö: 'oe', ü: 'ue', Ä: 'Ae', Ö: 'Oe', Ü: 'Ue', ß: 'ss', é: 'e', è: 'e', á: 'a', à: 'a' };
 function lentry(c, name) {                               // the map font has ASCII only
   const t = name.replace(/[^\x20-\x7e]/g, ch => ASCII[ch] ?? '').replace(/([Ss])trasse\b/g, '$1tr.');   // short names: less overlap
@@ -336,11 +339,12 @@ function styledEntries(data, cor, o = {}) {
     const rings = A.m.map(r => clipRing(r, win)).filter(Boolean); if (!rings.length || !rings[0]) continue;
     const o = rings[0], pts = [...o, o[0]];
     for (const h of rings.slice(1)) pts.push(...h, h[0], o[0]);
-    out.push(sentry(styleOf(cls) | (rings.length > 1 ? 0x400 : 0), pts.map(p => F.g(...p))));   // bit 10: has holes (no outline: the join edge would show)
+    const cut = rings[0].length !== A.m[0].length || rings[0].some((q, i) => q !== A.m[0][i]);   // F3: clipped at the window
+    out.push(sentry(styleOf(cls) | (rings.length > 1 || cut ? 0x400 : 0), pts.map(p => F.g(...p))));   // bit 10: no outline   // bit 10: has holes (no outline: the join edge would show)
   }
   // lines
-  const lines = [...(data.lines || []).map(L => ({ L, cls: lineClass(L), fl: (L.fl || 0) | ((L.kind & 0x7f) === 6 && o.rough !== false ? 64 : 0) })).filter(x => o.paths !== false || x.cls !== S.PTH), ...(data.rails || []).map(pts => ({ L: { pts }, cls: S.RAIL, fl: 0 })),
-    ...(data.trams || []).map(pts => ({ L: { pts }, cls: S.TRAM, fl: 0 })), ...(data.wlines || []).map(pts => ({ L: { pts }, cls: S.WLINE, fl: 0 }))];
+  const lines = [...(data.lines || []).map(L => ({ L, cls: lineClass(L), fl: (L.fl || 0) | ((L.kind & 0x7f) === 6 && o.rough !== false ? 64 : 0) })).filter(x => o.paths !== false || x.cls !== S.PTH), ...(data.rails || []).map(pts => ({ L: { pts }, cls: S.RAIL, fl: pts.fl || 0 })),
+    ...(data.trams || []).map(pts => ({ L: { pts }, cls: S.TRAM, fl: pts.fl || 0 })), ...(data.wlines || []).map(pts => ({ L: { pts }, cls: S.WLINE, fl: 0 }))];
   for (const { L, cls, fl } of lines) {
     if (!cls) continue; const lim = SR[cls], b = L.box || (L.box = box(L.pts, F)); if (!nearBox(b, lim)) continue;
     const nodes = [];
@@ -351,12 +355,13 @@ function styledEntries(data, cor, o = {}) {
       if (o.names !== false && L.name && cls >= S.MAJ && cls <= S.SRV) {          // label candidate: the run point nearest to the route
         let best = null; for (const q of run) { const d = cor.near(...F.m(q[0], q[1]), LABEL_R)[0]; if (d >= 30 && d <= LABEL_R && (!best || d < best[0])) best = [d, q]; }   // off the route line, which is drawn over it
         if (best) labels.push({ name: L.name, cls, d: best[0], q: best[1], m: F.m(best[1][0], best[1][1]) }); }
-      for (let s = 0; s < p.length - 1; s += MAXPTS - 1) out.push(sentry(styleOf(cls, fl), p.slice(s, s + MAXPTS))); } run = []; };
+      const far = (cls === S.MIN || cls === S.SRV) && run.every(q => cor.near(...F.m(q[0], q[1]), FAR)[0] > FAR) ? 128 : 0;
+      for (let s = 0; s < p.length - 1; s += MAXPTS - 1) out.push(sentry(styleOf(cls, fl | far), p.slice(s, s + MAXPTS))); } run = []; };
     for (let i = 0; i < nodes.length - 1; i++) { if (keep[i] || keep[i + 1]) { if (!run.length) run.push(nodes[i]); run.push(nodes[i + 1]); } else flush(); }
     flush();
   }
   // street names: main roads first, then near the route; spaced on the map, one per name nearby
-  labels.sort((a, b) => a.cls - b.cls || a.d - b.d); const got = [];
+  const rn = data.routeNames || new Set(); labels.sort((a, b) => (rn.has(b.name) - rn.has(a.name)) || a.cls - b.cls || a.d - b.d); const got = [];
   for (const l of labels) {
     if (got.length >= LABEL_MAX) break;
     if (got.some(g => { const d = Math.hypot(g.m[0] - l.m[0], g.m[1] - l.m[1]); return d < LABEL_GAP || (g.name === l.name && d < LABEL_SAME); })) continue;
@@ -395,6 +400,13 @@ export function buildStyledSection(sections, data, F) {
     return [...fu(2, 15 | (2 << 4) | ((k + 1) << 16)), ...fs(3, sc(T[0])), ...fs(4, sc(T[1])), ...fu(5, ps.length), ...ps.flatMap(q => fb(6, [...fs(1, sc(q[0])), ...fs(2, sc(q[1]))]))];
   };
   for (const g of groups) for (const k of turns) if (k >= g[0] - 1 && k <= g[1] + 1) g[2].push(arrow(k));
+  // A5: rough parts of the route (tracks): class 15 with bit 15, the route shape; the patch draws dots over the route
+  for (const [a, b] of data.rough || []) for (let s = a; s < b; s += 30000) {
+    let ps = all.filter(p => p[2] >= s && p[2] <= Math.min(b, s + 30000)).map(p => [p[0], p[1]]); if (ps.length < 2) continue;
+    while (ps.length > 24) ps = ps.filter((_, i) => i % 2 === 0 || i === ps.length - 1);
+    const e = [...fu(2, 15 | (2 << 4) | 0x8000), ...fs(3, sc(ps[0][0])), ...fs(4, sc(ps[0][1])), ...fu(5, ps.length), ...ps.flatMap(q => fb(6, [...fs(1, sc(q[0])), ...fs(2, sc(q[1]))]))];
+    for (const g of groups) if (sections[g[0]][0][2] - BEHIND * 100 <= Math.min(b, s + 30000) && sections[g[1]].at(-1)[2] + AHEAD * 100 >= s) g[2].push(e);
+  }
   const body = new Bytes(), offs = new Array(sections.length).fill(0);
   for (const [i, j, es] of groups) {
     const m = es.length ? [...fu(1, es.length), ...es.flatMap((e, n) => fb(2, [...fu(1, n), ...e]))] : [8, 0x80, 0x80, 0x80, 0];

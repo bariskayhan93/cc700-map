@@ -285,7 +285,9 @@ export function buildRoute(gpx, lines, opt) {
     ? buildStyledSection(sections, { lines: lines.filter(nearRoute), areas: (opt.areas || []).filter(a => nearRoute({ pts: a[0] })),
         green: (opt.green || []).filter(a => nearRoute({ pts: a[0] })), water: (opt.water || []).filter(a => nearRoute({ pts: a[0] })),
         rails: (opt.rails || []).filter(pts => nearRoute({ pts })), trams: (opt.trams || []).filter(pts => nearRoute({ pts })), wlines: (opt.wlines || []).filter(pts => nearRoute({ pts })),
-        signals: (opt.signals || []).filter(p => nearRoute({ pts: [p] })), stops: (opt.stops || []).filter(p => nearRoute({ pts: [p] })), opt: mopt, turns: secs.map((s, k) => s.dir ? k : -1).filter(k => k >= 0) }, F)
+        signals: (opt.signals || []).filter(p => nearRoute({ pts: [p] })), stops: (opt.stops || []).filter(p => nearRoute({ pts: [p] })), opt: mopt, turns: secs.map((s, k) => s.dir ? k : -1).filter(k => k >= 0),
+        routeNames: new Set(secs.map(s => s.name)),                                   // A3: names of the route streets first
+        rough: P.reduce((a, p, i) => { if (road[i] && road[i].kind === 6) { const l = a.at(-1); if (l && l[1] >= D[i - 1] * 100) l[1] = D[i] * 100; else a.push([D[i] * 100, D[i] * 100]); } return a; }, []).filter(x => x[1] - x[0] >= 2000) }, F)
     : buildMapSection(sections, lines.filter(nearRoute), F, mopt);   // only roads near the route (600 m grid)
   const ioa = out.n; out.push(map.bytes);
   const file = out.bytes.slice(); new DataView(file.buffer).setUint32(0x5c, ioa, true); file.set(h.subarray(0, 0x5c), 0); file.set(h.subarray(0x60, 0x80), 0x60);

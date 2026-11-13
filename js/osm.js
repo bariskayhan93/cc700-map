@@ -141,9 +141,9 @@ export function buildCell(els, r, c) {
     if (e.type === 'way' && t.highway && e.geometry.length > 1) {
       const k = kind(t), pts = ll(e.geometry); if (k) ways.push({ id: e.id, t, kind: k, refs: e.nodes, pts, len: lineLen(pts), here: pts.some(here) });
     } else if (e.type === 'way' && /^(tram|light_rail)$/.test(t.railway || '')) {
-      const pts = ll(e.geometry); if (t.tunnel !== 'yes' && pts.length > 1 && pts.some(here)) trams.push([e.id, flat(rdp(pts, 2, F.m))]);
+      const pts = ll(e.geometry); if (t.tunnel !== 'yes' && pts.length > 1 && pts.some(here)) trams.push([e.id, flat(rdp(pts, 2, F.m)), lflags(t)]);
     } else if (e.type === 'way' && t.railway) {
-      const pts = ll(e.geometry); if (!t.service && t.tunnel !== 'yes' && pts.length > 1) tracks.push({ id: e.id, pts, len: lineLen(pts), here: pts.some(here) });
+      const pts = ll(e.geometry); if (!t.service && t.tunnel !== 'yes' && pts.length > 1) tracks.push({ id: e.id, pts, len: lineLen(pts), here: pts.some(here), fl: lflags(t) });
     } else if (e.type === 'way' && /^(river|canal|stream)$/.test(t.waterway || '') && t.tunnel !== 'culvert' && t.tunnel !== 'yes') {
       const pts = ll(e.geometry); if (pts.length > 1 && pts.some(here)) wlines.push([e.id, flat(rdp(pts, 3, F.m))]);
     } else if (t.landuse || t.natural || t.waterway || t.leisure) {
@@ -157,7 +157,7 @@ export function buildCell(els, r, c) {
     if (!g.here || !KIND[g.kind] || (g.kind === 'service' && lineLen(g.pts) < 50)) continue;
     const f = flat(g.pts); if (f.length >= 4) lines.push([g.id, KIND[g.kind] | (/^(roundabout|circular)$/.test(g.t.junction) ? 0x80 : 0), g.t.name || '', f, lflags(g.t)]);
   }
-  const rails = mainTracks(tracks, F).filter(w => w.here).map(w => [w.id, flat(rdp(w.pts, 3, F.m))]);
+  const rails = mainTracks(tracks, F).filter(w => w.here).map(w => [w.id, flat(rdp(w.pts, 3, F.m)), w.fl || 0]);
   return { lines, areas, water, rails, green, trams, wlines };
 }
 async function overpass(r, c) {
@@ -206,9 +206,9 @@ export async function loadOSM(track, onProgress, store = phone) {
     for (const [id, kind, name, f, fl] of cell.lines) if (!lines.has(id)) lines.set(id, { kind, name, pts: unflat(f), fl: fl || 0 });   // a road that crosses cells is in each of them
     for (const [id, rings] of cell.areas) if (!areas.has(id)) areas.set(id, rings.map(unflat));
     for (const [id, rings] of cell.water) if (!water.has(id)) water.set(id, rings.map(unflat));
-    for (const [id, f] of cell.rails) if (!rails.has(id)) rails.set(id, unflat(f));
+    for (const [id, f, fl] of cell.rails) if (!rails.has(id)) rails.set(id, Object.assign(unflat(f), { fl: fl || 0 }));   // fl: bridge, tunnel, layer (new cells)
     for (const [id, rings] of cell.green || []) if (!green.has(id)) green.set(id, rings.map(unflat));
-    for (const [id, f] of cell.trams || []) if (!trams.has(id)) trams.set(id, unflat(f));
+    for (const [id, f, fl] of cell.trams || []) if (!trams.has(id)) trams.set(id, Object.assign(unflat(f), { fl: fl || 0 }));
     for (const [id, f] of cell.wlines || []) if (!wlines.has(id)) wlines.set(id, unflat(f));
     let nc = await store.get('n' + key);                // nodes: optional, a failed load only drops the dots
     if (!nc || (Date.now() - nc.t > MAX_AGE && navigator.onLine !== false)) try {
