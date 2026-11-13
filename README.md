@@ -5,12 +5,16 @@ Use it in Chrome on Android. Select a GPX file. The page makes the route file an
 
 ## How the device draws it
 
-![CC700 screen, two views side by side, on a public route through Düsseldorf. Left: the original firmware with an OnelapFit route file. Right: the patched firmware with a route file from this page.](docs/device/ride.webp)
+![CC700 screen in three views on a public route through Düsseldorf: OnelapFit file and Junction map on the stock firmware, Full Sunlight map on patch v16.](docs/device/ride.webp)
 
 Route: Düsseldorf Hauptbahnhof, Königsallee, old town, Rhine promenade, Rheinpark, Nordpark (Japanese Garden),
-7.1 km, one frame every 60 m. The map is drawn by the patch code (`map.c`) on a PC, with the device's
-rules: heading up, the rider in the lower third, 0.9 m per pixel, 240 × 320 screen. The left side follows the
-rules of a real OnelapFit route file: road segments of about 26 m, drawn as grey lines with a white core.
+7.1 km, one frame every 50 m. The maps come from the drawing code of the patch (`map.c`, the stock drawing is
+its style 0), run on a PC with the device rules: heading up, the rider in the lower third, about 1.6 m per pixel.
+
+- **OnelapFit:** a route file with the rules of a real OnelapFit server file (road segments of about 26 m).
+- **Junction map:** the stock firmware with a route file from this page.
+- **Full Sunlight map:** patch v16 with a route file from this page: areas with outlines, road classes,
+  separate carriageways, trams, cycle tracks, park paths, bridges, signals, street names.
 
 | Königsallee | Rhine, Oberkasseler Brücke | Rheinpark |
 |---|---|---|
