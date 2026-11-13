@@ -21,8 +21,8 @@ const km = new Intl.NumberFormat('de-DE', { minimumFractionDigits: 2, maximumFra
 const decimal = new Intl.NumberFormat('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 $('log').hidden = !DEBUG;
 if (self.caches) { caches.delete('cc700-roads-v2'); caches.delete('cc700-roads-v3'); caches.delete('cc700-osm-v1'); }   // road pack of earlier versions (90 MB)
-const LAYERS = ['ground', 'water', 'rails', 'names', 'signals', 'stops', 'trams', 'rough', 'paths'];   // optional map layers
-const ON = new Set(['names', 'signals', 'stops', 'trams', 'rough', 'paths']);    // default on (patch layers)
+const LAYERS = ['ground', 'water', 'rails', 'names', 'signals', 'stops', 'trams', 'rough', 'paths', 'arrows', 'details', 'lanes'];   // optional map layers
+const ON = new Set(['names', 'signals', 'stops', 'trams', 'rough', 'paths', 'details', 'lanes']);    // default on (patch layers)
 function updateFirmware() {
   const patched = $('fw').value === 'patch';
   $('optPatch').hidden = !patched;

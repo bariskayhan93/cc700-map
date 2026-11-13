@@ -4,6 +4,7 @@
 import { frame, rdp, lineLen } from './geo.js';
 const DLAT = 0.05, DLON = 0.08, MARGIN = 0.004;     // cell size; context around a cell for generalization (~400 m)
 const REACH = 0.005;                                // cells within ~550 m of the route are loaded
+const CELL_V = 7;                                  // cell format: 4 = detail ways (fl bit 8), rail/tram flags
 const CACHE = 'cc700-osm-v3', MAX_AGE = 30 * 864e5; // a cell is loaded again after 30 days
 const API = ['https://overpass.openstreetmap.fr/api/interpreter', 'https://overpass-api.de/api/interpreter', 'https://overpass.private.coffee/api/interpreter'];   // fastest first
 const HIGHWAY = 'motorway|trunk|primary|secondary|tertiary|residential|unclassified|living_street|road|service|track|cycleway|path|footway|pedestrian|bridleway';
@@ -55,12 +56,14 @@ function generalize(ways, F) {
   const used = new Map(); for (const w of ways) if (w.kind !== 'foot') for (const r of w.refs) add(used, r);
   for (const w of ways) if (w.kind === 'foot' && w.t.bicycle !== 'no' && (w.t.highway === 'pedestrian' || (used.get(w.refs[0]) && used.get(w.refs.at(-1)) && w.len < 80))) w.kind = 'path';
   // other footways: only pedestrian streets and named footways; link roads: only named or >= 60 m
-  let W = ways.filter(w => (w.kind !== 'foot' || w.t.highway === 'pedestrian' || w.t.name) && (!w.t.highway.endsWith('_link') || w.t.name || w.len >= 60));
+  // other footways: detail (coloured map only), except pedestrian streets and named footways; link roads: only named or >= 60 m
+  for (const w of ways) if (w.kind === 'foot' && w.t.highway !== 'pedestrian' && !w.t.name) w.detail = true;
+  let W = ways.filter(w => !w.t.highway.endsWith('_link') || w.t.name || w.len >= 60);
   // paths: only named ones, or connected path networks >= 150 m
   const par = W.map((_, i) => i), find = a => { while (par[a] !== a) a = par[a] = par[par[a]]; return a; }, at = new Map(), net = new Map();
   W.forEach((w, i) => { if (light(w)) for (const r of w.refs) at.has(r) ? par[find(i)] = find(at.get(r)) : at.set(r, i); });
   W.forEach((w, i) => { if (light(w)) add(net, find(i), w.len); });
-  W = W.filter((w, i) => !light(w) || w.t.name || net.get(find(i)) >= 150);
+  W.forEach((w, i) => { if (light(w) && !w.t.name && net.get(find(i)) < 150) w.detail = true; });   // short networks: detail
   // segment grid (50 m cells, each segment also in the cells around it): nearest segment of another way
   const P = W.map(w => w.pts.map(p => F.m(p[0], p[1]))), grid = new Map(), C = 50, cell = v => Math.floor(v / C);
   P.forEach((p, i) => { for (let n = 1; n < p.length; n++) { const [ax, ay] = p[n - 1], [bx, by] = p[n];
@@ -72,13 +75,16 @@ function generalize(ways, F) {
       const px = ax + f * dx, py = ay + f * dy, d = Math.hypot(x - px, y - py); if (!best || d < best[0]) best = [d, px, py, Math.atan2(dy, dx)]; }
     return best; };
   const out = [];
-  W.forEach((w, i) => { let p = P[i]; const t = w.t;
+  W.forEach((w0, i) => { let w = w0, p = P[i]; const t = w.t;
     if (light(w) || t.footway === 'sidewalk' || t.cycleway === 'sidepath') {     // paths along a street (< 22 m, parallel): the street stands for them
       let along = 0;
       p.forEach(([x, y], n) => { const [x2, y2] = p[Math.min(n + 1, p.length - 1)], h = x2 !== x || y2 !== y ? Math.atan2(y2 - y, x2 - x) : null;
         const r = nearest(x, y, j => j !== i && STREETS.has(W[j].kind));
         if (r && r[0] < 22 && (h === null || Math.abs(mod(deg(h - r[3]) + 90, 180) - 90) < 25)) along++; });
-      if (along >= 0.6 * p.length) return;
+      if (along >= 0.6 * p.length) {
+        if (!(t.highway === 'cycleway' || t.bicycle === 'designated')) return;   // sidewalk-like path: the street stands for it
+        w.detail = true;                                                          // cycle track next to a street: coloured map only
+      }
     }
     if (ONEWAY.has(t.oneway) && (STREETS.has(w.kind) || w.kind === 'motorway')) { // dual carriageway (same name and class, opposite direction, < 45 m): one centreline
       const twin = j => j !== i && W[j].kind === w.kind && ONEWAY.has(W[j].t.oneway) && W[j].t.name === t.name; let paired = 0;
@@ -86,8 +92,9 @@ function generalize(ways, F) {
         if (!(r && r[0] > 3 && r[0] < 45 && Math.abs(mod(deg(Math.atan2(b[1] - a[1], b[0] - a[0]) - r[3]) + 180, 360) - 180) > 135)) return [x, y];
         paired++; return [(x + r[1]) / 2, (y + r[2]) / 2]; });
       const h = deg(Math.atan2(p.at(-1)[1] - p[0][1], p.at(-1)[0] - p[0][0]));
-      if (paired === p.length && !(h >= -90 && h < 90)) return;                  // fully paired: keep one of the two
-      if (paired) p = mid;
+      const real = { ...w, id: -w.id, detail: true, real: true, navOnly: false, pts: chaikin(p).map(([x, y]) => F.g(x, y)) };   // the real carriageway: coloured map only
+      if (paired === p.length && !(h >= -90 && h < 90)) { out.push(real); return; }   // fully paired: one centreline for the turns
+      if (paired) { out.push(real); p = mid; w = { ...w, navOnly: true, detail: false }; }
     }
     out.push({ ...w, pts: chaikin(p).map(([x, y]) => F.g(x, y)) });
   });
@@ -109,8 +116,8 @@ function stitch(parts) {
   return rings;
 }
 // railways: main tracks only; of tracks that run side by side (< 15-30 m) the longest stays
-function mainTracks(ways, F) {
-  const C = 15, seen = new Set(), out = [];
+function mainTracks(ways, F, C = 15) {                 // C: cell size (m); parallel tracks within about C are one line
+  const seen = new Set(), out = [];
   for (const w of ways.sort((a, b) => b.len - a.len)) {
     const ks = [];
     for (let i = 1; i < w.pts.length; i++) { const [ax, ay] = F.m(...w.pts[i - 1]), [bx, by] = F.m(...w.pts[i]), n = Math.max(1, Math.ceil(Math.hypot(bx - ax, by - ay) / 10));
@@ -135,13 +142,13 @@ const inside = ([y, x], r) => { let c = false; for (let i = 0, j = r.length - 1;
 // Overpass elements of one cell (+ margin) -> { lines: [[id, kind, name, flat points]], areas and water: [[id, [flat ring, ...]]], rails: [[id, flat points]] }
 export function buildCell(els, r, c) {
   const F = frame((r + 0.5) * DLAT), here = p => Math.floor(p[0] / DLAT) === r && Math.floor(p[1] / DLON) === c;
-  const ll = g => g.map(q => [q.lat, q.lon]), ways = [], lines = [], areas = [], water = [], tracks = [], green = [], trams = [], wlines = [];
+  const ll = g => g.map(q => [q.lat, q.lon]), ways = [], lines = [], areas = [], water = [], tracks = [], green = [], trams = [], wlines = [], tramWays = [];
   for (const e of els) {
     const t = e.tags || {};
     if (e.type === 'way' && t.highway && e.geometry.length > 1) {
       const k = kind(t), pts = ll(e.geometry); if (k) ways.push({ id: e.id, t, kind: k, refs: e.nodes, pts, len: lineLen(pts), here: pts.some(here) });
     } else if (e.type === 'way' && /^(tram|light_rail)$/.test(t.railway || '')) {
-      const pts = ll(e.geometry); if (t.tunnel !== 'yes' && pts.length > 1 && pts.some(here)) trams.push([e.id, flat(rdp(pts, 2, F.m)), lflags(t)]);
+      const pts = ll(e.geometry); if (t.tunnel !== 'yes' && pts.length > 1) tramWays.push({ id: e.id, pts, len: lineLen(pts), here: pts.some(here), fl: lflags(t) });
     } else if (e.type === 'way' && t.railway) {
       const pts = ll(e.geometry); if (!t.service && t.tunnel !== 'yes' && pts.length > 1) tracks.push({ id: e.id, pts, len: lineLen(pts), here: pts.some(here), fl: lflags(t) });
     } else if (e.type === 'way' && /^(river|canal|stream)$/.test(t.waterway || '') && t.tunnel !== 'culvert' && t.tunnel !== 'yes') {
@@ -155,9 +162,10 @@ export function buildCell(els, r, c) {
   }
   for (const g of generalize(ways, F)) {
     if (!g.here || !KIND[g.kind] || (g.kind === 'service' && lineLen(g.pts) < 50)) continue;
-    const f = flat(g.pts); if (f.length >= 4) lines.push([g.id, KIND[g.kind] | (/^(roundabout|circular)$/.test(g.t.junction) ? 0x80 : 0), g.t.name || '', f, lflags(g.t)]);
+    const f = flat(g.pts); if (f.length >= 4) lines.push([g.id, KIND[g.kind] | (/^(roundabout|circular)$/.test(g.t.junction) ? 0x80 : 0), g.t.name || '', f, lflags(g.t) | (g.detail ? 256 : 0) | (g.navOnly ? 512 : 0) | (g.real ? 1024 : 0)]);   // 1024: real carriageway of a dual carriageway   // 512: centreline of a dual carriageway (turns only)
   }
   const rails = mainTracks(tracks, F).filter(w => w.here).map(w => [w.id, flat(rdp(w.pts, 3, F.m)), w.fl || 0]);
+  for (const w of mainTracks(tramWays, F, 6).filter(w => w.here)) trams.push([w.id, flat(rdp(w.pts, 2, F.m)), w.fl || 0]);   // double track: one line
   return { lines, areas, water, rails, green, trams, wlines };
 }
 async function overpass(r, c) {
@@ -200,8 +208,8 @@ export async function loadOSM(track, onProgress, store = phone) {
   for (const key of cells) {
     onProgress?.(n++, cells.size);
     let cell = await store.get(key);
-    if (!cell || (Date.now() - cell.t > MAX_AGE && navigator.onLine !== false)) try {
-      const [r, c] = key.split(',').map(Number); cell = { t: Date.now(), ...buildCell(await overpass(r, c), r, c) }; await store.put(key, cell);
+    if (!cell || cell.v !== CELL_V && navigator.onLine !== false || (Date.now() - cell.t > MAX_AGE && navigator.onLine !== false)) try {
+      const [r, c] = key.split(',').map(Number); cell = { t: Date.now(), v: CELL_V, ...buildCell(await overpass(r, c), r, c) }; await store.put(key, cell);
     } catch (e) { if (!cell) throw new Error('Kartendaten nicht geladen (' + e.message + '). Für eine neue Region ist Internet nötig.'); }   // old cell: still good
     for (const [id, kind, name, f, fl] of cell.lines) if (!lines.has(id)) lines.set(id, { kind, name, pts: unflat(f), fl: fl || 0 });   // a road that crosses cells is in each of them
     for (const [id, rings] of cell.areas) if (!areas.has(id)) areas.set(id, rings.map(unflat));

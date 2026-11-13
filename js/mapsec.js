@@ -399,7 +399,7 @@ export function buildStyledSection(sections, data, F) {
     const T = sections[k].at(-1);
     return [...fu(2, 15 | (2 << 4) | ((k + 1) << 16)), ...fs(3, sc(T[0])), ...fs(4, sc(T[1])), ...fu(5, ps.length), ...ps.flatMap(q => fb(6, [...fs(1, sc(q[0])), ...fs(2, sc(q[1]))]))];
   };
-  for (const g of groups) for (const k of turns) if (k >= g[0] - 1 && k <= g[1] + 1) g[2].push(arrow(k));
+  if ((data.opt || {}).arrows) for (const g of groups) for (const k of turns) if (k >= g[0] - 1 && k <= g[1] + 1) g[2].push(arrow(k));   // option, off by default
   // A5: rough parts of the route (tracks): class 15 with bit 15, the route shape; the patch draws dots over the route
   for (const [a, b] of data.rough || []) for (let s = a; s < b; s += 30000) {
     let ps = all.filter(p => p[2] >= s && p[2] <= Math.min(b, s + 30000)).map(p => [p[0], p[1]]); if (ps.length < 2) continue;

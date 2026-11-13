@@ -127,7 +127,8 @@ export function decisionPoints(P, D, lines, F, grid) {
   return { points, judge, matched };
 }
 const short = t => t.replace(/straße\b/g, 'str.').replace(/Straße\b/g, 'Str.').replace(/strasse\b/g, 'str.').replace(/Strasse\b/g, 'Str.');
-export function buildRoute(gpx, lines, opt) {
+export function buildRoute(gpx, allLines, opt) {
+  const lines = allLines.filter(L => !(L.fl & 256));   // 512 (dual-carriageway centreline) stays here: turns and the original map use it   // detail ways (park footways, short paths, cycle tracks next to a street): map only, not for turns
   const speed = (opt.speedKmh || 18) / 3.6, F = frame(gpx.pts[0][0]);
   // 1. clean points + cumulative distance
   const P0 = []; for (const p of gpx.pts) if (!P0.length || hav(P0.at(-1), p) >= 1) P0.push(p);
@@ -282,7 +283,8 @@ export function buildRoute(gpx, lines, opt) {
   if (mopt.water) mopt.water = (opt.water || []).filter(a => nearRoute({ pts: a[0] }));
   if (mopt.rails) mopt.rails = (opt.rails || []).filter(pts => nearRoute({ pts }));
   const map = mopt.styled                                       // patched firmware: styled polylines and areas (patch v1)
-    ? buildStyledSection(sections, { lines: lines.filter(nearRoute), areas: (opt.areas || []).filter(a => nearRoute({ pts: a[0] })),
+    ? buildStyledSection(sections, { lines: allLines.filter(L =>      // options: real carriageways (lanes), detail ways (details)
+        L.fl & 1024 ? mopt.lanes !== false : L.fl & 512 ? mopt.lanes === false : L.fl & 256 ? mopt.details !== false : true).filter(nearRoute), areas: (opt.areas || []).filter(a => nearRoute({ pts: a[0] })),
         green: (opt.green || []).filter(a => nearRoute({ pts: a[0] })), water: (opt.water || []).filter(a => nearRoute({ pts: a[0] })),
         rails: (opt.rails || []).filter(pts => nearRoute({ pts })), trams: (opt.trams || []).filter(pts => nearRoute({ pts })), wlines: (opt.wlines || []).filter(pts => nearRoute({ pts })),
         signals: (opt.signals || []).filter(p => nearRoute({ pts: [p] })), stops: (opt.stops || []).filter(p => nearRoute({ pts: [p] })), opt: mopt, turns: secs.map((s, k) => s.dir ? k : -1).filter(k => k >= 0),
