@@ -231,6 +231,26 @@ export function buildRoute(gpx, allLines, opt) {
     if (!opt.classic && s.type === 1 && s.dir && n && n.type === 1 && n.dir && D[n.i1] - D[n.i0] <= THEN) t = 'then ' + THEN_WORD[n.dir] + ' · ' + t;
     s.text = t;
   });
+  // Stock next-point output loads record k + 1 before reading info field 6.
+  // Put the close-following-turn hint on that outgoing record, with its own
+  // street/waypoint. Keep text above as legacy section/list metadata.
+  const captionBytes = text => { const out = []; for (const c of text) { const b = new TextEncoder().encode(c); if (out.length + b.length > 63) break; out.push(...b); } return out; };
+  const bitmapCaptions = [];
+  secs.forEach((s, k) => {
+    const previous = secs[k - 1];
+    const text = wp[s.i0] ? '▶ ' + wp[s.i0] : s.name; let prefix = '';
+    if (!opt.classic && previous?.type === 1 && previous.dir) {
+      let next = k; while (next < secs.length - 1 && secs[next].type === 1 && !secs[next].dir) next++;
+      const following = secs[next];
+      if (following?.type === 1 && following.dir && following.dist - previous.dist <= THEN) prefix = 'then ' + THEN_WORD[following.dir] + ' · ';
+    }
+    // The stock parser clears a 64-byte buffer and rejects more than 63 bytes.
+    s.caption = new TextDecoder().decode(Uint8Array.from(captionBytes(prefix + text)));
+    // Preserve the older bitmap-only roundabout exit-name substitution. Its
+    // native field-6 semantics are untraced; ordinary field 6 keeps s.name.
+    const bitmap = s.round && secs[k + 1] && !wp[s.i0] ? prefix + secs[k + 1].name : s.caption;
+    bitmapCaptions.push(bitmap);
+  });
   // 4. points (elevation in cm, distance in cm, direction float). As in server route files (read back from the device):
   // field 8 is the direction to the next point as a COMPASS BEARING (0 = north, 90 = east). Checked 2026-11-12 evening:
   // official file route_1918853.bin matches the bearing with median error 0.0 deg, and 131 deg off for "90 - bearing".
@@ -244,13 +264,13 @@ export function buildRoute(gpx, allLines, opt) {
   // start points, the turn position never advances and "off route" is measured to those points (ride 2026-11-12).
   const cells = ps => { const runs = []; ps.forEach((q, i) => { const r = runs.at(-1); if (r && r[0] === q.cell) r[2] = i; else runs.push([q.cell, i, i]); });
     return [...fu(1, runs.length), ...runs.flatMap(([c, a, b]) => fb(2, [...fb(1, [...new TextEncoder().encode(c)]), ...fu(2, 2 * a), ...fu(3, 2 * b)]))]; };
-  const imgs = secs.map(s => opt.nameImage(short(s.text))); let off = 0;
+  const imgs = bitmapCaptions.map(text => opt.nameImage(short(text))); let off = 0;
   const recs = new Bytes();
   secs.forEach((s, k) => {
     const len = D[s.i1] - D[s.i0];
     const ps = []; for (let i = s.i0; i <= s.i1; i++) { ps.push(pt(i)); if (i < s.i1) { const e = extra(i); for (let t = 1; t <= e; t++) ps.push(pt(i, t / (e + 1))); } }
     const info = [...fu(1, Math.round(len)), ...fu(2, Math.round(len / speed)), ...fb(3, pt(s.i0)), ...fb(4, pt(s.i1)),
-      ...fb(5, [...fu(1, s.type), ...fu(2, s.dir)]), ...fb(6, [...new TextEncoder().encode([...s.name].slice(0, 48).join(''))]), ...fu(7, off), ...(opt.noCells ? [] : fb(8, cells(ps)))];
+      ...fb(5, [...fu(1, s.type), ...fu(2, s.dir)]), ...fb(6, [...new TextEncoder().encode(s.caption)]), ...fu(7, off), ...(opt.noCells ? [] : fb(8, cells(ps)))];
     off += imgs[k].length;
     const m = [...fb(1, info), ...fu(2, ps.length)]; for (const q of ps) m.push(...fb(3, q));
     recs.push(u32le(m.length)).push(m);

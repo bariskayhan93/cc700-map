@@ -3,8 +3,10 @@
 This review separates recorded observations, offline reconstructions and unresolved
 causes. It does not declare detour guidance fixed or the preview a firmware emulator.
 Private device bytes, positions, ride files, recovered logs and plots remain under
-`.local/ride-20261114/`, outside Git. Firmware remains v20; this investigation
-performed a storage read and an RTS restart, with no device programming or GPS injection.
+`.local/ride-20261114/`, outside Git. The ride snapshot was acquired with v20. This investigation performed a storage
+read and an RTS restart, with no device programming or GPS injection during acquisition.
+The later [v21 update](v21-caption-opacity-2026-11-14.md) changes route opacity only;
+it does not fix the navigation-state findings in this report.
 
 ## Evidence preserved
 

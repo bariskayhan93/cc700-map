@@ -8,7 +8,7 @@ Use it in Chrome on Android. Select a GPX file. The page makes the route file an
 Run the public app checks with Node.js 22 or newer:
 
 ```sh
-node --test tools/test_preview.mjs tools/test_preview_guidance.mjs tools/test_route_decisions.mjs tools/test_navsource.mjs tools/test_service_worker.mjs tools/test_map_style.mjs tools/test_surface.mjs tools/test_map_geometry.mjs tools/test_map_labels.mjs tools/test_map_order.mjs tools/test_map_contract.mjs
+node --test tools/test_preview.mjs tools/test_preview_guidance.mjs tools/test_route_decisions.mjs tools/test_route_captions.mjs tools/test_navsource.mjs tools/test_service_worker.mjs tools/test_map_style.mjs tools/test_surface.mjs tools/test_map_geometry.mjs tools/test_map_labels.mjs tools/test_map_order.mjs tools/test_map_contract.mjs
 node tools/test_app_offline.mjs
 ```
 
@@ -16,100 +16,69 @@ These cover preview/readback, synthetic turn decisions, original OSM source
 preservation, the complete offline module cache, and long-route generation.
 One executed TODO documents a remaining noisy-track false turn. No private ride
 files or device connection are required. See the [app release notes](docs/app-release-2026-11-14.md)
-for changes and remaining limitations.
+for changes and remaining limitations. [Browser UI checks and artwork reproduction](docs/current-preview-artwork-2026-11-14.md) are documented separately.
 
-## Current preview and ride review
+## Current preview
 
-The preview now uses the CC700's **240 × 320** full display proportions while keeping
-its **240 × 256** map buffer. See the [23 km ride review](docs/ride-review-2026-11-14.md)
-and [display geometry checks](docs/preview-display-geometry-2026-11-14.md).
-The preview also [counts down across straight subdivisions](docs/preview-guidance-2026-11-14.md), matching the next-maneuver distance rather than an arbitrary record boundary.
-The Tour D3 animations and comparison panels below are historical artwork from an
-older preview layout/palette; they are not exact current v20 screen captures.
-Use the [live v20 preview](https://bariskayhan93.github.io/cc700-map/) for the current style.
+The preview follows the supplied CC700 references: a **240 × 320** portrait display,
+a two-row turn card (distance and one caption), circular rider marker, compass,
+100 m scale, distance-to-finish flag, progress strip, Speed and GPS Heading.
+The map retains its **240 × 256** buffer. Fonts, rasterization, route-chevron
+spacing and the lower-panel split remain approximations.
 
-See the [cycling turn/rejoin assessment](docs/cycling-turn-practices-2026-11-14.md) for primary-source comparisons and the proposed detour display states.
+![Current two-row CC700 preview in three modes. All panels use one synthetic route; the left OnelapFit-style schematic is explicitly a reconstruction.](docs/comparison/synthetic-close-pair-current-ui.png)
 
-## Watch the ride preview
+These are browser-rendered examples from the current page UI. The middle and
+right maps are read back from generated route files. **The left panel is an
+OnelapFit-style reconstruction**, with short pale-grey junction marks; it was
+not produced by OnelapFit. The right panel uses the v21 profile: v20 map colors
+with an opaque red route. No private ride coordinates or ride photos are used.
+[Open the interactive app](https://bariskayhan93.github.io/cc700-map/).
 
-![Animated three-panel ride preview near the Hofgarten. OnelapFit junction hints, the Junction map, and Sunlight rotate together as the turn card and compass update.](docs/comparison/tour-d3-device-replay.webp)
+![Animated synthetic replay with the current two-row card and full portrait display in the schematic, Original and Sunlight v21 views.](docs/comparison/synthetic-current-ui-replay.webp)
 
-All three views replay the same section of Düsseldorf’s public Tour D3 at 4× speed. Each uses the
-Pages preview’s proportions for the turn window, compass, 100 m scale, heading, progress and distance
-to the finish.
-[Open the interactive CC700 Map app](https://bariskayhan93.github.io/cc700-map/)
+The animation advances all three panels through the same synthetic positions,
+including a close right/left pair. It is an illustration of on-route progress,
+not a GPS or firmware timing simulation.
 
-## Compare the three navigation views
-
-Six heading-up scenes from Tour D3. The rider’s direction of travel points toward the top of the
-screen, and the compass shows where north is. Each excerpt is generated as its own route file.
-The panels share the same position, heading and scale. Their turn windows follow their route
-records. Open any image to zoom in.
-[City of Düsseldorf Tour D3 and GPX](https://www.duesseldorf.de/radverkehr/fahrradtouren/tour-d)
-
-| Navigation mode | What the CC700 displays |
+| Current UI example | View |
 |---|---|
-| **OnelapFit with stock firmware** | Blue route line with straight, equal-length grey spokes at junctions. Driveways, garage exits, streets and paths use the same size. Closely spaced spokes overlap. |
-| **CC700 Map Junction map with stock firmware** | Blue route line over connected grey and white roads, with grey built-up blocks, striped water and long-dashed railways enabled for these examples. |
-| **CC700 Map Full Sunlight map with patched firmware** | Red route line over a colour map with distinct road classes, outlined green areas and water, and optional street names, tram layers and amber traffic signals. |
+| Far from the maneuver: Go straight | [Three panels](docs/comparison/synthetic-far-straight-current-ui.png) |
+| Approaching the 300 m threshold | [Three panels](docs/comparison/synthetic-approaching-turn-current-ui.png) |
+| Near the first turn | [Three panels](docs/comparison/synthetic-near-turn-current-ui.png) |
+| Close pair: one `then left · …` caption | [Three panels](docs/comparison/synthetic-close-pair-current-ui.png) |
+| After the first maneuver | [Three panels](docs/comparison/synthetic-second-turn-current-ui.png) |
+| Following street | [Three panels](docs/comparison/synthetic-park-street-current-ui.png) |
 
-The OnelapFit schematic uses mapped OpenStreetMap connections near Tour D3. Each arm is drawn
-at about 100 m, so nearby entrances and paths can stack into a dense cluster, as at the Hofgarten.
-The Junction and Sunlight panels use the GitHub Pages map renderer with their generated route files.
-The Junction map examples have **Bebauung grau**, **Wasser gestreift (Test)** and
-**Bahnlinien lang gestrichelt (Test)** enabled. Blue or red marks the route ahead, and grey marks
-the part already ridden.
+### Original OnelapFit reference
 
-### Graf-Adolf-Platz
+![Original user-supplied OnelapFit reference: 150 m, Merrimans Ln, a blue route, circular rider and small pale-grey junction marks.](docs/comparison/onelapfit-user-reference.png)
 
-The route turns at a wide junction where tram tracks and traffic signals cross the Königsallee corridor.
+This supplied image is preserved unchanged and shows **a different route**.
+It includes the turn card and map; its bottom metric panel is outside the
+supplied image. It is a visual reference, separate from the synthetic
+reconstructions above.
 
-![Graf-Adolf-Platz in three views. The Sunlight map shows tram tracks and amber signals at the turn.](docs/comparison/graf-adolf-platz-device-layers.webp)
+The earlier Tour D3 animation and all six comparison panels are retained in the
+[historical artwork appendix](docs/comparison/historical-tour-d3.md). They use an
+older UI and palette and are not current device captures.
 
-### Altstadt near Liefergasse
-
-Connected side streets and bends show the shape of the Old Town street network.
-
-![Altstadt in three views. The Junction map and Sunlight map show connected side streets around Liefergasse.](docs/comparison/altstadt-liefergasse-device-layers.webp)
-
-### Hofgarten and the Landskrone pond
-
-The park paths, water edge and city streets meet near the Kö-Bogen.
-
-![Hofgarten in three views. The Sunlight map distinguishes the Landskrone pond, park paths and nearby streets.](docs/comparison/hofgarten-landskrone-device-layers.webp)
-
-### Rhine at Rheinkniebrücke
-
-The river, promenade and bridge approach are visible together at the riverbank.
-
-![Rhine riverbank in three views. The Sunlight map shows the river, promenade and Rheinkniebrücke.](docs/comparison/rhine-rheinkniebruecke-device-layers.webp)
-
-### MedienHafen
-
-The harbour entrance puts the path between two water edges, making the shape of the waterfront visible.
-
-![MedienHafen in three views. The Sunlight map shows the path between the harbour water and the Rhine.](docs/comparison/medienhafen-device-layers.webp)
-
-### Railway near Bilk
-
-The long white dashes across the blue route show how the experimental railway layer reads on
-stock firmware. The grey blocks show built-up areas around the crossing.
-
-![Railway near Bilk in three views. The Junction map draws grey blocks and long railway dashes across the route.](docs/comparison/railway-near-bilk-device-layers.webp)
+See the [ride review](docs/ride-review-2026-11-14.md),
+[display geometry checks](docs/preview-display-geometry-2026-11-14.md),
+[guidance behavior and limits](docs/preview-guidance-2026-11-14.md), and
+[cycling turn/rejoin assessment](docs/cycling-turn-practices-2026-11-14.md).
 
 ## What the page does
 
-- **Turn prompts at real decision points.** The page finds the junctions in the OpenStreetMap road network. It
-  gives a prompt only where the rider must choose a road. A bend without a junction is not a turn.
-- **Turn prompts that move forward.** Each route record has a geohash index. The CC700 uses this index to find the
-  rider on the route. Without it, the CC700 stays on the first section and shows "Go straight" for the full route.
-- **Street names** in the top widget, with a "dann links" hint when a second turn comes within 50 m.
+- **Maneuver inference** uses track shape and nearby OpenStreetMap junctions. Noisy or sparse tracks can still produce missed or false prompts.
+- **Geohash-indexed route points** support progress tracking. Native route arbitration and rejoin behavior still have gaps; an index does not guarantee that a prompt advances in every situation.
+- **One caption row** in the top widget, with a `then left · Street` hint when a second turn comes within 50 m.
 - **A map around the route.** The CC700 has no map of its own. The page puts OpenStreetMap data into the route file.
 
 ## CC700 Map settings
 
-The app starts in **Original (Kreuzungskarte)**. Select **Patch v18 / v19 / v20 (farbige Sunlight-Karte)** only if
-your CC700 has the v18, v19 or v20 patch for firmware V1.414. The preview updates from the generated route file.
+The app starts in **Original (Kreuzungskarte)**. Select **Patch v18 / v19 / v20 / v21 (farbige Sunlight-Karte)** only if
+your CC700 has the v18, v19, v20 or v21 patch for firmware V1.414. The preview updates from the generated route file.
 Choose **Abspielen** to replay the route at 1×, 4×, or 8× the speed set in **Einstellungen**.
 The slider lets you move to any point during playback. The ride preview shows the next instruction,
 distance, heading and route progress using the generated route.
@@ -156,7 +125,7 @@ The route file is nanopb 0.3 protobuf (firmware 1.414). Name images are LVGL `IN
 
 ## Patched firmware
 
-The v18/v19/v20 patch changes the map drawing of firmware V1.414. It is not part of this repository.
+The v18/v19/v20/v21 patch changes the map drawing of firmware V1.414. It is not part of this repository.
 Route files for the patched firmware do not show a usable map on the original firmware.
 
 ## Legal
@@ -178,4 +147,4 @@ Route files for the patched firmware do not show a usable map on the original fi
 
 See [the rendering release](docs/rendering-release-2026-11-14.md) for v19 fill, label, geometry and style improvements, compatibility, tests and remaining measurement limits. Select the preview profile matching the firmware actually installed on your device.
 
-[v20 water/cycleway styling](docs/water-cycleway-v20-2026-11-14.md) is installed and selected in the Pages preview: light-blue waterways and 2 px violet cycleways. v19 is retained for rollback.
+The [v21 release](docs/v21-caption-opacity-2026-11-14.md) adds an opaque red route to the [v20 water/cycleway styling](docs/water-cycleway-v20-2026-11-14.md): light-blue waterways and 2 px violet cycleways. Earlier profiles remain selectable.

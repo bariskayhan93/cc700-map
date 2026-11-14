@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build named v20 from pinned v18, without serial/device operations."""
+"""Build named v21 from pinned v18, without serial/device operations."""
 import hashlib
 import importlib.util
 import json
@@ -9,7 +9,7 @@ import subprocess
 
 ROOT = Path(__file__).resolve().parents[1]
 BACKUP = ROOT.parent / 'cc700-backup'
-OUT = ROOT / '.local/patch-v20'
+OUT = ROOT / '.local/patch-v21'
 PREFIX = Path.home() / 'xtensa-esp-elf/bin/xtensa-esp32s3-elf-'
 BASE_SHA = 'ae3539c4a2b174b52f8dce866a93303d7aa2c12476d36cc94844adbb52410bd6'
 
@@ -30,9 +30,9 @@ def main():
     run(str(PREFIX)+'gcc', '-Os', '-mlongcalls', '-mtext-section-literals',
         '-ffreestanding', '-fno-builtin', '-nostdlib', '-Wall', '-fstack-usage',
         '-Wl,-T,patch.ld', '-Wl,--gc-sections', '-Wl,-e,cc_line',
-        '-o', '../patch20.elf',
+        '-o', '../patch21.elf',
         'map.c', 'blk.c', 'arrow.c', 'tramp.S', '-lgcc', cwd=src)
-    elf = OUT / 'patch20.elf'
+    elf = OUT / 'patch21.elf'
     spec = importlib.util.spec_from_file_location('espimg', BACKUP/'tools/espimg.py')
     module = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(module)
@@ -65,13 +65,13 @@ def main():
             irom[1].extend(bytes(offset+length-len(irom[1])))
         irom[1][offset:offset+length]=data
         sections[name]={'bytes':length,'address':hex(address)}
-    version=b'CC700_V1.414-cc20'
+    version=b'CC700_V1.414-cc21'
     drom[1][16:48]=version+bytes(32-len(version))
     image=module.build(header,segments)
     assert len(image)<=0x420000
     rebuilt=module.build(*module.read(image)[:2])
     assert rebuilt==image
-    image_path=OUT/'ota_1_v20.bin'
+    image_path=OUT/'ota_1_v21.bin'
     image_path.write_bytes(image)
     files=[elf,image_path,*src.glob('*')]
     manifest={'version':version.decode(),'base_sha256':BASE_SHA,

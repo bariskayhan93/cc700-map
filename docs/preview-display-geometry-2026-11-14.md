@@ -20,19 +20,24 @@ to the display inside the bezel; the bezel adds its own decorative border.
 
 The 4/60 split of the remaining 64 pixels is a preview layout choice. The
 manufacturer display resolution and extracted map buffer size do not establish
-an exact native widget layout. Fonts, turn widgets, metric contents and GPS
-behavior remain approximations. This correction establishes screen geometry;
+an exact native widget layout. The two-row turn card is 62 native pixels high with a 32-pixel-wide arrow.
+Distance and one outgoing caption occupy its two rows. Long captions are clipped
+with an ellipsis instead of creating a third row; native scrolling timing has
+not been reproduced. Fonts, rasterization, route-chevron spacing, metric layout
+and GPS behavior remain approximations. This correction establishes screen geometry;
 it does not establish pixel-for-pixel firmware parity or change generated route
-files, firmware, map colors or map rendering.
+files, firmware, map colors or map geometry. Circular rider and route-chevron
+overlays reconstruct the supplied UI references; their exact native draw calls
+and chevron spacing have not been established.
 
 ## Verification
 
-A real Chromium layout test loads the page's actual HTML and CSS, supplies short
-preview text, and measures its geometry at 180, 252 and 360 CSS pixel bezel widths.
+A real Chromium layout test loads the page's actual HTML and CSS, supplies short, long and `then …`
+preview captions, and measures its geometry at 180, 252 and 360 CSS pixel bezel widths.
 It verifies the full display ratio, undistorted map, unchanged canvas backing
 buffer, adjacent map/progress/metric regions, and consistent card, arrow and
-text scaling. Browser border snapping is accounted for by comparing card
-content boxes.
+text scaling. It also verifies the fixed two-row card, the absence of unsupported
+extra text rows, and long-caption clipping at every tested width.
 
 ```sh
 CC700_BROWSER=/path/to/chrome-headless-shell node tools/test_preview_layout.mjs

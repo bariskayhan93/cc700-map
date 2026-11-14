@@ -13,13 +13,13 @@ const Q = new URLSearchParams(location.search), DEBUG = Q.has('debug');   // ?de
 const LIMIT = DEBUG && +Q.get('cap') || 1200;                          // ?debug&cap=1500: device limit test
 const log = s => { if (DEBUG) say('log', (new Date().toLocaleTimeString() + ' ' + s + '\n' + $('log').textContent).slice(0, 20000)); };
 const ARROW = ['↑', '↰', '↖', '↱', '↗', '↶'];
-const TURN_TEXT = ['Geradeaus', 'Links abbiegen', 'Leicht links', 'Rechts abbiegen', 'Leicht rechts', 'Wenden'];
-const COURSE = ['N', 'NO', 'O', 'SO', 'S', 'SW', 'W', 'NW'];
+const COURSE = ['N', 'NE', 'E', 'SE', 'S', 'SW', 'W', 'NW'];
 let built, dev, gpxFile;
 let building = false, sending = false, needsBuild = false;
 let playbackFrame = null, playbackTime = null, playbackDistance = 0;
 const km = new Intl.NumberFormat('de-DE', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-const decimal = new Intl.NumberFormat('de-DE', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
+const deviceKm = new Intl.NumberFormat('en-GB', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const decimal = new Intl.NumberFormat('en-GB', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 $('log').hidden = !DEBUG;
 if (self.caches) { caches.delete('cc700-roads-v2'); caches.delete('cc700-roads-v3'); caches.delete('cc700-osm-v1'); }   // road pack of earlier versions (90 MB)
 const LAYERS = ['ground', 'water', 'rails', 'names', 'signals', 'stops', 'trams', 'rough', 'paths', 'arrows', 'details', 'lanes'];   // optional map layers
@@ -124,7 +124,7 @@ function verify(r, model) {                    // the same limits that were test
   return null;
 }
 $('previewStyle').onchange = () => {
-  say('previewNote', $('previewStyle').value === 'cycling' ? 'Türkises Wasser, blaue Radwege, unveränderte Straßenkonturen, deckende Route. Nur Vorschau; der CC700 bleibt unverändert.' : ($('previewStyle').value === 'v20' ? 'Patch v20: helles Wasser, violette Radwege mit 2 Pixeln. ' : $('previewStyle').value === 'v19' ? 'Patch v19: türkises Wasser, klare Pfade, korrigierte Flächen und abgestimmte Straßennamen. ' : 'Patch v18. ') + '240 × 256 Pixel, Gerätefarben. Schrift, Linienrasterung und GPS-Verhalten sind angenähert.');
+  say('previewNote', $('previewStyle').value === 'cycling' ? 'Türkises Wasser, blaue Radwege, unveränderte Straßenkonturen, deckende Route. Nur Vorschau; der CC700 bleibt unverändert.' : ($('previewStyle').value === 'v21' ? 'Patch v21: deckende rote Route, helles Wasser, violette Radwege mit 2 Pixeln. ' : $('previewStyle').value === 'v20' ? 'Patch v20: helles Wasser, violette Radwege mit 2 Pixeln. ' : $('previewStyle').value === 'v19' ? 'Patch v19: türkises Wasser, klare Pfade, korrigierte Flächen und abgestimmte Straßennamen. ' : 'Patch v18. ') + '240 × 256 Pixel, Gerätefarben. Schrift, Linienrasterung und GPS-Verhalten sind angenähert.');
   if (built) show();
 };
 
@@ -138,22 +138,20 @@ function show(distance = +$('pos').value) {
 }
 
 function showRide(distance, heading) {
-  const { remaining, dir, nextDir, finished, street } = previewGuidance(built.sections, distance, built.distance);
+  const { remaining, dir, finished, caption } = previewGuidance(built.sections, distance, built.distance);
   const inKm = remaining >= 1000;
   say('turnDistance', inKm ? decimal.format(remaining / 1000) : String(Math.round(remaining)));
   say('turnUnit', inKm ? 'km' : 'm');
   $('turnArrow').setAttribute('data-dir', String(dir));
-  say('turnInstruction', finished ? 'Ziel erreicht' : dir === 6 ? 'Zum Ziel' : TURN_TEXT[dir]);
-
-  say('turnStreet', street);
-  $('turnNext').hidden = nextDir === null || finished;
-  if (nextDir !== null) say('turnNext', 'Danach ' + TURN_TEXT[nextDir].toLocaleLowerCase('de-DE'));
+  say('turnCaption', caption);
 
   say('rideSpeed', decimal.format(playbackFrame === null ? 0 : built.speedKmh));
   say('rideHeading', COURSE[Math.round(heading / 45) % COURSE.length]);
-  say('rideRemaining', km.format((finished ? 0 : Math.max(0, built.distance - distance)) / 1000));
+  say('rideRemaining', deviceKm.format((finished ? 0 : Math.max(0, built.distance - distance)) / 1000));
   $('rideCompass').style.transform = `rotate(${-heading}deg)`;
-  $('rideProgress').style.transform = `scaleX(${finished ? 1 : distance / built.distance})`;
+  const progress = finished ? 1 : Math.max(0, Math.min(1, distance / built.distance));
+  $('rideProgress').style.transform = `scaleX(${progress})`;
+  $('rideProgress').parentElement.style.setProperty('--ride-progress', `${progress * 100}%`);
 }
 
 function stopPlayback() {

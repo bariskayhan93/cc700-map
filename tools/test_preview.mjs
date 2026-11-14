@@ -279,3 +279,10 @@ test('v20 separates thin violet cycleways from consistently light-blue water',()
  assert.equal(old.paths.filter(p=>p.color===rgb565('#0b4fb3')&&p.width===3).length,2);
  assert(!old.paths.some(p=>p.color===rgb565('#82cbd5')),'v19 waterway comparison remains distinct');
 });
+
+test('v21 removes only red-route transparency while retaining v20 map palette',()=>{
+ const model=readFile(generate(true).file),old=render(model,50,true,{profile:'v20'}),next=render(model,50,true,{profile:'v21'});
+ const color=rgb565('#d62828'),a=old.paths.findIndex(p=>p.color===color),b=next.paths.findIndex(p=>p.color===color);
+ assert(a>=0&&b>=0);assert.equal(old.alphas[a],180/255);assert.equal(next.alphas[b],1);
+ assert.deepEqual(next.paths,old.paths);assert.deepEqual(next.rectangles,old.rectangles);
+});

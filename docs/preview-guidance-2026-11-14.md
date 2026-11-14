@@ -29,10 +29,18 @@ explicit quantization/progress-estimation limit, not an adjustment applied to
 the preview. The test verifies that passing either straight boundary does not
 reset the countdown.
 
-Current-record street text and explicit waypoint labels remain current-record
-text; looking ahead does not announce a future waypoint early. Generated
-`then … · ` prefixes become a separate following-turn hint only when another
-maneuver exists within 50 m. Synthetic 22 m and 27 m pairs exercise this path.
+The turn card has exactly two rows: distance and one caption, beside a single
+arrow. Within 300 m, its caption comes from `sections[targetIndex + 1].caption`,
+the outgoing record's actual serialized field-6 text. This follows the stock
+caption lookup; it is distinct from the legacy `.text` metadata and the name
+bitmap channel. Generated `then … · ` prefixes remain in that same caption row;
+there is no added instruction, street or `Danach` row. Synthetic 22 m and 27 m
+pairs exercise this path. Explicit waypoint captions are consumed through the
+same outgoing-record lookup. Legacy fixtures without `.caption` can fall back
+to `.text`; generated current routes always supply `.caption`.
+
+Above 300 m, the caption is `Go straight`, matching the supplied reference,
+rather than prematurely exposing the outgoing street or waypoint.
 At an exact maneuver distance the preview retains a zero countdown, advancing
 after that point. The position slider now permits fractional metres and uses
 the exact route length rather than declaring arrival at its integer floor.
@@ -46,7 +54,7 @@ backtracking, timing, hysteresis, GPS-derived speed, remaining-distance filterin
 or the complete native text/waypoint state machine. Destination flags and
 arrival at exact route length remain preview conventions. Native terminal
 behavior has not been established by the icon-threshold evidence alone.
-Generated route records and map rendering are unchanged.
+The helper does not mutate route records or map geometry. The separate caption serializer correction supplies the actual field-6 strings.
 
 ## Verification
 
@@ -55,9 +63,9 @@ node --test tools/test_preview_guidance.mjs tools/test_service_worker.mjs
 ```
 
 Functional tests cover the synthetic photo distances, both straight boundaries,
-the inclusive 300 m threshold, passed maneuvers, close-turn hints, current
-waypoint/street preservation, terminal/no-turn/empty routes and fractional
+the inclusive 300 m threshold, passed maneuvers, single-row close-turn captions, outgoing
+waypoint/street lookup, terminal/no-turn/empty routes and fractional
 arrival. Replacing lookahead with the old current-record-only target makes the
-regression tests fail. Service-worker cache `cc700-app-v10` includes the helper;
+regression tests fail. Service-worker cache `cc700-app-v11` includes the helper;
 the existing offline-module-graph test executes a fresh install and traverses
 all imported modules.

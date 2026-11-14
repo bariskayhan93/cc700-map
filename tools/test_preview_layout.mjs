@@ -16,7 +16,6 @@ const checks = () => {
   document.getElementById('out').hidden = false;
   document.getElementById('turnDistance').textContent = '666';
   document.getElementById('turnUnit').textContent = 'm';
-  document.getElementById('turnInstruction').textContent = 'Geradeaus';
   document.getElementById('rideSpeed').textContent = '16.1';
   const bounds = selector => {
     const r = document.querySelector(selector).getBoundingClientRect();
@@ -26,12 +25,19 @@ const checks = () => {
   // rather than transform the fixture, so container units must actually respond.
   for (const available of [180, 252, 360]) {
     screen.style.width = `${available}px`;
-    results.push({ screen:bounds('.device-screen'), map:bounds('#cv'),
-      card:bounds('.turn-card'), cardBorder:parseFloat(getComputedStyle(document.querySelector('.turn-card')).borderTopWidth), arrow:bounds('.turn-arrow'),
-      track:bounds('.ride-track'), metrics:bounds('.ride-metrics'),
-      distanceFont:parseFloat(getComputedStyle(document.querySelector('.turn-distance')).fontSize),
-      metricFont:parseFloat(getComputedStyle(document.querySelector('.ride-metrics dd')).fontSize),
-      canvas:[document.getElementById('cv').width, document.getElementById('cv').height] });
+    for (const caption of ['Go straight', 'A deliberately long outgoing street caption', 'then left · A deliberately long outgoing street caption']) {
+      document.getElementById('turnCaption').textContent = caption;
+      results.push({ captionText:caption, captionScrollWidth:document.getElementById('turnCaption').scrollWidth, captionClientWidth:document.getElementById('turnCaption').clientWidth, screen:bounds('.device-screen'), map:bounds('#cv'),
+        caption:bounds('#turnCaption'),
+        captionOverflow:getComputedStyle(document.getElementById('turnCaption')).overflowX,
+        rows:document.querySelector('.turn-copy').children.length,
+        unsupportedRows:!!document.querySelector('#turnInstruction, #turnStreet, #turnNext'),
+        card:bounds('.turn-card'), arrow:bounds('.turn-arrow'),
+        track:bounds('.ride-track'), metrics:bounds('.ride-metrics'),
+        distanceFont:parseFloat(getComputedStyle(document.querySelector('.turn-distance')).fontSize),
+        metricFont:parseFloat(getComputedStyle(document.querySelector('.ride-metrics dd')).fontSize),
+        canvas:[document.getElementById('cv').width, document.getElementById('cv').height] });
+    }
   }
   document.body.textContent = 'LAYOUT_RESULT:' + JSON.stringify(results);
 };
@@ -60,20 +66,24 @@ try {
     assert.deepEqual(row.canvas, [240, 256], 'backing buffer stays native');
     assert(row.card.x >= row.map.x && row.card.x + row.card.width <= row.map.x + row.map.width + 0.15);
     assert(row.card.y + row.card.height < row.map.y + row.map.height);
+    assert.equal(row.rows, 2, 'card contains distance and one caption row');
+    assert.equal(row.unsupportedRows, false, 'no unsupported instruction/street/then rows');
+    near(row.card.height, 62 * nativeScale, 'native-sized populated turn card');
+    assert(row.caption.x + row.caption.width <= row.card.x + row.card.width);
+    assert(row.caption.y + row.caption.height <= row.card.y + row.card.height);
+    assert.equal(row.captionOverflow, 'hidden', 'long caption stays bounded');
+    if (row.captionText !== 'Go straight') assert(row.captionScrollWidth > row.captionClientWidth, 'fixture really overflows and is clipped');
   }
   for (const row of rows.slice(1)) {
     const scale = row.map.width / rows[0].map.width;
     for (const key of ['card', 'arrow', 'track', 'metrics']) {
-      // Compare content boxes: browsers snap borders to physical pixels.
-      const border = key === 'card' ? 2 * row.cardBorder : 0;
-      const firstBorder = key === 'card' ? 2 * rows[0].cardBorder : 0;
-      near(row[key].height - border, (rows[0][key].height - firstBorder) * scale,
+      near(row[key].height, rows[0][key].height * scale,
         `${key} scales with map`);
     }
     near(row.distanceFont, rows[0].distanceFont * scale, 'turn text scales with map');
     near(row.metricFont, rows[0].metricFont * scale, 'metric text scales with map');
   }
-  console.log('PASS: 3:4 display, unaltered map buffer, and uniform overlays at 180, 252, 360 CSS px');
+  console.log('PASS: 3:4 display, native two-row card, bounded captions, uniform overlays at 180, 252, 360 CSS px');
 } finally {
   rmSync(temporary, { recursive:true, force:true });
 }

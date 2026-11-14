@@ -2,7 +2,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { previewGuidance } from '../js/preview_guidance.js';
-const section = (dist, dir = 0, text = 'Road', type = 1) => ({dist, dir, text, type});
+const section = (dist, dir = 0, text = 'Road', type = 1) => ({dist, dir, text, caption:text, type});
 const synthetic = [section(15281.84), section(15591.02), section(15858, 3), section(22562.58, 0, 'Finish', 2)];
 
 test('photo-derived synthetic countdown spans straight record boundaries', () => {
@@ -26,27 +26,30 @@ test('passed maneuver advances, while its exact point still has a zero countdown
   assert.equal(passed.dir, 6);
   assert(Math.abs(passed.remaining - 6704.57) < 0.001);
 });
-for (const gap of [22, 27]) test(`close ${gap} m turn pair keeps then hint until first maneuver passes`, () => {
-  const route = [section(100, 3, 'then left · First road'), section(100 + gap, 1, 'Second road'), section(300, 0, 'Finish', 2)];
+for (const gap of [22, 27]) test(`close ${gap} m turn pair uses one outgoing caption row`, () => {
+  const route = [section(100, 3, 'First road'), section(100 + gap, 1, 'then left · Second road'), section(300, 0, 'Third road', 2)];
   const first = previewGuidance(route, 90, 300);
-  assert.equal(first.nextDir, 1);
-  assert.equal(first.street, 'First road');
+  assert.equal(first.caption, 'then left · Second road');
   assert.equal(first.dir, 3);
+  assert(!('nextDir' in first), 'native card has no separate following-turn row');
   const second = previewGuidance(route, 100.1, 300);
-  assert.equal(second.nextDir, null);
-  assert.equal(second.street, 'Second road');
+  assert.equal(second.caption, 'Third road');
   assert.equal(second.dir, 1);
 });
-test('lookahead preserves current street and explicit waypoint rather than exposing future names', () => {
-  const route = [section(100, 0, '▶ Water stop'), section(250, 3, 'Future street'), section(500, 0, 'Finish', 2)];
-  assert.equal(previewGuidance(route, 50, 500).street, '▶ Water stop');
-  assert.equal(previewGuidance(route, 100.1, 500).street, 'Future street');
+test('near maneuver reads outgoing serialized caption including explicit waypoint', () => {
+  const route = [section(100, 3, 'Approach'), section(500, 0, 'Legacy text', 2)];
+  route[1].caption = '▶ Water stop';
+  assert.equal(previewGuidance(route, 50, 500).caption, '▶ Water stop');
 });
-test('then hint requires a real nearby subsequent maneuver and preserves literal street text', () => {
-  const route = [section(100, 3, 'then left · Street'), section(200, 1), section(300, 0, 'Finish', 2)];
-  assert.equal(previewGuidance(route, 90, 300).nextDir, null);
-  const literal = [section(100, 3, 'then market street'), section(300, 0, 'Finish', 2)];
-  assert.equal(previewGuidance(literal, 90, 300).street, 'then market street');
+test('far maneuver shows Go straight rather than a future caption', () => {
+  const route = [section(800, 3, 'Approach'), section(1000, 0, '▶ Future waypoint', 2)];
+  assert.equal(previewGuidance(route, 400, 1000).caption, 'Go straight');
+  assert.equal(previewGuidance(route, 500, 1000).caption, '▶ Future waypoint');
+});
+test('caption fallback supports legacy fixtures without adding a third line', () => {
+  const route = [section(100, 3), section(300, 0, 'Exit street', 2)];
+  delete route[1].caption;
+  assert.equal(previewGuidance(route, 50, 300).caption, 'Exit street');
 });
 test('straight-only and empty routes count to destination without inventing a turn', () => {
   const route = [section(100), section(300, 0, 'Finish', 2)];
@@ -61,7 +64,7 @@ test('arrival uses exact total distance and clamps negative or overshooting repl
   const arrival = previewGuidance(route, 100.4, 100.4);
   assert.equal(arrival.finished, true);
   assert.equal(arrival.remaining, 0);
-  assert.equal(arrival.nextDir, null);
+  assert.equal(arrival.caption, 'Arrived');
   assert.equal(previewGuidance(route, 200, 100.4).remaining, 0);
   assert.equal(previewGuidance(route, -5, 100.4).remaining, 100.4);
 });

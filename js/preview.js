@@ -240,12 +240,12 @@ export function draw(canvas, model, distM, styled = model.styled, options = {}) 
   const entries = blocks[section] ?? [];
   const original = entries.filter(entry => !entry.style);
   drawOriginal(g, original, project);
-  const labels = styled ? drawStyled(g, entries.filter(entry => entry.style), project, options.profile === 'cycling', ['v19','v20'].includes(options.profile), options.profile === 'v20') : [];
-  drawLabels(g, labels, ['v19','v20','cycling'].includes(options.profile)); // Map labels precede the firmware route and turn overlays.
+  const labels = styled ? drawStyled(g, entries.filter(entry => entry.style), project, options.profile === 'cycling', ['v19','v20','v21'].includes(options.profile), ['v20','v21'].includes(options.profile)) : [];
+  drawLabels(g, labels, ['v19','v20','v21','cycling'].includes(options.profile)); // Map labels precede the firmware route and turn overlays.
   const routeColor = styled ? PATCH_ROUTE : ORIGINAL_ROUTE;
   g.lineCap = g.lineJoin = 'round';
   stroke(g, [...all.slice(0, next), me].map(project), ROAD_EDGE, 6);
-  if (styled) g.globalAlpha = options.profile === 'cycling' ? 1 : 180 / 255;                // v18/v19: opacity 180/255; cycling is a preview-only candidate
+  if (styled) g.globalAlpha = ['cycling','v21'].includes(options.profile) ? 1 : 180 / 255;                // v18–v20: 180/255; v21 is opaque
   stroke(g, [me, ...all.slice(next)].map(project), routeColor, styled ? 4 : 6);
   g.globalAlpha = 1;
   if (styled) {                                   // rough parts of the route: dots over the route line
@@ -253,8 +253,32 @@ export function draw(canvas, model, distM, styled = model.styled, options = {}) 
   }
   if (styled) drawTurns(g, entries, section, project, me);
 
+  // UI reconstruction: reference photos show white route chevrons and a
+  // circular rider marker. Spacing/fonts/raster are illustrative, not extracted
+  // native draw calls. Bound chevrons even for very long or degenerate routes.
+  const ahead = [me, ...all.slice(next)].map(project);
+  let walked = 0, nextChevron = 28, chevrons = 0;
+  for (let i = 1; i < ahead.length && chevrons < 64; i++) {
+    const [ax, ay] = ahead[i - 1], [bx, by] = ahead[i];
+    const length = Math.hypot(bx - ax, by - ay);
+    if (!length) continue;
+    const ux = (bx - ax) / length, uy = (by - ay) / length;
+    while (nextChevron <= walked + length && chevrons < 64) {
+      const t = nextChevron - walked, x = ax + ux * t, y = ay + uy * t;
+      if (x >= 0 && x < W && y >= 0 && y < H) {
+        stroke(g, [[x - ux * 2 - uy * 2, y - uy * 2 + ux * 2],
+          [x + ux * 2, y + uy * 2], [x - ux * 2 + uy * 2, y - uy * 2 - ux * 2]]
+          .map(p => p.map(Math.round)), '#ffffff', 1);
+      }
+      nextChevron += 28; chevrons++;
+    }
+    walked += length;
+  }
   const [x, y] = project(me);
-  path(g, [[x, y - 9], [x - 7, y + 7], [x + 7, y + 7]]);
+  g.beginPath(); g.arc(x, y, 17, 0, Math.PI * 2);
+  g.fillStyle = rgb565('#fbfdff'); g.fill();
+  g.strokeStyle = rgb565('#9ac6f5'); g.lineWidth = 2; g.stroke();
+  path(g, [[x, y - 11], [x - 8, y + 8], [x, y + 5], [x + 8, y + 8]]);
   g.fillStyle = rgb565(ORIGINAL_ROUTE);
   g.fill();
   return { section, entries: entries.length, heading };

@@ -27,14 +27,14 @@
   .playback select { font:inherit; padding:5px 7px; border:1px solid var(--bd); border-radius:7px; background:var(--bg); color:var(--fg); }
   #playDistance { margin-inline-start:auto; color:var(--mut); font-size:13px; font-variant-numeric:tabular-nums; }
   .mut { color:var(--mut); font-size:13px; margin-top:8px; }
-  .device-screen { container-type:inline-size; width:min(100%, 360px); box-sizing:border-box; margin:10px auto 4px; overflow:hidden; border:6px solid #26313d; border-radius:15px; color:#16212c; background:#f6f8fa; }
+  .device-screen { container-type:inline-size; width:min(100%, 360px); box-sizing:border-box; margin:10px auto 4px; overflow:hidden; border:6px solid #26313d; border-radius:4px; color:#16212c; background:#f6f8fa; }
   /* Native display coordinates: 240 × 320; the map keeps its 240 × 256 buffer.
      Container units give every display element the same native pixel scale. */
   .device-viewport { --device-pixel:calc(100cqw / 240); font-size:calc(10 * var(--device-pixel)); height:calc(320 * var(--device-pixel)); }
   .device-map { position:relative; height:calc(256 * var(--device-pixel)); }
   .device-map canvas { display:block; width:100%; height:100%; image-rendering:pixelated; }
-  .turn-card { position:absolute; inset:calc(8 * var(--device-pixel)) calc(8 * var(--device-pixel)) auto; display:flex; align-items:center; gap:calc(10 * var(--device-pixel)); box-sizing:border-box; padding:calc(7 * var(--device-pixel)) calc(9 * var(--device-pixel)); border:calc(1 * var(--device-pixel)) solid #cdd6df; border-radius:calc(8 * var(--device-pixel)); background:#fbfdff; box-shadow:0 calc(2 * var(--device-pixel)) calc(5 * var(--device-pixel)) #1d2b3d25; }
-  .turn-arrow { display:grid; place-items:center; flex:0 0 calc(42 * var(--device-pixel)); height:calc(42 * var(--device-pixel)); color:#165fc7; font-size:calc(35 * var(--device-pixel)); font-weight:700; line-height:1; }
+  .turn-card { position:absolute; inset:calc(8 * var(--device-pixel)) calc(8 * var(--device-pixel)) auto; display:flex; align-items:center; gap:calc(8 * var(--device-pixel)); height:calc(62 * var(--device-pixel)); box-sizing:border-box; padding:calc(6 * var(--device-pixel)) calc(8 * var(--device-pixel)); border:calc(1 * var(--device-pixel)) solid #cdd6df; border-radius:calc(8 * var(--device-pixel)); background:#fbfdff; box-shadow:0 calc(2 * var(--device-pixel)) calc(5 * var(--device-pixel)) #1d2b3d25; }
+  .turn-arrow { display:grid; place-items:center; flex:0 0 calc(32 * var(--device-pixel)); height:calc(42 * var(--device-pixel)); color:#165fc7; font-size:calc(35 * var(--device-pixel)); font-weight:700; line-height:1; }
   .turn-arrow::before { content:""; width:100%; height:100%; background:currentColor; clip-path:polygon(50% 5%, 91% 46%, 66% 46%, 66% 94%, 34% 94%, 34% 46%, 9% 46%); }
   .turn-arrow[data-dir="1"]::before, .turn-arrow[data-dir="3"]::before { clip-path:polygon(60% 5%, 98% 39%, 60% 73%, 60% 53%, 34% 53%, 34% 94%, 10% 94%, 10% 37%, 60% 37%); }
   .turn-arrow[data-dir="1"]::before { transform:scaleX(-1); }
@@ -43,26 +43,26 @@
   .turn-arrow[data-dir="5"]::before, .turn-arrow[data-dir="6"]::before { background:none; clip-path:none; }
   .turn-arrow[data-dir="5"]::before { content:"↶"; }
   .turn-arrow[data-dir="6"]::before { content:"⚑"; }
-  .turn-copy { min-width:0; }
+  .turn-copy { min-width:0; flex:1; overflow:hidden; }
   .turn-distance { font-size:calc(30 * var(--device-pixel)); font-weight:750; line-height:1.05; font-variant-numeric:tabular-nums; }
   .turn-distance small { font-size:calc(13 * var(--device-pixel)); font-weight:650; }
-  #turnInstruction { font-size:calc(14 * var(--device-pixel)); line-height:1.2; font-weight:650; }
-  #turnStreet, #turnNext { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; color:#455564; font-size:calc(11 * var(--device-pixel)); line-height:1.3; }
-  #turnNext { color:#16509a; font-weight:650; }
-  .map-scale, .map-remaining { position:absolute; bottom:calc(7 * var(--device-pixel)); padding:calc(3 * var(--device-pixel)) calc(5 * var(--device-pixel)); background:#fbfdfff0; border-radius:calc(4 * var(--device-pixel)); font-size:calc(11 * var(--device-pixel)); font-weight:600; }
+  #turnCaption { overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-size:calc(14 * var(--device-pixel)); line-height:1.15; font-weight:500; }
+  .map-scale, .map-remaining { position:absolute; bottom:calc(7 * var(--device-pixel)); padding:0; background:transparent; font-size:calc(11 * var(--device-pixel)); font-weight:600; }
   .map-scale { left:calc(7 * var(--device-pixel)); width:calc(100% / 6); text-align:center; }
   .map-scale::after { content:""; display:block; height:calc(3 * var(--device-pixel)); border:solid #273545; border-width:0 calc(1 * var(--device-pixel)) calc(1 * var(--device-pixel)); }
-  .map-remaining { right:calc(7 * var(--device-pixel)); text-align:right; line-height:1.15; }
-  .map-remaining strong { font-size:calc(17 * var(--device-pixel)); font-variant-numeric:tabular-nums; }
+  .map-remaining { right:calc(7 * var(--device-pixel)); text-align:right; line-height:1.15; font-weight:500; }
+  .map-remaining strong { font-size:calc(18 * var(--device-pixel)); font-variant-numeric:tabular-nums; }
   .map-compass { position:absolute; bottom:calc(33 * var(--device-pixel)); left:calc(9 * var(--device-pixel)); width:calc(25 * var(--device-pixel)); height:calc(25 * var(--device-pixel)); display:grid; place-items:center; border:calc(1 * var(--device-pixel)) solid #f6f8fa; border-radius:50%; background:#3e4854; }
   .map-compass i { display:block; width:calc(10 * var(--device-pixel)); height:calc(18 * var(--device-pixel)); background:linear-gradient(#e34842 50%, #fff 50%); clip-path:polygon(50% 0,100% 50%,50% 100%,0 50%); }
-  .ride-track { height:calc(4 * var(--device-pixel)); background:#d1e9db; }
+  .ride-track { position:relative; height:calc(4 * var(--device-pixel)); background:#d1e9db; }
   #rideProgress { height:100%; background:#168856; transform:scaleX(0); transform-origin:left; }
+  .ride-track::after { content:""; position:absolute; left:var(--ride-progress, 0%); top:50%; width:calc(7 * var(--device-pixel)); height:calc(7 * var(--device-pixel)); transform:translate(-50%,-50%); box-sizing:border-box; border:calc(1 * var(--device-pixel)) solid #b9d8fb; border-radius:50%; background:#2185df; }
   .ride-metrics { height:calc(60 * var(--device-pixel)); box-sizing:border-box; display:grid; grid-template-columns:1fr 1fr; margin:0; }
   .ride-metrics div { padding:calc(4 * var(--device-pixel)) calc(8 * var(--device-pixel)) calc(6 * var(--device-pixel)); text-align:center; }
-  .ride-metrics div + div { border-inline-start:calc(1 * var(--device-pixel)) solid #dae2e9; }
+  .ride-metrics div + div { position:relative; border-inline-start:calc(1 * var(--device-pixel)) solid #dae2e9; }
+  .ride-metrics div + div::after { content:""; position:absolute; bottom:0; left:25%; width:50%; height:calc(4 * var(--device-pixel)); background:#2687f5; }
   .ride-metrics dt { color:#455564; font-size:calc(11 * var(--device-pixel)); }
-  .ride-metrics dd { margin:0; font-size:calc(22 * var(--device-pixel)); font-weight:750; line-height:1.15; font-variant-numeric:tabular-nums; }
+  .ride-metrics dd { margin:0; font-size:calc(28 * var(--device-pixel)); font-weight:750; line-height:1.15; font-variant-numeric:tabular-nums; }
   .ride-metrics small { font-size:calc(11 * var(--device-pixel)); font-weight:600; }
   input[type=range], progress { width:100%; margin-top:8px; }
   input[type=number] { width:64px; font:inherit; padding:4px 6px; }
@@ -80,10 +80,10 @@
       <label for="fw">Firmware auf dem CC700</label>
       <select id="fw" aria-describedby="fwOriginal">
         <option value="orig" selected>Original (Kreuzungskarte)</option>
-        <option value="patch">Patch v18 / v19 / v20 (farbige Sunlight-Karte)</option>
+        <option value="patch">Patch v18 / v19 / v20 / v21 (farbige Sunlight-Karte)</option>
       </select>
       <p id="fwOriginal" class="mut">Für Geräte mit unveränderter Firmware.</p>
-      <p id="fwWarning" class="warning" hidden>Nur für Geräte mit installiertem Patch v18, v19 oder v20 für Firmware V1.414.</p>
+      <p id="fwWarning" class="warning" hidden>Nur für Geräte mit installiertem Patch v18, v19, v20 oder v21 für Firmware V1.414.</p>
     </div>
     <label class="btn">GPX wählen<input id="gpx" type="file" accept=".gpx,application/gpx+xml" hidden></label>
     <div id="sum" class="mut" role="status">Aus einem GPX wird eine CC700-Route mit Abbiegehinweisen, Straßennamen und Karte.</div>
@@ -94,7 +94,8 @@
       <select id="previewStyle">
         <option value="v18">Patch v18</option>
         <option value="v19">Patch v19 · verbesserte Füllung und Beschriftung</option>
-        <option value="v20" selected>Patch v20 · helles Wasser, violette Radwege (2 px)</option>
+        <option value="v20">Patch v20 · helles Wasser, violette Radwege (2 px)</option>
+        <option value="v21" selected>Patch v21 · deckende rote Route, Palette wie v20</option>
         <option value="cycling">Radkarten-Studie (nur Vorschau)</option>
       </select>
       </div>
@@ -107,19 +108,17 @@
               <span id="turnArrow" class="turn-arrow" data-dir="0" aria-hidden="true"></span>
               <div class="turn-copy">
                 <div class="turn-distance"><span id="turnDistance"></span> <small id="turnUnit"></small></div>
-                <div id="turnInstruction"></div>
-                <div id="turnStreet"></div>
-                <div id="turnNext" hidden></div>
+                <div id="turnCaption"></div>
               </div>
             </div>
             <div class="map-compass" aria-hidden="true"><i id="rideCompass"></i></div>
             <div class="map-scale" aria-hidden="true">100 m</div>
-            <div class="map-remaining">Zum Ziel<br><strong id="rideRemaining"></strong> km</div>
+            <div class="map-remaining"><span aria-hidden="true">⚑</span> (km)<br><strong id="rideRemaining"></strong></div>
           </div>
           <div class="ride-track" aria-hidden="true"><div id="rideProgress"></div></div>
           <dl class="ride-metrics">
-            <div><dt>Tempo</dt><dd><span id="rideSpeed"></span> <small>km/h</small></dd></div>
-            <div><dt>Kurs</dt><dd id="rideHeading"></dd></div>
+            <div><dt>Speed</dt><dd><span id="rideSpeed"></span></dd></div>
+            <div><dt>GPS Heading</dt><dd id="rideHeading"></dd></div>
           </dl>
         </div>
       </div>
