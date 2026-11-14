@@ -1,0 +1,19 @@
+{
+  "candidate_sha256": "7d6204b13850dbf1dcadace3a74932156686b1847ba6a4527d7f90ba224f9be5",
+  "phase": "booted",
+  "readback_verified": true,
+  "backup_sha256": "a7caf9767c42808c8405427d9436e563d579140d74950e6779dab3b557f40a94",
+  "app_at_ota1": true,
+  "crash_observed": false,
+  "reset_count": 1,
+  "boot_confirmed": true,
+  "reset": "RTS automatic app boot",
+  "writes": [
+    "ota_1 image at 0x440000"
+  ],
+  "stock_ota0_written": false,
+  "otadata_written": false,
+  "route_ride_storage_written": false,
+  "gps_injection": false,
+  "limits": "Eight-second boot observation; no target frame-time, heap/stack high-water or physical navigation acceptance measurement."
+}
