@@ -57,8 +57,8 @@ Artificial area clipping edges remain unoutlined using the encoded no-outline
 flag. True and clipped edges are not separately encoded yet; no new border
 geometry, block size, firmware allocation or device drawing passes are added.
 
-The study evaluates the whole navigation hierarchy: nearby-road casings and
-bridge/tunnel cues remain, ordinary distant roads use one stroke, area outlines
+The study evaluates the whole navigation hierarchy: road borders and interiors at all distances and
+bridge/tunnel cues remain; area outlines
 are omitted, and ordinary path dashes use two pixels so round caps do not close
 the short gaps. Green/grey fills and stored geometry remain unchanged. Labels
 are drawn before the route and arrows, as on the device. These study changes
@@ -81,5 +81,13 @@ These are generated map-canvas fixtures, not device photographs or whole-device
 emulation. They exercise river/cycleway separation, polygon holes and clipping,
 bridges/tunnels, and crowded junction labels/arrows. Native Canvas rendering was
 inspected locally; the browser-control host was unavailable for an interactive
-browser acceptance check. Browser stroke calls decrease from 41 to 38, 26 to 25,
-14 to 11 and 37 to 35 in these fixtures; these counts are not hardware speedups.
+browser acceptance check. Fewer drawing operations are not a readability criterion. The earlier study’s
+single grey strokes for distant streets were rejected and removed; normal road
+borders and interiors are retained in both profiles.
+
+## Street readability correction
+
+The cycling study no longer replaces distant streets with single grey lines.
+Both profiles retain the same road borders, interiors, widths and crossing cues.
+This correction addresses user feedback that the simplified streets were worse.
+Cache v6 includes the corrected preview. No device firmware changed.

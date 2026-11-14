@@ -199,17 +199,18 @@ test('route and turn overlays remain above map labels as on the device',()=>{
  assert(lastLabel>=0 && lastLabel<route);
 });
 
-test('cycling study quiets distant roads and area boundaries while retaining crossing cues',()=>{
- const line=(flags,x)=>({style:6|(2<<4)|flags,center:at(x,0),points:[at(x,200)]});
+test('cycling study preserves street borders and interiors at junctions and in the distance',()=>{
+ const line=(flags,x,kind=6)=>({style:kind|(2<<4)|flags,center:at(x,0),points:[at(x,200)]});
  const area={style:3|(2<<4),center:at(-180,0),points:[at(-100,0),at(-100,180),at(-180,180),at(-180,0)]};
  const model={secs:[[[...at(0,0),0],[...at(0,300),30000]]],
-  blocks:[[area,line(0,20),line(0x800,40),line(0x800|0x80,60),line(0x800|0x100,80)]],styled:true};
+  blocks:[[area,line(0,20),line(0x800,40),line(0x800|0x80,60),line(0x800|0x100,80),line(0x800,100,7)]],styled:true};
  const a=render(model,40,true),b=render(model,40,true,{profile:'cycling'});
- assert(b.paths.length<a.paths.length);
  assert(a.paths.some(p=>p.width===1&&p.color===rgb565('#2f7fcf')));
  assert(!b.paths.some(p=>p.width===1&&p.color===rgb565('#378b98')));
  for(const color of ['#3d4146','#000000']) assert.equal(b.paths.filter(p=>p.color===rgb565(color)).length,a.paths.filter(p=>p.color===rgb565(color)).length);
- assert.equal(b.paths.filter(p=>p.width===6&&p.color===rgb565('#7a7e83')).length,a.paths.filter(p=>p.width===6&&p.color===rgb565('#7a7e83')).length-1);
+ const roadColors=new Set(['#3d4146','#7a7e83','#f4f4f4','#9a9ea3','#000000','#ffffff'].map(rgb565));
+ const roads=calls=>calls.paths.filter(p=>roadColors.has(p.color));
+ assert.deepEqual(roads(b),roads(a));
 });
 
 test('cycling study keeps ordinary paths distinct from rough marks at native pixel widths',()=>{

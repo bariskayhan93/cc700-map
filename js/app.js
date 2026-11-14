@@ -123,7 +123,7 @@ function verify(r, model) {                    // the same limits that were test
   return null;
 }
 $('previewStyle').onchange = () => {
-  say('previewNote', $('previewStyle').value === 'cycling' ? 'Türkises Wasser, blaue Radwege, ruhigere Flächen und Nebenstraßen, deckende Route. Nur Vorschau; der CC700 bleibt unverändert.' : '240 × 256 Pixel, Gerätefarben. Schrift, Linienrasterung und GPS-Verhalten sind angenähert.');
+  say('previewNote', $('previewStyle').value === 'cycling' ? 'Türkises Wasser, blaue Radwege, unveränderte Straßenkonturen, deckende Route. Nur Vorschau; der CC700 bleibt unverändert.' : '240 × 256 Pixel, Gerätefarben. Schrift, Linienrasterung und GPS-Verhalten sind angenähert.');
   if (built) show();
 };
 
