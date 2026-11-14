@@ -18,6 +18,8 @@ One executed TODO documents a remaining noisy-track false turn. No private ride
 files or device connection are required. See the [app release notes](docs/app-release-2026-11-14.md)
 for changes and remaining limitations. [Browser UI checks and artwork reproduction](docs/current-preview-artwork-2026-11-14.md) are documented separately.
 
+[Project status: findings, shipped changes and next priorities](docs/project-status-2026-11-14.md).
+
 ## Current preview
 
 The preview follows the supplied CC700 references: a **240 × 320** portrait display,
