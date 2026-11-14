@@ -254,3 +254,28 @@ test('acceptance views can vary scale and heading without mutating route data',(
  assert.notDeepEqual(a.positions,b.positions);assert.deepEqual(model,before);
  assert.deepEqual(render(model,40,true,{metresPerPixel:NaN,headingDegrees:Infinity}).positions,render(model,40,true).positions);
 });
+
+
+test('v20 separates thin violet cycleways from consistently light-blue water',()=>{
+ const entry=(kind,ps,flags=0)=>({style:kind|(2<<4)|flags,center:at(...ps[0]),points:ps.slice(1).map(p=>at(...p))});
+ const entries=[entry(3,[[-100,60],[100,60],[100,170],[-100,170],[-100,60]]),
+  entry(4,[[-100,110],[100,110]]),entry(4,[[130,30],[130,200]]),
+  entry(10,[[-60,30],[-60,220]]),entry(10,[[60,30],[60,220]],0x80),
+  entry(11,[[90,30],[90,220]])];
+ const model={secs:[[[...at(0,0),0],[...at(0,300),30000]]],blocks:[entries],styled:true};
+ for(const headingDegrees of [0,45,90]) {
+  const calls=render(model,50,true,{profile:'v20',headingDegrees});
+  const water=rgb565('#82cbd5'),violet=rgb565('#7040b0');
+  assert(calls.rectangles.some(([color])=>color===water));
+  assert.equal(calls.paths.filter(p=>p.color===water&&p.width===3).length,2);
+  assert.equal(calls.paths.filter(p=>p.color===violet&&p.width===2).length,2);
+  assert(calls.paths.some(p=>p.color===rgb565('#378b98')&&p.width===1),'shoreline retained');
+  assert(calls.paths.some(p=>p.color===rgb565('#111111')&&p.width===7),'bridge edge retained');
+  assert(calls.paths.some(p=>p.color===rgb565('#3b1f6e')&&p.width===4),'tram retained');
+  assert(!calls.paths.some(p=>p.color===rgb565('#0b4fb3')));
+  assert(calls.alphas.includes(180/255),'active route opacity retained');
+ }
+ const old=render(model,50,true,{profile:'v19'});
+ assert.equal(old.paths.filter(p=>p.color===rgb565('#0b4fb3')&&p.width===3).length,2);
+ assert(!old.paths.some(p=>p.color===rgb565('#82cbd5')),'v19 waterway comparison remains distinct');
+});

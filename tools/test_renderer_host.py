@@ -46,11 +46,11 @@ class RendererHost(unittest.TestCase):
         self.assertEqual(data["guard_changed"], 0)
         return data
 
-    def test_v19_water_path_and_preserved_semantic_styles(self):
+    def test_v20_water_path_and_preserved_semantic_styles(self):
         source=(SOURCE / "map.c").read_text()
-        expected={3:("K_FILL",0,"82cbd5"),4:("K_LINE",3,"378b98"),
+        expected={3:("K_FILL",0,"82cbd5"),4:("K_LINE",3,"82cbd5"),
                   25:("K_LINE",1,"378b98"),11:("K_DASH",2,"66615a"),
-                  18:("K_DASH",2,"6b4a2b"),13:("K_LINE",3,"0b4fb3"),
+                  18:("K_DASH",2,"6b4a2b"),13:("K_LINE",2,"7040b0"),
                   1:("K_FILL",0,"d4d4d4"),2:("K_FILL",0,"a2d683"),
                   5:("K_LINE",10,"202326"),7:("K_LINE",8,"3d4146"),
                   9:("K_LINE",5,"6a6e73")}

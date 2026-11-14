@@ -123,7 +123,7 @@ function verify(r, model) {                    // the same limits that were test
   return null;
 }
 $('previewStyle').onchange = () => {
-  say('previewNote', $('previewStyle').value === 'cycling' ? 'Türkises Wasser, blaue Radwege, unveränderte Straßenkonturen, deckende Route. Nur Vorschau; der CC700 bleibt unverändert.' : ($('previewStyle').value === 'v19' ? 'Patch v19: türkises Wasser, klare Pfade, korrigierte Flächen und abgestimmte Straßennamen. ' : 'Patch v18. ') + '240 × 256 Pixel, Gerätefarben. Schrift, Linienrasterung und GPS-Verhalten sind angenähert.');
+  say('previewNote', $('previewStyle').value === 'cycling' ? 'Türkises Wasser, blaue Radwege, unveränderte Straßenkonturen, deckende Route. Nur Vorschau; der CC700 bleibt unverändert.' : ($('previewStyle').value === 'v20' ? 'Patch v20 (noch nicht installiert): helles Wasser, violette Radwege mit 2 Pixeln. ' : $('previewStyle').value === 'v19' ? 'Patch v19: türkises Wasser, klare Pfade, korrigierte Flächen und abgestimmte Straßennamen. ' : 'Patch v18. ') + '240 × 256 Pixel, Gerätefarben. Schrift, Linienrasterung und GPS-Verhalten sind angenähert.');
   if (built) show();
 };
 

@@ -165,3 +165,5 @@ Route files for the patched firmware do not show a usable map on the original fi
   when you share it. The pictures in `docs/` also contain OpenStreetMap data.
 
 See [the rendering release](docs/rendering-release-2026-11-14.md) for v19 fill, label, geometry and style improvements, compatibility, tests and remaining measurement limits. Select the preview profile matching the firmware actually installed on your device.
+
+A [v20 water/cycleway candidate](docs/water-cycleway-v20-2026-11-14.md) is built locally. Its optional Pages preview uses light-blue waterways and 2 px violet cycleways; the device remains on v19.

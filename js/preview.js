@@ -104,7 +104,8 @@ function drawOriginal(g, entries, project) {
   }
 }
 
-// Base v18 operations; v19 applies its palette, fill and bounded-label rules.
+// Base v18 operations; v19/v20 apply corrected fill and bounded labels.
+// v20 additionally separates waterway and cycleway semantics.
 const AREAS = [
   [C.BUILT, '#d4d4d4'], [C.GREEN, '#a2d683', '#5f9e45'], [C.WATER, '#72b8f2', '#2f7fcf'],
 ];
@@ -115,7 +116,7 @@ const PASSES = [
   [C.TRAM, '#3b1f6e', 4], [C.TRAM, '#ffffff', 2],
 ];
 
-function drawStyled(g, entries, project, study = false, corrected = false) {
+function drawStyled(g, entries, project, study = false, corrected = false, waterCycle = false) {
   const layers = new Map();
   for (const { style, center, points, label } of entries) {
     const kind = style & 15;
@@ -132,7 +133,7 @@ function drawStyled(g, entries, project, study = false, corrected = false) {
     }
   }
   g.lineCap = g.lineJoin = 'round';
-  for (const { points } of layers.get(C.WLINE) ?? []) stroke(g, points, '#2f7fcf', 3);
+  for (const { points } of layers.get(C.WLINE) ?? []) stroke(g, points, waterCycle ? '#72b8f2' : '#2f7fcf', 3);
   for (let level = 0; level <= 4; level++) {
     for (const [kind, color, width, dash, edge] of PASSES) {
       for (const { style, points } of layers.get(kind) ?? []) {
@@ -155,7 +156,7 @@ function drawStyled(g, entries, project, study = false, corrected = false) {
         if (edge && bridge) stroke(g, points, '#000000', width + 2);
         else if (edge && tunnel) stroke(g, points, color, width, [3, 2]);
         else if (rough) stroke(g, points, '#6b4a2b', 2, [2, 3]);
-        else stroke(g, points, color, (study || corrected) && kind === C.PTH ? 2 : width, dash);
+        else stroke(g, points, color, ((study || corrected) && kind === C.PTH) || (waterCycle && kind === C.CYC) ? 2 : width, dash);
       }
     }
   }
@@ -239,8 +240,8 @@ export function draw(canvas, model, distM, styled = model.styled, options = {}) 
   const entries = blocks[section] ?? [];
   const original = entries.filter(entry => !entry.style);
   drawOriginal(g, original, project);
-  const labels = styled ? drawStyled(g, entries.filter(entry => entry.style), project, options.profile === 'cycling', options.profile === 'v19') : [];
-  drawLabels(g, labels, options.profile === 'v19' || options.profile === 'cycling'); // Map labels precede the firmware route and turn overlays.
+  const labels = styled ? drawStyled(g, entries.filter(entry => entry.style), project, options.profile === 'cycling', ['v19','v20'].includes(options.profile), options.profile === 'v20') : [];
+  drawLabels(g, labels, ['v19','v20','cycling'].includes(options.profile)); // Map labels precede the firmware route and turn overlays.
   const routeColor = styled ? PATCH_ROUTE : ORIGINAL_ROUTE;
   g.lineCap = g.lineJoin = 'round';
   stroke(g, [...all.slice(0, next), me].map(project), ROAD_EDGE, 6);

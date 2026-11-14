@@ -29,13 +29,13 @@ const counts=[];
 for(const metresPerPixel of [1.25,2.5,5])for(const headingDegrees of [0,45,90]) {
 const sheet=createCanvas(480,scenes.length*282),ctx=sheet.getContext('2d');
 for(const [row,[title,entries]] of scenes.entries()){
- for(const [column,profile] of ['v18','v19'].entries()){
+ for(const [column,profile] of (process.argv[4] || 'v18,v19').split(',').entries()){
   const canvas=createCanvas(240,256),g=canvas.getContext('2d'),stroke=g.stroke.bind(g);let strokes=0;
   g.stroke=(...args)=>{strokes++;return stroke(...args)};
   draw(canvas,{secs:[sec],blocks:[entries],styled:true},40,true,{profile,metresPerPixel,headingDegrees});
   counts.push({scene:title,profile,metresPerPixel,headingDegrees,canvas_strokes:strokes});
   ctx.fillStyle='#fff';ctx.fillRect(column*240,row*282,240,282);
-  ctx.fillStyle='#111';ctx.font='12px sans-serif';ctx.fillText(`${profile==='v18'?'v18':'v19'}: ${title}`,column*240+3,row*282+16);
+  ctx.fillStyle='#111';ctx.font='12px sans-serif';ctx.fillText(`${profile}: ${title}`,column*240+3,row*282+16);
   ctx.drawImage(canvas,column*240,row*282+26);
  }
 }
