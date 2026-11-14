@@ -5,6 +5,7 @@ import { brg } from './geo.js';
 import { MAP_CLASS as C } from './mapsec.js';
 import { dashSegments, scanlineSpans } from './device_draw.js';
 import { rgb565, mapColor } from './map_style.js';
+import { placeLabels } from './map_labels.js';
 export { rgb565 } from './map_style.js';
 
 const W = 240, H = 256, MPP = 2.5, POSY = 0.85, PIXEL_RATIO = 1;
@@ -103,7 +104,7 @@ function drawOriginal(g, entries, project) {
   }
 }
 
-// The installed v18 palette and drawing order follow map.c.
+// Base v18 operations; v19 applies its palette, fill and bounded-label rules.
 const AREAS = [
   [C.BUILT, '#d4d4d4'], [C.GREEN, '#a2d683', '#5f9e45'], [C.WATER, '#72b8f2', '#2f7fcf'],
 ];
@@ -114,7 +115,7 @@ const PASSES = [
   [C.TRAM, '#3b1f6e', 4], [C.TRAM, '#ffffff', 2],
 ];
 
-function drawStyled(g, entries, project, study = false) {
+function drawStyled(g, entries, project, study = false, corrected = false) {
   const layers = new Map();
   for (const { style, center, points, label } of entries) {
     const kind = style & 15;
@@ -126,7 +127,7 @@ function drawStyled(g, entries, project, study = false) {
   for (const [kind, fill, outline] of AREAS) {
     for (const { style, points } of layers.get(kind) ?? []) {
       if (points.length < 3) continue;
-      fillPolygon(g, points, fill, study);
+      fillPolygon(g, points, fill, study || corrected);
       if (outline && !(style & 0x400) && !study) stroke(g, points, outline, 1);   // no outline: holes or cut at the window
     }
   }
@@ -154,7 +155,7 @@ function drawStyled(g, entries, project, study = false) {
         if (edge && bridge) stroke(g, points, '#000000', width + 2);
         else if (edge && tunnel) stroke(g, points, color, width, [3, 2]);
         else if (rough) stroke(g, points, '#6b4a2b', 2, [2, 3]);
-        else stroke(g, points, color, study && kind === C.PTH ? 2 : width, dash);
+        else stroke(g, points, color, (study || corrected) && kind === C.PTH ? 2 : width, dash);
       }
     }
   }
@@ -168,16 +169,12 @@ function drawStyled(g, entries, project, study = false) {
   return layers.get(C.LABEL) ?? [];
 }
 
-function drawLabels(g, labels) {
+function drawLabels(g, labels, collision = false) {
   // Firmware font is not bundled in the web app; approximate its glyphs while retaining its box and halos.
   g.font = '12px Arial, sans-serif';
   g.textAlign = 'left';
   g.textBaseline = 'top';
-  for (const { label, points: [[x, y]] } of labels) {
-    if (!label) continue;
-    const width = [...label].length * 7 + 4, left = x - Math.trunc(width / 2), top = y - 8;
-    if (left < 1 || left + width > W - 1 || top < 1 || top + 16 > H - 1) continue;
-    if (left < 90 && top + 16 > H - 100) continue;
+  for (const { label, box: [left, top] } of placeLabels(labels, collision)) {
     g.fillStyle = rgb565('#ffffff');
     for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) g.fillText(label, left + dx, top + dy);
     g.fillStyle = rgb565('#000000');
@@ -221,7 +218,7 @@ export function draw(canvas, model, distM, styled = model.styled, options = {}) 
   canvas.width = W * PIXEL_RATIO;
   canvas.height = H * PIXEL_RATIO;
   const g = canvas.getContext('2d');
-  g.previewColor = color => mapColor(color, options.profile === 'cycling' ? 'cycling' : 'v18');
+  g.previewColor = color => mapColor(color, options.profile);
   g.scale(PIXEL_RATIO, PIXEL_RATIO);
   g.fillStyle = '#ffffff'; // 0x4205bcac clears the RGB565 canvas to 0xffff at opacity 255.
   g.fillRect(0, 0, W, H);
@@ -230,23 +227,24 @@ export function draw(canvas, model, distM, styled = model.styled, options = {}) 
   let section = 0;
   secs.forEach((points, i) => { if (points[0]?.[2] <= distM * 100) section = i; });
   const { point: me, next } = sample(all, distM);
-  const heading = brg(sample(all, distM - 30).point, sample(all, distM + 30).point);
+  const heading = Number.isFinite(options.headingDegrees) ? ((options.headingDegrees % 360) + 360) % 360 : brg(sample(all, distM - 30).point, sample(all, distM + 30).point);
+  const mpp = Number.isFinite(options.metresPerPixel) && options.metresPerPixel >= 0.25 && options.metresPerPixel <= 20 ? options.metresPerPixel : MPP;
   const radians = heading * Math.PI / 180, k = Math.cos(me[0] * Math.PI / 180);
   const sin = Math.sin(radians), cos = Math.cos(radians);
   const project = p => {
-    const e = (p[1] - me[1]) * 111320 * k / MPP, n = (p[0] - me[0]) * 111320 / MPP;
+    const e = (p[1] - me[1]) * 111320 * k / mpp, n = (p[0] - me[0]) * 111320 / mpp;
     return [Math.trunc(W / 2 + e * cos - n * sin), Math.trunc(H * POSY - e * sin - n * cos)];
   };
 
   const entries = blocks[section] ?? [];
   const original = entries.filter(entry => !entry.style);
   drawOriginal(g, original, project);
-  const labels = styled ? drawStyled(g, entries.filter(entry => entry.style), project, options.profile === 'cycling') : [];
-  drawLabels(g, labels); // Map labels precede the firmware route and turn overlays.
+  const labels = styled ? drawStyled(g, entries.filter(entry => entry.style), project, options.profile === 'cycling', options.profile === 'v19') : [];
+  drawLabels(g, labels, options.profile === 'v19' || options.profile === 'cycling'); // Map labels precede the firmware route and turn overlays.
   const routeColor = styled ? PATCH_ROUTE : ORIGINAL_ROUTE;
   g.lineCap = g.lineJoin = 'round';
   stroke(g, [...all.slice(0, next), me].map(project), ROAD_EDGE, 6);
-  if (styled) g.globalAlpha = options.profile === 'cycling' ? 1 : 180 / 255;                // installed v18: opacity 180/255; cycling is a preview-only candidate
+  if (styled) g.globalAlpha = options.profile === 'cycling' ? 1 : 180 / 255;                // v18/v19: opacity 180/255; cycling is a preview-only candidate
   stroke(g, [me, ...all.slice(next)].map(project), routeColor, styled ? 4 : 6);
   g.globalAlpha = 1;
   if (styled) {                                   // rough parts of the route: dots over the route line

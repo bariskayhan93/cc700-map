@@ -97,7 +97,7 @@ async function build() {
     built = { ...r, model, styled, speedKmh, name: `route_${id}.bin` };
     say('sum', `${gpx.name} → CC700 Route ${id} · ${(r.distance / 1000).toFixed(1)} km · ${(r.file.length / 1024).toFixed(0)} KB` +
       (lines.length ? '' : ' · keine Straßendaten: ohne Karte und Straßennamen'));
-    say('previewTitle', styled ? 'Kartenvorschau · Sunlight (Patch v18)' : 'Kartenvorschau · Original');
+    say('previewTitle', styled ? 'Kartenvorschau · Sunlight' : 'Kartenvorschau · Original');
     say('turnsN', `Abbiegungen (${r.sections.length})`);
     $('turns').innerHTML = r.sections.map(s => `<li>${s.type === 2 ? '🏁' : ARROW[s.dir]} ${s.text.replace(/</g, '&lt;')}</li>`).join('');
     const position = +$('pos').value;
@@ -123,7 +123,7 @@ function verify(r, model) {                    // the same limits that were test
   return null;
 }
 $('previewStyle').onchange = () => {
-  say('previewNote', $('previewStyle').value === 'cycling' ? 'Türkises Wasser, blaue Radwege, unveränderte Straßenkonturen, deckende Route. Nur Vorschau; der CC700 bleibt unverändert.' : '240 × 256 Pixel, Gerätefarben. Schrift, Linienrasterung und GPS-Verhalten sind angenähert.');
+  say('previewNote', $('previewStyle').value === 'cycling' ? 'Türkises Wasser, blaue Radwege, unveränderte Straßenkonturen, deckende Route. Nur Vorschau; der CC700 bleibt unverändert.' : ($('previewStyle').value === 'v19' ? 'Patch v19: türkises Wasser, klare Pfade, korrigierte Flächen und abgestimmte Straßennamen. ' : 'Patch v18. ') + '240 × 256 Pixel, Gerätefarben. Schrift, Linienrasterung und GPS-Verhalten sind angenähert.');
   if (built) show();
 };
 

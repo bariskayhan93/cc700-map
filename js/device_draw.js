@@ -1,5 +1,5 @@
-// Default integer operations follow patch/src/map.c. Canvas strokes still use
-// the browser rasterizer. The optional consistent fill is a preview-only study.
+// Legacy operations reproduce v18. Consistent fill reproduces v19. Canvas
+// strokes still use the browser rasterizer.
 export function* dashSegments(points, on, off) {
   let phase = 0;
   const period = (on + off) * 65536, onLength = on * 65536;

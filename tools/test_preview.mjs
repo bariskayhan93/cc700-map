@@ -232,3 +232,25 @@ test('study fill cancels doubled diagonal hole joins without false background se
  }
  assert(spans.filter(s=>s[1]===3).length===1,'cancelled join should not fragment spans');
 });
+
+test('v19 preview resolves label collisions and keeps v18 comparison unchanged',()=>{
+ const entry=(label,x,y)=>({style:12,center:at(x,y),label});
+ const entries=[entry('Primary',30,130),entry('Overlaps',35,130),entry('Separate',100,210)];
+ const model={secs:[[[...at(0,0),0],[...at(0,300),30000]]],blocks:[entries],styled:true};
+ assert.equal(render(model,50,true,{profile:'v18'}).text.length,15);
+ assert.equal(render(model,50,true,{profile:'v19'}).text.length,10);
+});
+test('v19 preview uses corrected fill while retaining road and route appearance',()=>{
+ const ring=[[-80,40],[80,40],[80,200],[-80,200],[-80,40],[-20,90],[-20,150],[20,150],[20,90],[-20,90],[-80,40]].map(p=>at(...p));
+ const model={secs:[[[...at(0,0),0],[...at(0,300),30000]]],blocks:[[{style:2|0x400,center:ring[0],points:ring.slice(1)}]],styled:true};
+ const old=render(model,50,true,{profile:'v18'}),next=render(model,50,true,{profile:'v19'});
+ assert.notDeepEqual(next.rectangles,old.rectangles);
+ assert.deepEqual(next.paths,old.paths);
+});
+test('acceptance views can vary scale and heading without mutating route data',()=>{
+ const model=readFile(generate(true).file),before=structuredClone(model);
+ const a=render(model,40,true,{profile:'v19',metresPerPixel:1.25,headingDegrees:45});
+ const b=render(model,40,true,{profile:'v19',metresPerPixel:5,headingDegrees:90});
+ assert.notDeepEqual(a.positions,b.positions);assert.deepEqual(model,before);
+ assert.deepEqual(render(model,40,true,{metresPerPixel:NaN,headingDegrees:Infinity}).positions,render(model,40,true).positions);
+});

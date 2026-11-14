@@ -8,7 +8,7 @@ Use it in Chrome on Android. Select a GPX file. The page makes the route file an
 Run the public app checks with Node.js 22 or newer:
 
 ```sh
-node --test tools/test_preview.mjs tools/test_route_decisions.mjs tools/test_navsource.mjs tools/test_service_worker.mjs tools/test_map_style.mjs tools/test_surface.mjs
+node --test tools/test_preview.mjs tools/test_route_decisions.mjs tools/test_navsource.mjs tools/test_service_worker.mjs tools/test_map_style.mjs tools/test_surface.mjs tools/test_map_geometry.mjs tools/test_map_labels.mjs tools/test_map_order.mjs tools/test_map_contract.mjs
 node tools/test_app_offline.mjs
 ```
 
@@ -96,8 +96,8 @@ stock firmware. The grey blocks show built-up areas around the crossing.
 
 ## CC700 Map settings
 
-The app starts in **Original (Kreuzungskarte)**. Select **Patch v18 (farbige Sunlight-Karte)** only if
-your CC700 has the v18 patch for firmware V1.414. The preview updates from the generated route file.
+The app starts in **Original (Kreuzungskarte)**. Select **Patch v18 / v19 (farbige Sunlight-Karte)** only if
+your CC700 has the v18 or v19 patch for firmware V1.414. The preview updates from the generated route file.
 Choose **Abspielen** to replay the route at 1×, 4×, or 8× the speed set in **Einstellungen**.
 The slider lets you move to any point during playback. The ride preview shows the next instruction,
 distance, heading and route progress using the generated route.
@@ -144,7 +144,7 @@ The route file is nanopb 0.3 protobuf (firmware 1.414). Name images are LVGL `IN
 
 ## Patched firmware
 
-The v18 patch changes the map drawing of firmware V1.414. It is not part of this repository.
+The v18/v19 patch changes the map drawing of firmware V1.414. It is not part of this repository.
 Route files for the patched firmware do not show a usable map on the original firmware.
 
 ## Legal
@@ -163,3 +163,5 @@ Route files for the patched firmware do not show a usable map on the original fi
 - Map data: © OpenStreetMap contributors, Open Database License 1.0 (https://www.openstreetmap.org/copyright).
   A route file from this page contains OpenStreetMap data. Keep the attribution "© OpenStreetMap contributors"
   when you share it. The pictures in `docs/` also contain OpenStreetMap data.
+
+See [the rendering release](docs/rendering-release-2026-11-14.md) for v19 fill, label, geometry and style improvements, compatibility, tests and remaining measurement limits. Select the preview profile matching the firmware actually installed on your device.

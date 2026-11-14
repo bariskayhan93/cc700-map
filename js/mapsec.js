@@ -2,6 +2,9 @@
 // Style V4: main roads 3 lines, tertiary and streets 2 lines, service 1 line, paths and tracks light dashes.
 import { fu, fs, fb, u32le, sc, Bytes } from './pb.js';
 import { hav, frame, rdp, sub, offset, lineLen } from './geo.js';
+import { prepareDisplayLines, clipDisplayLine } from './map_geometry.js';
+import { labelName, prepareLabelCandidates, labelsForBlock } from './map_labels.js';
+import { canonicalEntries } from './map_order.js';
 const R = 300;
 export const STYLE = {                       // kind: [draw, param, max distance from route (m)]
   // V4 (2026-11-11): same range for all classes (a normal map, not a corridor), width by class: main 3 lines,
@@ -305,12 +308,9 @@ function lineClass(L) {
 // level: OSM layer + 2; a bridge or tunnel without a layer tag is one level above or below the ground (F1)
 const lvOf = fl => { const v = (fl >> 2) & 7; return v && v !== 2 ? v : fl & 1 ? 3 : fl & 2 ? 1 : 2; };
 const styleOf = (cls, fl = 0) => cls | (lvOf(fl) << 4) | (fl & 1 ? 0x80 : 0) | (fl & 2 ? 0x100 : 0) | (fl & 64 ? 0x200 : 0) | (fl & 128 ? 0x800 : 0);   // bit 11: far from the route (A2: thinner, lighter)
-const FAR = 150, LABEL_R = 300, LABEL_GAP = 230, LABEL_SAME = 450, LABEL_MAX = 12, DOT_R = 300, LABEL_BYTES = 23;
-const ASCII = { ä: 'ae', ö: 'oe', ü: 'ue', Ä: 'Ae', Ö: 'Oe', Ü: 'Ue', ß: 'ss', é: 'e', è: 'e', á: 'a', à: 'a' };
+const FAR = 150, DOT_R = 300;
 function lentry(c, name) {                               // the map font has ASCII only
-  const t = name.replace(/[^\x20-\x7e]/g, ch => ASCII[ch] ?? '').replace(/([Ss])trasse\b/g, '$1tr.');   // short names: less overlap
-  let b = [...new TextEncoder().encode(t)];
-  if (b.length > LABEL_BYTES) { b = b.slice(0, LABEL_BYTES); while (b.length && (b.at(-1) & 0xc0) === 0x80) b.pop(); if (b.length && b.at(-1) >= 0xc0) b.pop(); }
+  const b = [...new TextEncoder().encode(labelName(name))];
   b.push(0); while (b.length % 8) b.push(0);
   const dv = new DataView(new Uint8Array(b).buffer), v = []; for (let i = 0; i < b.length; i += 4) v.push(dv.getInt32(i, true));
   return [...fu(2, S.LABEL | (2 << 4)), ...fs(3, sc(c[0])), ...fs(4, sc(c[1])), ...fu(5, v.length / 2), ...Array.from({ length: v.length / 2 }, (_, i) => fb(6, [...fs(1, v[2 * i]), ...fs(2, v[2 * i + 1])])).flat()];
@@ -329,44 +329,44 @@ function clipRing(r, [x0, y0, x1, y1]) {                 // Sutherland-Hodgman, 
   }
   return P;
 }
+function runIsFar(run, cor) {
+  // Sparse prepared endpoints cannot classify a long segment crossing the route.
+  // Range/style sampling is independent of the vertices retained for drawing.
+  for (let i = 1; i < run.length; i++) {
+    const a = run[i - 1], b = run[i], n = Math.max(1, Math.ceil(hav(a, b) / 15));
+    for (let k = 0; k <= n; k++) {
+      const t = k / n;
+      if (cor.near(...cor.F.m(a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t), FAR)[0] <= FAR) return false;
+    }
+  }
+  return true;
+}
 function styledEntries(data, cor, o = {}) {
-  const F = cor.F, out = [], labels = [], [bx0, by0, bx1, by1] = cor.box;
+  const F = cor.F, out = [], [bx0, by0, bx1, by1] = cor.box;
   const nearBox = (b, m) => !(b[2] < bx0 - m || b[0] > bx1 + m || b[3] < by0 - m || b[1] > by1 + m);
   // areas: built-up, green, water; each [outer, holes...] clipped to the window, holes joined by a doubled edge (even-odd fill)
   const win = [bx0 - AREA_R, by0 - AREA_R, bx1 + AREA_R, by1 + AREA_R];
   for (const [cls, list] of [[S.BUILT, data.areas], [S.GREEN, data.green], [S.WATER, data.water]]) for (const A of list || []) {
     if (!nearBox(A.box, AREA_R)) continue;
-    const rings = A.m.map(r => clipRing(r, win)).filter(Boolean); if (!rings.length || !rings[0]) continue;
+    const outer = clipRing(A.m[0], win); if (!outer) continue;
+    const rings = [outer, ...A.m.slice(1).map(r => clipRing(r, win)).filter(Boolean)];
     const o = rings[0], pts = [...o, o[0]];
     for (const h of rings.slice(1)) pts.push(...h, h[0], o[0]);
     const cut = rings[0].length !== A.m[0].length || rings[0].some((q, i) => q !== A.m[0][i]);   // F3: clipped at the window
     out.push(sentry(styleOf(cls) | (rings.length > 1 || cut ? 0x400 : 0), pts.map(p => F.g(...p))));   // bit 10: no outline   // bit 10: has holes (no outline: the join edge would show)
   }
   // lines
-  const lines = [...(data.lines || []).map(L => ({ L, cls: lineClass(L), fl: (L.fl || 0) & (o.rough === false ? ~64 : -1) })).filter(x => o.paths !== false || x.cls !== S.PTH), ...(data.rails || []).map(pts => ({ L: { pts }, cls: S.RAIL, fl: pts.fl || 0 })),
-    ...(data.trams || []).map(pts => ({ L: { pts }, cls: S.TRAM, fl: pts.fl || 0 })), ...(data.wlines || []).map(pts => ({ L: { pts }, cls: S.WLINE, fl: 0 }))];
+  const lines = [...(data.lines || []).map(L => ({ L, cls: lineClass(L), fl: (L.fl || 0) & (o.rough === false ? ~64 : -1) })).filter(x => o.paths !== false || x.cls !== S.PTH), ...(data.displayRails || []).map(L => ({ L, cls: S.RAIL, fl: L.fl || 0 })),
+    ...(data.displayTrams || []).map(L => ({ L, cls: S.TRAM, fl: L.fl || 0 })), ...(data.displayWlines || []).map(L => ({ L, cls: S.WLINE, fl: 0 }))];
   for (const { L, cls, fl } of lines) {
     if (!cls) continue; const lim = SR[cls], b = L.box || (L.box = box(L.pts, F)); if (!nearBox(b, lim)) continue;
-    const nodes = [];
-    for (let i = 0; i < L.pts.length; i++) { const a = L.pts[i], c = L.pts[i + 1] || a, n = Math.max(1, Math.floor(hav(a, c) / 15));
-      for (let k = 0; k < n; k++) nodes.push([a[0] + (c[0] - a[0]) * k / n, a[1] + (c[1] - a[1]) * k / n]); }
-    const keep = nodes.map(q => cor.near(...F.m(q[0], q[1]), lim)[0] <= lim); let run = [];
-    const flush = () => { if (run.length >= 2 && lineLen(run) >= 8) { const p = rdp(run, 1.5, F.m);
-      if (o.names !== false && L.name && cls >= S.MAJ && cls <= S.SRV) {          // label candidate: the run point nearest to the route
-        let best = null; for (const q of run) { const d = cor.near(...F.m(q[0], q[1]), LABEL_R)[0]; if (d >= 30 && d <= LABEL_R && (!best || d < best[0])) best = [d, q]; }   // off the route line, which is drawn over it
-        if (best) labels.push({ name: L.name, cls, d: best[0], q: best[1], m: F.m(best[1][0], best[1][1]) }); }
-      const far = (cls === S.MIN || cls === S.SRV) && run.every(q => cor.near(...F.m(q[0], q[1]), FAR)[0] > FAR) ? 128 : 0;
-      for (let s = 0; s < p.length - 1; s += MAXPTS - 1) out.push(sentry(styleOf(cls, fl | far), p.slice(s, s + MAXPTS))); } run = []; };
-    for (let i = 0; i < nodes.length - 1; i++) { if (keep[i] || keep[i + 1]) { if (!run.length) run.push(nodes[i]); run.push(nodes[i + 1]); } else flush(); }
-    flush();
+    for (const run of clipDisplayLine(L, q => cor.near(...F.m(...q), lim)[0] <= lim)) {
+      const far = (cls === S.MIN || cls === S.SRV) && runIsFar(run, cor) ? 128 : 0;
+      for (let s = 0; s < run.length - 1; s += MAXPTS - 1) out.push(sentry(styleOf(cls, fl | far), run.slice(s, s + MAXPTS)));
+    }
   }
-  // street names: main roads first, then near the route; spaced on the map, one per name nearby
-  const rn = data.routeNames || new Set(); labels.sort((a, b) => (rn.has(b.name) - rn.has(a.name)) || a.cls - b.cls || a.d - b.d); const got = [];
-  for (const l of labels) {
-    if (got.length >= LABEL_MAX) break;
-    if (got.some(g => { const d = Math.hypot(g.m[0] - l.m[0], g.m[1] - l.m[1]); return d < LABEL_GAP || (g.name === l.name && d < LABEL_SAME); })) continue;
-    got.push(l); out.push(lentry(l.q, l.name));
-  }
+  // The same source anchor and priority survive adjacent block windows.
+  if (o.names !== false) for (const l of labelsForBlock(data.labelCandidates || [], (...q) => cor.near(...q))) out.push(lentry(l.q, l.name));
   // one dot per junction or stop: OSM has a signal node per approach and a stop node per platform
   for (const [cls, list, gap] of [[S.SIG, data.signals, 30], [S.STOP, data.stops, 60]]) { const got = [];
     for (const p of list || []) { const q = F.m(p[0], p[1]);
@@ -377,8 +377,13 @@ function styledEntries(data, cor, o = {}) {
 const entPts = es => es.reduce((n, e) => n + e.length, 0);       // rough size measure (bytes)
 export function buildStyledSection(sections, data, F) {
   const toM = rs => ({ m: rs.map(r => r.map(q => F.m(q[0], q[1]))), box: box(rs[0], F) });
-  const D = { ...data, areas: (data.areas || []).map(toM), green: (data.green || []).map(toM), water: (data.water || []).map(toM) };
+  const D = { ...data, lines: prepareDisplayLines(data.lines || [], F),
+    displayRails: prepareDisplayLines((data.rails || []).map(pts => ({pts, fl: pts.fl || 0})), F),
+    displayTrams: prepareDisplayLines((data.trams || []).map(pts => ({pts, fl: pts.fl || 0})), F),
+    displayWlines: prepareDisplayLines((data.wlines || []).map(pts => ({pts})), F), areas: (data.areas || []).map(toM), green: (data.green || []).map(toM), water: (data.water || []).map(toM) };
   const all = sections.flat();
+  const routeCor = new Corridor(all, F);
+  D.labelCandidates = data.opt?.names === false ? [] : prepareLabelCandidates(D.lines.map(L => ({...L, cls: lineClass(L)})), F, (...q) => routeCor.near(...q), data.routeNames || new Set());
   const win = (i, j) => { const a = sections[i][0][2] - BEHIND * 100, b = sections[j].at(-1)[2] + AHEAD * 100; return all.filter(p => p[2] >= a && p[2] <= b); };
   const ent = (i, j) => styledEntries(D, new Corridor(win(i, j), F), data.opt || {});
   const groups = [];
@@ -408,7 +413,8 @@ export function buildStyledSection(sections, data, F) {
     for (const g of groups) if (sections[g[0]][0][2] - BEHIND * 100 <= Math.min(b, s + 30000) && sections[g[1]].at(-1)[2] + AHEAD * 100 >= s) g[2].push(e);
   }
   const body = new Bytes(), offs = new Array(sections.length).fill(0);
-  for (const [i, j, es] of groups) {
+  for (const [i, j, entries] of groups) {
+    const es = canonicalEntries(entries);
     const m = es.length ? [...fu(1, es.length), ...es.flatMap((e, n) => fb(2, [...fu(1, n), ...e]))] : [8, 0x80, 0x80, 0x80, 0];
     const o = body.n; body.push(u32le(m.length)).push(m);
     for (let t = i; t <= j; t++) offs[t] = o;
