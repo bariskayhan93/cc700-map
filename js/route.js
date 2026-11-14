@@ -132,7 +132,7 @@ export function decisionPoints(P, D, lines, F, grid) {
 }
 const short = t => t.replace(/straße\b/g, 'str.').replace(/Straße\b/g, 'Str.').replace(/strasse\b/g, 'str.').replace(/Strasse\b/g, 'Str.');
 export function buildRoute(gpx, allLines, opt) {
-  const lines = allLines.filter(L => !(L.fl & 256));   // 512 (dual-carriageway centreline) stays here: turns and the original map use it   // detail ways (park footways, short paths, cycle tracks next to a street): map only, not for turns
+  const lines = (opt.navigationLines || allLines).filter(L => !(L.fl & 256));   // 512 (dual-carriageway centreline) stays here: turns and the original map use it   // detail ways (park footways, short paths, cycle tracks next to a street): map only, not for turns
   const speed = (opt.speedKmh || 18) / 3.6, F = frame(gpx.pts[0][0]);
   // 1. clean points + cumulative distance
   const P0 = []; for (const p of gpx.pts) if (!P0.length || hav(P0.at(-1), p) >= 1) P0.push(p);

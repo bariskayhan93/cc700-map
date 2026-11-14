@@ -11,6 +11,10 @@ Raw firmware, device files, positions and recovery artifacts remain private.
 - **Device:** v21 on ota_1, flash-verified and automatically booted through RTS.
   A fresh full v20 rollback is retained; stock ota_0 was not programmed.
 - **App:** updated generator, current two-row reference UI and matching v21 preview.
+  [Adaptive map budgets](adaptive-map-budget-2026-11-14.md) now account for actual
+  payload/work, protect nearby geometry and use spare budget for outer context.
+  Dense sections can reduce distant line coverage explicitly; target timing
+  remains unmeasured.
 - **README:** regenerated static/animated examples from the current page; supplied
   OnelapFit reference is preserved separately. Earlier Tour D3 artwork is historical.
 - **Existing route files:** preserved. The opaque route applies immediately;
@@ -93,7 +97,7 @@ four bugs: maneuver correctness needs independently labelled intended paths.
 | 2 | Persistent, state-aware detour presentation: retain map/course but replace stale normal cues with off-route status; distinguish reacquisition. | No stale turn presented as current, no fictitious numeric remaining distance, and normal recording continues. This is proposed, not shipped. |
 | 3 | Progress- and direction-aware rejoining. | Handle shortcuts, crossings, shared outbound/return sections, start/finish overlap, reverse travel and the recorded excursion without nearest-pass jumps or indefinite holds. |
 | 4 | Connected-path association in the phone-side generator with explicit uncertainty. | Multiple noise seeds, shallow forks, bends, genuine U-turns, 22/27 m pairs, grade separation, sparse inputs and missing legacy topology. Preserve supplied geometry. |
-| 5 | Measure target frame time, lock waits, largest free allocations and stack high-water marks before expanding detail/corridors/block size. | Gains must be demonstrated on representative blocks; no resolution reduction or blanket road removal. |
+| 5 | Measure target frame time, lock waits, largest free allocations and stack high-water marks to calibrate the new conservative adaptive-map budgets. | Gains must be demonstrated on representative blocks; no resolution reduction or blanket road removal. |
 | 6 | Native visual acceptance for new captions and fidelity checks. | Observe a real close pair using a newly generated route; compare the actual caption/scrolling and current UI. It need not be another full 70 km ride. |
 | 7 | Verified routed return, when justified by available data. | A connected cycling-accessible graph or validated phone/native planner path, correct temporary-route lifecycle, and safe transition back. A geometric bearing is not a route across barriers. |
 

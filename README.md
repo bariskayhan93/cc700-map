@@ -161,3 +161,12 @@ Route files for the patched firmware do not show a usable map on the original fi
 See [the rendering release](docs/rendering-release-2026-11-14.md) for v19 fill, label, geometry and style improvements, compatibility, tests and remaining measurement limits. Select the preview profile matching the firmware actually installed on your device.
 
 The [v21 release](docs/v21-caption-opacity-2026-11-14.md) adds an opaque red route to the [v20 water/cycleway styling](docs/water-cycleway-v20-2026-11-14.md): light-blue waterways and 2 px violet cycleways. Earlier profiles remain selectable.
+
+### Adaptive map coverage
+
+Styled maps now use separate byte, allocation and drawing-work budgets. Nearby
+geometry keeps its resolution; sparse blocks can include context up to 1 km,
+while dense sections explicitly limit distant lines toward a 300 m minimum.
+Area windows retain at least 600 m to preserve boundary styling. Regenerate a
+route to use this; existing device files stay unchanged. See the
+[implementation, costs and validation](docs/adaptive-map-budget-2026-11-14.md).

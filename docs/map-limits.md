@@ -1,6 +1,11 @@
 # Map behavior, tuning controls and calculated budgets
 
-2026-11-14. Installed firmware is v18. This is a practical budget model for
+This document preserves the earlier v18 audit snapshot below. Current firmware
+is v21; the generator now uses [adaptive resource budgets](adaptive-map-budget-2026-11-14.md).
+The old styled 1,150-entry/approximate-byte checks in this snapshot have been
+replaced. The formulas and measurement caveats still apply.
+
+2026-11-14 audit snapshot. Installed firmware was v18. This is a practical budget model for
 feature work, not a new claim of full device simulation. The new read-only
 calculator is `tools/map_budget.py`; it works on existing route files and needs
 no device connection.

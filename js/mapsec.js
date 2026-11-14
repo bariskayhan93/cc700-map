@@ -26,7 +26,7 @@ class Corridor {                              // route window, densified, with h
     if (P.length) this.add(P[P.length - 1][0], P[P.length - 1][1], 0);
     this.rings = Math.ceil(reach / 100) + 1;
     this.zone = new Set();                     // cells within ~500 m of the window: everything else is "far" at once
-    for (const k of this.G.keys()) { const [x, y] = k.split(',').map(Number); for (let dx = -this.rings; dx <= this.rings; dx++) for (let dy = -this.rings; dy <= this.rings; dy++) this.zone.add((x + dx) + ',' + (y + dy)); }
+    for (const k of this.G.keys()) { const [x, y] = k.split(',').map(Number); for (let dx = 1-this.rings; dx < this.rings; dx++) for (let dy = 1-this.rings; dy < this.rings; dy++) this.zone.add((x + dx) + ',' + (y + dy)); }
     this.box = P.reduce((b, [x, y]) => [Math.min(b[0], x), Math.min(b[1], y), Math.max(b[2], x), Math.max(b[3], y)], [1e18, 1e18, -1e18, -1e18]);
   }
   within(R) {                                 // -> (x, y) => within R m of the route; 10 m raster, made once per R
@@ -343,11 +343,13 @@ function runIsFar(run, cor) {
   }
   return true;
 }
-function styledEntries(data, cor, o = {}, coverageFloor = 0) {
+function styledEntries(data, cor, o = {}, coverageFloor = 0, contextRadiusCap = 1000) {
   const F = cor.F, out = [], [bx0, by0, bx1, by1] = cor.box;
   const nearBox = (b, m) => !(b[2] < bx0 - m || b[0] > bx1 + m || b[3] < by0 - m || b[1] > by1 + m);
   // areas: built-up, green, water; each [outer, holes...] clipped to the window, holes joined by a doubled edge (even-odd fill)
-  const areaR = Math.max(AREA_R, coverageFloor);
+  // Keep the baseline area window: tighter clipping suppresses an entire
+  // polygon's outline, including real shoreline edges inside protected context.
+  const areaR = Math.max(AREA_R, Math.min(contextRadiusCap, coverageFloor));
   const win = [bx0 - areaR, by0 - areaR, bx1 + areaR, by1 + areaR];
   for (const [cls, list] of [[S.BUILT, data.areas], [S.GREEN, data.green], [S.WATER, data.water]]) for (const A of list || []) {
     if (!nearBox(A.box, areaR)) continue;
@@ -362,7 +364,7 @@ function styledEntries(data, cor, o = {}, coverageFloor = 0) {
   const lines = [...(data.lines || []).map(L => ({ L, cls: lineClass(L), fl: (L.fl || 0) & (o.rough === false ? ~64 : -1) })).filter(x => o.paths !== false || x.cls !== S.PTH), ...(data.displayRails || []).map(L => ({ L, cls: S.RAIL, fl: L.fl || 0 })),
     ...(data.displayTrams || []).map(L => ({ L, cls: S.TRAM, fl: L.fl || 0 })), ...(data.displayWlines || []).map(L => ({ L, cls: S.WLINE, fl: 0 }))];
   for (const { L, cls, fl } of lines) {
-    if (!cls) continue; const lim = Math.max(SR[cls], coverageFloor), b = L.box || (L.box = box(L.pts, F)); if (!nearBox(b, lim)) continue;
+    if (!cls) continue; const lim = Math.min(contextRadiusCap, Math.max(SR[cls], coverageFloor)), b = L.box || (L.box = box(L.pts, F)); if (!nearBox(b, lim)) continue;
     for (const run of clipDisplayLine(L, q => cor.near(...F.m(...q), lim)[0] <= lim)) {
       const far = (cls === S.MIN || cls === S.SRV) && runIsFar(run, cor) ? 128 : 0;
       for (let s = 0; s < run.length - 1; s += MAXPTS - 1) out.push(sentry(styleOf(cls, fl | far), run.slice(s, s + MAXPTS)));
@@ -412,42 +414,51 @@ export function buildStyledSection(sections, data, F) {
       throw new Error('Cannot increase or invalidate map budget: ' + key);
     limits[key] = value;
   }
-  const make = (i,j,floor=0) => {
+  const make = (i,j,floor=0,cap=1000) => {
     const cor = new Corridor(win(i,j),F,1000);
-    const es = styledEntries(D,cor,data.opt || {},floor);
+    const es = styledEntries(D,cor,data.opt || {},floor,cap);
     for (const {k,entry} of arrows) if (k >= i-1 && k <= j+1) es.push(entry);
     const a=sections[i][0][2]-BEHIND*100,b=sections[j].at(-1)[2]+AHEAD*100;
     for (const r of rough) if(a<=r.b && b>=r.a) es.push(r.entry);
     const entries=canonicalEntries(es),cost=estimateBlock(entries);
-    return {i,j,entries,cost,coverageFloor:floor,omittedBaselineEntries:0,stoppedBy:[]};
+    return {i,j,entries,cost,coverageFloor:floor,contextRadiusCap:cap,omittedProtectedEntries:0,stoppedBy:[]};
   };
   const groups=[];
   for(let i=0;i<sections.length;) {
-    let g=make(i,i),fail=budgetFailures(g.cost,limits);
-    if(fail.length)throw new Error(`Map section ${i+1} exceeds protected baseline budget: ${fail.join(', ')}`);
+    let g=make(i,i),fail=budgetFailures(g.cost,limits),contextLimitedBy=[];
+    // A native section is indivisible. Preserve all geometry within 300 m;
+    // reduce only distant context when splitting sections cannot make it fit.
+    for (const cap of [800,600,450,350,300]) {
+      if(!fail.length)break;
+      contextLimitedBy=[...new Set([...contextLimitedBy,...fail])];
+      g=make(i,i,0,cap);fail=budgetFailures(g.cost,limits);
+    }
+    if(fail.length)throw new Error(`Map section ${i+1} exceeds protected 300 m context budget: ${fail.join(', ')}`);
+    g.contextLimitedBy=contextLimitedBy;
     while(g.j+1<sections.length) {
       if((sections[g.j+1].at(-1)[2]-sections[i][0][2])/100>BLOCK_LEN){g.stoppedBy=['routeSpan'];break;}
-      const candidate=make(i,g.j+1),failures=budgetFailures(candidate.cost,limits);
+      const candidate=make(i,g.j+1,0,g.contextRadiusCap),failures=budgetFailures(candidate.cost,limits);
       if(failures.length){g.stoppedBy=failures;break;}
-      g=candidate;
+      g={...candidate,contextLimitedBy:g.contextLimitedBy};
     }
     groups.push(g);i=g.j+1;
   }
   if(transitionPeak(groups.map(g=>g.cost))>TRANSITION_BUDGET)
     throw new Error('Map protected baseline exceeds any-block transition budget');
-  // Base content is never pruned. Admit nested outer context only with spare
-  // capacity in every independent budget, including nonadjacent transitions.
+  // Geometry inside the protected minimum is never pruned or simplified to fit.
+  // Admit outer context only with spare capacity in every independent budget.
   for(let n=0;n<groups.length;n++) {
-    for(const floor of [600,800,1000]) {
-      const g=groups[n],candidate=make(g.i,g.j,floor),failures=budgetFailures(candidate.cost,limits);
+    for(const floor of [600,800,1000].filter(r=>r<=groups[n].contextRadiusCap)) {
+      const g=groups[n],candidate=make(g.i,g.j,floor,g.contextRadiusCap),failures=budgetFailures(candidate.cost,limits);
       const costs=groups.map((b,i)=>i===n?candidate.cost:b.cost);
       if(transitionPeak(costs)>TRANSITION_BUDGET)failures.push('transitionBytes');
       if(failures.length){g.expansionStoppedBy=failures;break;}
-      groups[n]={...candidate,stoppedBy:g.stoppedBy};
+      groups[n]={...candidate,stoppedBy:g.stoppedBy,contextLimitedBy:g.contextLimitedBy};
     }
   }
   const stat={styled:true,budgetVersion:BUDGET_VERSION,limits,transitionLimitBytes:TRANSITION_BUDGET,
-    transitionPeakBytes:transitionPeak(groups.map(g=>g.cost)),omittedBaselineEntries:0,
+    transitionPeakBytes:transitionPeak(groups.map(g=>g.cost)),minimumContextMeters:300,omittedProtectedEntries:0,
+    reducedContextBlocks:groups.filter(g=>g.contextRadiusCap<1000).length,
     blocks:groups.map(({entries,...report})=>report)};
   const body = new Bytes(), offs = new Array(sections.length).fill(0);
   for (const {i,j,entries:es} of groups) {

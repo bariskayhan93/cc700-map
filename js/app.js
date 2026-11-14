@@ -79,7 +79,7 @@ async function build() {
     const gpx = parseGPX(await file.text());
     if (needsBuild) return;
     if (gpx.pts.length < 2) throw new Error('GPX ohne Trackpunkte');
-    const { lines, areas, water, rails, green, trams, wlines, signals, stops, coverage } =
+    const { lines, areas, water, rails, green, trams, wlines, signals, stops, coverage, navigationLines } =
       await loadOSM(gpx.pts, (i, n) => { if (!needsBuild) say('sum', `Kartendaten ${i + 1}/${n} …`); }, undefined, {coverageMeters:styled?1000:0});
     if (needsBuild) return;
     say('sum', 'Route wird berechnet …');
@@ -89,7 +89,7 @@ async function build() {
     const d = new Date(), z = n => String(n).padStart(2, '0');
     const id = z(d.getMonth() + 1) + z(d.getDate()) + z(d.getHours()) + z(d.getMinutes());
     const r = buildRoute(gpx, lines, {
-      speedKmh, id, label: gpx.name, title: gpx.name, nameImage, areas, water, rails, green, wlines,
+      speedKmh, id, label: gpx.name, title: gpx.name, nameImage, areas, water, rails, green, wlines, navigationLines,
       trams: layers.trams ? trams : [], signals: layers.signals ? signals : [], stops: layers.stops ? stops : [],
       noF9: styled,   // patched firmware: field 9 off, as tested on the device
       map: { styled, ...layers, ...(LIMIT > 1200 ? { cap: LIMIT, capMax: LIMIT } : {}) },
@@ -99,7 +99,8 @@ async function build() {
     built = { ...r, model, styled, speedKmh, name: `route_${id}.bin` };
     say('sum', `${gpx.name} → CC700 Route ${id} · ${(r.distance / 1000).toFixed(1)} km · ${(r.file.length / 1024).toFixed(0)} KB` +
       (lines.length ? '' : ' · keine Straßendaten: ohne Karte und Straßennamen') +
-      (styled ? ` · erweitertes Kartenumfeld in ${r.mapStat.blocks.filter(b=>b.coverageFloor>0).length}/${r.mapBlocks} Blöcken` : '') +
+      (styled ? ` · erweitertes Kartenumfeld in ${r.mapStat.blocks.filter(b=>b.coverageFloor>0).length}/${r.mapBlocks} Blöcken` +
+        (r.mapStat.reducedContextBlocks ? ` · dichter Bereich: fernes Umfeld in ${r.mapStat.reducedContextBlocks} Blöcken begrenzt (mind. 300 m)` : '') : '') +
       (coverage.missingCells ? ' · äußere Kartendaten teilweise nicht verfügbar' : ''));
     if(styled)log(JSON.stringify(r.mapStat));
     say('previewTitle', styled ? 'Kartenvorschau · Sunlight' : 'Kartenvorschau · Original');
