@@ -51,6 +51,12 @@ def blocks_of(f):
     return offs, body, out
 
 
+def entry_geometry(entry):
+    """Encoded class-12 point pairs are UTF-8 payload, not coordinates."""
+    _, style, lat, lon, points = entry
+    return [] if style & 15 == 12 else [(lat, lon), *points]
+
+
 def main(path, at=None):
     f, secs = route(path)
     offs, body, blocks = blocks_of(f)
@@ -82,8 +88,8 @@ def main(path, at=None):
         b = by_off[u]
         lat0 = 51.18
         kx = KY * math.cos(math.radians(lat0))
-        xs = [p[1] * SC * kx for e in b["ents"] for p in e[4]]
-        ys = [p[0] * SC * KY for e in b["ents"] for p in e[4]]
+        xs = [p[1] * SC * kx for e in b["ents"] for p in entry_geometry(e)]
+        ys = [p[0] * SC * KY for e in b["ents"] for p in entry_geometry(e)]
         if not xs:
             print(f"{u:6d} {b['bytes']:7d}  {len(b['ents']):7d}  EMPTY BLOCK")
             continue
@@ -105,7 +111,7 @@ def main(path, at=None):
         near = 0
         dmin = 1e9
         for e in b["ents"]:
-            for p in e[4]:
+            for p in entry_geometry(e):
                 d = math.hypot((p[1] * SC - pt[1]) * kx, (p[0] * SC - pt[0]) * KY)
                 dmin = min(dmin, d)
                 if d < 250:

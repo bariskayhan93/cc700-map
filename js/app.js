@@ -3,6 +3,7 @@ import { parseGPX, buildRoute } from './route.js';
 import { nameImage } from './names.js';
 import { readFile, draw } from './preview.js';
 import { CC700 } from './ble.js';
+import { previewGuidance } from './preview_guidance.js';
 const $ = id => document.getElementById(id);
 function say(id, text) {
   const node = $(id);
@@ -101,7 +102,7 @@ async function build() {
     say('turnsN', `Abbiegungen (${r.sections.length})`);
     $('turns').innerHTML = r.sections.map(s => `<li>${s.type === 2 ? '🏁' : ARROW[s.dir]} ${s.text.replace(/</g, '&lt;')}</li>`).join('');
     const position = +$('pos').value;
-    $('pos').max = Math.floor(r.distance);
+    $('pos').max = r.distance;
     $('pos').value = Math.min(position, +$('pos').max);
     show();
     $('out').hidden = false;
@@ -133,23 +134,20 @@ function show(distance = +$('pos').value) {
   const { section, entries, heading } = draw($('cv'), built.model, distance, built.styled, { profile: $('previewStyle').value });
   $('cv').title = `Abschnitt ${section + 1}, ${entries} Kartenelemente`;
   say('playDistance', `${km.format(distance / 1000)} / ${km.format(built.distance / 1000)} km`);
-  showRide(section, distance, heading);
+  showRide(distance, heading);
 }
 
-function showRide(section, distance, heading) {
-  const step = built.sections[section], finished = distance >= +$('pos').max;
-  const remaining = finished ? 0 : Math.max(0, step.dist - distance);
+function showRide(distance, heading) {
+  const { remaining, dir, nextDir, finished, street } = previewGuidance(built.sections, distance, built.distance);
   const inKm = remaining >= 1000;
   say('turnDistance', inKm ? decimal.format(remaining / 1000) : String(Math.round(remaining)));
   say('turnUnit', inKm ? 'km' : 'm');
-  const dir = step.type === 2 ? 6 : step.dir;
   $('turnArrow').setAttribute('data-dir', String(dir));
   say('turnInstruction', finished ? 'Ziel erreicht' : dir === 6 ? 'Zum Ziel' : TURN_TEXT[dir]);
 
-  const follow = step.text.startsWith('then ') && built.sections[section + 1];
-  say('turnStreet', follow ? step.text.slice(step.text.indexOf(' · ') + 3) : step.text);
-  $('turnNext').hidden = !follow || finished;
-  if (follow) say('turnNext', 'Danach ' + TURN_TEXT[follow.dir].toLocaleLowerCase('de-DE'));
+  say('turnStreet', street);
+  $('turnNext').hidden = nextDir === null || finished;
+  if (nextDir !== null) say('turnNext', 'Danach ' + TURN_TEXT[nextDir].toLocaleLowerCase('de-DE'));
 
   say('rideSpeed', decimal.format(playbackFrame === null ? 0 : built.speedKmh));
   say('rideHeading', COURSE[Math.round(heading / 45) % COURSE.length]);
@@ -174,7 +172,7 @@ function playbackTick(time) {
     const end = +$('pos').max;
     const metersPerSecond = built.speedKmh / 3.6 * +$('playRate').value;
     playbackDistance = Math.min(end, playbackDistance + metersPerSecond * elapsed / 1000);
-    $('pos').value = Math.floor(playbackDistance);
+    $('pos').value = playbackDistance;
     show(playbackDistance);
     if (playbackDistance >= end) {
       stopPlayback();

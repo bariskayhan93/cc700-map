@@ -8,7 +8,7 @@ Use it in Chrome on Android. Select a GPX file. The page makes the route file an
 Run the public app checks with Node.js 22 or newer:
 
 ```sh
-node --test tools/test_preview.mjs tools/test_route_decisions.mjs tools/test_navsource.mjs tools/test_service_worker.mjs tools/test_map_style.mjs tools/test_surface.mjs tools/test_map_geometry.mjs tools/test_map_labels.mjs tools/test_map_order.mjs tools/test_map_contract.mjs
+node --test tools/test_preview.mjs tools/test_preview_guidance.mjs tools/test_route_decisions.mjs tools/test_navsource.mjs tools/test_service_worker.mjs tools/test_map_style.mjs tools/test_surface.mjs tools/test_map_geometry.mjs tools/test_map_labels.mjs tools/test_map_order.mjs tools/test_map_contract.mjs
 node tools/test_app_offline.mjs
 ```
 
@@ -17,6 +17,16 @@ preservation, the complete offline module cache, and long-route generation.
 One executed TODO documents a remaining noisy-track false turn. No private ride
 files or device connection are required. See the [app release notes](docs/app-release-2026-11-14.md)
 for changes and remaining limitations.
+
+## Current preview and ride review
+
+The preview now uses the CC700's **240 × 320** full display proportions while keeping
+its **240 × 256** map buffer. See the [23 km ride review](docs/ride-review-2026-11-14.md)
+and [display geometry checks](docs/preview-display-geometry-2026-11-14.md).
+The preview also [counts down across straight subdivisions](docs/preview-guidance-2026-11-14.md), matching the next-maneuver distance rather than an arbitrary record boundary.
+The Tour D3 animations and comparison panels below are historical artwork from an
+older preview layout/palette; they are not exact current v20 screen captures.
+Use the [live v20 preview](https://bariskayhan93.github.io/cc700-map/) for the current style.
 
 ## Watch the ride preview
 
