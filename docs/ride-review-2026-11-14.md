@@ -220,3 +220,24 @@ preview corrections are testable locally and do not require another test ride.
 
 The app changes are limited to preview layout/countdown and offline caching;
 route generation, device firmware and stored ride/route files are unchanged.
+
+
+## Follow-up: distance visibility on the navigation page
+
+The owner reports that ridden kilometres are hard to see and a distance field
+sometimes appears blank. These are retained as two distinct observations.
+In the supplied photo the flag's 7.37 km is **remaining route distance**; the
+lower cells contain speed and GPS heading, so they do not show the trip counter.
+
+The underlying distance counter was active during the ride: automatic lap events
+occur at approximately 5, 10, 15 and 20 km (17:02:54, 17:18:52, 17:34:24 and
+17:49:15). The 20 km event occurs during the large detour. This supports continued
+recording of ridden distance, rather than disappearance of the underlying value.
+
+The recovered text has 33 invalid/zero prompt-record samples during navigation
+startup, ending at 16:44:29, and one zero straight-distance sample at 16:44:30.
+It does not capture every widget's rendered value or visibility. No subsequent
+blank-field incident can be confirmed from those samples. Identify the affected
+field and correlate its timing before assigning it to the trip counter, remaining
+route distance, instruction distance or UI visibility state. No firmware display
+field was changed by this review.
