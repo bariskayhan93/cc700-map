@@ -3,6 +3,21 @@
 This web page makes navigation routes for the GEOID / Magene **CC700** bike computer and sends them over Bluetooth.
 Use it in Chrome on Android. Select a GPX file. The page makes the route file and sends it to the device.
 
+## Local development checks
+
+Run the public app checks with Node.js 22 or newer:
+
+```sh
+node --test tools/test_preview.mjs tools/test_route_decisions.mjs tools/test_navsource.mjs tools/test_service_worker.mjs
+node tools/test_app_offline.mjs
+```
+
+These cover preview/readback, synthetic turn decisions, original OSM source
+preservation, the complete offline module cache, and long-route generation.
+One executed TODO documents a remaining noisy-track false turn. No private ride
+files or device connection are required. See the [app release notes](docs/app-release-2026-11-14.md)
+for changes and remaining limitations.
+
 ## Watch the ride preview
 
 ![Animated three-panel ride preview near the Hofgarten. OnelapFit junction hints, the Junction map, and Sunlight rotate together as the turn card and compass update.](docs/comparison/tour-d3-device-replay.webp)
@@ -81,8 +96,8 @@ stock firmware. The grey blocks show built-up areas around the crossing.
 
 ## CC700 Map settings
 
-The app starts in **Original (Kreuzungskarte)**. Select **Patch v16 (farbige Sunlight-Karte)** only if
-your CC700 has the v16 patch for firmware V1.414. The preview updates from the generated route file.
+The app starts in **Original (Kreuzungskarte)**. Select **Patch v18 (farbige Sunlight-Karte)** only if
+your CC700 has the v18 patch for firmware V1.414. The preview updates from the generated route file.
 Choose **Abspielen** to replay the route at 1×, 4×, or 8× the speed set in **Einstellungen**.
 The slider lets you move to any point during playback. The ride preview shows the next instruction,
 distance, heading and route progress using the generated route.
@@ -129,7 +144,7 @@ The route file is nanopb 0.3 protobuf (firmware 1.414). Name images are LVGL `IN
 
 ## Patched firmware
 
-The v16 patch changes the map drawing of firmware V1.414. It is not part of this repository.
+The v18 patch changes the map drawing of firmware V1.414. It is not part of this repository.
 Route files for the patched firmware do not show a usable map on the original firmware.
 
 ## Legal

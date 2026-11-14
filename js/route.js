@@ -117,6 +117,10 @@ export function decisionPoints(P, D, lines, F, grid) {
     const p = at(d), hin = hdg(at(d - 15), p), tk = adiff(hdg(p, at(d + 15)), hin), alts = [];
     const near = new Set(); for (const [li, a, b] of segs(p[0], p[1])) if (ridable(li) && foot(p[0], p[1], a, b) < 8) near.add(li);
     for (const li of near) for (const q of branches(li, p)) alts.push(adiff(q, hin));   // per road: onwards and back, 12 m along it
+    // A single road's forward and backward arms cannot form a junction.
+    // Recording heading error must not turn its own forward arm into an exit.
+    const arms = []; for (const q of alts) if (!arms.some(a => Math.abs(adiff(a, q)) < 20)) arms.push(q);
+    if (arms.length < 3) return null;
     const other = alts.filter(q => Math.abs(q) < 150 && Math.abs(adiff(q, tk)) > 20);
     if (!other.length) return null;                                                    // no choice: the road only bends
     if (other.some(q => Math.abs(q) < Math.abs(tk) + 10)) return Math.abs(tk) >= 20 ? tk : (tk >= 0 ? 25 : -25);   // another way is as straight or straighter: at least "slight"
@@ -154,7 +158,10 @@ export function buildRoute(gpx, allLines, opt) {
   // smooth road names (majority of 5)
   const nm = road.map((_, i) => { const c = {}; for (let k = Math.max(0, i - 2); k <= Math.min(P.length - 1, i + 2); k++) c[road[k].name] = (c[road[k].name] || 0) + 1; return Object.entries(c).sort((a, b) => b[1] - a[1])[0][0]; });
   const T = Object.assign({ win: 25, sep: 12, hi: 35, lo: 20, jog: 45, jogWin: 10, jogSep: 8, minSec: 5 }, opt.turn);   // tuned against server (Mapbox) turns
-  const angle = (i, w) => adiff(brg(at(D[i]), at(D[i] + w)), brg(at(D[i] - w), at(D[i])));
+  // Average only the heading probes: recording jitter must not rotate a short
+  // approach chord. The supplied route geometry and elevation stay untouched.
+  const courseAt = d => { const a = at(d - 6), b = at(d), c = at(d + 6); return [(a[0] + 2*b[0] + c[0])/4, (a[1] + 2*b[1] + c[1])/4]; };
+  const angle = (i, w) => adiff(brg(courseAt(D[i]), courseAt(D[i] + w)), brg(courseAt(D[i] - w), courseAt(D[i])));
   const inner = i => D[i] > 10 && D[i] < D.at(-1) - 10;
   const A = P.map((_, i) => inner(i) ? angle(i, T.win) : 0), J = P.map((_, i) => inner(i) ? angle(i, T.jogWin) : 0);
   const peak = (X, i, sep) => { for (let k = i - 1; k >= 0 && D[i] - D[k] < sep; k--) if (Math.abs(X[k]) > Math.abs(X[i])) return false;
@@ -174,7 +181,7 @@ export function buildRoute(gpx, allLines, opt) {
     for (const c of [...cut]) if (Math.abs(D[c] - D[i]) < (turnAngle[c] !== undefined ? 12 : 15)) { if (turnAngle[c] !== undefined && turnAngle[c] * a > 0 && Math.abs(turnAngle[c]) > Math.abs(ang)) ang = turnAngle[c]; cut.delete(c); delete turnAngle[c]; }
     cut.add(i); turnAngle[i] = ang; }
   // shape turns on matched roads need a choice at the junction; a bend of the road or cycleway is not a turn
-  if (NET) for (const c of [...cut]) if (turnAngle[c] !== undefined && !dpAngle.has(c) && NET.matched(D[c]) && Math.abs(turnAngle[c]) < 100) {
+  if (NET) for (const c of [...cut]) if (turnAngle[c] !== undefined && !dpAngle.has(c) && NET.matched(D[c]) && Math.abs(turnAngle[c]) < 160) {
     let keep = false; for (let e = -10; e <= 10 && !keep; e += 2) keep = NET.judge(D[c] + e) !== null;
     if (!keep) { delete turnAngle[c]; cut.delete(c); if (nm[c] !== nm[c - 1] && nm[c] && nm[c - 1]) cut.add(c); }
   }

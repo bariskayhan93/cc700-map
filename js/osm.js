@@ -2,9 +2,10 @@
 // (0.05° x 0.08°, about 5.5 km; the server sees cells, not the route), generalizes it and keeps the result on
 // the phone (Cache API). Rules: OSRM bicycle profile access, OpenMapTiles zoom-13 selection.
 import { frame, rdp, lineLen } from './geo.js';
+import { captureNavigationSource, mergeNavigationSources } from './navsource.js';
 const DLAT = 0.05, DLON = 0.08, MARGIN = 0.004;     // cell size; context around a cell for generalization (~400 m)
 const REACH = 0.005;                                // cells within ~550 m of the route are loaded
-const CELL_V = 7;                                  // cell format: 4 = detail ways (fl bit 8), rail/tram flags
+const CELL_V = 8;                                  // 8: optional original navigation source, independent of display lines
 const CACHE = 'cc700-osm-v3', MAX_AGE = 30 * 864e5; // a cell is loaded again after 30 days
 const API = ['https://overpass.openstreetmap.fr/api/interpreter', 'https://overpass-api.de/api/interpreter', 'https://overpass.private.coffee/api/interpreter'];   // fastest first
 const HIGHWAY = 'motorway|trunk|primary|secondary|tertiary|residential|unclassified|living_street|road|service|track|cycleway|path|footway|pedestrian|bridleway';
@@ -141,10 +142,12 @@ function ring(r, F, outer) {
 const inside = ([y, x], r) => { let c = false; for (let i = 0, j = r.length - 1; i < r.length; j = i++) if ((r[i][0] > y) !== (r[j][0] > y) && x < (r[j][1] - r[i][1]) * (y - r[i][0]) / (r[j][0] - r[i][0]) + r[i][1]) c = !c; return c; };
 // Overpass elements of one cell (+ margin) -> { lines: [[id, kind, name, flat points]], areas and water: [[id, [flat ring, ...]]], rails: [[id, flat points]] }
 export function buildCell(els, r, c) {
+  const navigationSource = captureNavigationSource(els);
   const F = frame((r + 0.5) * DLAT), here = p => Math.floor(p[0] / DLAT) === r && Math.floor(p[1] / DLON) === c;
   const ll = g => g.map(q => [q.lat, q.lon]), ways = [], lines = [], areas = [], water = [], tracks = [], green = [], trams = [], wlines = [], tramWays = [];
   for (const e of els) {
     const t = e.tags || {};
+    if (e.type === 'way' && t.highway && (!Array.isArray(e.nodes) || !Array.isArray(e.geometry) || e.geometry.length < 2 || e.geometry.some(p => !p || !Number.isFinite(p.lat) || !Number.isFinite(p.lon) || Math.abs(p.lat) > 90 || Math.abs(p.lon) > 180))) continue;
     if (e.type === 'way' && t.highway && e.geometry.length > 1) {
       const k = kind(t), pts = ll(e.geometry); if (k) ways.push({ id: e.id, t, kind: k, refs: e.nodes, pts, len: lineLen(pts), here: pts.some(here) });
     } else if (e.type === 'way' && /^(tram|light_rail)$/.test(t.railway || '')) {
@@ -166,7 +169,7 @@ export function buildCell(els, r, c) {
   }
   const rails = mainTracks(tracks, F).filter(w => w.here).map(w => [w.id, flat(rdp(w.pts, 3, F.m)), w.fl || 0]);
   for (const w of mainTracks(tramWays, F, 6).filter(w => w.here)) trams.push([w.id, flat(rdp(w.pts, 2, F.m)), w.fl || 0]);   // double track: one line
-  return { lines, areas, water, rails, green, trams, wlines };
+  return { lines, areas, water, rails, green, trams, wlines, navigationSource };
 }
 async function overpass(r, c) {
   const box = [r * DLAT - MARGIN, c * DLON - MARGIN, (r + 1) * DLAT + MARGIN, (c + 1) * DLON + MARGIN].map(v => v.toFixed(4)).join(',');
@@ -203,7 +206,7 @@ const phone = {                                       // processed cells on the 
 // roads { kind, name, pts }, built-up areas and water [outer ring, ...holes], railways [points] around a track [[lat, lon]]
 export async function loadOSM(track, onProgress, store = phone) {
   const cells = new Set(), lines = new Map(), areas = new Map(), water = new Map(), rails = new Map(), green = new Map(), trams = new Map(), wlines = new Map(); let n = 0;
-  const signals = new Map(), stops = new Map();
+  const signals = new Map(), stops = new Map(), navigationCells = [];
   for (const [la, lo] of track) for (const a of [la - REACH, la + REACH]) for (const o of [lo - REACH * 1.6, lo + REACH * 1.6]) cells.add(Math.floor(a / DLAT) + ',' + Math.floor(o / DLON));
   for (const key of cells) {
     onProgress?.(n++, cells.size);
@@ -211,6 +214,7 @@ export async function loadOSM(track, onProgress, store = phone) {
     if (!cell || cell.v !== CELL_V && navigator.onLine !== false || (Date.now() - cell.t > MAX_AGE && navigator.onLine !== false)) try {
       const [r, c] = key.split(',').map(Number); cell = { t: Date.now(), v: CELL_V, ...buildCell(await overpass(r, c), r, c) }; await store.put(key, cell);
     } catch (e) { if (!cell) throw new Error('Kartendaten nicht geladen (' + e.message + '). Für eine neue Region ist Internet nötig.'); }   // old cell: still good
+    navigationCells.push({ key, source: cell.navigationSource });
     for (const [id, kind, name, f, fl] of cell.lines) if (!lines.has(id)) lines.set(id, { kind, name, pts: unflat(f), fl: fl || 0 });   // a road that crosses cells is in each of them
     for (const [id, rings] of cell.areas) if (!areas.has(id)) areas.set(id, rings.map(unflat));
     for (const [id, rings] of cell.water) if (!water.has(id)) water.set(id, rings.map(unflat));
@@ -219,7 +223,7 @@ export async function loadOSM(track, onProgress, store = phone) {
     for (const [id, f, fl] of cell.trams || []) if (!trams.has(id)) trams.set(id, Object.assign(unflat(f), { fl: fl || 0 }));
     for (const [id, f] of cell.wlines || []) if (!wlines.has(id)) wlines.set(id, unflat(f));
     let nc = await store.get('n' + key);                // nodes: optional, a failed load only drops the dots
-    if (!nc || (Date.now() - nc.t > MAX_AGE && navigator.onLine !== false)) try {
+    if (navigator.onLine !== false && (!nc || Date.now() - nc.t > MAX_AGE)) try {
       const [r, c] = key.split(',').map(Number), els = await overpassNodes(r, c);
       nc = { t: Date.now(), sig: els.filter(e => e.tags?.highway === 'traffic_signals').map(e => [e.id, e.lat, e.lon]),
         stop: els.filter(e => e.tags?.railway === 'tram_stop' || e.tags?.tram === 'yes').map(e => [e.id, e.lat, e.lon]) };
@@ -228,6 +232,6 @@ export async function loadOSM(track, onProgress, store = phone) {
     for (const [id, la, lo] of nc?.sig || []) signals.set(id, [la, lo]);
     for (const [id, la, lo] of nc?.stop || []) stops.set(id, [la, lo]);
   }
-  return { lines: [...lines.values()], areas: [...areas.values()], water: [...water.values()], rails: [...rails.values()],
+  return { navigationSource: mergeNavigationSources(navigationCells), lines: [...lines.values()], areas: [...areas.values()], water: [...water.values()], rails: [...rails.values()],
     green: [...green.values()], trams: [...trams.values()], wlines: [...wlines.values()], signals: [...signals.values()], stops: [...stops.values()] };
 }

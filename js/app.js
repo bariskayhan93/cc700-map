@@ -97,7 +97,7 @@ async function build() {
     built = { ...r, model, styled, speedKmh, name: `route_${id}.bin` };
     say('sum', `${gpx.name} → CC700 Route ${id} · ${(r.distance / 1000).toFixed(1)} km · ${(r.file.length / 1024).toFixed(0)} KB` +
       (lines.length ? '' : ' · keine Straßendaten: ohne Karte und Straßennamen'));
-    say('previewTitle', styled ? 'Kartenvorschau · Sunlight (Patch v16)' : 'Kartenvorschau · Original');
+    say('previewTitle', styled ? 'Kartenvorschau · Sunlight (Patch v18)' : 'Kartenvorschau · Original');
     say('turnsN', `Abbiegungen (${r.sections.length})`);
     $('turns').innerHTML = r.sections.map(s => `<li>${s.type === 2 ? '🏁' : ARROW[s.dir]} ${s.text.replace(/</g, '&lt;')}</li>`).join('');
     const position = +$('pos').value;

@@ -1,6 +1,6 @@
 // Service worker: receives GPX files shared from other apps (Web Share Target) and keeps the app usable offline.
-const APP = 'cc700-app-v3';
-const FILES = ['./', 'index.html', 'manifest.webmanifest', 'js/app.js', 'js/pb.js', 'js/geo.js', 'js/osm.js', 'js/mapsec.js', 'js/route.js', 'js/names.js', 'js/preview.js', 'js/ble.js', 'icons/icon-192.png'];
+const APP = 'cc700-app-v4';
+const FILES = ['./', 'index.html', 'manifest.webmanifest', 'js/app.js', 'js/pb.js', 'js/geo.js', 'js/osm.js', 'js/navsource.js', 'js/mapsec.js', 'js/route.js', 'js/names.js', 'js/preview.js', 'js/ble.js', 'icons/icon-192.png'];
 self.addEventListener('install', e => { self.skipWaiting(); e.waitUntil(caches.open(APP).then(c => c.addAll(FILES.map(path => new Request(path, { cache: 'reload' }))))); });
 self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
 self.addEventListener('fetch', e => {
