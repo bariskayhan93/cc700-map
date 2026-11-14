@@ -104,3 +104,17 @@ four bugs: maneuver correctness needs independently labelled intended paths.
 The design direction is to retain the bounded renderer and improve the missing
 path/rejoin decisions. Additional smoothing or a higher angle threshold is not
 a substitute for knowing which junction exit the route actually traverses.
+
+## November 15 evaluation follow-up
+
+The [reliability evaluation](map-evaluation-report-2026-11-15.md) adds a reproducible
+matrix, negative controls, actual seam probes, transitive source fingerprints,
+primary-source research and the [feature capability ledger](feature-capability-ledger.md).
+Six offline 1/2/3 km representation comparisons pass their scoped local gates.
+Independent layer admission can retain a cheap useful line when an optional
+polygon prevents shared-radius expansion. This is not validated recovery routing.
+
+The experimental policy remains offline: target frame/allocator measurements
+and complete 3 km retour behavior are still open. Production generator/firmware
+behavior remains unchanged by this evaluation. The connected device was observed
+through serial only; no firmware/route writes or requested reset occurred.

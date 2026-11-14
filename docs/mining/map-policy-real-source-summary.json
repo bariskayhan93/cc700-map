@@ -1,0 +1,78 @@
+{
+  "schema": "cc700-private-source-summary-v1",
+  "limits": "Aggregates from private cached source; no labelled feature oracle or complete 3 km source coverage. Independent Python decoding matches all 70 reference/candidate map blocks.",
+  "rows": [
+    {
+      "case": "outbound",
+      "policy": "reference",
+      "sections": 23,
+      "blocks": 9,
+      "fileBytes": 524288,
+      "transitionPeakBytes": 237317,
+      "nativeBytesIdentical": true,
+      "labelledFeatureOracle": "absent",
+      "sourceBeyondOneKm": "incomplete-unknown",
+      "returnRouting": "not-implemented"
+    },
+    {
+      "case": "outbound",
+      "policy": "layered-1000",
+      "sections": 23,
+      "blocks": 9,
+      "fileBytes": 557056,
+      "transitionPeakBytes": 241063,
+      "nativeBytesIdentical": true,
+      "labelledFeatureOracle": "absent",
+      "sourceBeyondOneKm": "incomplete-unknown",
+      "returnRouting": "not-implemented"
+    },
+    {
+      "case": "return",
+      "policy": "reference",
+      "sections": 19,
+      "blocks": 9,
+      "fileBytes": 520192,
+      "transitionPeakBytes": 236511,
+      "nativeBytesIdentical": true,
+      "labelledFeatureOracle": "absent",
+      "sourceBeyondOneKm": "incomplete-unknown",
+      "returnRouting": "not-implemented"
+    },
+    {
+      "case": "return",
+      "policy": "layered-1000",
+      "sections": 19,
+      "blocks": 9,
+      "fileBytes": 552960,
+      "transitionPeakBytes": 240498,
+      "nativeBytesIdentical": true,
+      "labelledFeatureOracle": "absent",
+      "sourceBeyondOneKm": "incomplete-unknown",
+      "returnRouting": "not-implemented"
+    },
+    {
+      "case": "out-and-back",
+      "policy": "reference",
+      "sections": 42,
+      "blocks": 17,
+      "fileBytes": 999424,
+      "transitionPeakBytes": 237317,
+      "nativeBytesIdentical": true,
+      "labelledFeatureOracle": "absent",
+      "sourceBeyondOneKm": "incomplete-unknown",
+      "returnRouting": "not-implemented"
+    },
+    {
+      "case": "out-and-back",
+      "policy": "layered-1000",
+      "sections": 42,
+      "blocks": 17,
+      "fileBytes": 1060864,
+      "transitionPeakBytes": 241063,
+      "nativeBytesIdentical": true,
+      "labelledFeatureOracle": "absent",
+      "sourceBeyondOneKm": "incomplete-unknown",
+      "returnRouting": "not-implemented"
+    }
+  ]
+}

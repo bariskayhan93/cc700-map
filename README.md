@@ -170,3 +170,8 @@ while dense sections explicitly limit distant lines toward a 300 m minimum.
 Area windows retain at least 600 m to preserve boundary styling. Regenerate a
 route to use this; existing device files stay unchanged. See the
 [implementation, costs and validation](docs/adaptive-map-budget-2026-11-14.md).
+
+The [reliability evaluation and feature-capability report](docs/map-evaluation-report-2026-11-15.md)
+contains the test matrix, layer-selection experiments, 3 km recovery requirements
+and explicit release gates. Experimental policies run offline and do not change
+the deployed generator default.

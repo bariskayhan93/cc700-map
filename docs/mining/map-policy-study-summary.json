@@ -1,0 +1,3259 @@
+{
+  "schema": "cc700-map-policy-study-summary-v1",
+  "sourceFingerprint": "4780f5accbafef57f226f2c512af0846d67959a112692d4df2e52b6abe389ea6",
+  "sources": {
+    "js/device_draw.js": "e326bbc13c5843c87444cd9994bd9047c94c86712cd9e41763927f5f5e53c78e",
+    "js/geo.js": "7955db5d616ea49c9ed1384ffe0ba995cc5953fe7e5a39b29653efb6ff4c0c43",
+    "js/map_budget.js": "27207b175fafcf257dde9aef4bdc321495360ca8131217fb0ba25e0aea58c864",
+    "js/map_geometry.js": "5a43a16bcc7a81007c7711bc5cd7bd73be2b11af4df7eb3c9baa9415abe4ee0a",
+    "js/map_labels.js": "34babf01357c2f29bcc94e6bbe8d4971e127bcdd073dcd26c82c59f5b25db60f",
+    "js/map_order.js": "092c0603e908543642a6ca90b3236690fd0e9e266c14600bff611c881ba63ae8",
+    "js/map_style.js": "93452a0da8a16144e3d15aeb9592ca1ee2b7255111bf211554c4750c8965088b",
+    "js/mapsec.js": "0cf5a47bd9b91e76bd019538d82c1f99b1e032bba7b6b764bc10e08c89727572",
+    "js/pb.js": "1eb05356cd191ac359020157ee92b7c2d9a6615d591a1ac966a3ba4e9578852a",
+    "js/preview.js": "499776108127de8a88286a8bd6ef96415f3d7dd00d36005b2425af6b1f4a788e",
+    "js/route.js": "6a807c6f9abe4bbaf38cbbabad3d1b9949481922030f8b321cf2fadab5facac5",
+    "tools/map_benchmark.mjs": "601f6ee21cf3f583e71a81922aa0675488aed07f3f22f3e881188b18ea597cbd",
+    "tools/map_benchmark_cases.mjs": "74d6bbc5ed14587f2c2ddce3e087467c1fd209f9342999479d27186bf4fc0f65",
+    "tools/map_policy_study.mjs": "12578cab7ad626bea976382eeb6d2fe2f705b7cab6bdfdb741eaa6900c9f376b"
+  },
+  "limits": "Synthetic drawable geometry capacity only. No connected recovery route, target frame-time or complete OSM coverage is established.",
+  "returnRouting": "not-implemented",
+  "targetAcceptance": "unvalidated",
+  "productionPolicyChanged": false,
+  "reference": {
+    "counts": {
+      "generated": 11,
+      "expectedRejections": 1,
+      "failed": 0
+    },
+    "optionalDrawableProbes": 13
+  },
+  "policies": [
+    {
+      "policy": "uniform-1000",
+      "status": "pass",
+      "generated": 11,
+      "expectedRejections": 1,
+      "optionalDrawableProbes": 13,
+      "returnRouting": "not-implemented",
+      "targetAcceptance": "unvalidated",
+      "comparison": {
+        "schema": "cc700-map-comparison-v1",
+        "beforePolicy": "reference",
+        "afterPolicy": "uniform-1000",
+        "cases": [
+          {
+            "id": "urban",
+            "beforeStatus": "pass",
+            "afterStatus": "pass",
+            "delta": {
+              "fileBytes": 0,
+              "sections": 0,
+              "blocks": 0,
+              "transitionPeakBytes": 0,
+              "projectionCallsMax": 0,
+              "projectedPointsMax": 0,
+              "fillVerticesMax": 0,
+              "decodedBytesMax": 0,
+              "serializedBytesMax": 0
+            },
+            "lostRequiredProbes": [],
+            "optionalProbesBefore": [
+              "essential-context-1000"
+            ],
+            "optionalProbesAfter": [
+              "essential-context-1000"
+            ]
+          },
+          {
+            "id": "village",
+            "beforeStatus": "pass",
+            "afterStatus": "pass",
+            "delta": {
+              "fileBytes": 0,
+              "sections": 0,
+              "blocks": 0,
+              "transitionPeakBytes": 0,
+              "projectionCallsMax": 0,
+              "projectedPointsMax": 0,
+              "fillVerticesMax": 0,
+              "decodedBytesMax": 0,
+              "serializedBytesMax": 0
+            },
+            "lostRequiredProbes": [],
+            "optionalProbesBefore": [
+              "outer-orientation",
+              "essential-context-1000"
+            ],
+            "optionalProbesAfter": [
+              "outer-orientation",
+              "essential-context-1000"
+            ]
+          },
+          {
+            "id": "forest",
+            "beforeStatus": "pass",
+            "afterStatus": "pass",
+            "delta": {
+              "fileBytes": 0,
+              "sections": 0,
+              "blocks": 0,
+              "transitionPeakBytes": 0,
+              "projectionCallsMax": 0,
+              "projectedPointsMax": 0,
+              "fillVerticesMax": 0,
+              "decodedBytesMax": 0,
+              "serializedBytesMax": 0
+            },
+            "lostRequiredProbes": [],
+            "optionalProbesBefore": [
+              "essential-context-1000"
+            ],
+            "optionalProbesAfter": [
+              "essential-context-1000"
+            ]
+          },
+          {
+            "id": "water-crossing",
+            "beforeStatus": "pass",
+            "afterStatus": "pass",
+            "delta": {
+              "fileBytes": 0,
+              "sections": 0,
+              "blocks": 0,
+              "transitionPeakBytes": 0,
+              "projectionCallsMax": 0,
+              "projectedPointsMax": 0,
+              "fillVerticesMax": 0,
+              "decodedBytesMax": 0,
+              "serializedBytesMax": 0
+            },
+            "lostRequiredProbes": [],
+            "optionalProbesBefore": [
+              "essential-context-1000"
+            ],
+            "optionalProbesAfter": [
+              "essential-context-1000"
+            ]
+          },
+          {
+            "id": "parallel-hairpin",
+            "beforeStatus": "pass",
+            "afterStatus": "pass",
+            "delta": {
+              "fileBytes": 0,
+              "sections": 0,
+              "blocks": 0,
+              "transitionPeakBytes": 0,
+              "projectionCallsMax": 0,
+              "projectedPointsMax": 0,
+              "fillVerticesMax": 0,
+              "decodedBytesMax": 0,
+              "serializedBytesMax": 0
+            },
+            "lostRequiredProbes": [],
+            "optionalProbesBefore": [
+              "essential-context-1000"
+            ],
+            "optionalProbesAfter": [
+              "essential-context-1000"
+            ]
+          },
+          {
+            "id": "overlap",
+            "beforeStatus": "pass",
+            "afterStatus": "pass",
+            "delta": {
+              "fileBytes": 0,
+              "sections": 0,
+              "blocks": 0,
+              "transitionPeakBytes": 0,
+              "projectionCallsMax": 0,
+              "projectedPointsMax": 0,
+              "fillVerticesMax": 0,
+              "decodedBytesMax": 0,
+              "serializedBytesMax": 0
+            },
+            "lostRequiredProbes": [],
+            "optionalProbesBefore": [
+              "essential-context-1000"
+            ],
+            "optionalProbesAfter": [
+              "essential-context-1000"
+            ]
+          },
+          {
+            "id": "detour-context",
+            "beforeStatus": "pass",
+            "afterStatus": "pass",
+            "delta": {
+              "fileBytes": 0,
+              "sections": 0,
+              "blocks": 0,
+              "transitionPeakBytes": 0,
+              "projectionCallsMax": 0,
+              "projectedPointsMax": 0,
+              "fillVerticesMax": 0,
+              "decodedBytesMax": 0,
+              "serializedBytesMax": 0
+            },
+            "lostRequiredProbes": [],
+            "optionalProbesBefore": [
+              "outer-cycle",
+              "essential-context-1000"
+            ],
+            "optionalProbesAfter": [
+              "outer-cycle",
+              "essential-context-1000"
+            ]
+          },
+          {
+            "id": "mixed-transition",
+            "beforeStatus": "pass",
+            "afterStatus": "pass",
+            "delta": {
+              "fileBytes": 0,
+              "sections": 0,
+              "blocks": 0,
+              "transitionPeakBytes": 0,
+              "projectionCallsMax": 0,
+              "projectedPointsMax": 0,
+              "fillVerticesMax": 0,
+              "decodedBytesMax": 0,
+              "serializedBytesMax": 0
+            },
+            "lostRequiredProbes": [],
+            "optionalProbesBefore": [
+              "essential-context-1000"
+            ],
+            "optionalProbesAfter": [
+              "essential-context-1000"
+            ]
+          },
+          {
+            "id": "competing-layers",
+            "beforeStatus": "pass",
+            "afterStatus": "pass",
+            "delta": {
+              "fileBytes": 0,
+              "sections": 0,
+              "blocks": 0,
+              "transitionPeakBytes": 0,
+              "projectionCallsMax": 0,
+              "projectedPointsMax": 0,
+              "fillVerticesMax": 0,
+              "decodedBytesMax": 0,
+              "serializedBytesMax": 0
+            },
+            "lostRequiredProbes": [],
+            "optionalProbesBefore": [
+              "essential-context-1000"
+            ],
+            "optionalProbesAfter": [
+              "essential-context-1000"
+            ]
+          },
+          {
+            "id": "sparse",
+            "beforeStatus": "pass",
+            "afterStatus": "pass",
+            "delta": {
+              "fileBytes": 0,
+              "sections": 0,
+              "blocks": 0,
+              "transitionPeakBytes": 0,
+              "projectionCallsMax": 0,
+              "projectedPointsMax": 0,
+              "fillVerticesMax": 0,
+              "decodedBytesMax": 0,
+              "serializedBytesMax": 0
+            },
+            "lostRequiredProbes": [],
+            "optionalProbesBefore": [
+              "essential-context-1000"
+            ],
+            "optionalProbesAfter": [
+              "essential-context-1000"
+            ]
+          },
+          {
+            "id": "noisy",
+            "beforeStatus": "pass",
+            "afterStatus": "pass",
+            "delta": {
+              "fileBytes": 0,
+              "sections": 0,
+              "blocks": 0,
+              "transitionPeakBytes": 0,
+              "projectionCallsMax": 0,
+              "projectedPointsMax": 0,
+              "fillVerticesMax": 0,
+              "decodedBytesMax": 0,
+              "serializedBytesMax": 0
+            },
+            "lostRequiredProbes": [],
+            "optionalProbesBefore": [
+              "essential-context-1000"
+            ],
+            "optionalProbesAfter": [
+              "essential-context-1000"
+            ]
+          },
+          {
+            "id": "protected-overload",
+            "beforeStatus": "expected_rejection",
+            "afterStatus": "expected_rejection",
+            "delta": {},
+            "lostRequiredProbes": [],
+            "optionalProbesBefore": [],
+            "optionalProbesAfter": []
+          }
+        ]
+      },
+      "cases": [
+        {
+          "id": "urban",
+          "status": "pass",
+          "costs": {
+            "fileBytes": 57344,
+            "sections": 10,
+            "blocks": 2,
+            "transitionPeakBytes": 173260,
+            "projectionCallsMax": 1374,
+            "projectedPointsMax": 2796,
+            "fillVerticesMax": 100,
+            "decodedBytesMax": 25884,
+            "serializedBytesMax": 24496
+          },
+          "failures": [],
+          "boundaryProbes": []
+        },
+        {
+          "id": "village",
+          "status": "pass",
+          "costs": {
+            "fileBytes": 4096,
+            "sections": 3,
+            "blocks": 2,
+            "transitionPeakBytes": 123331,
+            "projectionCallsMax": 10,
+            "projectedPointsMax": 18,
+            "fillVerticesMax": 0,
+            "decodedBytesMax": 232,
+            "serializedBytesMax": 219
+          },
+          "failures": [],
+          "boundaryProbes": []
+        },
+        {
+          "id": "forest",
+          "status": "pass",
+          "costs": {
+            "fileBytes": 8192,
+            "sections": 3,
+            "blocks": 2,
+            "transitionPeakBytes": 123914,
+            "projectionCallsMax": 16,
+            "projectedPointsMax": 64,
+            "fillVerticesMax": 5,
+            "decodedBytesMax": 488,
+            "serializedBytesMax": 546
+          },
+          "failures": [],
+          "boundaryProbes": []
+        },
+        {
+          "id": "water-crossing",
+          "status": "pass",
+          "costs": {
+            "fileBytes": 4096,
+            "sections": 3,
+            "blocks": 2,
+            "transitionPeakBytes": 123643,
+            "projectionCallsMax": 16,
+            "projectedPointsMax": 34,
+            "fillVerticesMax": 5,
+            "decodedBytesMax": 392,
+            "serializedBytesMax": 371
+          },
+          "failures": [],
+          "boundaryProbes": []
+        },
+        {
+          "id": "parallel-hairpin",
+          "status": "pass",
+          "costs": {
+            "fileBytes": 4096,
+            "sections": 3,
+            "blocks": 2,
+            "transitionPeakBytes": 123795,
+            "projectionCallsMax": 14,
+            "projectedPointsMax": 23,
+            "fillVerticesMax": 0,
+            "decodedBytesMax": 468,
+            "serializedBytesMax": 447
+          },
+          "failures": [],
+          "boundaryProbes": []
+        },
+        {
+          "id": "overlap",
+          "status": "pass",
+          "costs": {
+            "fileBytes": 8192,
+            "sections": 6,
+            "blocks": 3,
+            "transitionPeakBytes": 123413,
+            "projectionCallsMax": 9,
+            "projectedPointsMax": 21,
+            "fillVerticesMax": 0,
+            "decodedBytesMax": 264,
+            "serializedBytesMax": 269
+          },
+          "failures": [],
+          "boundaryProbes": []
+        },
+        {
+          "id": "detour-context",
+          "status": "pass",
+          "costs": {
+            "fileBytes": 4096,
+            "sections": 3,
+            "blocks": 2,
+            "transitionPeakBytes": 123202,
+            "projectionCallsMax": 6,
+            "projectedPointsMax": 11,
+            "fillVerticesMax": 0,
+            "decodedBytesMax": 160,
+            "serializedBytesMax": 162
+          },
+          "failures": [],
+          "boundaryProbes": []
+        },
+        {
+          "id": "mixed-transition",
+          "status": "pass",
+          "costs": {
+            "fileBytes": 12288,
+            "sections": 7,
+            "blocks": 4,
+            "transitionPeakBytes": 126258,
+            "projectionCallsMax": 81,
+            "projectedPointsMax": 150,
+            "fillVerticesMax": 0,
+            "decodedBytesMax": 1780,
+            "serializedBytesMax": 1598
+          },
+          "failures": [],
+          "boundaryProbes": [
+            {
+              "id": "cycle-seam-2--1",
+              "required": true,
+              "cls": 10,
+              "section": 1,
+              "matched": true,
+              "nearestMeters": 0
+            },
+            {
+              "id": "cycle-seam-2-1",
+              "required": true,
+              "cls": 10,
+              "section": 2,
+              "matched": true,
+              "nearestMeters": 0
+            },
+            {
+              "id": "cycle-seam-4--1",
+              "required": true,
+              "cls": 10,
+              "section": 3,
+              "matched": true,
+              "nearestMeters": 0
+            },
+            {
+              "id": "cycle-seam-4-1",
+              "required": true,
+              "cls": 10,
+              "section": 4,
+              "matched": true,
+              "nearestMeters": 0
+            },
+            {
+              "id": "cycle-seam-6--1",
+              "required": true,
+              "cls": 10,
+              "section": 5,
+              "matched": true,
+              "nearestMeters": 0
+            },
+            {
+              "id": "cycle-seam-6-1",
+              "required": true,
+              "cls": 10,
+              "section": 6,
+              "matched": true,
+              "nearestMeters": 0
+            }
+          ]
+        },
+        {
+          "id": "competing-layers",
+          "status": "pass",
+          "costs": {
+            "fileBytes": 4096,
+            "sections": 3,
+            "blocks": 2,
+            "transitionPeakBytes": 123224,
+            "projectionCallsMax": 6,
+            "projectedPointsMax": 13,
+            "fillVerticesMax": 4,
+            "decodedBytesMax": 168,
+            "serializedBytesMax": 176
+          },
+          "failures": [],
+          "boundaryProbes": []
+        },
+        {
+          "id": "sparse",
+          "status": "pass",
+          "costs": {
+            "fileBytes": 4096,
+            "sections": 3,
+            "blocks": 2,
+            "transitionPeakBytes": 123129,
+            "projectionCallsMax": 5,
+            "projectedPointsMax": 9,
+            "fillVerticesMax": 0,
+            "decodedBytesMax": 124,
+            "serializedBytesMax": 125
+          },
+          "failures": [],
+          "boundaryProbes": []
+        },
+        {
+          "id": "noisy",
+          "status": "pass",
+          "costs": {
+            "fileBytes": 8192,
+            "sections": 4,
+            "blocks": 2,
+            "transitionPeakBytes": 123202,
+            "projectionCallsMax": 6,
+            "projectedPointsMax": 10,
+            "fillVerticesMax": 0,
+            "decodedBytesMax": 160,
+            "serializedBytesMax": 162
+          },
+          "failures": [],
+          "boundaryProbes": []
+        },
+        {
+          "id": "protected-overload",
+          "status": "expected_rejection",
+          "costs": {},
+          "failures": [],
+          "boundaryProbes": []
+        }
+      ]
+    },
+    {
+      "policy": "layered-1000",
+      "status": "pass",
+      "generated": 11,
+      "expectedRejections": 1,
+      "optionalDrawableProbes": 14,
+      "returnRouting": "not-implemented",
+      "targetAcceptance": "unvalidated",
+      "comparison": {
+        "schema": "cc700-map-comparison-v1",
+        "beforePolicy": "reference",
+        "afterPolicy": "layered-1000",
+        "cases": [
+          {
+            "id": "urban",
+            "beforeStatus": "pass",
+            "afterStatus": "pass",
+            "delta": {
+              "fileBytes": 0,
+              "sections": 0,
+              "blocks": 0,
+              "transitionPeakBytes": 0,
+              "projectionCallsMax": 0,
+              "projectedPointsMax": 0,
+              "fillVerticesMax": 0,
+              "decodedBytesMax": 0,
+              "serializedBytesMax": 0
+            },
+            "lostRequiredProbes": [],
+            "optionalProbesBefore": [
+              "essential-context-1000"
+            ],
+            "optionalProbesAfter": [
+              "essential-context-1000"
+            ]
+          },
+          {
+            "id": "village",
+            "beforeStatus": "pass",
+            "afterStatus": "pass",
+            "delta": {
+              "fileBytes": 0,
+              "sections": 0,
+              "blocks": 0,
+              "transitionPeakBytes": 0,
+              "projectionCallsMax": 0,
+              "projectedPointsMax": 0,
+              "fillVerticesMax": 0,
+              "decodedBytesMax": 0,
+              "serializedBytesMax": 0
+            },
+            "lostRequiredProbes": [],
+            "optionalProbesBefore": [
+              "outer-orientation",
+              "essential-context-1000"
+            ],
+            "optionalProbesAfter": [
+              "outer-orientation",
+              "essential-context-1000"
+            ]
+          },
+          {
+            "id": "forest",
+            "beforeStatus": "pass",
+            "afterStatus": "pass",
+            "delta": {
+              "fileBytes": 0,
+              "sections": 0,
+              "blocks": 0,
+              "transitionPeakBytes": 0,
+              "projectionCallsMax": 0,
+              "projectedPointsMax": 0,
+              "fillVerticesMax": 0,
+              "decodedBytesMax": 0,
+              "serializedBytesMax": 0
+            },
+            "lostRequiredProbes": [],
+            "optionalProbesBefore": [
+              "essential-context-1000"
+            ],
+            "optionalProbesAfter": [
+              "essential-context-1000"
+            ]
+          },
+          {
+            "id": "water-crossing",
+            "beforeStatus": "pass",
+            "afterStatus": "pass",
+            "delta": {
+              "fileBytes": 0,
+              "sections": 0,
+              "blocks": 0,
+              "transitionPeakBytes": 0,
+              "projectionCallsMax": 0,
+              "projectedPointsMax": 0,
+              "fillVerticesMax": 0,
+              "decodedBytesMax": 0,
+              "serializedBytesMax": 0
+            },
+            "lostRequiredProbes": [],
+            "optionalProbesBefore": [
+              "essential-context-1000"
+            ],
+            "optionalProbesAfter": [
+              "essential-context-1000"
+            ]
+          },
+          {
+            "id": "parallel-hairpin",
+            "beforeStatus": "pass",
+            "afterStatus": "pass",
+            "delta": {
+              "fileBytes": 0,
+              "sections": 0,
+              "blocks": 0,
+              "transitionPeakBytes": 0,
+              "projectionCallsMax": 0,
+              "projectedPointsMax": 0,
+              "fillVerticesMax": 0,
+              "decodedBytesMax": 0,
+              "serializedBytesMax": 0
+            },
+            "lostRequiredProbes": [],
+            "optionalProbesBefore": [
+              "essential-context-1000"
+            ],
+            "optionalProbesAfter": [
+              "essential-context-1000"
+            ]
+          },
+          {
+            "id": "overlap",
+            "beforeStatus": "pass",
+            "afterStatus": "pass",
+            "delta": {
+              "fileBytes": 0,
+              "sections": 0,
+              "blocks": 0,
+              "transitionPeakBytes": 0,
+              "projectionCallsMax": 0,
+              "projectedPointsMax": 0,
+              "fillVerticesMax": 0,
+              "decodedBytesMax": 0,
+              "serializedBytesMax": 0
+            },
+            "lostRequiredProbes": [],
+            "optionalProbesBefore": [
+              "essential-context-1000"
+            ],
+            "optionalProbesAfter": [
+              "essential-context-1000"
+            ]
+          },
+          {
+            "id": "detour-context",
+            "beforeStatus": "pass",
+            "afterStatus": "pass",
+            "delta": {
+              "fileBytes": 0,
+              "sections": 0,
+              "blocks": 0,
+              "transitionPeakBytes": 0,
+              "projectionCallsMax": 0,
+              "projectedPointsMax": 0,
+              "fillVerticesMax": 0,
+              "decodedBytesMax": 0,
+              "serializedBytesMax": 0
+            },
+            "lostRequiredProbes": [],
+            "optionalProbesBefore": [
+              "outer-cycle",
+              "essential-context-1000"
+            ],
+            "optionalProbesAfter": [
+              "outer-cycle",
+              "essential-context-1000"
+            ]
+          },
+          {
+            "id": "mixed-transition",
+            "beforeStatus": "pass",
+            "afterStatus": "pass",
+            "delta": {
+              "fileBytes": 0,
+              "sections": 0,
+              "blocks": 0,
+              "transitionPeakBytes": 0,
+              "projectionCallsMax": 0,
+              "projectedPointsMax": 0,
+              "fillVerticesMax": 0,
+              "decodedBytesMax": 0,
+              "serializedBytesMax": 0
+            },
+            "lostRequiredProbes": [],
+            "optionalProbesBefore": [
+              "essential-context-1000"
+            ],
+            "optionalProbesAfter": [
+              "essential-context-1000"
+            ]
+          },
+          {
+            "id": "competing-layers",
+            "beforeStatus": "pass",
+            "afterStatus": "pass",
+            "delta": {
+              "fileBytes": 0,
+              "sections": 0,
+              "blocks": 0,
+              "transitionPeakBytes": 68,
+              "projectionCallsMax": 1,
+              "projectedPointsMax": 2,
+              "fillVerticesMax": 0,
+              "decodedBytesMax": 36,
+              "serializedBytesMax": 32
+            },
+            "lostRequiredProbes": [],
+            "optionalProbesBefore": [
+              "essential-context-1000"
+            ],
+            "optionalProbesAfter": [
+              "outer-cycle-950",
+              "essential-context-1000"
+            ]
+          },
+          {
+            "id": "sparse",
+            "beforeStatus": "pass",
+            "afterStatus": "pass",
+            "delta": {
+              "fileBytes": 0,
+              "sections": 0,
+              "blocks": 0,
+              "transitionPeakBytes": 0,
+              "projectionCallsMax": 0,
+              "projectedPointsMax": 0,
+              "fillVerticesMax": 0,
+              "decodedBytesMax": 0,
+              "serializedBytesMax": 0
+            },
+            "lostRequiredProbes": [],
+            "optionalProbesBefore": [
+              "essential-context-1000"
+            ],
+            "optionalProbesAfter": [
+              "essential-context-1000"
+            ]
+          },
+          {
+            "id": "noisy",
+            "beforeStatus": "pass",
+            "afterStatus": "pass",
+            "delta": {
+              "fileBytes": 0,
+              "sections": 0,
+              "blocks": 0,
+              "transitionPeakBytes": 0,
+              "projectionCallsMax": 0,
+              "projectedPointsMax": 0,
+              "fillVerticesMax": 0,
+              "decodedBytesMax": 0,
+              "serializedBytesMax": 0
+            },
+            "lostRequiredProbes": [],
+            "optionalProbesBefore": [
+              "essential-context-1000"
+            ],
+            "optionalProbesAfter": [
+              "essential-context-1000"
+            ]
+          },
+          {
+            "id": "protected-overload",
+            "beforeStatus": "expected_rejection",
+            "afterStatus": "expected_rejection",
+            "delta": {},
+            "lostRequiredProbes": [],
+            "optionalProbesBefore": [],
+            "optionalProbesAfter": []
+          }
+        ]
+      },
+      "cases": [
+        {
+          "id": "urban",
+          "status": "pass",
+          "costs": {
+            "fileBytes": 57344,
+            "sections": 10,
+            "blocks": 2,
+            "transitionPeakBytes": 173260,
+            "projectionCallsMax": 1374,
+            "projectedPointsMax": 2796,
+            "fillVerticesMax": 100,
+            "decodedBytesMax": 25884,
+            "serializedBytesMax": 24496
+          },
+          "failures": [],
+          "boundaryProbes": []
+        },
+        {
+          "id": "village",
+          "status": "pass",
+          "costs": {
+            "fileBytes": 4096,
+            "sections": 3,
+            "blocks": 2,
+            "transitionPeakBytes": 123331,
+            "projectionCallsMax": 10,
+            "projectedPointsMax": 18,
+            "fillVerticesMax": 0,
+            "decodedBytesMax": 232,
+            "serializedBytesMax": 219
+          },
+          "failures": [],
+          "boundaryProbes": []
+        },
+        {
+          "id": "forest",
+          "status": "pass",
+          "costs": {
+            "fileBytes": 8192,
+            "sections": 3,
+            "blocks": 2,
+            "transitionPeakBytes": 123914,
+            "projectionCallsMax": 16,
+            "projectedPointsMax": 64,
+            "fillVerticesMax": 5,
+            "decodedBytesMax": 488,
+            "serializedBytesMax": 546
+          },
+          "failures": [],
+          "boundaryProbes": []
+        },
+        {
+          "id": "water-crossing",
+          "status": "pass",
+          "costs": {
+            "fileBytes": 4096,
+            "sections": 3,
+            "blocks": 2,
+            "transitionPeakBytes": 123643,
+            "projectionCallsMax": 16,
+            "projectedPointsMax": 34,
+            "fillVerticesMax": 5,
+            "decodedBytesMax": 392,
+            "serializedBytesMax": 371
+          },
+          "failures": [],
+          "boundaryProbes": []
+        },
+        {
+          "id": "parallel-hairpin",
+          "status": "pass",
+          "costs": {
+            "fileBytes": 4096,
+            "sections": 3,
+            "blocks": 2,
+            "transitionPeakBytes": 123795,
+            "projectionCallsMax": 14,
+            "projectedPointsMax": 23,
+            "fillVerticesMax": 0,
+            "decodedBytesMax": 468,
+            "serializedBytesMax": 447
+          },
+          "failures": [],
+          "boundaryProbes": []
+        },
+        {
+          "id": "overlap",
+          "status": "pass",
+          "costs": {
+            "fileBytes": 8192,
+            "sections": 6,
+            "blocks": 3,
+            "transitionPeakBytes": 123413,
+            "projectionCallsMax": 9,
+            "projectedPointsMax": 21,
+            "fillVerticesMax": 0,
+            "decodedBytesMax": 264,
+            "serializedBytesMax": 269
+          },
+          "failures": [],
+          "boundaryProbes": []
+        },
+        {
+          "id": "detour-context",
+          "status": "pass",
+          "costs": {
+            "fileBytes": 4096,
+            "sections": 3,
+            "blocks": 2,
+            "transitionPeakBytes": 123202,
+            "projectionCallsMax": 6,
+            "projectedPointsMax": 11,
+            "fillVerticesMax": 0,
+            "decodedBytesMax": 160,
+            "serializedBytesMax": 162
+          },
+          "failures": [],
+          "boundaryProbes": []
+        },
+        {
+          "id": "mixed-transition",
+          "status": "pass",
+          "costs": {
+            "fileBytes": 12288,
+            "sections": 7,
+            "blocks": 4,
+            "transitionPeakBytes": 126258,
+            "projectionCallsMax": 81,
+            "projectedPointsMax": 150,
+            "fillVerticesMax": 0,
+            "decodedBytesMax": 1780,
+            "serializedBytesMax": 1598
+          },
+          "failures": [],
+          "boundaryProbes": [
+            {
+              "id": "cycle-seam-2--1",
+              "required": true,
+              "cls": 10,
+              "section": 1,
+              "matched": true,
+              "nearestMeters": 0
+            },
+            {
+              "id": "cycle-seam-2-1",
+              "required": true,
+              "cls": 10,
+              "section": 2,
+              "matched": true,
+              "nearestMeters": 0
+            },
+            {
+              "id": "cycle-seam-4--1",
+              "required": true,
+              "cls": 10,
+              "section": 3,
+              "matched": true,
+              "nearestMeters": 0
+            },
+            {
+              "id": "cycle-seam-4-1",
+              "required": true,
+              "cls": 10,
+              "section": 4,
+              "matched": true,
+              "nearestMeters": 0
+            },
+            {
+              "id": "cycle-seam-6--1",
+              "required": true,
+              "cls": 10,
+              "section": 5,
+              "matched": true,
+              "nearestMeters": 0
+            },
+            {
+              "id": "cycle-seam-6-1",
+              "required": true,
+              "cls": 10,
+              "section": 6,
+              "matched": true,
+              "nearestMeters": 0
+            }
+          ]
+        },
+        {
+          "id": "competing-layers",
+          "status": "pass",
+          "costs": {
+            "fileBytes": 4096,
+            "sections": 3,
+            "blocks": 2,
+            "transitionPeakBytes": 123292,
+            "projectionCallsMax": 7,
+            "projectedPointsMax": 15,
+            "fillVerticesMax": 4,
+            "decodedBytesMax": 204,
+            "serializedBytesMax": 208
+          },
+          "failures": [],
+          "boundaryProbes": []
+        },
+        {
+          "id": "sparse",
+          "status": "pass",
+          "costs": {
+            "fileBytes": 4096,
+            "sections": 3,
+            "blocks": 2,
+            "transitionPeakBytes": 123129,
+            "projectionCallsMax": 5,
+            "projectedPointsMax": 9,
+            "fillVerticesMax": 0,
+            "decodedBytesMax": 124,
+            "serializedBytesMax": 125
+          },
+          "failures": [],
+          "boundaryProbes": []
+        },
+        {
+          "id": "noisy",
+          "status": "pass",
+          "costs": {
+            "fileBytes": 8192,
+            "sections": 4,
+            "blocks": 2,
+            "transitionPeakBytes": 123202,
+            "projectionCallsMax": 6,
+            "projectedPointsMax": 10,
+            "fillVerticesMax": 0,
+            "decodedBytesMax": 160,
+            "serializedBytesMax": 162
+          },
+          "failures": [],
+          "boundaryProbes": []
+        },
+        {
+          "id": "protected-overload",
+          "status": "expected_rejection",
+          "costs": {},
+          "failures": [],
+          "boundaryProbes": []
+        }
+      ]
+    },
+    {
+      "policy": "uniform-2000",
+      "status": "pass",
+      "generated": 11,
+      "expectedRejections": 1,
+      "optionalDrawableProbes": 22,
+      "returnRouting": "not-implemented",
+      "targetAcceptance": "unvalidated",
+      "comparison": {
+        "schema": "cc700-map-comparison-v1",
+        "beforePolicy": "reference",
+        "afterPolicy": "uniform-2000",
+        "cases": [
+          {
+            "id": "urban",
+            "beforeStatus": "pass",
+            "afterStatus": "pass",
+            "delta": {
+              "fileBytes": 0,
+              "sections": 0,
+              "blocks": 0,
+              "transitionPeakBytes": 0,
+              "projectionCallsMax": 0,
+              "projectedPointsMax": 0,
+              "fillVerticesMax": 0,
+              "decodedBytesMax": 0,
+              "serializedBytesMax": 0
+            },
+            "lostRequiredProbes": [],
+            "optionalProbesBefore": [
+              "essential-context-1000"
+            ],
+            "optionalProbesAfter": [
+              "essential-context-1000"
+            ]
+          },
+          {
+            "id": "village",
+            "beforeStatus": "pass",
+            "afterStatus": "pass",
+            "delta": {
+              "fileBytes": 0,
+              "sections": 0,
+              "blocks": 0,
+              "transitionPeakBytes": 68,
+              "projectionCallsMax": 2,
+              "projectedPointsMax": 4,
+              "fillVerticesMax": 0,
+              "decodedBytesMax": 36,
+              "serializedBytesMax": 32
+            },
+            "lostRequiredProbes": [],
+            "optionalProbesBefore": [
+              "outer-orientation",
+              "essential-context-1000"
+            ],
+            "optionalProbesAfter": [
+              "outer-orientation",
+              "essential-context-1000",
+              "essential-context-2000"
+            ]
+          },
+          {
+            "id": "forest",
+            "beforeStatus": "pass",
+            "afterStatus": "pass",
+            "delta": {
+              "fileBytes": 0,
+              "sections": 0,
+              "blocks": 0,
+              "transitionPeakBytes": 68,
+              "projectionCallsMax": 1,
+              "projectedPointsMax": 2,
+              "fillVerticesMax": 0,
+              "decodedBytesMax": 36,
+              "serializedBytesMax": 32
+            },
+            "lostRequiredProbes": [],
+            "optionalProbesBefore": [
+              "essential-context-1000"
+            ],
+            "optionalProbesAfter": [
+              "essential-context-1000",
+              "essential-context-2000"
+            ]
+          },
+          {
+            "id": "water-crossing",
+            "beforeStatus": "pass",
+            "afterStatus": "pass",
+            "delta": {
+              "fileBytes": 0,
+              "sections": 0,
+              "blocks": 0,
+              "transitionPeakBytes": 68,
+              "projectionCallsMax": 2,
+              "projectedPointsMax": 4,
+              "fillVerticesMax": 0,
+              "decodedBytesMax": 36,
+              "serializedBytesMax": 32
+            },
+            "lostRequiredProbes": [],
+            "optionalProbesBefore": [
+              "essential-context-1000"
+            ],
+            "optionalProbesAfter": [
+              "essential-context-1000",
+              "essential-context-2000"
+            ]
+          },
+          {
+            "id": "parallel-hairpin",
+            "beforeStatus": "pass",
+            "afterStatus": "pass",
+            "delta": {
+              "fileBytes": 0,
+              "sections": 0,
+              "blocks": 0,
+              "transitionPeakBytes": 68,
+              "projectionCallsMax": 2,
+              "projectedPointsMax": 4,
+              "fillVerticesMax": 0,
+              "decodedBytesMax": 36,
+              "serializedBytesMax": 32
+            },
+            "lostRequiredProbes": [],
+            "optionalProbesBefore": [
+              "essential-context-1000"
+            ],
+            "optionalProbesAfter": [
+              "essential-context-1000",
+              "essential-context-2000"
+            ]
+          },
+          {
+            "id": "overlap",
+            "beforeStatus": "pass",
+            "afterStatus": "pass",
+            "delta": {
+              "fileBytes": 0,
+              "sections": 0,
+              "blocks": 0,
+              "transitionPeakBytes": 68,
+              "projectionCallsMax": 2,
+              "projectedPointsMax": 4,
+              "fillVerticesMax": 0,
+              "decodedBytesMax": 36,
+              "serializedBytesMax": 32
+            },
+            "lostRequiredProbes": [],
+            "optionalProbesBefore": [
+              "essential-context-1000"
+            ],
+            "optionalProbesAfter": [
+              "essential-context-1000",
+              "essential-context-2000"
+            ]
+          },
+          {
+            "id": "detour-context",
+            "beforeStatus": "pass",
+            "afterStatus": "pass",
+            "delta": {
+              "fileBytes": 0,
+              "sections": 0,
+              "blocks": 0,
+              "transitionPeakBytes": 68,
+              "projectionCallsMax": 2,
+              "projectedPointsMax": 4,
+              "fillVerticesMax": 0,
+              "decodedBytesMax": 36,
+              "serializedBytesMax": 32
+            },
+            "lostRequiredProbes": [],
+            "optionalProbesBefore": [
+              "outer-cycle",
+              "essential-context-1000"
+            ],
+            "optionalProbesAfter": [
+              "outer-cycle",
+              "essential-context-1000",
+              "essential-context-2000"
+            ]
+          },
+          {
+            "id": "mixed-transition",
+            "beforeStatus": "pass",
+            "afterStatus": "pass",
+            "delta": {
+              "fileBytes": 0,
+              "sections": 0,
+              "blocks": 0,
+              "transitionPeakBytes": 68,
+              "projectionCallsMax": 2,
+              "projectedPointsMax": 4,
+              "fillVerticesMax": 0,
+              "decodedBytesMax": 36,
+              "serializedBytesMax": 32
+            },
+            "lostRequiredProbes": [],
+            "optionalProbesBefore": [
+              "essential-context-1000"
+            ],
+            "optionalProbesAfter": [
+              "essential-context-1000",
+              "essential-context-2000"
+            ]
+          },
+          {
+            "id": "competing-layers",
+            "beforeStatus": "pass",
+            "afterStatus": "pass",
+            "delta": {
+              "fileBytes": 0,
+              "sections": 0,
+              "blocks": 0,
+              "transitionPeakBytes": 0,
+              "projectionCallsMax": 0,
+              "projectedPointsMax": 0,
+              "fillVerticesMax": 0,
+              "decodedBytesMax": 0,
+              "serializedBytesMax": 0
+            },
+            "lostRequiredProbes": [],
+            "optionalProbesBefore": [
+              "essential-context-1000"
+            ],
+            "optionalProbesAfter": [
+              "essential-context-1000"
+            ]
+          },
+          {
+            "id": "sparse",
+            "beforeStatus": "pass",
+            "afterStatus": "pass",
+            "delta": {
+              "fileBytes": 0,
+              "sections": 0,
+              "blocks": 0,
+              "transitionPeakBytes": 68,
+              "projectionCallsMax": 2,
+              "projectedPointsMax": 4,
+              "fillVerticesMax": 0,
+              "decodedBytesMax": 36,
+              "serializedBytesMax": 32
+            },
+            "lostRequiredProbes": [],
+            "optionalProbesBefore": [
+              "essential-context-1000"
+            ],
+            "optionalProbesAfter": [
+              "essential-context-1000",
+              "essential-context-2000"
+            ]
+          },
+          {
+            "id": "noisy",
+            "beforeStatus": "pass",
+            "afterStatus": "pass",
+            "delta": {
+              "fileBytes": 0,
+              "sections": 0,
+              "blocks": 0,
+              "transitionPeakBytes": 68,
+              "projectionCallsMax": 2,
+              "projectedPointsMax": 4,
+              "fillVerticesMax": 0,
+              "decodedBytesMax": 36,
+              "serializedBytesMax": 32
+            },
+            "lostRequiredProbes": [],
+            "optionalProbesBefore": [
+              "essential-context-1000"
+            ],
+            "optionalProbesAfter": [
+              "essential-context-1000",
+              "essential-context-2000"
+            ]
+          },
+          {
+            "id": "protected-overload",
+            "beforeStatus": "expected_rejection",
+            "afterStatus": "expected_rejection",
+            "delta": {},
+            "lostRequiredProbes": [],
+            "optionalProbesBefore": [],
+            "optionalProbesAfter": []
+          }
+        ]
+      },
+      "cases": [
+        {
+          "id": "urban",
+          "status": "pass",
+          "costs": {
+            "fileBytes": 57344,
+            "sections": 10,
+            "blocks": 2,
+            "transitionPeakBytes": 173260,
+            "projectionCallsMax": 1374,
+            "projectedPointsMax": 2796,
+            "fillVerticesMax": 100,
+            "decodedBytesMax": 25884,
+            "serializedBytesMax": 24496
+          },
+          "failures": [],
+          "boundaryProbes": []
+        },
+        {
+          "id": "village",
+          "status": "pass",
+          "costs": {
+            "fileBytes": 4096,
+            "sections": 3,
+            "blocks": 2,
+            "transitionPeakBytes": 123399,
+            "projectionCallsMax": 12,
+            "projectedPointsMax": 22,
+            "fillVerticesMax": 0,
+            "decodedBytesMax": 268,
+            "serializedBytesMax": 251
+          },
+          "failures": [],
+          "boundaryProbes": []
+        },
+        {
+          "id": "forest",
+          "status": "pass",
+          "costs": {
+            "fileBytes": 8192,
+            "sections": 3,
+            "blocks": 2,
+            "transitionPeakBytes": 123982,
+            "projectionCallsMax": 17,
+            "projectedPointsMax": 66,
+            "fillVerticesMax": 5,
+            "decodedBytesMax": 524,
+            "serializedBytesMax": 578
+          },
+          "failures": [],
+          "boundaryProbes": []
+        },
+        {
+          "id": "water-crossing",
+          "status": "pass",
+          "costs": {
+            "fileBytes": 4096,
+            "sections": 3,
+            "blocks": 2,
+            "transitionPeakBytes": 123711,
+            "projectionCallsMax": 18,
+            "projectedPointsMax": 38,
+            "fillVerticesMax": 5,
+            "decodedBytesMax": 428,
+            "serializedBytesMax": 403
+          },
+          "failures": [],
+          "boundaryProbes": []
+        },
+        {
+          "id": "parallel-hairpin",
+          "status": "pass",
+          "costs": {
+            "fileBytes": 4096,
+            "sections": 3,
+            "blocks": 2,
+            "transitionPeakBytes": 123863,
+            "projectionCallsMax": 16,
+            "projectedPointsMax": 27,
+            "fillVerticesMax": 0,
+            "decodedBytesMax": 504,
+            "serializedBytesMax": 479
+          },
+          "failures": [],
+          "boundaryProbes": []
+        },
+        {
+          "id": "overlap",
+          "status": "pass",
+          "costs": {
+            "fileBytes": 8192,
+            "sections": 6,
+            "blocks": 3,
+            "transitionPeakBytes": 123481,
+            "projectionCallsMax": 11,
+            "projectedPointsMax": 25,
+            "fillVerticesMax": 0,
+            "decodedBytesMax": 300,
+            "serializedBytesMax": 301
+          },
+          "failures": [],
+          "boundaryProbes": []
+        },
+        {
+          "id": "detour-context",
+          "status": "pass",
+          "costs": {
+            "fileBytes": 4096,
+            "sections": 3,
+            "blocks": 2,
+            "transitionPeakBytes": 123270,
+            "projectionCallsMax": 8,
+            "projectedPointsMax": 15,
+            "fillVerticesMax": 0,
+            "decodedBytesMax": 196,
+            "serializedBytesMax": 194
+          },
+          "failures": [],
+          "boundaryProbes": []
+        },
+        {
+          "id": "mixed-transition",
+          "status": "pass",
+          "costs": {
+            "fileBytes": 12288,
+            "sections": 7,
+            "blocks": 4,
+            "transitionPeakBytes": 126326,
+            "projectionCallsMax": 83,
+            "projectedPointsMax": 154,
+            "fillVerticesMax": 0,
+            "decodedBytesMax": 1816,
+            "serializedBytesMax": 1630
+          },
+          "failures": [],
+          "boundaryProbes": [
+            {
+              "id": "cycle-seam-2--1",
+              "required": true,
+              "cls": 10,
+              "section": 1,
+              "matched": true,
+              "nearestMeters": 0
+            },
+            {
+              "id": "cycle-seam-2-1",
+              "required": true,
+              "cls": 10,
+              "section": 2,
+              "matched": true,
+              "nearestMeters": 0
+            },
+            {
+              "id": "cycle-seam-4--1",
+              "required": true,
+              "cls": 10,
+              "section": 3,
+              "matched": true,
+              "nearestMeters": 0
+            },
+            {
+              "id": "cycle-seam-4-1",
+              "required": true,
+              "cls": 10,
+              "section": 4,
+              "matched": true,
+              "nearestMeters": 0
+            },
+            {
+              "id": "cycle-seam-6--1",
+              "required": true,
+              "cls": 10,
+              "section": 5,
+              "matched": true,
+              "nearestMeters": 0
+            },
+            {
+              "id": "cycle-seam-6-1",
+              "required": true,
+              "cls": 10,
+              "section": 6,
+              "matched": true,
+              "nearestMeters": 0
+            }
+          ]
+        },
+        {
+          "id": "competing-layers",
+          "status": "pass",
+          "costs": {
+            "fileBytes": 4096,
+            "sections": 3,
+            "blocks": 2,
+            "transitionPeakBytes": 123224,
+            "projectionCallsMax": 6,
+            "projectedPointsMax": 13,
+            "fillVerticesMax": 4,
+            "decodedBytesMax": 168,
+            "serializedBytesMax": 176
+          },
+          "failures": [],
+          "boundaryProbes": []
+        },
+        {
+          "id": "sparse",
+          "status": "pass",
+          "costs": {
+            "fileBytes": 4096,
+            "sections": 3,
+            "blocks": 2,
+            "transitionPeakBytes": 123197,
+            "projectionCallsMax": 7,
+            "projectedPointsMax": 13,
+            "fillVerticesMax": 0,
+            "decodedBytesMax": 160,
+            "serializedBytesMax": 157
+          },
+          "failures": [],
+          "boundaryProbes": []
+        },
+        {
+          "id": "noisy",
+          "status": "pass",
+          "costs": {
+            "fileBytes": 8192,
+            "sections": 4,
+            "blocks": 2,
+            "transitionPeakBytes": 123270,
+            "projectionCallsMax": 8,
+            "projectedPointsMax": 14,
+            "fillVerticesMax": 0,
+            "decodedBytesMax": 196,
+            "serializedBytesMax": 194
+          },
+          "failures": [],
+          "boundaryProbes": []
+        },
+        {
+          "id": "protected-overload",
+          "status": "expected_rejection",
+          "costs": {},
+          "failures": [],
+          "boundaryProbes": []
+        }
+      ]
+    },
+    {
+      "policy": "layered-2000",
+      "status": "pass",
+      "generated": 11,
+      "expectedRejections": 1,
+      "optionalDrawableProbes": 25,
+      "returnRouting": "not-implemented",
+      "targetAcceptance": "unvalidated",
+      "comparison": {
+        "schema": "cc700-map-comparison-v1",
+        "beforePolicy": "reference",
+        "afterPolicy": "layered-2000",
+        "cases": [
+          {
+            "id": "urban",
+            "beforeStatus": "pass",
+            "afterStatus": "pass",
+            "delta": {
+              "fileBytes": 0,
+              "sections": 0,
+              "blocks": 0,
+              "transitionPeakBytes": 69,
+              "projectionCallsMax": 2,
+              "projectedPointsMax": 4,
+              "fillVerticesMax": 0,
+              "decodedBytesMax": 36,
+              "serializedBytesMax": 33
+            },
+            "lostRequiredProbes": [],
+            "optionalProbesBefore": [
+              "essential-context-1000"
+            ],
+            "optionalProbesAfter": [
+              "essential-context-1000",
+              "essential-context-2000"
+            ]
+          },
+          {
+            "id": "village",
+            "beforeStatus": "pass",
+            "afterStatus": "pass",
+            "delta": {
+              "fileBytes": 0,
+              "sections": 0,
+              "blocks": 0,
+              "transitionPeakBytes": 68,
+              "projectionCallsMax": 2,
+              "projectedPointsMax": 4,
+              "fillVerticesMax": 0,
+              "decodedBytesMax": 36,
+              "serializedBytesMax": 32
+            },
+            "lostRequiredProbes": [],
+            "optionalProbesBefore": [
+              "outer-orientation",
+              "essential-context-1000"
+            ],
+            "optionalProbesAfter": [
+              "outer-orientation",
+              "essential-context-1000",
+              "essential-context-2000"
+            ]
+          },
+          {
+            "id": "forest",
+            "beforeStatus": "pass",
+            "afterStatus": "pass",
+            "delta": {
+              "fileBytes": 0,
+              "sections": 0,
+              "blocks": 0,
+              "transitionPeakBytes": 68,
+              "projectionCallsMax": 1,
+              "projectedPointsMax": 2,
+              "fillVerticesMax": 0,
+              "decodedBytesMax": 36,
+              "serializedBytesMax": 32
+            },
+            "lostRequiredProbes": [],
+            "optionalProbesBefore": [
+              "essential-context-1000"
+            ],
+            "optionalProbesAfter": [
+              "essential-context-1000",
+              "essential-context-2000"
+            ]
+          },
+          {
+            "id": "water-crossing",
+            "beforeStatus": "pass",
+            "afterStatus": "pass",
+            "delta": {
+              "fileBytes": 0,
+              "sections": 0,
+              "blocks": 0,
+              "transitionPeakBytes": 68,
+              "projectionCallsMax": 2,
+              "projectedPointsMax": 4,
+              "fillVerticesMax": 0,
+              "decodedBytesMax": 36,
+              "serializedBytesMax": 32
+            },
+            "lostRequiredProbes": [],
+            "optionalProbesBefore": [
+              "essential-context-1000"
+            ],
+            "optionalProbesAfter": [
+              "essential-context-1000",
+              "essential-context-2000"
+            ]
+          },
+          {
+            "id": "parallel-hairpin",
+            "beforeStatus": "pass",
+            "afterStatus": "pass",
+            "delta": {
+              "fileBytes": 0,
+              "sections": 0,
+              "blocks": 0,
+              "transitionPeakBytes": 68,
+              "projectionCallsMax": 2,
+              "projectedPointsMax": 4,
+              "fillVerticesMax": 0,
+              "decodedBytesMax": 36,
+              "serializedBytesMax": 32
+            },
+            "lostRequiredProbes": [],
+            "optionalProbesBefore": [
+              "essential-context-1000"
+            ],
+            "optionalProbesAfter": [
+              "essential-context-1000",
+              "essential-context-2000"
+            ]
+          },
+          {
+            "id": "overlap",
+            "beforeStatus": "pass",
+            "afterStatus": "pass",
+            "delta": {
+              "fileBytes": 0,
+              "sections": 0,
+              "blocks": 0,
+              "transitionPeakBytes": 68,
+              "projectionCallsMax": 2,
+              "projectedPointsMax": 4,
+              "fillVerticesMax": 0,
+              "decodedBytesMax": 36,
+              "serializedBytesMax": 32
+            },
+            "lostRequiredProbes": [],
+            "optionalProbesBefore": [
+              "essential-context-1000"
+            ],
+            "optionalProbesAfter": [
+              "essential-context-1000",
+              "essential-context-2000"
+            ]
+          },
+          {
+            "id": "detour-context",
+            "beforeStatus": "pass",
+            "afterStatus": "pass",
+            "delta": {
+              "fileBytes": 0,
+              "sections": 0,
+              "blocks": 0,
+              "transitionPeakBytes": 68,
+              "projectionCallsMax": 2,
+              "projectedPointsMax": 4,
+              "fillVerticesMax": 0,
+              "decodedBytesMax": 36,
+              "serializedBytesMax": 32
+            },
+            "lostRequiredProbes": [],
+            "optionalProbesBefore": [
+              "outer-cycle",
+              "essential-context-1000"
+            ],
+            "optionalProbesAfter": [
+              "outer-cycle",
+              "essential-context-1000",
+              "essential-context-2000"
+            ]
+          },
+          {
+            "id": "mixed-transition",
+            "beforeStatus": "pass",
+            "afterStatus": "pass",
+            "delta": {
+              "fileBytes": 0,
+              "sections": 0,
+              "blocks": 0,
+              "transitionPeakBytes": 68,
+              "projectionCallsMax": 2,
+              "projectedPointsMax": 4,
+              "fillVerticesMax": 0,
+              "decodedBytesMax": 36,
+              "serializedBytesMax": 32
+            },
+            "lostRequiredProbes": [],
+            "optionalProbesBefore": [
+              "essential-context-1000"
+            ],
+            "optionalProbesAfter": [
+              "essential-context-1000",
+              "essential-context-2000"
+            ]
+          },
+          {
+            "id": "competing-layers",
+            "beforeStatus": "pass",
+            "afterStatus": "pass",
+            "delta": {
+              "fileBytes": 0,
+              "sections": 0,
+              "blocks": 0,
+              "transitionPeakBytes": 136,
+              "projectionCallsMax": 3,
+              "projectedPointsMax": 6,
+              "fillVerticesMax": 0,
+              "decodedBytesMax": 72,
+              "serializedBytesMax": 64
+            },
+            "lostRequiredProbes": [],
+            "optionalProbesBefore": [
+              "essential-context-1000"
+            ],
+            "optionalProbesAfter": [
+              "outer-cycle-950",
+              "essential-context-1000",
+              "essential-context-2000"
+            ]
+          },
+          {
+            "id": "sparse",
+            "beforeStatus": "pass",
+            "afterStatus": "pass",
+            "delta": {
+              "fileBytes": 0,
+              "sections": 0,
+              "blocks": 0,
+              "transitionPeakBytes": 68,
+              "projectionCallsMax": 2,
+              "projectedPointsMax": 4,
+              "fillVerticesMax": 0,
+              "decodedBytesMax": 36,
+              "serializedBytesMax": 32
+            },
+            "lostRequiredProbes": [],
+            "optionalProbesBefore": [
+              "essential-context-1000"
+            ],
+            "optionalProbesAfter": [
+              "essential-context-1000",
+              "essential-context-2000"
+            ]
+          },
+          {
+            "id": "noisy",
+            "beforeStatus": "pass",
+            "afterStatus": "pass",
+            "delta": {
+              "fileBytes": 0,
+              "sections": 0,
+              "blocks": 0,
+              "transitionPeakBytes": 68,
+              "projectionCallsMax": 2,
+              "projectedPointsMax": 4,
+              "fillVerticesMax": 0,
+              "decodedBytesMax": 36,
+              "serializedBytesMax": 32
+            },
+            "lostRequiredProbes": [],
+            "optionalProbesBefore": [
+              "essential-context-1000"
+            ],
+            "optionalProbesAfter": [
+              "essential-context-1000",
+              "essential-context-2000"
+            ]
+          },
+          {
+            "id": "protected-overload",
+            "beforeStatus": "expected_rejection",
+            "afterStatus": "expected_rejection",
+            "delta": {},
+            "lostRequiredProbes": [],
+            "optionalProbesBefore": [],
+            "optionalProbesAfter": []
+          }
+        ]
+      },
+      "cases": [
+        {
+          "id": "urban",
+          "status": "pass",
+          "costs": {
+            "fileBytes": 57344,
+            "sections": 10,
+            "blocks": 2,
+            "transitionPeakBytes": 173329,
+            "projectionCallsMax": 1376,
+            "projectedPointsMax": 2800,
+            "fillVerticesMax": 100,
+            "decodedBytesMax": 25920,
+            "serializedBytesMax": 24529
+          },
+          "failures": [],
+          "boundaryProbes": []
+        },
+        {
+          "id": "village",
+          "status": "pass",
+          "costs": {
+            "fileBytes": 4096,
+            "sections": 3,
+            "blocks": 2,
+            "transitionPeakBytes": 123399,
+            "projectionCallsMax": 12,
+            "projectedPointsMax": 22,
+            "fillVerticesMax": 0,
+            "decodedBytesMax": 268,
+            "serializedBytesMax": 251
+          },
+          "failures": [],
+          "boundaryProbes": []
+        },
+        {
+          "id": "forest",
+          "status": "pass",
+          "costs": {
+            "fileBytes": 8192,
+            "sections": 3,
+            "blocks": 2,
+            "transitionPeakBytes": 123982,
+            "projectionCallsMax": 17,
+            "projectedPointsMax": 66,
+            "fillVerticesMax": 5,
+            "decodedBytesMax": 524,
+            "serializedBytesMax": 578
+          },
+          "failures": [],
+          "boundaryProbes": []
+        },
+        {
+          "id": "water-crossing",
+          "status": "pass",
+          "costs": {
+            "fileBytes": 4096,
+            "sections": 3,
+            "blocks": 2,
+            "transitionPeakBytes": 123711,
+            "projectionCallsMax": 18,
+            "projectedPointsMax": 38,
+            "fillVerticesMax": 5,
+            "decodedBytesMax": 428,
+            "serializedBytesMax": 403
+          },
+          "failures": [],
+          "boundaryProbes": []
+        },
+        {
+          "id": "parallel-hairpin",
+          "status": "pass",
+          "costs": {
+            "fileBytes": 4096,
+            "sections": 3,
+            "blocks": 2,
+            "transitionPeakBytes": 123863,
+            "projectionCallsMax": 16,
+            "projectedPointsMax": 27,
+            "fillVerticesMax": 0,
+            "decodedBytesMax": 504,
+            "serializedBytesMax": 479
+          },
+          "failures": [],
+          "boundaryProbes": []
+        },
+        {
+          "id": "overlap",
+          "status": "pass",
+          "costs": {
+            "fileBytes": 8192,
+            "sections": 6,
+            "blocks": 3,
+            "transitionPeakBytes": 123481,
+            "projectionCallsMax": 11,
+            "projectedPointsMax": 25,
+            "fillVerticesMax": 0,
+            "decodedBytesMax": 300,
+            "serializedBytesMax": 301
+          },
+          "failures": [],
+          "boundaryProbes": []
+        },
+        {
+          "id": "detour-context",
+          "status": "pass",
+          "costs": {
+            "fileBytes": 4096,
+            "sections": 3,
+            "blocks": 2,
+            "transitionPeakBytes": 123270,
+            "projectionCallsMax": 8,
+            "projectedPointsMax": 15,
+            "fillVerticesMax": 0,
+            "decodedBytesMax": 196,
+            "serializedBytesMax": 194
+          },
+          "failures": [],
+          "boundaryProbes": []
+        },
+        {
+          "id": "mixed-transition",
+          "status": "pass",
+          "costs": {
+            "fileBytes": 12288,
+            "sections": 7,
+            "blocks": 4,
+            "transitionPeakBytes": 126326,
+            "projectionCallsMax": 83,
+            "projectedPointsMax": 154,
+            "fillVerticesMax": 0,
+            "decodedBytesMax": 1816,
+            "serializedBytesMax": 1630
+          },
+          "failures": [],
+          "boundaryProbes": [
+            {
+              "id": "cycle-seam-2--1",
+              "required": true,
+              "cls": 10,
+              "section": 1,
+              "matched": true,
+              "nearestMeters": 0
+            },
+            {
+              "id": "cycle-seam-2-1",
+              "required": true,
+              "cls": 10,
+              "section": 2,
+              "matched": true,
+              "nearestMeters": 0
+            },
+            {
+              "id": "cycle-seam-4--1",
+              "required": true,
+              "cls": 10,
+              "section": 3,
+              "matched": true,
+              "nearestMeters": 0
+            },
+            {
+              "id": "cycle-seam-4-1",
+              "required": true,
+              "cls": 10,
+              "section": 4,
+              "matched": true,
+              "nearestMeters": 0
+            },
+            {
+              "id": "cycle-seam-6--1",
+              "required": true,
+              "cls": 10,
+              "section": 5,
+              "matched": true,
+              "nearestMeters": 0
+            },
+            {
+              "id": "cycle-seam-6-1",
+              "required": true,
+              "cls": 10,
+              "section": 6,
+              "matched": true,
+              "nearestMeters": 0
+            }
+          ]
+        },
+        {
+          "id": "competing-layers",
+          "status": "pass",
+          "costs": {
+            "fileBytes": 4096,
+            "sections": 3,
+            "blocks": 2,
+            "transitionPeakBytes": 123360,
+            "projectionCallsMax": 9,
+            "projectedPointsMax": 19,
+            "fillVerticesMax": 4,
+            "decodedBytesMax": 240,
+            "serializedBytesMax": 240
+          },
+          "failures": [],
+          "boundaryProbes": []
+        },
+        {
+          "id": "sparse",
+          "status": "pass",
+          "costs": {
+            "fileBytes": 4096,
+            "sections": 3,
+            "blocks": 2,
+            "transitionPeakBytes": 123197,
+            "projectionCallsMax": 7,
+            "projectedPointsMax": 13,
+            "fillVerticesMax": 0,
+            "decodedBytesMax": 160,
+            "serializedBytesMax": 157
+          },
+          "failures": [],
+          "boundaryProbes": []
+        },
+        {
+          "id": "noisy",
+          "status": "pass",
+          "costs": {
+            "fileBytes": 8192,
+            "sections": 4,
+            "blocks": 2,
+            "transitionPeakBytes": 123270,
+            "projectionCallsMax": 8,
+            "projectedPointsMax": 14,
+            "fillVerticesMax": 0,
+            "decodedBytesMax": 196,
+            "serializedBytesMax": 194
+          },
+          "failures": [],
+          "boundaryProbes": []
+        },
+        {
+          "id": "protected-overload",
+          "status": "expected_rejection",
+          "costs": {},
+          "failures": [],
+          "boundaryProbes": []
+        }
+      ]
+    },
+    {
+      "policy": "uniform-3000",
+      "status": "pass",
+      "generated": 11,
+      "expectedRejections": 1,
+      "optionalDrawableProbes": 31,
+      "returnRouting": "not-implemented",
+      "targetAcceptance": "unvalidated",
+      "comparison": {
+        "schema": "cc700-map-comparison-v1",
+        "beforePolicy": "reference",
+        "afterPolicy": "uniform-3000",
+        "cases": [
+          {
+            "id": "urban",
+            "beforeStatus": "pass",
+            "afterStatus": "pass",
+            "delta": {
+              "fileBytes": 0,
+              "sections": 0,
+              "blocks": 0,
+              "transitionPeakBytes": 0,
+              "projectionCallsMax": 0,
+              "projectedPointsMax": 0,
+              "fillVerticesMax": 0,
+              "decodedBytesMax": 0,
+              "serializedBytesMax": 0
+            },
+            "lostRequiredProbes": [],
+            "optionalProbesBefore": [
+              "essential-context-1000"
+            ],
+            "optionalProbesAfter": [
+              "essential-context-1000"
+            ]
+          },
+          {
+            "id": "village",
+            "beforeStatus": "pass",
+            "afterStatus": "pass",
+            "delta": {
+              "fileBytes": 0,
+              "sections": 0,
+              "blocks": 0,
+              "transitionPeakBytes": 136,
+              "projectionCallsMax": 4,
+              "projectedPointsMax": 8,
+              "fillVerticesMax": 0,
+              "decodedBytesMax": 72,
+              "serializedBytesMax": 64
+            },
+            "lostRequiredProbes": [],
+            "optionalProbesBefore": [
+              "outer-orientation",
+              "essential-context-1000"
+            ],
+            "optionalProbesAfter": [
+              "outer-orientation",
+              "essential-context-1000",
+              "essential-context-2000",
+              "essential-context-3000"
+            ]
+          },
+          {
+            "id": "forest",
+            "beforeStatus": "pass",
+            "afterStatus": "pass",
+            "delta": {
+              "fileBytes": 0,
+              "sections": 0,
+              "blocks": 0,
+              "transitionPeakBytes": 136,
+              "projectionCallsMax": 2,
+              "projectedPointsMax": 4,
+              "fillVerticesMax": 0,
+              "decodedBytesMax": 72,
+              "serializedBytesMax": 64
+            },
+            "lostRequiredProbes": [],
+            "optionalProbesBefore": [
+              "essential-context-1000"
+            ],
+            "optionalProbesAfter": [
+              "essential-context-1000",
+              "essential-context-2000",
+              "essential-context-3000"
+            ]
+          },
+          {
+            "id": "water-crossing",
+            "beforeStatus": "pass",
+            "afterStatus": "pass",
+            "delta": {
+              "fileBytes": 0,
+              "sections": 0,
+              "blocks": 0,
+              "transitionPeakBytes": 136,
+              "projectionCallsMax": 4,
+              "projectedPointsMax": 8,
+              "fillVerticesMax": 0,
+              "decodedBytesMax": 72,
+              "serializedBytesMax": 64
+            },
+            "lostRequiredProbes": [],
+            "optionalProbesBefore": [
+              "essential-context-1000"
+            ],
+            "optionalProbesAfter": [
+              "essential-context-1000",
+              "essential-context-2000",
+              "essential-context-3000"
+            ]
+          },
+          {
+            "id": "parallel-hairpin",
+            "beforeStatus": "pass",
+            "afterStatus": "pass",
+            "delta": {
+              "fileBytes": 4096,
+              "sections": 0,
+              "blocks": 0,
+              "transitionPeakBytes": 136,
+              "projectionCallsMax": 4,
+              "projectedPointsMax": 8,
+              "fillVerticesMax": 0,
+              "decodedBytesMax": 72,
+              "serializedBytesMax": 64
+            },
+            "lostRequiredProbes": [],
+            "optionalProbesBefore": [
+              "essential-context-1000"
+            ],
+            "optionalProbesAfter": [
+              "essential-context-1000",
+              "essential-context-2000",
+              "essential-context-3000"
+            ]
+          },
+          {
+            "id": "overlap",
+            "beforeStatus": "pass",
+            "afterStatus": "pass",
+            "delta": {
+              "fileBytes": 0,
+              "sections": 0,
+              "blocks": 0,
+              "transitionPeakBytes": 136,
+              "projectionCallsMax": 4,
+              "projectedPointsMax": 8,
+              "fillVerticesMax": 0,
+              "decodedBytesMax": 72,
+              "serializedBytesMax": 64
+            },
+            "lostRequiredProbes": [],
+            "optionalProbesBefore": [
+              "essential-context-1000"
+            ],
+            "optionalProbesAfter": [
+              "essential-context-1000",
+              "essential-context-2000",
+              "essential-context-3000"
+            ]
+          },
+          {
+            "id": "detour-context",
+            "beforeStatus": "pass",
+            "afterStatus": "pass",
+            "delta": {
+              "fileBytes": 0,
+              "sections": 0,
+              "blocks": 0,
+              "transitionPeakBytes": 136,
+              "projectionCallsMax": 4,
+              "projectedPointsMax": 8,
+              "fillVerticesMax": 0,
+              "decodedBytesMax": 72,
+              "serializedBytesMax": 64
+            },
+            "lostRequiredProbes": [],
+            "optionalProbesBefore": [
+              "outer-cycle",
+              "essential-context-1000"
+            ],
+            "optionalProbesAfter": [
+              "outer-cycle",
+              "essential-context-1000",
+              "essential-context-2000",
+              "essential-context-3000"
+            ]
+          },
+          {
+            "id": "mixed-transition",
+            "beforeStatus": "pass",
+            "afterStatus": "pass",
+            "delta": {
+              "fileBytes": 0,
+              "sections": 0,
+              "blocks": 0,
+              "transitionPeakBytes": 136,
+              "projectionCallsMax": 4,
+              "projectedPointsMax": 8,
+              "fillVerticesMax": 0,
+              "decodedBytesMax": 72,
+              "serializedBytesMax": 64
+            },
+            "lostRequiredProbes": [],
+            "optionalProbesBefore": [
+              "essential-context-1000"
+            ],
+            "optionalProbesAfter": [
+              "essential-context-1000",
+              "essential-context-2000",
+              "essential-context-3000"
+            ]
+          },
+          {
+            "id": "competing-layers",
+            "beforeStatus": "pass",
+            "afterStatus": "pass",
+            "delta": {
+              "fileBytes": 0,
+              "sections": 0,
+              "blocks": 0,
+              "transitionPeakBytes": 0,
+              "projectionCallsMax": 0,
+              "projectedPointsMax": 0,
+              "fillVerticesMax": 0,
+              "decodedBytesMax": 0,
+              "serializedBytesMax": 0
+            },
+            "lostRequiredProbes": [],
+            "optionalProbesBefore": [
+              "essential-context-1000"
+            ],
+            "optionalProbesAfter": [
+              "essential-context-1000"
+            ]
+          },
+          {
+            "id": "sparse",
+            "beforeStatus": "pass",
+            "afterStatus": "pass",
+            "delta": {
+              "fileBytes": 0,
+              "sections": 0,
+              "blocks": 0,
+              "transitionPeakBytes": 136,
+              "projectionCallsMax": 4,
+              "projectedPointsMax": 8,
+              "fillVerticesMax": 0,
+              "decodedBytesMax": 72,
+              "serializedBytesMax": 64
+            },
+            "lostRequiredProbes": [],
+            "optionalProbesBefore": [
+              "essential-context-1000"
+            ],
+            "optionalProbesAfter": [
+              "essential-context-1000",
+              "essential-context-2000",
+              "essential-context-3000"
+            ]
+          },
+          {
+            "id": "noisy",
+            "beforeStatus": "pass",
+            "afterStatus": "pass",
+            "delta": {
+              "fileBytes": 0,
+              "sections": 0,
+              "blocks": 0,
+              "transitionPeakBytes": 136,
+              "projectionCallsMax": 4,
+              "projectedPointsMax": 8,
+              "fillVerticesMax": 0,
+              "decodedBytesMax": 72,
+              "serializedBytesMax": 64
+            },
+            "lostRequiredProbes": [],
+            "optionalProbesBefore": [
+              "essential-context-1000"
+            ],
+            "optionalProbesAfter": [
+              "essential-context-1000",
+              "essential-context-2000",
+              "essential-context-3000"
+            ]
+          },
+          {
+            "id": "protected-overload",
+            "beforeStatus": "expected_rejection",
+            "afterStatus": "expected_rejection",
+            "delta": {},
+            "lostRequiredProbes": [],
+            "optionalProbesBefore": [],
+            "optionalProbesAfter": []
+          }
+        ]
+      },
+      "cases": [
+        {
+          "id": "urban",
+          "status": "pass",
+          "costs": {
+            "fileBytes": 57344,
+            "sections": 10,
+            "blocks": 2,
+            "transitionPeakBytes": 173260,
+            "projectionCallsMax": 1374,
+            "projectedPointsMax": 2796,
+            "fillVerticesMax": 100,
+            "decodedBytesMax": 25884,
+            "serializedBytesMax": 24496
+          },
+          "failures": [],
+          "boundaryProbes": []
+        },
+        {
+          "id": "village",
+          "status": "pass",
+          "costs": {
+            "fileBytes": 4096,
+            "sections": 3,
+            "blocks": 2,
+            "transitionPeakBytes": 123467,
+            "projectionCallsMax": 14,
+            "projectedPointsMax": 26,
+            "fillVerticesMax": 0,
+            "decodedBytesMax": 304,
+            "serializedBytesMax": 283
+          },
+          "failures": [],
+          "boundaryProbes": []
+        },
+        {
+          "id": "forest",
+          "status": "pass",
+          "costs": {
+            "fileBytes": 8192,
+            "sections": 3,
+            "blocks": 2,
+            "transitionPeakBytes": 124050,
+            "projectionCallsMax": 18,
+            "projectedPointsMax": 68,
+            "fillVerticesMax": 5,
+            "decodedBytesMax": 560,
+            "serializedBytesMax": 610
+          },
+          "failures": [],
+          "boundaryProbes": []
+        },
+        {
+          "id": "water-crossing",
+          "status": "pass",
+          "costs": {
+            "fileBytes": 4096,
+            "sections": 3,
+            "blocks": 2,
+            "transitionPeakBytes": 123779,
+            "projectionCallsMax": 20,
+            "projectedPointsMax": 42,
+            "fillVerticesMax": 5,
+            "decodedBytesMax": 464,
+            "serializedBytesMax": 435
+          },
+          "failures": [],
+          "boundaryProbes": []
+        },
+        {
+          "id": "parallel-hairpin",
+          "status": "pass",
+          "costs": {
+            "fileBytes": 8192,
+            "sections": 3,
+            "blocks": 2,
+            "transitionPeakBytes": 123931,
+            "projectionCallsMax": 18,
+            "projectedPointsMax": 31,
+            "fillVerticesMax": 0,
+            "decodedBytesMax": 540,
+            "serializedBytesMax": 511
+          },
+          "failures": [],
+          "boundaryProbes": []
+        },
+        {
+          "id": "overlap",
+          "status": "pass",
+          "costs": {
+            "fileBytes": 8192,
+            "sections": 6,
+            "blocks": 3,
+            "transitionPeakBytes": 123549,
+            "projectionCallsMax": 13,
+            "projectedPointsMax": 29,
+            "fillVerticesMax": 0,
+            "decodedBytesMax": 336,
+            "serializedBytesMax": 333
+          },
+          "failures": [],
+          "boundaryProbes": []
+        },
+        {
+          "id": "detour-context",
+          "status": "pass",
+          "costs": {
+            "fileBytes": 4096,
+            "sections": 3,
+            "blocks": 2,
+            "transitionPeakBytes": 123338,
+            "projectionCallsMax": 10,
+            "projectedPointsMax": 19,
+            "fillVerticesMax": 0,
+            "decodedBytesMax": 232,
+            "serializedBytesMax": 226
+          },
+          "failures": [],
+          "boundaryProbes": []
+        },
+        {
+          "id": "mixed-transition",
+          "status": "pass",
+          "costs": {
+            "fileBytes": 12288,
+            "sections": 7,
+            "blocks": 4,
+            "transitionPeakBytes": 126394,
+            "projectionCallsMax": 85,
+            "projectedPointsMax": 158,
+            "fillVerticesMax": 0,
+            "decodedBytesMax": 1852,
+            "serializedBytesMax": 1662
+          },
+          "failures": [],
+          "boundaryProbes": [
+            {
+              "id": "cycle-seam-2--1",
+              "required": true,
+              "cls": 10,
+              "section": 1,
+              "matched": true,
+              "nearestMeters": 0
+            },
+            {
+              "id": "cycle-seam-2-1",
+              "required": true,
+              "cls": 10,
+              "section": 2,
+              "matched": true,
+              "nearestMeters": 0
+            },
+            {
+              "id": "cycle-seam-4--1",
+              "required": true,
+              "cls": 10,
+              "section": 3,
+              "matched": true,
+              "nearestMeters": 0
+            },
+            {
+              "id": "cycle-seam-4-1",
+              "required": true,
+              "cls": 10,
+              "section": 4,
+              "matched": true,
+              "nearestMeters": 0
+            },
+            {
+              "id": "cycle-seam-6--1",
+              "required": true,
+              "cls": 10,
+              "section": 5,
+              "matched": true,
+              "nearestMeters": 0
+            },
+            {
+              "id": "cycle-seam-6-1",
+              "required": true,
+              "cls": 10,
+              "section": 6,
+              "matched": true,
+              "nearestMeters": 0
+            }
+          ]
+        },
+        {
+          "id": "competing-layers",
+          "status": "pass",
+          "costs": {
+            "fileBytes": 4096,
+            "sections": 3,
+            "blocks": 2,
+            "transitionPeakBytes": 123224,
+            "projectionCallsMax": 6,
+            "projectedPointsMax": 13,
+            "fillVerticesMax": 4,
+            "decodedBytesMax": 168,
+            "serializedBytesMax": 176
+          },
+          "failures": [],
+          "boundaryProbes": []
+        },
+        {
+          "id": "sparse",
+          "status": "pass",
+          "costs": {
+            "fileBytes": 4096,
+            "sections": 3,
+            "blocks": 2,
+            "transitionPeakBytes": 123265,
+            "projectionCallsMax": 9,
+            "projectedPointsMax": 17,
+            "fillVerticesMax": 0,
+            "decodedBytesMax": 196,
+            "serializedBytesMax": 189
+          },
+          "failures": [],
+          "boundaryProbes": []
+        },
+        {
+          "id": "noisy",
+          "status": "pass",
+          "costs": {
+            "fileBytes": 8192,
+            "sections": 4,
+            "blocks": 2,
+            "transitionPeakBytes": 123338,
+            "projectionCallsMax": 10,
+            "projectedPointsMax": 18,
+            "fillVerticesMax": 0,
+            "decodedBytesMax": 232,
+            "serializedBytesMax": 226
+          },
+          "failures": [],
+          "boundaryProbes": []
+        },
+        {
+          "id": "protected-overload",
+          "status": "expected_rejection",
+          "costs": {},
+          "failures": [],
+          "boundaryProbes": []
+        }
+      ]
+    },
+    {
+      "policy": "layered-3000",
+      "status": "pass",
+      "generated": 11,
+      "expectedRejections": 1,
+      "optionalDrawableProbes": 36,
+      "returnRouting": "not-implemented",
+      "targetAcceptance": "unvalidated",
+      "comparison": {
+        "schema": "cc700-map-comparison-v1",
+        "beforePolicy": "reference",
+        "afterPolicy": "layered-3000",
+        "cases": [
+          {
+            "id": "urban",
+            "beforeStatus": "pass",
+            "afterStatus": "pass",
+            "delta": {
+              "fileBytes": 0,
+              "sections": 0,
+              "blocks": 0,
+              "transitionPeakBytes": 138,
+              "projectionCallsMax": 4,
+              "projectedPointsMax": 8,
+              "fillVerticesMax": 0,
+              "decodedBytesMax": 72,
+              "serializedBytesMax": 66
+            },
+            "lostRequiredProbes": [],
+            "optionalProbesBefore": [
+              "essential-context-1000"
+            ],
+            "optionalProbesAfter": [
+              "essential-context-1000",
+              "essential-context-2000",
+              "essential-context-3000"
+            ]
+          },
+          {
+            "id": "village",
+            "beforeStatus": "pass",
+            "afterStatus": "pass",
+            "delta": {
+              "fileBytes": 0,
+              "sections": 0,
+              "blocks": 0,
+              "transitionPeakBytes": 136,
+              "projectionCallsMax": 4,
+              "projectedPointsMax": 8,
+              "fillVerticesMax": 0,
+              "decodedBytesMax": 72,
+              "serializedBytesMax": 64
+            },
+            "lostRequiredProbes": [],
+            "optionalProbesBefore": [
+              "outer-orientation",
+              "essential-context-1000"
+            ],
+            "optionalProbesAfter": [
+              "outer-orientation",
+              "essential-context-1000",
+              "essential-context-2000",
+              "essential-context-3000"
+            ]
+          },
+          {
+            "id": "forest",
+            "beforeStatus": "pass",
+            "afterStatus": "pass",
+            "delta": {
+              "fileBytes": 0,
+              "sections": 0,
+              "blocks": 0,
+              "transitionPeakBytes": 136,
+              "projectionCallsMax": 2,
+              "projectedPointsMax": 4,
+              "fillVerticesMax": 0,
+              "decodedBytesMax": 72,
+              "serializedBytesMax": 64
+            },
+            "lostRequiredProbes": [],
+            "optionalProbesBefore": [
+              "essential-context-1000"
+            ],
+            "optionalProbesAfter": [
+              "essential-context-1000",
+              "essential-context-2000",
+              "essential-context-3000"
+            ]
+          },
+          {
+            "id": "water-crossing",
+            "beforeStatus": "pass",
+            "afterStatus": "pass",
+            "delta": {
+              "fileBytes": 0,
+              "sections": 0,
+              "blocks": 0,
+              "transitionPeakBytes": 136,
+              "projectionCallsMax": 4,
+              "projectedPointsMax": 8,
+              "fillVerticesMax": 0,
+              "decodedBytesMax": 72,
+              "serializedBytesMax": 64
+            },
+            "lostRequiredProbes": [],
+            "optionalProbesBefore": [
+              "essential-context-1000"
+            ],
+            "optionalProbesAfter": [
+              "essential-context-1000",
+              "essential-context-2000",
+              "essential-context-3000"
+            ]
+          },
+          {
+            "id": "parallel-hairpin",
+            "beforeStatus": "pass",
+            "afterStatus": "pass",
+            "delta": {
+              "fileBytes": 4096,
+              "sections": 0,
+              "blocks": 0,
+              "transitionPeakBytes": 136,
+              "projectionCallsMax": 4,
+              "projectedPointsMax": 8,
+              "fillVerticesMax": 0,
+              "decodedBytesMax": 72,
+              "serializedBytesMax": 64
+            },
+            "lostRequiredProbes": [],
+            "optionalProbesBefore": [
+              "essential-context-1000"
+            ],
+            "optionalProbesAfter": [
+              "essential-context-1000",
+              "essential-context-2000",
+              "essential-context-3000"
+            ]
+          },
+          {
+            "id": "overlap",
+            "beforeStatus": "pass",
+            "afterStatus": "pass",
+            "delta": {
+              "fileBytes": 0,
+              "sections": 0,
+              "blocks": 0,
+              "transitionPeakBytes": 136,
+              "projectionCallsMax": 4,
+              "projectedPointsMax": 8,
+              "fillVerticesMax": 0,
+              "decodedBytesMax": 72,
+              "serializedBytesMax": 64
+            },
+            "lostRequiredProbes": [],
+            "optionalProbesBefore": [
+              "essential-context-1000"
+            ],
+            "optionalProbesAfter": [
+              "essential-context-1000",
+              "essential-context-2000",
+              "essential-context-3000"
+            ]
+          },
+          {
+            "id": "detour-context",
+            "beforeStatus": "pass",
+            "afterStatus": "pass",
+            "delta": {
+              "fileBytes": 0,
+              "sections": 0,
+              "blocks": 0,
+              "transitionPeakBytes": 136,
+              "projectionCallsMax": 4,
+              "projectedPointsMax": 8,
+              "fillVerticesMax": 0,
+              "decodedBytesMax": 72,
+              "serializedBytesMax": 64
+            },
+            "lostRequiredProbes": [],
+            "optionalProbesBefore": [
+              "outer-cycle",
+              "essential-context-1000"
+            ],
+            "optionalProbesAfter": [
+              "outer-cycle",
+              "essential-context-1000",
+              "essential-context-2000",
+              "essential-context-3000"
+            ]
+          },
+          {
+            "id": "mixed-transition",
+            "beforeStatus": "pass",
+            "afterStatus": "pass",
+            "delta": {
+              "fileBytes": 0,
+              "sections": 0,
+              "blocks": 0,
+              "transitionPeakBytes": 136,
+              "projectionCallsMax": 4,
+              "projectedPointsMax": 8,
+              "fillVerticesMax": 0,
+              "decodedBytesMax": 72,
+              "serializedBytesMax": 64
+            },
+            "lostRequiredProbes": [],
+            "optionalProbesBefore": [
+              "essential-context-1000"
+            ],
+            "optionalProbesAfter": [
+              "essential-context-1000",
+              "essential-context-2000",
+              "essential-context-3000"
+            ]
+          },
+          {
+            "id": "competing-layers",
+            "beforeStatus": "pass",
+            "afterStatus": "pass",
+            "delta": {
+              "fileBytes": 0,
+              "sections": 0,
+              "blocks": 0,
+              "transitionPeakBytes": 204,
+              "projectionCallsMax": 5,
+              "projectedPointsMax": 10,
+              "fillVerticesMax": 0,
+              "decodedBytesMax": 108,
+              "serializedBytesMax": 96
+            },
+            "lostRequiredProbes": [],
+            "optionalProbesBefore": [
+              "essential-context-1000"
+            ],
+            "optionalProbesAfter": [
+              "outer-cycle-950",
+              "essential-context-1000",
+              "essential-context-2000",
+              "essential-context-3000"
+            ]
+          },
+          {
+            "id": "sparse",
+            "beforeStatus": "pass",
+            "afterStatus": "pass",
+            "delta": {
+              "fileBytes": 0,
+              "sections": 0,
+              "blocks": 0,
+              "transitionPeakBytes": 136,
+              "projectionCallsMax": 4,
+              "projectedPointsMax": 8,
+              "fillVerticesMax": 0,
+              "decodedBytesMax": 72,
+              "serializedBytesMax": 64
+            },
+            "lostRequiredProbes": [],
+            "optionalProbesBefore": [
+              "essential-context-1000"
+            ],
+            "optionalProbesAfter": [
+              "essential-context-1000",
+              "essential-context-2000",
+              "essential-context-3000"
+            ]
+          },
+          {
+            "id": "noisy",
+            "beforeStatus": "pass",
+            "afterStatus": "pass",
+            "delta": {
+              "fileBytes": 0,
+              "sections": 0,
+              "blocks": 0,
+              "transitionPeakBytes": 136,
+              "projectionCallsMax": 4,
+              "projectedPointsMax": 8,
+              "fillVerticesMax": 0,
+              "decodedBytesMax": 72,
+              "serializedBytesMax": 64
+            },
+            "lostRequiredProbes": [],
+            "optionalProbesBefore": [
+              "essential-context-1000"
+            ],
+            "optionalProbesAfter": [
+              "essential-context-1000",
+              "essential-context-2000",
+              "essential-context-3000"
+            ]
+          },
+          {
+            "id": "protected-overload",
+            "beforeStatus": "expected_rejection",
+            "afterStatus": "expected_rejection",
+            "delta": {},
+            "lostRequiredProbes": [],
+            "optionalProbesBefore": [],
+            "optionalProbesAfter": []
+          }
+        ]
+      },
+      "cases": [
+        {
+          "id": "urban",
+          "status": "pass",
+          "costs": {
+            "fileBytes": 57344,
+            "sections": 10,
+            "blocks": 2,
+            "transitionPeakBytes": 173398,
+            "projectionCallsMax": 1378,
+            "projectedPointsMax": 2804,
+            "fillVerticesMax": 100,
+            "decodedBytesMax": 25956,
+            "serializedBytesMax": 24562
+          },
+          "failures": [],
+          "boundaryProbes": []
+        },
+        {
+          "id": "village",
+          "status": "pass",
+          "costs": {
+            "fileBytes": 4096,
+            "sections": 3,
+            "blocks": 2,
+            "transitionPeakBytes": 123467,
+            "projectionCallsMax": 14,
+            "projectedPointsMax": 26,
+            "fillVerticesMax": 0,
+            "decodedBytesMax": 304,
+            "serializedBytesMax": 283
+          },
+          "failures": [],
+          "boundaryProbes": []
+        },
+        {
+          "id": "forest",
+          "status": "pass",
+          "costs": {
+            "fileBytes": 8192,
+            "sections": 3,
+            "blocks": 2,
+            "transitionPeakBytes": 124050,
+            "projectionCallsMax": 18,
+            "projectedPointsMax": 68,
+            "fillVerticesMax": 5,
+            "decodedBytesMax": 560,
+            "serializedBytesMax": 610
+          },
+          "failures": [],
+          "boundaryProbes": []
+        },
+        {
+          "id": "water-crossing",
+          "status": "pass",
+          "costs": {
+            "fileBytes": 4096,
+            "sections": 3,
+            "blocks": 2,
+            "transitionPeakBytes": 123779,
+            "projectionCallsMax": 20,
+            "projectedPointsMax": 42,
+            "fillVerticesMax": 5,
+            "decodedBytesMax": 464,
+            "serializedBytesMax": 435
+          },
+          "failures": [],
+          "boundaryProbes": []
+        },
+        {
+          "id": "parallel-hairpin",
+          "status": "pass",
+          "costs": {
+            "fileBytes": 8192,
+            "sections": 3,
+            "blocks": 2,
+            "transitionPeakBytes": 123931,
+            "projectionCallsMax": 18,
+            "projectedPointsMax": 31,
+            "fillVerticesMax": 0,
+            "decodedBytesMax": 540,
+            "serializedBytesMax": 511
+          },
+          "failures": [],
+          "boundaryProbes": []
+        },
+        {
+          "id": "overlap",
+          "status": "pass",
+          "costs": {
+            "fileBytes": 8192,
+            "sections": 6,
+            "blocks": 3,
+            "transitionPeakBytes": 123549,
+            "projectionCallsMax": 13,
+            "projectedPointsMax": 29,
+            "fillVerticesMax": 0,
+            "decodedBytesMax": 336,
+            "serializedBytesMax": 333
+          },
+          "failures": [],
+          "boundaryProbes": []
+        },
+        {
+          "id": "detour-context",
+          "status": "pass",
+          "costs": {
+            "fileBytes": 4096,
+            "sections": 3,
+            "blocks": 2,
+            "transitionPeakBytes": 123338,
+            "projectionCallsMax": 10,
+            "projectedPointsMax": 19,
+            "fillVerticesMax": 0,
+            "decodedBytesMax": 232,
+            "serializedBytesMax": 226
+          },
+          "failures": [],
+          "boundaryProbes": []
+        },
+        {
+          "id": "mixed-transition",
+          "status": "pass",
+          "costs": {
+            "fileBytes": 12288,
+            "sections": 7,
+            "blocks": 4,
+            "transitionPeakBytes": 126394,
+            "projectionCallsMax": 85,
+            "projectedPointsMax": 158,
+            "fillVerticesMax": 0,
+            "decodedBytesMax": 1852,
+            "serializedBytesMax": 1662
+          },
+          "failures": [],
+          "boundaryProbes": [
+            {
+              "id": "cycle-seam-2--1",
+              "required": true,
+              "cls": 10,
+              "section": 1,
+              "matched": true,
+              "nearestMeters": 0
+            },
+            {
+              "id": "cycle-seam-2-1",
+              "required": true,
+              "cls": 10,
+              "section": 2,
+              "matched": true,
+              "nearestMeters": 0
+            },
+            {
+              "id": "cycle-seam-4--1",
+              "required": true,
+              "cls": 10,
+              "section": 3,
+              "matched": true,
+              "nearestMeters": 0
+            },
+            {
+              "id": "cycle-seam-4-1",
+              "required": true,
+              "cls": 10,
+              "section": 4,
+              "matched": true,
+              "nearestMeters": 0
+            },
+            {
+              "id": "cycle-seam-6--1",
+              "required": true,
+              "cls": 10,
+              "section": 5,
+              "matched": true,
+              "nearestMeters": 0
+            },
+            {
+              "id": "cycle-seam-6-1",
+              "required": true,
+              "cls": 10,
+              "section": 6,
+              "matched": true,
+              "nearestMeters": 0
+            }
+          ]
+        },
+        {
+          "id": "competing-layers",
+          "status": "pass",
+          "costs": {
+            "fileBytes": 4096,
+            "sections": 3,
+            "blocks": 2,
+            "transitionPeakBytes": 123428,
+            "projectionCallsMax": 11,
+            "projectedPointsMax": 23,
+            "fillVerticesMax": 4,
+            "decodedBytesMax": 276,
+            "serializedBytesMax": 272
+          },
+          "failures": [],
+          "boundaryProbes": []
+        },
+        {
+          "id": "sparse",
+          "status": "pass",
+          "costs": {
+            "fileBytes": 4096,
+            "sections": 3,
+            "blocks": 2,
+            "transitionPeakBytes": 123265,
+            "projectionCallsMax": 9,
+            "projectedPointsMax": 17,
+            "fillVerticesMax": 0,
+            "decodedBytesMax": 196,
+            "serializedBytesMax": 189
+          },
+          "failures": [],
+          "boundaryProbes": []
+        },
+        {
+          "id": "noisy",
+          "status": "pass",
+          "costs": {
+            "fileBytes": 8192,
+            "sections": 4,
+            "blocks": 2,
+            "transitionPeakBytes": 123338,
+            "projectionCallsMax": 10,
+            "projectedPointsMax": 18,
+            "fillVerticesMax": 0,
+            "decodedBytesMax": 232,
+            "serializedBytesMax": 226
+          },
+          "failures": [],
+          "boundaryProbes": []
+        },
+        {
+          "id": "protected-overload",
+          "status": "expected_rejection",
+          "costs": {},
+          "failures": [],
+          "boundaryProbes": []
+        }
+      ]
+    }
+  ]
+}

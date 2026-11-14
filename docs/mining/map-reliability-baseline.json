@@ -1,0 +1,1503 @@
+{
+  "schema": "cc700-map-benchmark-v1",
+  "policy": "reference",
+  "sourceFingerprint": "4780f5accbafef57f226f2c512af0846d67959a112692d4df2e52b6abe389ea6",
+  "sources": {
+    "js/device_draw.js": "e326bbc13c5843c87444cd9994bd9047c94c86712cd9e41763927f5f5e53c78e",
+    "js/geo.js": "7955db5d616ea49c9ed1384ffe0ba995cc5953fe7e5a39b29653efb6ff4c0c43",
+    "js/map_budget.js": "27207b175fafcf257dde9aef4bdc321495360ca8131217fb0ba25e0aea58c864",
+    "js/map_geometry.js": "5a43a16bcc7a81007c7711bc5cd7bd73be2b11af4df7eb3c9baa9415abe4ee0a",
+    "js/map_labels.js": "34babf01357c2f29bcc94e6bbe8d4971e127bcdd073dcd26c82c59f5b25db60f",
+    "js/map_order.js": "092c0603e908543642a6ca90b3236690fd0e9e266c14600bff611c881ba63ae8",
+    "js/map_style.js": "93452a0da8a16144e3d15aeb9592ca1ee2b7255111bf211554c4750c8965088b",
+    "js/mapsec.js": "0cf5a47bd9b91e76bd019538d82c1f99b1e032bba7b6b764bc10e08c89727572",
+    "js/pb.js": "1eb05356cd191ac359020157ee92b7c2d9a6615d591a1ac966a3ba4e9578852a",
+    "js/preview.js": "499776108127de8a88286a8bd6ef96415f3d7dd00d36005b2425af6b1f4a788e",
+    "js/route.js": "6a807c6f9abe4bbaf38cbbabad3d1b9949481922030f8b321cf2fadab5facac5",
+    "tools/map_benchmark.mjs": "601f6ee21cf3f583e71a81922aa0675488aed07f3f22f3e881188b18ea597cbd",
+    "tools/map_benchmark_cases.mjs": "74d6bbc5ed14587f2c2ddce3e087467c1fd209f9342999479d27186bf4fc0f65",
+    "tools/map_policy_study.mjs": "12578cab7ad626bea976382eeb6d2fe2f705b7cab6bdfdb741eaa6900c9f376b"
+  },
+  "status": "pass",
+  "targetAcceptance": "unvalidated",
+  "counts": {
+    "generated": 11,
+    "expectedRejections": 1,
+    "failed": 0
+  },
+  "cases": [
+    {
+      "id": "urban",
+      "fixtureFingerprint": "7f336d2b29ef2435e2d15cbd874c02b10838963a9f30f58608fe4101f3981b9f",
+      "policy": "reference",
+      "status": "pass",
+      "failures": [],
+      "probes": [
+        {
+          "id": "near-street",
+          "required": true,
+          "cls": 6,
+          "section": 4,
+          "matched": true,
+          "nearestMeters": 0.002
+        },
+        {
+          "id": "junction-left",
+          "required": true,
+          "cls": 6,
+          "section": 4,
+          "matched": true,
+          "nearestMeters": 0.003
+        }
+      ],
+      "boundaryProbes": [],
+      "blocks": [
+        {
+          "cost": {
+            "entries": 702,
+            "storedPairs": 774,
+            "serializedBytes": 24455,
+            "decodedBytes": 25848,
+            "iteratorScratchBytes": 40,
+            "projectionScratchBytes": 20,
+            "renderBytes": 25908,
+            "projectionCalls": 1372,
+            "projectedPoints": 2792,
+            "fillVertices": 100,
+            "fillEdgeChecksUpper": 25600,
+            "labelBytes": 192,
+            "overlayEntries": 0
+          },
+          "classes": {
+            "1": {
+              "entries": 20,
+              "coordinatePairs": 80
+            },
+            "6": {
+              "entries": 670,
+              "coordinatePairs": 670
+            },
+            "12": {
+              "entries": 12,
+              "coordinatePairs": 0
+            }
+          },
+          "contextRadiusCap": 1000,
+          "coverageFloor": 0
+        },
+        {
+          "cost": {
+            "entries": 702,
+            "storedPairs": 774,
+            "serializedBytes": 24463,
+            "decodedBytes": 25848,
+            "iteratorScratchBytes": 40,
+            "projectionScratchBytes": 20,
+            "renderBytes": 25908,
+            "projectionCalls": 1372,
+            "projectedPoints": 2792,
+            "fillVertices": 100,
+            "fillEdgeChecksUpper": 25600,
+            "labelBytes": 192,
+            "overlayEntries": 0
+          },
+          "classes": {
+            "1": {
+              "entries": 20,
+              "coordinatePairs": 80
+            },
+            "6": {
+              "entries": 670,
+              "coordinatePairs": 670
+            },
+            "12": {
+              "entries": 12,
+              "coordinatePairs": 0
+            }
+          },
+          "contextRadiusCap": 1000,
+          "coverageFloor": 0
+        }
+      ],
+      "costs": {
+        "fileBytes": 57344,
+        "sections": 10,
+        "blocks": 2,
+        "transitionPeakBytes": 173191,
+        "projectionCallsMax": 1372,
+        "projectedPointsMax": 2792,
+        "fillVerticesMax": 100,
+        "decodedBytesMax": 25848,
+        "serializedBytesMax": 24463
+      },
+      "evidence": {
+        "allocations": "calculated-payload",
+        "drawingWork": "calculated-callbacks-and-vertices",
+        "nativeRecords": "encoded-comparison",
+        "featureRetention": "synthetic-spatial-style-probes",
+        "targetFrameTime": "unmeasured",
+        "targetContiguousHeap": "unmeasured",
+        "pixelLegibility": "unvalidated",
+        "networkConnectivity": "unvalidated"
+      },
+      "nativeRecordsMatch": true,
+      "mapFingerprint": "fb9bf0848f59e31892db6b288e5b51722b5fe1858302783fb00f36ad85e4ac9e"
+    },
+    {
+      "id": "village",
+      "fixtureFingerprint": "2226a05048237f6d290268fa1c0f4963aa8ab13dcc941332d22dd1e8b60188eb",
+      "policy": "reference",
+      "status": "pass",
+      "failures": [],
+      "probes": [
+        {
+          "id": "village-connection",
+          "required": true,
+          "cls": 6,
+          "section": 1,
+          "matched": true,
+          "nearestMeters": 0.002
+        },
+        {
+          "id": "outer-orientation",
+          "required": false,
+          "cls": 5,
+          "section": 1,
+          "matched": true,
+          "nearestMeters": 0.001
+        }
+      ],
+      "boundaryProbes": [],
+      "blocks": [
+        {
+          "cost": {
+            "entries": 5,
+            "storedPairs": 7,
+            "serializedBytes": 186,
+            "decodedBytes": 196,
+            "iteratorScratchBytes": 24,
+            "projectionScratchBytes": 8,
+            "renderBytes": 228,
+            "projectionCalls": 8,
+            "projectedPoints": 14,
+            "fillVertices": 0,
+            "fillEdgeChecksUpper": 0,
+            "labelBytes": 32,
+            "overlayEntries": 0
+          },
+          "classes": {
+            "5": {
+              "entries": 1,
+              "coordinatePairs": 1
+            },
+            "6": {
+              "entries": 2,
+              "coordinatePairs": 2
+            },
+            "12": {
+              "entries": 2,
+              "coordinatePairs": 0
+            }
+          },
+          "contextRadiusCap": 1000,
+          "coverageFloor": 1000
+        },
+        {
+          "cost": {
+            "entries": 5,
+            "storedPairs": 7,
+            "serializedBytes": 187,
+            "decodedBytes": 196,
+            "iteratorScratchBytes": 24,
+            "projectionScratchBytes": 8,
+            "renderBytes": 228,
+            "projectionCalls": 8,
+            "projectedPoints": 14,
+            "fillVertices": 0,
+            "fillEdgeChecksUpper": 0,
+            "labelBytes": 32,
+            "overlayEntries": 0
+          },
+          "classes": {
+            "5": {
+              "entries": 1,
+              "coordinatePairs": 1
+            },
+            "6": {
+              "entries": 2,
+              "coordinatePairs": 2
+            },
+            "12": {
+              "entries": 2,
+              "coordinatePairs": 0
+            }
+          },
+          "contextRadiusCap": 1000,
+          "coverageFloor": 1000
+        }
+      ],
+      "costs": {
+        "fileBytes": 4096,
+        "sections": 3,
+        "blocks": 2,
+        "transitionPeakBytes": 123263,
+        "projectionCallsMax": 8,
+        "projectedPointsMax": 14,
+        "fillVerticesMax": 0,
+        "decodedBytesMax": 196,
+        "serializedBytesMax": 187
+      },
+      "evidence": {
+        "allocations": "calculated-payload",
+        "drawingWork": "calculated-callbacks-and-vertices",
+        "nativeRecords": "encoded-comparison",
+        "featureRetention": "synthetic-spatial-style-probes",
+        "targetFrameTime": "unmeasured",
+        "targetContiguousHeap": "unmeasured",
+        "pixelLegibility": "unvalidated",
+        "networkConnectivity": "unvalidated"
+      },
+      "nativeRecordsMatch": true,
+      "mapFingerprint": "881fa6d78b3ef564a3f84336c0f6eecadda5c4f3dc2c2ee7a7bfca31af32add7"
+    },
+    {
+      "id": "forest",
+      "fixtureFingerprint": "98336651d96b04b363a89d5a7b3b3bca8532bd0eeb16973ba9846dbf9572145a",
+      "policy": "reference",
+      "status": "pass",
+      "failures": [],
+      "probes": [
+        {
+          "id": "cycle-fork",
+          "required": true,
+          "cls": 10,
+          "section": 1,
+          "matched": true,
+          "nearestMeters": 0.002
+        },
+        {
+          "id": "rough-trail",
+          "required": true,
+          "cls": 8,
+          "section": 1,
+          "matched": true,
+          "nearestMeters": 0
+        }
+      ],
+      "boundaryProbes": [],
+      "blocks": [
+        {
+          "cost": {
+            "entries": 9,
+            "storedPairs": 25,
+            "serializedBytes": 514,
+            "decodedBytes": 452,
+            "iteratorScratchBytes": 40,
+            "projectionScratchBytes": 20,
+            "renderBytes": 512,
+            "projectionCalls": 15,
+            "projectedPoints": 62,
+            "fillVertices": 5,
+            "fillEdgeChecksUpper": 1280,
+            "labelBytes": 0,
+            "overlayEntries": 5
+          },
+          "classes": {
+            "2": {
+              "entries": 1,
+              "coordinatePairs": 4
+            },
+            "8": {
+              "entries": 2,
+              "coordinatePairs": 2
+            },
+            "10": {
+              "entries": 1,
+              "coordinatePairs": 1
+            },
+            "15": {
+              "entries": 5,
+              "coordinatePairs": 18
+            }
+          },
+          "contextRadiusCap": 1000,
+          "coverageFloor": 1000
+        },
+        {
+          "cost": {
+            "entries": 8,
+            "storedPairs": 20,
+            "serializedBytes": 428,
+            "decodedBytes": 384,
+            "iteratorScratchBytes": 40,
+            "projectionScratchBytes": 20,
+            "renderBytes": 444,
+            "projectionCalls": 13,
+            "projectedPoints": 50,
+            "fillVertices": 5,
+            "fillEdgeChecksUpper": 1280,
+            "labelBytes": 0,
+            "overlayEntries": 4
+          },
+          "classes": {
+            "2": {
+              "entries": 1,
+              "coordinatePairs": 4
+            },
+            "8": {
+              "entries": 2,
+              "coordinatePairs": 2
+            },
+            "10": {
+              "entries": 1,
+              "coordinatePairs": 1
+            },
+            "15": {
+              "entries": 4,
+              "coordinatePairs": 13
+            }
+          },
+          "contextRadiusCap": 1000,
+          "coverageFloor": 1000
+        }
+      ],
+      "costs": {
+        "fileBytes": 8192,
+        "sections": 3,
+        "blocks": 2,
+        "transitionPeakBytes": 123846,
+        "projectionCallsMax": 15,
+        "projectedPointsMax": 62,
+        "fillVerticesMax": 5,
+        "decodedBytesMax": 452,
+        "serializedBytesMax": 514
+      },
+      "evidence": {
+        "allocations": "calculated-payload",
+        "drawingWork": "calculated-callbacks-and-vertices",
+        "nativeRecords": "encoded-comparison",
+        "featureRetention": "synthetic-spatial-style-probes",
+        "targetFrameTime": "unmeasured",
+        "targetContiguousHeap": "unmeasured",
+        "pixelLegibility": "unvalidated",
+        "networkConnectivity": "unvalidated"
+      },
+      "nativeRecordsMatch": true,
+      "mapFingerprint": "465faa5255b0b6febee4f1443b8f1add12b7885545abd64839c67e9ea5d6aa24"
+    },
+    {
+      "id": "water-crossing",
+      "fixtureFingerprint": "16db8ac7bc73e310a1aa06beff9feafb6dd2f638434d6df69dfaf4b121e0dbc8",
+      "policy": "reference",
+      "status": "pass",
+      "failures": [],
+      "probes": [
+        {
+          "id": "cycle-bridge-layer",
+          "required": true,
+          "cls": 10,
+          "section": 1,
+          "matched": true,
+          "nearestMeters": 0.002
+        },
+        {
+          "id": "tunnel-layer",
+          "required": true,
+          "cls": 7,
+          "section": 1,
+          "matched": true,
+          "nearestMeters": 0.003
+        },
+        {
+          "id": "shore-edge",
+          "required": true,
+          "cls": 3,
+          "section": 1,
+          "matched": true,
+          "nearestMeters": 0.002
+        }
+      ],
+      "boundaryProbes": [],
+      "blocks": [
+        {
+          "cost": {
+            "entries": 9,
+            "storedPairs": 13,
+            "serializedBytes": 339,
+            "decodedBytes": 356,
+            "iteratorScratchBytes": 40,
+            "projectionScratchBytes": 20,
+            "renderBytes": 416,
+            "projectionCalls": 14,
+            "projectedPoints": 30,
+            "fillVertices": 5,
+            "fillEdgeChecksUpper": 1280,
+            "labelBytes": 40,
+            "overlayEntries": 0
+          },
+          "classes": {
+            "3": {
+              "entries": 1,
+              "coordinatePairs": 4
+            },
+            "4": {
+              "entries": 1,
+              "coordinatePairs": 1
+            },
+            "6": {
+              "entries": 1,
+              "coordinatePairs": 1
+            },
+            "7": {
+              "entries": 1,
+              "coordinatePairs": 1
+            },
+            "10": {
+              "entries": 1,
+              "coordinatePairs": 1
+            },
+            "12": {
+              "entries": 4,
+              "coordinatePairs": 0
+            }
+          },
+          "contextRadiusCap": 1000,
+          "coverageFloor": 1000
+        },
+        {
+          "cost": {
+            "entries": 8,
+            "storedPairs": 12,
+            "serializedBytes": 308,
+            "decodedBytes": 320,
+            "iteratorScratchBytes": 40,
+            "projectionScratchBytes": 20,
+            "renderBytes": 380,
+            "projectionCalls": 13,
+            "projectedPoints": 29,
+            "fillVertices": 5,
+            "fillEdgeChecksUpper": 1280,
+            "labelBytes": 32,
+            "overlayEntries": 0
+          },
+          "classes": {
+            "3": {
+              "entries": 1,
+              "coordinatePairs": 4
+            },
+            "4": {
+              "entries": 1,
+              "coordinatePairs": 1
+            },
+            "6": {
+              "entries": 1,
+              "coordinatePairs": 1
+            },
+            "7": {
+              "entries": 1,
+              "coordinatePairs": 1
+            },
+            "10": {
+              "entries": 1,
+              "coordinatePairs": 1
+            },
+            "12": {
+              "entries": 3,
+              "coordinatePairs": 0
+            }
+          },
+          "contextRadiusCap": 1000,
+          "coverageFloor": 1000
+        }
+      ],
+      "costs": {
+        "fileBytes": 4096,
+        "sections": 3,
+        "blocks": 2,
+        "transitionPeakBytes": 123575,
+        "projectionCallsMax": 14,
+        "projectedPointsMax": 30,
+        "fillVerticesMax": 5,
+        "decodedBytesMax": 356,
+        "serializedBytesMax": 339
+      },
+      "evidence": {
+        "allocations": "calculated-payload",
+        "drawingWork": "calculated-callbacks-and-vertices",
+        "nativeRecords": "encoded-comparison",
+        "featureRetention": "synthetic-spatial-style-probes",
+        "targetFrameTime": "unmeasured",
+        "targetContiguousHeap": "unmeasured",
+        "pixelLegibility": "unvalidated",
+        "networkConnectivity": "unvalidated"
+      },
+      "nativeRecordsMatch": true,
+      "mapFingerprint": "55cf6f4ba2014068d02b79c817ebf63448ecc117eab50ef4180a152de3b4ff0b"
+    },
+    {
+      "id": "parallel-hairpin",
+      "fixtureFingerprint": "e7afa0efda607b982789c8ea2f4a87a1f0e3c17b57940212c7904e2e2be70bc3",
+      "policy": "reference",
+      "status": "pass",
+      "failures": [],
+      "probes": [
+        {
+          "id": "parallel-a",
+          "required": true,
+          "cls": 6,
+          "section": 1,
+          "matched": true,
+          "nearestMeters": 0.003
+        },
+        {
+          "id": "parallel-b",
+          "required": true,
+          "cls": 6,
+          "section": 1,
+          "matched": true,
+          "nearestMeters": 0.001
+        },
+        {
+          "id": "hairpin-exit",
+          "required": true,
+          "cls": 8,
+          "section": 0,
+          "matched": true,
+          "nearestMeters": 0
+        }
+      ],
+      "boundaryProbes": [],
+      "blocks": [
+        {
+          "cost": {
+            "entries": 10,
+            "storedPairs": 19,
+            "serializedBytes": 415,
+            "decodedBytes": 432,
+            "iteratorScratchBytes": 32,
+            "projectionScratchBytes": 16,
+            "renderBytes": 480,
+            "projectionCalls": 12,
+            "projectedPoints": 19,
+            "fillVertices": 0,
+            "fillEdgeChecksUpper": 0,
+            "labelBytes": 112,
+            "overlayEntries": 0
+          },
+          "classes": {
+            "6": {
+              "entries": 2,
+              "coordinatePairs": 2
+            },
+            "8": {
+              "entries": 1,
+              "coordinatePairs": 3
+            },
+            "12": {
+              "entries": 7,
+              "coordinatePairs": 0
+            }
+          },
+          "contextRadiusCap": 1000,
+          "coverageFloor": 1000
+        },
+        {
+          "cost": {
+            "entries": 9,
+            "storedPairs": 17,
+            "serializedBytes": 374,
+            "decodedBytes": 388,
+            "iteratorScratchBytes": 32,
+            "projectionScratchBytes": 16,
+            "renderBytes": 436,
+            "projectionCalls": 11,
+            "projectedPoints": 18,
+            "fillVertices": 0,
+            "fillEdgeChecksUpper": 0,
+            "labelBytes": 96,
+            "overlayEntries": 0
+          },
+          "classes": {
+            "6": {
+              "entries": 2,
+              "coordinatePairs": 2
+            },
+            "8": {
+              "entries": 1,
+              "coordinatePairs": 3
+            },
+            "12": {
+              "entries": 6,
+              "coordinatePairs": 0
+            }
+          },
+          "contextRadiusCap": 1000,
+          "coverageFloor": 1000
+        }
+      ],
+      "costs": {
+        "fileBytes": 4096,
+        "sections": 3,
+        "blocks": 2,
+        "transitionPeakBytes": 123727,
+        "projectionCallsMax": 12,
+        "projectedPointsMax": 19,
+        "fillVerticesMax": 0,
+        "decodedBytesMax": 432,
+        "serializedBytesMax": 415
+      },
+      "evidence": {
+        "allocations": "calculated-payload",
+        "drawingWork": "calculated-callbacks-and-vertices",
+        "nativeRecords": "encoded-comparison",
+        "featureRetention": "synthetic-spatial-style-probes",
+        "targetFrameTime": "unmeasured",
+        "targetContiguousHeap": "unmeasured",
+        "pixelLegibility": "unvalidated",
+        "networkConnectivity": "unvalidated"
+      },
+      "nativeRecordsMatch": true,
+      "mapFingerprint": "9f21067d95281ecde4069d41762d50ff3e30349a2bbf9e91315eeda02706dd4a"
+    },
+    {
+      "id": "overlap",
+      "fixtureFingerprint": "37927a24345c9a97bba59326235bb220532a0cae2d0633f60345bb68f8b0c62c",
+      "policy": "reference",
+      "status": "pass",
+      "failures": [],
+      "probes": [
+        {
+          "id": "outbound",
+          "required": true,
+          "cls": 6,
+          "section": 1,
+          "matched": true,
+          "nearestMeters": 0.001
+        },
+        {
+          "id": "return",
+          "required": true,
+          "cls": 6,
+          "section": 5,
+          "matched": true,
+          "nearestMeters": 0.001
+        }
+      ],
+      "boundaryProbes": [],
+      "blocks": [
+        {
+          "cost": {
+            "entries": 5,
+            "storedPairs": 11,
+            "serializedBytes": 237,
+            "decodedBytes": 228,
+            "iteratorScratchBytes": 40,
+            "projectionScratchBytes": 20,
+            "renderBytes": 288,
+            "projectionCalls": 7,
+            "projectedPoints": 17,
+            "fillVertices": 0,
+            "fillEdgeChecksUpper": 0,
+            "labelBytes": 48,
+            "overlayEntries": 1
+          },
+          "classes": {
+            "6": {
+              "entries": 1,
+              "coordinatePairs": 1
+            },
+            "12": {
+              "entries": 3,
+              "coordinatePairs": 0
+            },
+            "15": {
+              "entries": 1,
+              "coordinatePairs": 4
+            }
+          },
+          "contextRadiusCap": 1000,
+          "coverageFloor": 1000
+        },
+        {
+          "cost": {
+            "entries": 4,
+            "storedPairs": 9,
+            "serializedBytes": 195,
+            "decodedBytes": 184,
+            "iteratorScratchBytes": 40,
+            "projectionScratchBytes": 20,
+            "renderBytes": 244,
+            "projectionCalls": 6,
+            "projectedPoints": 16,
+            "fillVertices": 0,
+            "fillEdgeChecksUpper": 0,
+            "labelBytes": 32,
+            "overlayEntries": 1
+          },
+          "classes": {
+            "6": {
+              "entries": 1,
+              "coordinatePairs": 1
+            },
+            "12": {
+              "entries": 2,
+              "coordinatePairs": 0
+            },
+            "15": {
+              "entries": 1,
+              "coordinatePairs": 4
+            }
+          },
+          "contextRadiusCap": 1000,
+          "coverageFloor": 1000
+        },
+        {
+          "cost": {
+            "entries": 4,
+            "storedPairs": 7,
+            "serializedBytes": 164,
+            "decodedBytes": 168,
+            "iteratorScratchBytes": 24,
+            "projectionScratchBytes": 8,
+            "renderBytes": 200,
+            "projectionCalls": 5,
+            "projectedPoints": 7,
+            "fillVertices": 0,
+            "fillEdgeChecksUpper": 0,
+            "labelBytes": 48,
+            "overlayEntries": 0
+          },
+          "classes": {
+            "6": {
+              "entries": 1,
+              "coordinatePairs": 1
+            },
+            "12": {
+              "entries": 3,
+              "coordinatePairs": 0
+            }
+          },
+          "contextRadiusCap": 1000,
+          "coverageFloor": 1000
+        }
+      ],
+      "costs": {
+        "fileBytes": 8192,
+        "sections": 6,
+        "blocks": 3,
+        "transitionPeakBytes": 123345,
+        "projectionCallsMax": 7,
+        "projectedPointsMax": 17,
+        "fillVerticesMax": 0,
+        "decodedBytesMax": 228,
+        "serializedBytesMax": 237
+      },
+      "evidence": {
+        "allocations": "calculated-payload",
+        "drawingWork": "calculated-callbacks-and-vertices",
+        "nativeRecords": "encoded-comparison",
+        "featureRetention": "synthetic-spatial-style-probes",
+        "targetFrameTime": "unmeasured",
+        "targetContiguousHeap": "unmeasured",
+        "pixelLegibility": "unvalidated",
+        "networkConnectivity": "unvalidated"
+      },
+      "nativeRecordsMatch": true,
+      "mapFingerprint": "b9a714949004e9e0044059f41a2f5b0ab1ca8a12fe82aebd6068a8f89aa58441"
+    },
+    {
+      "id": "detour-context",
+      "fixtureFingerprint": "e1949c5d6bbac5d33b5b8a814016724134579593f3e39bba84844298f3e7acb7",
+      "policy": "reference",
+      "status": "pass",
+      "failures": [],
+      "probes": [
+        {
+          "id": "outer-cycle",
+          "required": false,
+          "cls": 10,
+          "section": 1,
+          "matched": true,
+          "nearestMeters": 0.001
+        }
+      ],
+      "boundaryProbes": [],
+      "blocks": [
+        {
+          "cost": {
+            "entries": 3,
+            "storedPairs": 5,
+            "serializedBytes": 130,
+            "decodedBytes": 124,
+            "iteratorScratchBytes": 32,
+            "projectionScratchBytes": 8,
+            "renderBytes": 164,
+            "projectionCalls": 4,
+            "projectedPoints": 7,
+            "fillVertices": 0,
+            "fillEdgeChecksUpper": 0,
+            "labelBytes": 24,
+            "overlayEntries": 0
+          },
+          "classes": {
+            "5": {
+              "entries": 1,
+              "coordinatePairs": 1
+            },
+            "10": {
+              "entries": 1,
+              "coordinatePairs": 1
+            },
+            "12": {
+              "entries": 1,
+              "coordinatePairs": 0
+            }
+          },
+          "contextRadiusCap": 1000,
+          "coverageFloor": 1000
+        },
+        {
+          "cost": {
+            "entries": 3,
+            "storedPairs": 5,
+            "serializedBytes": 130,
+            "decodedBytes": 124,
+            "iteratorScratchBytes": 32,
+            "projectionScratchBytes": 8,
+            "renderBytes": 164,
+            "projectionCalls": 4,
+            "projectedPoints": 7,
+            "fillVertices": 0,
+            "fillEdgeChecksUpper": 0,
+            "labelBytes": 24,
+            "overlayEntries": 0
+          },
+          "classes": {
+            "5": {
+              "entries": 1,
+              "coordinatePairs": 1
+            },
+            "10": {
+              "entries": 1,
+              "coordinatePairs": 1
+            },
+            "12": {
+              "entries": 1,
+              "coordinatePairs": 0
+            }
+          },
+          "contextRadiusCap": 1000,
+          "coverageFloor": 1000
+        }
+      ],
+      "costs": {
+        "fileBytes": 4096,
+        "sections": 3,
+        "blocks": 2,
+        "transitionPeakBytes": 123134,
+        "projectionCallsMax": 4,
+        "projectedPointsMax": 7,
+        "fillVerticesMax": 0,
+        "decodedBytesMax": 124,
+        "serializedBytesMax": 130
+      },
+      "evidence": {
+        "allocations": "calculated-payload",
+        "drawingWork": "calculated-callbacks-and-vertices",
+        "nativeRecords": "encoded-comparison",
+        "featureRetention": "no-required-feature-oracle",
+        "targetFrameTime": "unmeasured",
+        "targetContiguousHeap": "unmeasured",
+        "pixelLegibility": "unvalidated",
+        "networkConnectivity": "unvalidated"
+      },
+      "nativeRecordsMatch": true,
+      "mapFingerprint": "267e9934dbf64a403035e869d9974b09555dd66c5150f7bb61c81497118abc53"
+    },
+    {
+      "id": "mixed-transition",
+      "fixtureFingerprint": "dfdd96e8e2fac061bb789bfa527457a82ea4ce5611214f00a260a435be663d15",
+      "policy": "reference",
+      "status": "pass",
+      "failures": [],
+      "probes": [
+        {
+          "id": "dense-near-road",
+          "required": true,
+          "cls": 6,
+          "section": 0,
+          "matched": true,
+          "nearestMeters": 0.001
+        },
+        {
+          "id": "rural-cycle",
+          "required": true,
+          "cls": 10,
+          "section": 3,
+          "matched": true,
+          "nearestMeters": 0
+        },
+        {
+          "id": "forest-cycle",
+          "required": true,
+          "cls": 10,
+          "section": 6,
+          "matched": true,
+          "nearestMeters": 0
+        }
+      ],
+      "boundaryProbes": [
+        {
+          "id": "cycle-seam-2--1",
+          "required": true,
+          "cls": 10,
+          "section": 1,
+          "matched": true,
+          "nearestMeters": 0
+        },
+        {
+          "id": "cycle-seam-2-1",
+          "required": true,
+          "cls": 10,
+          "section": 2,
+          "matched": true,
+          "nearestMeters": 0
+        },
+        {
+          "id": "cycle-seam-4--1",
+          "required": true,
+          "cls": 10,
+          "section": 3,
+          "matched": true,
+          "nearestMeters": 0
+        },
+        {
+          "id": "cycle-seam-4-1",
+          "required": true,
+          "cls": 10,
+          "section": 4,
+          "matched": true,
+          "nearestMeters": 0
+        },
+        {
+          "id": "cycle-seam-6--1",
+          "required": true,
+          "cls": 10,
+          "section": 5,
+          "matched": true,
+          "nearestMeters": 0
+        },
+        {
+          "id": "cycle-seam-6-1",
+          "required": true,
+          "cls": 10,
+          "section": 6,
+          "matched": true,
+          "nearestMeters": 0
+        }
+      ],
+      "blocks": [
+        {
+          "cost": {
+            "entries": 46,
+            "storedPairs": 57,
+            "serializedBytes": 1566,
+            "decodedBytes": 1744,
+            "iteratorScratchBytes": 24,
+            "projectionScratchBytes": 8,
+            "renderBytes": 1776,
+            "projectionCalls": 79,
+            "projectedPoints": 146,
+            "fillVertices": 0,
+            "fillEdgeChecksUpper": 0,
+            "labelBytes": 184,
+            "overlayEntries": 0
+          },
+          "classes": {
+            "5": {
+              "entries": 1,
+              "coordinatePairs": 1
+            },
+            "6": {
+              "entries": 32,
+              "coordinatePairs": 32
+            },
+            "10": {
+              "entries": 1,
+              "coordinatePairs": 1
+            },
+            "12": {
+              "entries": 12,
+              "coordinatePairs": 0
+            }
+          },
+          "contextRadiusCap": 1000,
+          "coverageFloor": 1000
+        },
+        {
+          "cost": {
+            "entries": 40,
+            "storedPairs": 46,
+            "serializedBytes": 1350,
+            "decodedBytes": 1488,
+            "iteratorScratchBytes": 24,
+            "projectionScratchBytes": 8,
+            "renderBytes": 1520,
+            "projectionCalls": 73,
+            "projectedPoints": 140,
+            "fillVertices": 0,
+            "fillEdgeChecksUpper": 0,
+            "labelBytes": 96,
+            "overlayEntries": 0
+          },
+          "classes": {
+            "5": {
+              "entries": 1,
+              "coordinatePairs": 1
+            },
+            "6": {
+              "entries": 32,
+              "coordinatePairs": 32
+            },
+            "10": {
+              "entries": 1,
+              "coordinatePairs": 1
+            },
+            "12": {
+              "entries": 6,
+              "coordinatePairs": 0
+            }
+          },
+          "contextRadiusCap": 1000,
+          "coverageFloor": 1000
+        },
+        {
+          "cost": {
+            "entries": 14,
+            "storedPairs": 14,
+            "serializedBytes": 466,
+            "decodedBytes": 504,
+            "iteratorScratchBytes": 16,
+            "projectionScratchBytes": 8,
+            "renderBytes": 528,
+            "projectionCalls": 27,
+            "projectedPoints": 54,
+            "fillVertices": 0,
+            "fillEdgeChecksUpper": 0,
+            "labelBytes": 0,
+            "overlayEntries": 0
+          },
+          "classes": {
+            "5": {
+              "entries": 1,
+              "coordinatePairs": 1
+            },
+            "6": {
+              "entries": 12,
+              "coordinatePairs": 12
+            },
+            "10": {
+              "entries": 1,
+              "coordinatePairs": 1
+            }
+          },
+          "contextRadiusCap": 1000,
+          "coverageFloor": 1000
+        },
+        {
+          "cost": {
+            "entries": 2,
+            "storedPairs": 2,
+            "serializedBytes": 70,
+            "decodedBytes": 72,
+            "iteratorScratchBytes": 16,
+            "projectionScratchBytes": 8,
+            "renderBytes": 96,
+            "projectionCalls": 3,
+            "projectedPoints": 6,
+            "fillVertices": 0,
+            "fillEdgeChecksUpper": 0,
+            "labelBytes": 0,
+            "overlayEntries": 0
+          },
+          "classes": {
+            "5": {
+              "entries": 1,
+              "coordinatePairs": 1
+            },
+            "10": {
+              "entries": 1,
+              "coordinatePairs": 1
+            }
+          },
+          "contextRadiusCap": 1000,
+          "coverageFloor": 1000
+        }
+      ],
+      "costs": {
+        "fileBytes": 12288,
+        "sections": 7,
+        "blocks": 4,
+        "transitionPeakBytes": 126190,
+        "projectionCallsMax": 79,
+        "projectedPointsMax": 146,
+        "fillVerticesMax": 0,
+        "decodedBytesMax": 1744,
+        "serializedBytesMax": 1566
+      },
+      "evidence": {
+        "allocations": "calculated-payload",
+        "drawingWork": "calculated-callbacks-and-vertices",
+        "nativeRecords": "encoded-comparison",
+        "featureRetention": "synthetic-spatial-style-probes",
+        "targetFrameTime": "unmeasured",
+        "targetContiguousHeap": "unmeasured",
+        "pixelLegibility": "unvalidated",
+        "networkConnectivity": "unvalidated"
+      },
+      "nativeRecordsMatch": true,
+      "mapFingerprint": "4e205fc74e8d1e608a6648b8942d9d10e6d045190940c46519bc3659593d167b"
+    },
+    {
+      "id": "competing-layers",
+      "fixtureFingerprint": "cea10cecd3a27133f37e011349b687dd47c728aca8a8a44281b053d9f4c1f932",
+      "policy": "reference",
+      "status": "pass",
+      "failures": [],
+      "probes": [
+        {
+          "id": "near-connection",
+          "required": true,
+          "cls": 6,
+          "section": 1,
+          "matched": true,
+          "nearestMeters": 0.002
+        },
+        {
+          "id": "outer-cycle-950",
+          "required": false,
+          "cls": 10,
+          "section": 1,
+          "matched": false,
+          "nearestMeters": null
+        }
+      ],
+      "boundaryProbes": [],
+      "blocks": [
+        {
+          "cost": {
+            "entries": 3,
+            "storedPairs": 6,
+            "serializedBytes": 143,
+            "decodedBytes": 132,
+            "iteratorScratchBytes": 32,
+            "projectionScratchBytes": 16,
+            "renderBytes": 180,
+            "projectionCalls": 4,
+            "projectedPoints": 9,
+            "fillVertices": 4,
+            "fillEdgeChecksUpper": 1024,
+            "labelBytes": 16,
+            "overlayEntries": 0
+          },
+          "classes": {
+            "2": {
+              "entries": 1,
+              "coordinatePairs": 3
+            },
+            "6": {
+              "entries": 1,
+              "coordinatePairs": 1
+            },
+            "12": {
+              "entries": 1,
+              "coordinatePairs": 0
+            }
+          },
+          "contextRadiusCap": 1000,
+          "coverageFloor": 800
+        },
+        {
+          "cost": {
+            "entries": 3,
+            "storedPairs": 6,
+            "serializedBytes": 144,
+            "decodedBytes": 132,
+            "iteratorScratchBytes": 32,
+            "projectionScratchBytes": 16,
+            "renderBytes": 180,
+            "projectionCalls": 4,
+            "projectedPoints": 9,
+            "fillVertices": 4,
+            "fillEdgeChecksUpper": 1024,
+            "labelBytes": 16,
+            "overlayEntries": 0
+          },
+          "classes": {
+            "2": {
+              "entries": 1,
+              "coordinatePairs": 3
+            },
+            "6": {
+              "entries": 1,
+              "coordinatePairs": 1
+            },
+            "12": {
+              "entries": 1,
+              "coordinatePairs": 0
+            }
+          },
+          "contextRadiusCap": 1000,
+          "coverageFloor": 800
+        }
+      ],
+      "costs": {
+        "fileBytes": 4096,
+        "sections": 3,
+        "blocks": 2,
+        "transitionPeakBytes": 123156,
+        "projectionCallsMax": 4,
+        "projectedPointsMax": 9,
+        "fillVerticesMax": 4,
+        "decodedBytesMax": 132,
+        "serializedBytesMax": 144
+      },
+      "evidence": {
+        "allocations": "calculated-payload",
+        "drawingWork": "calculated-callbacks-and-vertices",
+        "nativeRecords": "encoded-comparison",
+        "featureRetention": "synthetic-spatial-style-probes",
+        "targetFrameTime": "unmeasured",
+        "targetContiguousHeap": "unmeasured",
+        "pixelLegibility": "unvalidated",
+        "networkConnectivity": "unvalidated"
+      },
+      "nativeRecordsMatch": true,
+      "mapFingerprint": "1dd2bb66183ce850bc1e97884f8b5526788ff0dfd2bfe67e3197f370f2da3ccc"
+    },
+    {
+      "id": "sparse",
+      "fixtureFingerprint": "09f898d43b93b53ad21ec0e8c91e1517c05088cd9a56f146ed95393cacebf626",
+      "policy": "reference",
+      "status": "pass",
+      "failures": [],
+      "probes": [
+        {
+          "id": "sparse-middle",
+          "required": true,
+          "cls": 6,
+          "section": 1,
+          "matched": true,
+          "nearestMeters": 0
+        }
+      ],
+      "boundaryProbes": [],
+      "blocks": [
+        {
+          "cost": {
+            "entries": 2,
+            "storedPairs": 4,
+            "serializedBytes": 93,
+            "decodedBytes": 88,
+            "iteratorScratchBytes": 32,
+            "projectionScratchBytes": 8,
+            "renderBytes": 128,
+            "projectionCalls": 3,
+            "projectedPoints": 5,
+            "fillVertices": 0,
+            "fillEdgeChecksUpper": 0,
+            "labelBytes": 24,
+            "overlayEntries": 0
+          },
+          "classes": {
+            "6": {
+              "entries": 1,
+              "coordinatePairs": 1
+            },
+            "12": {
+              "entries": 1,
+              "coordinatePairs": 0
+            }
+          },
+          "contextRadiusCap": 1000,
+          "coverageFloor": 1000
+        },
+        {
+          "cost": {
+            "entries": 2,
+            "storedPairs": 4,
+            "serializedBytes": 93,
+            "decodedBytes": 88,
+            "iteratorScratchBytes": 32,
+            "projectionScratchBytes": 8,
+            "renderBytes": 128,
+            "projectionCalls": 3,
+            "projectedPoints": 5,
+            "fillVertices": 0,
+            "fillEdgeChecksUpper": 0,
+            "labelBytes": 24,
+            "overlayEntries": 0
+          },
+          "classes": {
+            "6": {
+              "entries": 1,
+              "coordinatePairs": 1
+            },
+            "12": {
+              "entries": 1,
+              "coordinatePairs": 0
+            }
+          },
+          "contextRadiusCap": 1000,
+          "coverageFloor": 1000
+        }
+      ],
+      "costs": {
+        "fileBytes": 4096,
+        "sections": 3,
+        "blocks": 2,
+        "transitionPeakBytes": 123061,
+        "projectionCallsMax": 3,
+        "projectedPointsMax": 5,
+        "fillVerticesMax": 0,
+        "decodedBytesMax": 88,
+        "serializedBytesMax": 93
+      },
+      "evidence": {
+        "allocations": "calculated-payload",
+        "drawingWork": "calculated-callbacks-and-vertices",
+        "nativeRecords": "encoded-comparison",
+        "featureRetention": "synthetic-spatial-style-probes",
+        "targetFrameTime": "unmeasured",
+        "targetContiguousHeap": "unmeasured",
+        "pixelLegibility": "unvalidated",
+        "networkConnectivity": "unvalidated"
+      },
+      "nativeRecordsMatch": true,
+      "mapFingerprint": "11cb88ca1d7c904e83eb62f507da663a9e1f6978c397d6ac5047b1d6b3e2ba34"
+    },
+    {
+      "id": "noisy",
+      "fixtureFingerprint": "eedd4bb3fb01403ff06db1f56a019807d82d901d0e82d55e677bb9d7a132a459",
+      "policy": "reference",
+      "status": "pass",
+      "failures": [],
+      "probes": [
+        {
+          "id": "near-road",
+          "required": true,
+          "cls": 6,
+          "section": 1,
+          "matched": true,
+          "nearestMeters": 0
+        }
+      ],
+      "boundaryProbes": [],
+      "blocks": [
+        {
+          "cost": {
+            "entries": 3,
+            "storedPairs": 5,
+            "serializedBytes": 130,
+            "decodedBytes": 124,
+            "iteratorScratchBytes": 24,
+            "projectionScratchBytes": 8,
+            "renderBytes": 156,
+            "projectionCalls": 4,
+            "projectedPoints": 6,
+            "fillVertices": 0,
+            "fillEdgeChecksUpper": 0,
+            "labelBytes": 32,
+            "overlayEntries": 0
+          },
+          "classes": {
+            "6": {
+              "entries": 1,
+              "coordinatePairs": 1
+            },
+            "12": {
+              "entries": 2,
+              "coordinatePairs": 0
+            }
+          },
+          "contextRadiusCap": 1000,
+          "coverageFloor": 1000
+        },
+        {
+          "cost": {
+            "entries": 2,
+            "storedPairs": 3,
+            "serializedBytes": 84,
+            "decodedBytes": 80,
+            "iteratorScratchBytes": 24,
+            "projectionScratchBytes": 8,
+            "renderBytes": 112,
+            "projectionCalls": 3,
+            "projectedPoints": 5,
+            "fillVertices": 0,
+            "fillEdgeChecksUpper": 0,
+            "labelBytes": 16,
+            "overlayEntries": 0
+          },
+          "classes": {
+            "6": {
+              "entries": 1,
+              "coordinatePairs": 1
+            },
+            "12": {
+              "entries": 1,
+              "coordinatePairs": 0
+            }
+          },
+          "contextRadiusCap": 1000,
+          "coverageFloor": 1000
+        }
+      ],
+      "costs": {
+        "fileBytes": 8192,
+        "sections": 4,
+        "blocks": 2,
+        "transitionPeakBytes": 123134,
+        "projectionCallsMax": 4,
+        "projectedPointsMax": 6,
+        "fillVerticesMax": 0,
+        "decodedBytesMax": 124,
+        "serializedBytesMax": 130
+      },
+      "evidence": {
+        "allocations": "calculated-payload",
+        "drawingWork": "calculated-callbacks-and-vertices",
+        "nativeRecords": "encoded-comparison",
+        "featureRetention": "synthetic-spatial-style-probes",
+        "targetFrameTime": "unmeasured",
+        "targetContiguousHeap": "unmeasured",
+        "pixelLegibility": "unvalidated",
+        "networkConnectivity": "unvalidated"
+      },
+      "nativeRecordsMatch": true,
+      "mapFingerprint": "d396082236532d1a72cbd65f928239ff7b63e239756b0107a6cd040cb1a2e3d9"
+    },
+    {
+      "id": "protected-overload",
+      "fixtureFingerprint": "d4f018b424b4034d52851d8a9009e0d1e578a8429e329c14d5197d66a2e325ed",
+      "policy": "reference",
+      "status": "expected_rejection",
+      "failures": [],
+      "probes": [],
+      "boundaryProbes": [],
+      "blocks": [],
+      "costs": {},
+      "evidence": {
+        "allocations": "calculated-payload",
+        "drawingWork": "calculated-callbacks-and-vertices",
+        "nativeRecords": "encoded-comparison",
+        "featureRetention": "no-required-feature-oracle",
+        "targetFrameTime": "unmeasured",
+        "targetContiguousHeap": "unmeasured",
+        "pixelLegibility": "unvalidated",
+        "networkConnectivity": "unvalidated"
+      },
+      "rejection": "fillVertices"
+    }
+  ]
+}

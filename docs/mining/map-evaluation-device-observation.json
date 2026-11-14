@@ -1,0 +1,26 @@
+{
+  "schema": "cc700-device-observation-v1",
+  "device_port_present": true,
+  "captures": [
+    {
+      "bytes": 2104,
+      "ota1_boot_seen": true,
+      "frame_timing_samples": 0,
+      "heap_samples": 0
+    },
+    {
+      "bytes": 2040,
+      "ota1_boot_seen": true,
+      "frame_timing_samples": 0,
+      "heap_samples": 0
+    }
+  ],
+  "serial_write_calls": 0,
+  "reset_requested": false,
+  "flash_or_route_writes": false,
+  "firmware_injection": false,
+  "target_frame_time": "unmeasured",
+  "largest_contiguous_heap": "unmeasured",
+  "runtime_build_identity": "not-read-back",
+  "interpretation": "Boot output, not a performance capture. No verified collector is installed; no hardware capacity inferred."
+}
