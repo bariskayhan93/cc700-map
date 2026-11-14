@@ -1,0 +1,30 @@
+{
+  "candidate_sha256": "807688211332f7b86a2a2ae157d7d492faf0f99a1e77f86a95696bd8ba3880e5",
+  "phase": "booted",
+  "write_attempted": true,
+  "readback_verified": true,
+  "backup_sha256": "1509064d87ba8602eb0268e486fb2839e1f9b443acf162333d27c705f743a2b3",
+  "app_at_ota1": true,
+  "crash_observed": false,
+  "reset_count": 1,
+  "boot_confirmed": true,
+  "boot_lines": [
+    "rst:0x15 (USB_UART_CHIP_RESET),boot:0x8 (SPI_FAST_FLASH_BOOT)",
+    "\u001b[0;32mI (24) boot: ESP-IDF 17977806-dirty 2nd stage bootloader\u001b[0m",
+    "\u001b[0;32mI (25) boot: compile time 14:02:32\u001b[0m",
+    "\u001b[0;32mI (25) boot: Multicore bootloader\u001b[0m",
+    "\u001b[0;32mI (27) boot: chip revision: v0.2\u001b[0m",
+    "\u001b[0;32mI (45) boot: Enabling RNG early entropy source...\u001b[0m",
+    "\u001b[0;32mI (51) boot: Partition Table:\u001b[0m",
+    "\u001b[0;32mI (54) boot: ## Label            Usage          Type ST Offset   Length\u001b[0m",
+    "\u001b[0;32mI (62) boot:  0 nvs              WiFi data        01 02 00009000 00004000\u001b[0m",
+    "\u001b[0;32mI (69) boot:  1 otadata          OTA data         01 00 0000d000 00002000\u001b[0m",
+    "\u001b[0;32mI (77) boot:  2 phy_init         RF data          01 01 0000f000 00001000\u001b[0m",
+    "\u001b[0;32mI (84) boot:  3 coredump         Unknown data     01 03 00010000 00010000\u001b[0m",
+    "\u001b[0;32mI (91) boot:  4 ota_0            OTA app          00 10 00020000 00420000\u001b[0m",
+    "\u001b[0;32mI (99) boot:  5 ota_1            OTA app          00 11 00440000 00420000\u001b[0m",
+    "\u001b[0;32mI (106) boot:  6 storage          Unknown data     01 83 00860000 0079e000\u001b[0m",
+    "\u001b[0;32mI (114) boot: End of partition table\u001b[0m",
+    "\u001b[0;32mI (818) boot: Loaded app from partition at offset 0x440000\u001b[0m"
+  ]
+}

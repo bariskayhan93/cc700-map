@@ -96,8 +96,8 @@ stock firmware. The grey blocks show built-up areas around the crossing.
 
 ## CC700 Map settings
 
-The app starts in **Original (Kreuzungskarte)**. Select **Patch v18 / v19 (farbige Sunlight-Karte)** only if
-your CC700 has the v18 or v19 patch for firmware V1.414. The preview updates from the generated route file.
+The app starts in **Original (Kreuzungskarte)**. Select **Patch v18 / v19 / v20 (farbige Sunlight-Karte)** only if
+your CC700 has the v18, v19 or v20 patch for firmware V1.414. The preview updates from the generated route file.
 Choose **Abspielen** to replay the route at 1×, 4×, or 8× the speed set in **Einstellungen**.
 The slider lets you move to any point during playback. The ride preview shows the next instruction,
 distance, heading and route progress using the generated route.
@@ -144,7 +144,7 @@ The route file is nanopb 0.3 protobuf (firmware 1.414). Name images are LVGL `IN
 
 ## Patched firmware
 
-The v18/v19 patch changes the map drawing of firmware V1.414. It is not part of this repository.
+The v18/v19/v20 patch changes the map drawing of firmware V1.414. It is not part of this repository.
 Route files for the patched firmware do not show a usable map on the original firmware.
 
 ## Legal
@@ -166,4 +166,4 @@ Route files for the patched firmware do not show a usable map on the original fi
 
 See [the rendering release](docs/rendering-release-2026-11-14.md) for v19 fill, label, geometry and style improvements, compatibility, tests and remaining measurement limits. Select the preview profile matching the firmware actually installed on your device.
 
-A [v20 water/cycleway candidate](docs/water-cycleway-v20-2026-11-14.md) is built locally. Its optional Pages preview uses light-blue waterways and 2 px violet cycleways; the device remains on v19.
+[v20 water/cycleway styling](docs/water-cycleway-v20-2026-11-14.md) is installed and selected in the Pages preview: light-blue waterways and 2 px violet cycleways. v19 is retained for rollback.

@@ -1,7 +1,7 @@
-# Water and cycleway distinction — v20 candidate
+# Water and cycleway distinction — v20
 
-Status: built and tested locally; not installed on the device. The Pages preview
-adds an explicitly labelled v20 candidate and keeps installed v19 selected.
+Status: built, tested and installed to ota_1 with flash readback verification.
+The Pages preview selects v20; v19 remains available for comparison and rollback.
 
 The device photo at 14:18 shows a waterway stroke over water fill, with a nearby
 dark-blue cycleway. At the user's current 100 m navigation scale these should be
@@ -45,7 +45,12 @@ claimed. There is no new zoom feature.
 - 108 synthetic comparison frames generated across six scenes, three scales and
   three headings; representative 2.5 m/px, north-up sheet inspected below.
 - Browser fonts/rasterization/projection remain approximations. No device-photo
-  comparison of v20 yet. No device access, reset, flash or GPS injection performed.
+  comparison of v20 yet. Installation saved a fresh full ota_1 rollback, verified
+  the written image and automatically booted via RTS. Stock ota_0, OTA metadata
+  and route/ride storage were not written. No GPS injection.
+- Boot observation: expected ota_1 app loaded once, one reset, no captured crash
+  during the eight-second observation. This is not an endurance test.
+- [Sanitized installation receipt](mining/v20-install-observation.json).
 
 ![v19 left and v20 right, synthetic native-sized map views](comparison/preview-v19-v20-2026-11-14.png)
 
