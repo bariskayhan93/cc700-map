@@ -5,23 +5,24 @@ import { frame, rdp, lineLen } from './geo.js';
 import { captureNavigationSource, mergeNavigationSources } from './navsource.js';
 const DLAT = 0.05, DLON = 0.08, MARGIN = 0.004;     // cell size; context around a cell for generalization (~400 m)
 const REACH = 0.005;                                // cells within ~550 m of the route are loaded
-const CELL_V = 8;                                  // 8: optional original navigation source, independent of display lines
+const CELL_V = 9;                                  // 9: rough flag requires explicit original surface/tracktype evidence
 const CACHE = 'cc700-osm-v3', MAX_AGE = 30 * 864e5; // a cell is loaded again after 30 days
 const API = ['https://overpass.openstreetmap.fr/api/interpreter', 'https://overpass-api.de/api/interpreter', 'https://overpass.private.coffee/api/interpreter'];   // fastest first
 const HIGHWAY = 'motorway|trunk|primary|secondary|tertiary|residential|unclassified|living_street|road|service|track|cycleway|path|footway|pedestrian|bridleway';
 const BUILT = 'residential|commercial|retail|industrial|garages|railway|construction';
 const GREEN_LU = 'forest|grass|meadow|recreation_ground|village_green|allotments|cemetery|orchard|vineyard|greenfield', GREEN_LEI = 'park|garden|playground|pitch|golf_course|nature_reserve', GREEN_NAT = 'wood|scrub|grassland|heath|wetland';
 const isBuilt = t => new RegExp('^(' + BUILT + ')$').test(t.landuse || ''), isGreen = t => new RegExp('^(' + GREEN_LU + ')$').test(t.landuse || '') || new RegExp('^(' + GREEN_LEI + ')$').test(t.leisure || '') || new RegExp('^(' + GREEN_NAT + ')$').test(t.natural || '');
-// line flags for the styled map (patched firmware): bit 0 bridge, bit 1 tunnel, bits 2-4 layer + 2, bit 5 cycleway
+// line flags for the styled map (patched firmware): bit 0 bridge, bit 1 tunnel, bits 2-4 layer + 2, bit 5 cycleway, bit 6 positively tagged unpaved/rough surface
 const lflags = t => { const L = Math.max(-2, Math.min(2, parseInt(t.layer) || 0)), br = /^(yes|viaduct|boardwalk)$/.test(t.bridge || ''), tu = /^(yes|culvert)$/.test(t.tunnel || '') || L < 0;
   const cyc = t.highway === 'cycleway' || ((t.highway === 'path' || t.highway === 'footway') && t.bicycle === 'designated');
-  return (br ? 1 : 0) | (tu ? 2 : 0) | ((L + 2) << 2) | (cyc ? 32 : 0); };
+  return (br ? 1 : 0) | (tu ? 2 : 0) | ((L + 2) << 2) | (cyc ? 32 : 0) | (roughSurface(t) ? 64 : 0); };
 const KIND = { main: 1, tertiary: 2, street: 3, service: 4, path: 5, track: 6, foot: 7, motorway: 8 };
 const set = s => new Set(s.split(' '));
 const NO = set('no private agricultural forestry delivery use_sidepath'), YES = set('yes permissive designated');
 const HIDE = set('driveway parking_aisle parking drive-through drive-thru emergency_access alley');
 const UNPAVED = set('gravel fine_gravel compacted dirt ground grass sand unpaved earth mud pebblestone woodchips grass_paver');
 const ROUGH = set('grade2 grade3 grade4 grade5'), ONEWAY = set('yes -1 1'), STREETS = set('main tertiary street');
+const roughSurface = t => UNPAVED.has(t.surface) || ROUGH.has(t.tracktype);
 const light = w => w.kind === 'path' || w.kind === 'track' || w.kind === 'foot';
 
 // road class of a way from its tags (null: not shown)
@@ -37,7 +38,7 @@ function kind(t) {
   if (foot && !YES.has(t.bicycle)) return t.footway === 'sidewalk' || t.footway === 'crossing' || priv ? null : 'foot';
   if (NO.has(a)) return null;
   if (h === 'service') return HIDE.has(t.service) || /^(private|customers|destination)$/.test(t.access) ? null : t.name || 'service' in t ? 'service' : 'short';
-  const unpaved = UNPAVED.has(t.surface) || ROUGH.has(t.tracktype);
+  const unpaved = roughSurface(t);
   if (h === 'track') return (t.tracktype ?? 'grade3') !== 'grade1' || unpaved ? 'track' : 'path';
   if (h === 'cycleway' || h === 'path' || ((foot || h === 'bridleway') && YES.has(t.bicycle))) return unpaved ? 'track' : 'path';
   return null;
@@ -206,7 +207,7 @@ const phone = {                                       // processed cells on the 
 // roads { kind, name, pts }, built-up areas and water [outer ring, ...holes], railways [points] around a track [[lat, lon]]
 export async function loadOSM(track, onProgress, store = phone) {
   const cells = new Set(), lines = new Map(), areas = new Map(), water = new Map(), rails = new Map(), green = new Map(), trams = new Map(), wlines = new Map(); let n = 0;
-  const signals = new Map(), stops = new Map(), navigationCells = [];
+  const signals = new Map(), stops = new Map(), navigationCells = [], legacyLines = new Set();
   for (const [la, lo] of track) for (const a of [la - REACH, la + REACH]) for (const o of [lo - REACH * 1.6, lo + REACH * 1.6]) cells.add(Math.floor(a / DLAT) + ',' + Math.floor(o / DLON));
   for (const key of cells) {
     onProgress?.(n++, cells.size);
@@ -215,7 +216,10 @@ export async function loadOSM(track, onProgress, store = phone) {
       const [r, c] = key.split(',').map(Number); cell = { t: Date.now(), v: CELL_V, ...buildCell(await overpass(r, c), r, c) }; await store.put(key, cell);
     } catch (e) { if (!cell) throw new Error('Kartendaten nicht geladen (' + e.message + '). Für eine neue Region ist Internet nötig.'); }   // old cell: still good
     navigationCells.push({ key, source: cell.navigationSource });
-    for (const [id, kind, name, f, fl] of cell.lines) if (!lines.has(id)) lines.set(id, { kind, name, pts: unflat(f), fl: fl || 0 });   // a road that crosses cells is in each of them
+    for (const [id, kind, name, f, fl] of cell.lines) if (!lines.has(id)) {
+      lines.set(id, { kind, name, pts: unflat(f), fl: fl || 0 });
+      if (!(cell.v >= CELL_V)) legacyLines.add(id);
+    }   // a road that crosses cells is in each of them
     for (const [id, rings] of cell.areas) if (!areas.has(id)) areas.set(id, rings.map(unflat));
     for (const [id, rings] of cell.water) if (!water.has(id)) water.set(id, rings.map(unflat));
     for (const [id, f, fl] of cell.rails) if (!rails.has(id)) rails.set(id, Object.assign(unflat(f), { fl: fl || 0 }));   // fl: bridge, tunnel, layer (new cells)
@@ -232,6 +236,16 @@ export async function loadOSM(track, onProgress, store = phone) {
     for (const [id, la, lo] of nc?.sig || []) signals.set(id, [la, lo]);
     for (const [id, la, lo] of nc?.stop || []) stops.set(id, [la, lo]);
   }
-  return { navigationSource: mergeNavigationSources(navigationCells), lines: [...lines.values()], areas: [...areas.values()], water: [...water.values()], rails: [...rails.values()],
+  const navigationSource = mergeNavigationSources(navigationCells);
+  const originalWays = new Map(navigationSource.ways.map(w => [w.id, w]));
+  const conflicts = new Set(navigationSource.issues.filter(i => i.code === 'conflicting-way').map(i => i.way));
+  // Original tags can recover surface evidence even when the first display line
+  // came from an older overlapping cell. Old class 6 alone conveys no evidence.
+  for (const [id, line] of lines) {
+    const original = originalWays.get(Math.abs(id));
+    if (original || legacyLines.has(id) || conflicts.has(Math.abs(id)))
+      line.fl = (line.fl & ~64) | (original && roughSurface(original.tags) ? 64 : 0);
+  }
+  return { navigationSource, lines: [...lines.values()], areas: [...areas.values()], water: [...water.values()], rails: [...rails.values()],
     green: [...green.values()], trams: [...trams.values()], wlines: [...wlines.values()], signals: [...signals.values()], stops: [...stops.values()] };
 }

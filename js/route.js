@@ -10,7 +10,7 @@ export const TURN = { STRAIGHT: 0, LEFT: 1, SLIGHT_LEFT: 2, RIGHT: 3, SLIGHT_RIG
 const THEN = 50, THEN_WORD = { 1: 'left', 2: 'slight left', 3: 'right', 4: 'slight right', 5: 'U-turn' };
 // route name in the header and title: ASCII only (a GPX name with 'ü' stopped the device at start, 2026-11-12)
 const ascii = t => String(t).replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/Ä/g, 'Ae').replace(/Ö/g, 'Oe').replace(/Ü/g, 'Ue').replace(/ß/g, 'ss').normalize('NFD').replace(/[^\x20-\x7e]/g, '');
-const UNNAMED = { 1: 'Straße', 2: 'Straße', 3: 'Straße', 4: 'Zufahrt', 5: 'Radweg', 6: 'Schotterweg', 7: 'Fußweg' };
+const UNNAMED = { 1: 'Straße', 2: 'Straße', 3: 'Straße', 4: 'Zufahrt', 5: 'Radweg', 6: 'Weg', 7: 'Fußweg' };
 export function parseGPX(text) {
   const doc = new DOMParser().parseFromString(text, 'application/xml');
   const num = (e, a) => parseFloat(e.getAttribute(a));
@@ -47,7 +47,7 @@ function matchRoads(P, lines, F) {
       if (d < 20 && (!best || d + pen < best[0])) best = [d + pen, li];
     }
     const L = best ? lines[best[1]] : null;
-    return L ? { name: L.name, kind: L.kind & 0x7f, round: !!(L.kind & 0x80) } : { name: '', kind: 0, round: false };
+    return L ? { name: L.name, kind: L.kind & 0x7f, fl: L.fl || 0, round: !!(L.kind & 0x80) } : { name: '', kind: 0, round: false };
   });
 }
 // is there a road branching off the track near point i? (junction = another road that leaves the track corridor)
@@ -296,7 +296,7 @@ export function buildRoute(gpx, allLines, opt) {
         rails: (opt.rails || []).filter(pts => nearRoute({ pts })), trams: (opt.trams || []).filter(pts => nearRoute({ pts })), wlines: (opt.wlines || []).filter(pts => nearRoute({ pts })),
         signals: (opt.signals || []).filter(p => nearRoute({ pts: [p] })), stops: (opt.stops || []).filter(p => nearRoute({ pts: [p] })), opt: mopt, turns: secs.map((s, k) => s.dir ? k : -1).filter(k => k >= 0),
         routeNames: new Set(secs.map(s => s.name)),                                   // A3: names of the route streets first
-        rough: P.reduce((a, p, i) => { if (road[i] && road[i].kind === 6) { const l = a.at(-1); if (l && l[1] >= D[i - 1] * 100) l[1] = D[i] * 100; else a.push([D[i] * 100, D[i] * 100]); } return a; }, []).filter(x => x[1] - x[0] >= 2000) }, F)
+        rough: P.reduce((a, p, i) => { if (mopt.rough !== false && (road[i]?.fl & 64)) { const l = a.at(-1); if (l && l[1] >= D[i - 1] * 100) l[1] = D[i] * 100; else a.push([D[i] * 100, D[i] * 100]); } return a; }, []).filter(x => x[1] - x[0] >= 2000) }, F)
     : buildMapSection(sections, lines.filter(nearRoute), F, mopt);   // only roads near the route (600 m grid)
   const ioa = out.n; out.push(map.bytes);
   const file = out.bytes.slice(); new DataView(file.buffer).setUint32(0x5c, ioa, true); file.set(h.subarray(0, 0x5c), 0); file.set(h.subarray(0x60, 0x80), 0x60);

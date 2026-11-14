@@ -122,9 +122,15 @@ function verify(r, model) {                    // the same limits that were test
   if (model.blocks.length !== r.sections.length) return 'Kartenindex';
   return null;
 }
+$('previewStyle').onchange = () => {
+  say('previewNote', $('previewStyle').value === 'cycling' ? 'Türkises Wasser, blaue Radwege, ruhigere Flächen und Nebenstraßen, deckende Route. Nur Vorschau; der CC700 bleibt unverändert.' : '240 × 256 Pixel, Gerätefarben. Schrift, Linienrasterung und GPS-Verhalten sind angenähert.');
+  if (built) show();
+};
+
 function show(distance = +$('pos').value) {
   if (!built) return;
-  const { section, entries, heading } = draw($('cv'), built.model, distance, built.styled);
+  $('previewStyleControl').hidden = !built.styled;
+  const { section, entries, heading } = draw($('cv'), built.model, distance, built.styled, { profile: $('previewStyle').value });
   $('cv').title = `Abschnitt ${section + 1}, ${entries} Kartenelemente`;
   say('playDistance', `${km.format(distance / 1000)} / ${km.format(built.distance / 1000)} km`);
   showRide(section, distance, heading);

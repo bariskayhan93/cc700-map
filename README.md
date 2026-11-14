@@ -8,7 +8,7 @@ Use it in Chrome on Android. Select a GPX file. The page makes the route file an
 Run the public app checks with Node.js 22 or newer:
 
 ```sh
-node --test tools/test_preview.mjs tools/test_route_decisions.mjs tools/test_navsource.mjs tools/test_service_worker.mjs
+node --test tools/test_preview.mjs tools/test_route_decisions.mjs tools/test_navsource.mjs tools/test_service_worker.mjs tools/test_map_style.mjs tools/test_surface.mjs
 node tools/test_app_offline.mjs
 ```
 

@@ -1,9 +1,13 @@
-// Desktop approximation of the map layers encoded in the generated CC700 route file.
+// Device drawing rules from map.c / arrow.c. Canvas line rasterization, fonts and
+// geographic projection remain desktop approximations of the firmware.
 import { parse, unzz, SC } from './pb.js';
 import { brg } from './geo.js';
 import { MAP_CLASS as C } from './mapsec.js';
+import { dashSegments, scanlineSpans } from './device_draw.js';
+import { rgb565, mapColor } from './map_style.js';
+export { rgb565 } from './map_style.js';
 
-const W = 240, H = 250, MPP = 2.5, POSY = 0.85, PIXEL_RATIO = 2;
+const W = 240, H = 256, MPP = 2.5, POSY = 0.85, PIXEL_RATIO = 1;
 const ORIGINAL_ROUTE = '#1f6fe0', PATCH_ROUTE = '#d62828', ROAD_EDGE = '#c8d0de';
 const decoder = new TextDecoder();
 
@@ -73,11 +77,19 @@ function path(g, points) {
 
 function stroke(g, points, color, width, dash = []) {
   if (points.length < 2) return;
-  path(g, points);
-  g.strokeStyle = color;
+  g.strokeStyle = g.previewColor(color);
   g.lineWidth = width;
-  g.setLineDash(dash);
-  g.stroke();
+  g.lineCap = width >= 3 ? 'round' : 'butt';
+  g.lineJoin = width >= 3 ? 'round' : 'miter';
+  g.setLineDash([]);
+  if (dash.length) {
+    for (const segment of dashSegments(points, ...dash)) { path(g, segment); g.stroke(); }
+  } else { path(g, points); g.stroke(); }
+}
+
+function fillPolygon(g, points, color, consistent = false) {
+  g.fillStyle = g.previewColor(color);
+  for (const [x, y, width] of scanlineSpans(points, W, H, consistent)) g.fillRect(x, y, width, 1);
 }
 
 function drawOriginal(g, entries, project) {
@@ -91,7 +103,7 @@ function drawOriginal(g, entries, project) {
   }
 }
 
-// The Sunlight palette and drawing order follow map.c in the v16 firmware patch.
+// The installed v18 palette and drawing order follow map.c.
 const AREAS = [
   [C.BUILT, '#d4d4d4'], [C.GREEN, '#a2d683', '#5f9e45'], [C.WATER, '#72b8f2', '#2f7fcf'],
 ];
@@ -102,7 +114,7 @@ const PASSES = [
   [C.TRAM, '#3b1f6e', 4], [C.TRAM, '#ffffff', 2],
 ];
 
-function drawStyled(g, entries, project) {
+function drawStyled(g, entries, project, study = false) {
   const layers = new Map();
   for (const { style, center, points, label } of entries) {
     const kind = style & 15;
@@ -114,11 +126,8 @@ function drawStyled(g, entries, project) {
   for (const [kind, fill, outline] of AREAS) {
     for (const { style, points } of layers.get(kind) ?? []) {
       if (points.length < 3) continue;
-      path(g, points);
-      g.closePath();
-      g.fillStyle = fill;
-      g.fill('evenodd');
-      if (outline && !(style & 0x400)) stroke(g, points, outline, 1);   // no outline: holes or cut at the window
+      fillPolygon(g, points, fill, study);
+      if (outline && !(style & 0x400) && !study) stroke(g, points, outline, 1);   // no outline: holes or cut at the window
     }
   }
   g.lineCap = g.lineJoin = 'round';
@@ -128,48 +137,56 @@ function drawStyled(g, entries, project) {
       for (const { style, points } of layers.get(kind) ?? []) {
         if (((style >> 4) & 7) !== level) continue;
         const bridge = style & 0x80, tunnel = style & 0x100, rough = kind === C.PTH && (style & 0x200);
-        g.globalAlpha = tunnel && !edge ? 0.45 : 1;
+        g.globalAlpha = tunnel && !edge ? 115 / 255 : 1;
         if (!edge && bridge && color !== '#ffffff' && (kind === C.PTH || kind === C.CYC || kind === C.RAIL)) {   // bridge base
-          stroke(g, points, '#111111', 7); stroke(g, points, '#ffffff', 5); }
+          const opacity = g.globalAlpha; g.globalAlpha = 1;
+          stroke(g, points, '#111111', 7); stroke(g, points, '#ffffff', 5);
+          g.globalAlpha = opacity; }
         const far = style & 0x800, fw = { [C.MIN]: edge ? [6, '#7a7e83'] : [3, '#f4f4f4'], [C.SRV]: edge ? [4, '#9a9ea3'] : [2, '#f4f4f4'] }[kind];
-        if (far && fw && !bridge) { stroke(g, points, fw[1], fw[0]); continue; }   // far from the route: thinner, lighter
+        // Quiet distant ordinary roads in the study, retaining bridge/tunnel cues.
+        if (study && far && fw && !bridge && !tunnel) {
+          if (!edge) stroke(g, points, '#7a7e83', fw[0]);
+          continue;
+        }
+        if (far && fw) {
+          if (edge && bridge) stroke(g, points, '#000000', fw[0] + 2);
+          else {
+            g.globalAlpha = tunnel ? 115 / 255 : 1;
+            stroke(g, points, fw[1], fw[0]);
+          }
+          continue;
+        }   // far from the route: thinner, lighter
         if (edge && bridge) stroke(g, points, '#000000', width + 2);
         else if (edge && tunnel) stroke(g, points, color, width, [3, 2]);
         else if (rough) stroke(g, points, '#6b4a2b', 2, [2, 3]);
-        else stroke(g, points, color, width, dash);
+        else stroke(g, points, color, study && kind === C.PTH ? 2 : width, dash);
       }
     }
   }
   g.globalAlpha = 1;
-  for (const [kind, border, core, radius] of [[C.SIG, '#111111', '#ffb300', 3], [C.STOP, '#3b1f6e', '#ffffff', 2]]) {
+  for (const [kind, border, core, width] of [[C.SIG, '#111111', '#ffb300', 6], [C.STOP, '#3b1f6e', '#ffffff', 4]]) {
     for (const { points: [[x, y]] } of layers.get(kind) ?? []) {
-      for (const [size, color] of [[5, border], [radius, core]]) {
-        g.beginPath();
-        g.arc(x, y, size, 0, Math.PI * 2);
-        g.fillStyle = color;
-        g.fill();
-      }
+      stroke(g, [[x, y], [x + 1, y]], border, 10);
+      stroke(g, [[x, y], [x + 1, y]], core, width);
     }
   }
   return layers.get(C.LABEL) ?? [];
 }
 
 function drawLabels(g, labels) {
+  // Firmware font is not bundled in the web app; approximate its glyphs while retaining its box and halos.
   g.font = '12px Arial, sans-serif';
-  g.textAlign = 'center';
-  g.textBaseline = 'middle';
-  g.fillStyle = '#000000';
-  g.strokeStyle = '#ffffff';
-  g.lineWidth = 2;
-  const drawn = [];
+  g.textAlign = 'left';
+  g.textBaseline = 'top';
   for (const { label, points: [[x, y]] } of labels) {
-    if (!label || x < 0 || x > W || y < 8 || y > H - 8) continue;
-    const half = g.measureText(label).width / 2 + 2, center = x, left = x - half, right = x + half;
-    if (left < 1 || right > W - 1) continue;                            // as the device: only names fully on the screen
-    if (left < 90 && y + 8 > H - 100) continue;                          // not over the compass and the scale bar
-    g.strokeText(label, center, y);
-    g.fillText(label, center, y);
-    drawn.push({ left, right, y });
+    if (!label) continue;
+    const width = [...label].length * 7 + 4, left = x - Math.trunc(width / 2), top = y - 8;
+    if (left < 1 || left + width > W - 1 || top < 1 || top + 16 > H - 1) continue;
+    if (left < 90 && top + 16 > H - 100) continue;
+    g.fillStyle = rgb565('#ffffff');
+    for (const [dx, dy] of [[-1, 0], [1, 0], [0, -1], [0, 1]]) g.fillText(label, left + dx, top + dy);
+    g.fillStyle = rgb565('#000000');
+    g.fillText(label, left, top);
   }
 }
 
@@ -182,41 +199,36 @@ function sample(points, distM) {
   return { point: [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t], next };
 }
 
-function drawTurn(g, secs, section, project, position) {
-  const ends = [...secs.map(points => points[0]), secs.at(-1).at(-1)].map(project);
-  const vector = ([ax, ay], [bx, by]) => [bx - ax, by - ay];
-  const length = v => Math.hypot(...v);
-  const turn = i => {
-    const a = vector(ends[i - 1], ends[i]), b = vector(ends[i], ends[i + 1]);
-    return a[0] * b[0] + a[1] * b[1] < 0.819 * length(a) * length(b);
-  };
-  const toward = (a, b, distance) => {
-    const v = vector(a, b), t = Math.min(1, distance / MPP / length(v));
-    return [a[0] + v[0] * t, a[1] + v[1] * t];
-  };
-  for (let i = section + 1; i < ends.length - 1 && i <= section + 3; i++) {
-    if (length(vector(position, ends[i])) * MPP > 150) return;
-    if (!turn(i)) continue;
-    const last = i + 2 < ends.length && length(vector(ends[i], ends[i + 1])) * MPP <= 50 && turn(i + 1) ? i + 1 : i;
-    const tip = toward(ends[last], ends[last + 1], 22);
-    const heading = Math.atan2(tip[1] - ends[last][1], tip[0] - ends[last][0]);
-    const wing = delta => [tip[0] - Math.cos(heading + delta) * 10 / MPP, tip[1] - Math.sin(heading + delta) * 10 / MPP];
-    const shaft = [toward(ends[i], ends[i - 1], 22), ...ends.slice(i, last + 1), tip];
+function drawTurns(g, entries, section, project, position) {
+  // cc_rt uses encoded shaft points (the centre is only the distance anchor).
+  const ky = 111195, radians = position[0] * 0.01745329;
+  const kx = ky * (1 - radians * radians / 2 + radians ** 4 / 24);
+  const vector = (a, b) => [(b[1] - a[1]) * kx, (b[0] - a[0]) * ky];
+  for (const { style, center, points } of entries) {
+    if ((style & 15) !== 15 || (style & 0x8000) || !points || points.length < 2 || points.length > 24) continue;
+    const index = style >>> 16;
+    if (index <= section || index > section + 3 || Math.hypot(...vector(position, center)) > 150) continue;
+    const tip = points.at(-1), v = vector(points.at(-2), tip), length = Math.hypot(...v);
+    if (length < 0.5) continue;
+    const [ux, uy] = v.map(value => value / length);
+    const move = (x, y) => [tip[0] + y * 10 / ky, tip[1] + x * 10 / kx];
+    const head = [move(-(ux * 0.819 - uy * 0.574), -(ux * 0.574 + uy * 0.819)), tip,
+      move(-(ux * 0.819 + uy * 0.574), -(-ux * 0.574 + uy * 0.819))].map(project);
     for (const [width, color] of [[13, '#111111'], [7, '#ffffff']]) {
-      stroke(g, shaft, color, width);
-      stroke(g, [wing(-0.61), tip, wing(0.61)], color, width);
+      stroke(g, points.map(project), color, width);
+      stroke(g, head, color, width);
     }
-    return;
   }
 }
 
-export function draw(canvas, model, distM, styled = model.styled) {
+export function draw(canvas, model, distM, styled = model.styled, options = {}) {
   const { secs, blocks } = model, all = secs.flat();
   canvas.width = W * PIXEL_RATIO;
   canvas.height = H * PIXEL_RATIO;
   const g = canvas.getContext('2d');
+  g.previewColor = color => mapColor(color, options.profile === 'cycling' ? 'cycling' : 'v18');
   g.scale(PIXEL_RATIO, PIXEL_RATIO);
-  g.fillStyle = styled ? '#f2efe9' : '#eef0f2';
+  g.fillStyle = '#ffffff'; // 0x4205bcac clears the RGB565 canvas to 0xffff at opacity 255.
   g.fillRect(0, 0, W, H);
   if (!all.length) return { section: 0, entries: 0, heading: 0 };
 
@@ -228,28 +240,28 @@ export function draw(canvas, model, distM, styled = model.styled) {
   const sin = Math.sin(radians), cos = Math.cos(radians);
   const project = p => {
     const e = (p[1] - me[1]) * 111320 * k / MPP, n = (p[0] - me[0]) * 111320 / MPP;
-    return [W / 2 + e * cos - n * sin, H * POSY - e * sin - n * cos];
+    return [Math.trunc(W / 2 + e * cos - n * sin), Math.trunc(H * POSY - e * sin - n * cos)];
   };
 
   const entries = blocks[section] ?? [];
   const original = entries.filter(entry => !entry.style);
   drawOriginal(g, original, project);
-  const labels = styled ? drawStyled(g, entries.filter(entry => entry.style), project) : [];
+  const labels = styled ? drawStyled(g, entries.filter(entry => entry.style), project, options.profile === 'cycling') : [];
+  drawLabels(g, labels); // Map labels precede the firmware route and turn overlays.
   const routeColor = styled ? PATCH_ROUTE : ORIGINAL_ROUTE;
   g.lineCap = g.lineJoin = 'round';
   stroke(g, [...all.slice(0, next), me].map(project), ROAD_EDGE, 6);
-  if (styled) g.globalAlpha = 0.7;                // patch: route 70 % opacity, 2 px narrower, the map stays visible
+  if (styled) g.globalAlpha = options.profile === 'cycling' ? 1 : 180 / 255;                // installed v18: opacity 180/255; cycling is a preview-only candidate
   stroke(g, [me, ...all.slice(next)].map(project), routeColor, styled ? 4 : 6);
   g.globalAlpha = 1;
   if (styled) {                                   // rough parts of the route: dots over the route line
-    for (const { style, points } of entries) if ((style & 15) === 15 && (style & 0x8000) && points?.length > 1) stroke(g, points.map(project), '#3a2410', 3, [2, 4]);
+    for (const { style, points } of entries) if ((style & 15) === 15 && (style & 0x8000) && points?.length >= 2 && points.length <= 24) stroke(g, points.map(project), '#3a2410', 3, [2, 4]);
   }
-  if (styled && entries.some(e => (e.style & 15) === 15 && !(e.style & 0x8000))) drawTurn(g, secs, section, project, project(me));   // arrow: only when the file has arrows (option)
-  drawLabels(g, labels);
+  if (styled) drawTurns(g, entries, section, project, me);
 
   const [x, y] = project(me);
   path(g, [[x, y - 9], [x - 7, y + 7], [x + 7, y + 7]]);
-  g.fillStyle = ORIGINAL_ROUTE;
+  g.fillStyle = rgb565(ORIGINAL_ROUTE);
   g.fill();
   return { section, entries: entries.length, heading };
 }

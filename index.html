@@ -18,7 +18,7 @@
   button:disabled { opacity:.45; }
   .firmware { display:grid; gap:4px; margin-bottom:14px; }
   .firmware label, #previewTitle { font-weight:600; }
-  .firmware select { width:100%; box-sizing:border-box; font:inherit; padding:8px; border:1px solid var(--bd); border-radius:7px; background:var(--bg); color:var(--fg); }
+  .firmware select, #previewStyle { width:100%; box-sizing:border-box; font:inherit; padding:8px; border:1px solid var(--bd); border-radius:7px; background:var(--bg); color:var(--fg); }
   .firmware .mut { margin:0; }
   .firmware .warning { margin:4px 0 0; padding:8px 10px; border-inline-start:3px solid #c7821a; background:var(--bg); font-size:13px; }
   #previewTitle { font-size:15px; margin:14px 0 0; }
@@ -29,7 +29,7 @@
   .mut { color:var(--mut); font-size:13px; margin-top:8px; }
   .device-screen { width:min(100%, 360px); box-sizing:border-box; margin:10px auto 4px; overflow:hidden; border:6px solid #26313d; border-radius:15px; color:#16212c; background:#f6f8fa; }
   .device-map { position:relative; }
-  .device-map canvas { display:block; width:100%; height:auto; }
+  .device-map canvas { display:block; width:100%; height:auto; image-rendering:pixelated; }
   .turn-card { position:absolute; inset:8px 8px auto; display:flex; align-items:center; gap:10px; box-sizing:border-box; padding:7px 9px; border:1px solid #cdd6df; border-radius:8px; background:#fbfdff; box-shadow:0 2px 5px #1d2b3d25; }
   .turn-arrow { display:grid; place-items:center; flex:0 0 42px; height:42px; color:#165fc7; font-size:35px; font-weight:700; line-height:1; }
   .turn-arrow::before { content:""; width:100%; height:100%; background:currentColor; clip-path:polygon(50% 5%, 91% 46%, 66% 46%, 66% 94%, 34% 94%, 34% 46%, 9% 46%); }
@@ -86,9 +86,17 @@
     <div id="sum" class="mut" role="status">Aus einem GPX wird eine CC700-Route mit Abbiegehinweisen, Straßennamen und Karte.</div>
     <div id="out" hidden>
       <h2 id="previewTitle">Kartenvorschau</h2>
+      <div id="previewStyleControl">
+      <label for="previewStyle">Darstellung in der Vorschau</label>
+      <select id="previewStyle">
+        <option value="v18">Installierter Patch v18</option>
+        <option value="cycling">Radkarten-Studie (nur Vorschau)</option>
+      </select>
+      </div>
+      <p id="previewNote" class="mut">240 × 256 Pixel, Gerätefarben. Schrift, Linienrasterung und GPS-Verhalten sind angenähert.</p>
       <div class="device-screen">
         <div class="device-map">
-          <canvas id="cv" width="240" height="250" role="img" aria-labelledby="previewTitle"></canvas>
+          <canvas id="cv" width="240" height="256" role="img" aria-labelledby="previewTitle"></canvas>
           <div class="turn-card">
             <span id="turnArrow" class="turn-arrow" data-dir="0" aria-hidden="true"></span>
             <div class="turn-copy">

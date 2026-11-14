@@ -299,7 +299,7 @@ const AREA_R = 600, MAXPTS = 60, BLOCK_PTS = 9000, BLOCK_ENT = 1150 /* device dr
 function lineClass(L) {
   const k = L.kind & 0x7f;
   return k === 8 ? S.SRV : k === 1 ? S.MAJ :   // A1: motorways grey and thin, landmarks only
-     k === 2 || k === 3 ? S.MIN : k === 4 ? S.SRV : k === 5 ? (L.fl & 32 ? S.CYC : S.PTH) : k === 6 || k === 7 ? S.PTH : k === 9 ? S.RAIL : 0;
+     k === 2 || k === 3 ? S.MIN : k === 4 ? S.SRV : k === 5 || k === 6 ? (L.fl & 32 ? S.CYC : S.PTH) : k === 7 ? S.PTH : k === 9 ? S.RAIL : 0;
 }
 // bit 9: rough surface (tracks). Class 12 label: the points carry the UTF-8 name (4 bytes per int32, 0-terminated). 13 signal, 14 tram stop: one point.
 // level: OSM layer + 2; a bridge or tunnel without a layer tag is one level above or below the ground (F1)
@@ -343,7 +343,7 @@ function styledEntries(data, cor, o = {}) {
     out.push(sentry(styleOf(cls) | (rings.length > 1 || cut ? 0x400 : 0), pts.map(p => F.g(...p))));   // bit 10: no outline   // bit 10: has holes (no outline: the join edge would show)
   }
   // lines
-  const lines = [...(data.lines || []).map(L => ({ L, cls: lineClass(L), fl: (L.fl || 0) | ((L.kind & 0x7f) === 6 && o.rough !== false ? 64 : 0) })).filter(x => o.paths !== false || x.cls !== S.PTH), ...(data.rails || []).map(pts => ({ L: { pts }, cls: S.RAIL, fl: pts.fl || 0 })),
+  const lines = [...(data.lines || []).map(L => ({ L, cls: lineClass(L), fl: (L.fl || 0) & (o.rough === false ? ~64 : -1) })).filter(x => o.paths !== false || x.cls !== S.PTH), ...(data.rails || []).map(pts => ({ L: { pts }, cls: S.RAIL, fl: pts.fl || 0 })),
     ...(data.trams || []).map(pts => ({ L: { pts }, cls: S.TRAM, fl: pts.fl || 0 })), ...(data.wlines || []).map(pts => ({ L: { pts }, cls: S.WLINE, fl: 0 }))];
   for (const { L, cls, fl } of lines) {
     if (!cls) continue; const lim = SR[cls], b = L.box || (L.box = box(L.pts, F)); if (!nearBox(b, lim)) continue;
@@ -401,7 +401,7 @@ export function buildStyledSection(sections, data, F) {
   };
   if ((data.opt || {}).arrows) for (const g of groups) for (const k of turns) if (k >= g[0] - 1 && k <= g[1] + 1) g[2].push(arrow(k));   // option, off by default
   // A5: rough parts of the route (tracks): class 15 with bit 15, the route shape; the patch draws dots over the route
-  for (const [a, b] of data.rough || []) for (let s = a; s < b; s += 30000) {
+  for (const [a, b] of data.opt?.rough === false ? [] : data.rough || []) for (let s = a; s < b; s += 30000) {
     let ps = all.filter(p => p[2] >= s && p[2] <= Math.min(b, s + 30000)).map(p => [p[0], p[1]]); if (ps.length < 2) continue;
     while (ps.length > 24) ps = ps.filter((_, i) => i % 2 === 0 || i === ps.length - 1);
     const e = [...fu(2, 15 | (2 << 4) | 0x8000), ...fs(3, sc(ps[0][0])), ...fs(4, sc(ps[0][1])), ...fu(5, ps.length), ...ps.flatMap(q => fb(6, [...fs(1, sc(q[0])), ...fs(2, sc(q[1]))]))];
