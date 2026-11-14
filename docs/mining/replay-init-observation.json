@@ -1,0 +1,19 @@
+{
+  "evidence_date": "2026-11-13",
+  "application_boot_observed": true,
+  "boot_partition_offset": "0x440000",
+  "both_cores_running_before_and_after": true,
+  "bounded_halt_read_resume_ms": 131,
+  "configuration_slot_count": 5,
+  "configuration_slots_match_candidate": true,
+  "replay_buffer_pointer_count": 7,
+  "replay_buffers_nonnull": true,
+  "selected_fit_count": 1,
+  "selected_fit_index": 0,
+  "selected_fit": "00-replay-probe.fit",
+  "replay_active": false,
+  "fit_decode_observed": false,
+  "ride_records_injected": false,
+  "route_and_fit_injected_as_live_gps": false,
+  "raw_heap_pointers_published": false
+}

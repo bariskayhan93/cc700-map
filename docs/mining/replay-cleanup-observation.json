@@ -1,0 +1,19 @@
+{
+  "evidence_date": "2026-11-13",
+  "trigger_reported_by_owner": "Selecting the synthetic route showed 5138 km and the device restarted.",
+  "likely_distance_explanation": "Synthetic route points are near latitude/longitude zero, far from the real German route; a multi-thousand-kilometre distance is consistent.",
+  "restart_cause": "Unconfirmed",
+  "simulation_files_removed": [
+    "/ModuleDataTest/ModuleDataTest.cfg",
+    "/ModuleDataTest/FitFile/00-replay-probe.fit",
+    "/NAVIGATION/route_26111301.bin"
+  ],
+  "changed_storage_blocks": 3,
+  "other_noncrash_file_hashes_preserved": 22,
+  "coredump_contents_opened": false,
+  "changed_block_readback_verified": true,
+  "full_storage_checksum_verified": true,
+  "rts_reset_loaded_normal_app": true,
+  "firmware_partition_written": false,
+  "fit_decode_or_replay_observed": false
+}

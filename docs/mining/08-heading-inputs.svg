@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="825" viewBox="0 0 1000 825" role="img" aria-labelledby="title desc">
+<title id="title">Navigation has two GPS sources and a magnetic fallback</title><desc id="desc">Extracted firmware paths; physical sensor activity and replay activation remain untested.</desc>
+<rect x="0" y="0" width="1000" height="825" rx="0" fill="#ffffff" stroke="none"/>
+<text x="38" y="46" font-family="Arial" font-size="27" font-weight="bold" fill="#182e43" text-anchor="start">Navigation has two GPS sources and a magnetic fallback</text>
+<text x="38" y="77" font-family="Arial" font-size="18" font-weight="normal" fill="#50677b" text-anchor="start">Extracted firmware paths; physical sensor activity and replay activation remain untested.</text>
+<rect x="38" y="115" width="440" height="74" rx="9" fill="#edf4fa" stroke="#246b9b"/>
+<text x="258.0" y="149.0" font-family="Arial" font-size="21" font-weight="bold" fill="#182e43" text-anchor="middle">Live GNSS / RMC producer</text>
+<text x="258.0" y="175.0" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">0x420edec4 → record 0x3c3ae39c</text>
+<rect x="522" y="115" width="440" height="74" rx="9" fill="#edf4fa" stroke="#246b9b"/>
+<text x="742.0" y="149.0" font-family="Arial" font-size="21" font-weight="bold" fill="#182e43" text-anchor="middle">Native FIT replay task</text>
+<text x="742.0" y="175.0" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">0x420b59dc → allocated 52-byte record</text>
+<line x1="258" y1="189" x2="258" y2="225" stroke="#50677b" stroke-width="2"/>
+<line x1="258" y1="225" x2="500" y2="225" stroke="#50677b" stroke-width="2"/>
+<line x1="500" y1="225" x2="500" y2="252" stroke="#50677b" stroke-width="2"/>
+<polygon points="500,252 495.6503446588877,242.99552897647322 504.3496553411123,242.99552897647322" fill="#50677b"/>
+<line x1="742" y1="189" x2="742" y2="225" stroke="#50677b" stroke-width="2"/>
+<line x1="742" y1="225" x2="500" y2="225" stroke="#50677b" stroke-width="2"/>
+<polygon points="500,225 509.0044710235268,220.6503446588877 509.0044710235268,229.3496553411123" fill="#50677b"/>
+<rect x="290" y="252" width="420" height="74" rx="9" fill="#edf4fa" stroke="#246b9b"/>
+<text x="500.0" y="286.0" font-family="Arial" font-size="21" font-weight="bold" fill="#182e43" text-anchor="middle">Replay-aware GPS getter</text>
+<text x="500.0" y="312.0" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">0x420eeaa8 selects by active byte</text>
+<line x1="500" y1="326" x2="500" y2="360" stroke="#50677b" stroke-width="2"/>
+<polygon points="500,360 495.6503446588877,350.9955289764732 504.3496553411123,350.9955289764732" fill="#50677b"/>
+<rect x="290" y="360" width="420" height="74" rx="9" fill="#edf4fa" stroke="#246b9b"/>
+<text x="500.0" y="394.0" font-family="Arial" font-size="21" font-weight="bold" fill="#182e43" text-anchor="middle">Heading source selector</text>
+<text x="500.0" y="420.0" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">0x4204dfe0; persistent cached heading</text>
+<line x1="290" y1="397" x2="246" y2="397" stroke="#50677b" stroke-width="2"/>
+<line x1="246" y1="397" x2="246" y2="489" stroke="#50677b" stroke-width="2"/>
+<polygon points="246,489 241.6503446588877,479.9955289764732 250.3496553411123,479.9955289764732" fill="#50677b"/>
+<line x1="710" y1="397" x2="754" y2="397" stroke="#50677b" stroke-width="2"/>
+<line x1="754" y1="397" x2="754" y2="489" stroke="#50677b" stroke-width="2"/>
+<polygon points="754,489 749.6503446588877,479.9955289764732 758.3496553411123,479.9955289764732" fill="#50677b"/>
+<rect x="38" y="489" width="415" height="99" rx="9" fill="#e6f3ed" stroke="#26715c"/>
+<text x="245.5" y="535.5" font-family="Arial" font-size="21" font-weight="bold" fill="#182e43" text-anchor="middle">Speed ≥ 3000</text>
+<text x="245.5" y="561.5" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">Nonzero GPS course / 1000; else retain</text>
+<rect x="497" y="489" width="465" height="99" rx="9" fill="#fff4dd" stroke="#976112"/>
+<text x="729.5" y="535.5" font-family="Arial" font-size="21" font-weight="bold" fill="#182e43" text-anchor="middle">Speed comparison fails</text>
+<text x="729.5" y="561.5" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">Fix byte = 1 AND magnetic status = 3?</text>
+<text x="520" y="619" font-family="Arial" font-size="18" font-weight="normal" fill="#50677b" text-anchor="start">Yes: magnetic heading. Otherwise: retain cache.</text>
+<line x1="246" y1="588" x2="246" y2="651" stroke="#50677b" stroke-width="2"/>
+<line x1="246" y1="651" x2="500" y2="651" stroke="#50677b" stroke-width="2"/>
+<line x1="500" y1="651" x2="500" y2="679" stroke="#50677b" stroke-width="2"/>
+<polygon points="500,679 495.6503446588877,669.9955289764732 504.3496553411123,669.9955289764732" fill="#50677b"/>
+<line x1="754" y1="588" x2="980" y2="588" stroke="#50677b" stroke-width="2"/>
+<line x1="980" y1="588" x2="980" y2="651" stroke="#50677b" stroke-width="2"/>
+<line x1="980" y1="651" x2="500" y2="651" stroke="#50677b" stroke-width="2"/>
+<polygon points="500,651 509.0044710235268,646.6503446588877 509.0044710235268,655.3496553411123" fill="#50677b"/>
+<rect x="290" y="679" width="420" height="74" rx="9" fill="#e6f3ed" stroke="#26715c"/>
+<text x="500.0" y="713.0" font-family="Arial" font-size="21" font-weight="bold" fill="#182e43" text-anchor="middle">450 − cached heading → setter</text>
+<text x="500.0" y="739.0" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">0x4204a504, mode 1: immediate update</text>
+<text x="38" y="796" font-family="Arial" font-size="20" font-weight="normal" fill="#182e43" text-anchor="start">FIT replay derives course from position history; it does not replace magnetic state.</text>
+</svg>

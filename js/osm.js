@@ -1,7 +1,7 @@
 // Roads and built-up areas on demand. The page asks the Overpass API for OpenStreetMap data per grid cell
 // (0.05° x 0.08°, about 5.5 km; the server sees cells, not the route), generalizes it and keeps the result on
 // the phone (Cache API). Rules: OSRM bicycle profile access, OpenMapTiles zoom-13 selection.
-import { frame, rdp, lineLen } from './geo.js';
+import { frame, rdp, lineLen, hav } from './geo.js';
 import { captureNavigationSource, mergeNavigationSources } from './navsource.js';
 const DLAT = 0.05, DLON = 0.08, MARGIN = 0.004;     // cell size; context around a cell for generalization (~400 m)
 const REACH = 0.005;                                // cells within ~550 m of the route are loaded
@@ -205,16 +205,29 @@ const phone = {                                       // processed cells on the 
   put: async (k, v) => (await caches.open(CACHE)).put('osm/' + k, new Response(JSON.stringify(v))),
 };
 // roads { kind, name, pts }, built-up areas and water [outer ring, ...holes], railways [points] around a track [[lat, lon]]
-export async function loadOSM(track, onProgress, store = phone) {
+export async function loadOSM(track, onProgress, store = phone, {coverageMeters = 0} = {}) {
+  if (!Number.isFinite(coverageMeters) || coverageMeters < 0 || coverageMeters > 1000) throw new RangeError('Invalid map source coverage');
   const cells = new Set(), lines = new Map(), areas = new Map(), water = new Map(), rails = new Map(), green = new Map(), trams = new Map(), wlines = new Map(); let n = 0;
   const signals = new Map(), stops = new Map(), navigationCells = [], legacyLines = new Set();
-  for (const [la, lo] of track) for (const a of [la - REACH, la + REACH]) for (const o of [lo - REACH * 1.6, lo + REACH * 1.6]) cells.add(Math.floor(a / DLAT) + ',' + Math.floor(o / DLON));
+  const samples=[];
+  for(let i=0;i<track.length;i++) {
+    const a=track[i],b=track[Math.min(i+1,track.length-1)],steps=Math.max(1,Math.ceil(hav(a,b)/500));
+    for(let k=0;k<steps;k++)samples.push([a[0]+(b[0]-a[0])*k/steps,a[1]+(b[1]-a[1])*k/steps]);
+  }
+  for (const [la, lo] of samples) for (const a of [la - REACH, la + REACH]) for (const o of [lo - REACH * 1.6, lo + REACH * 1.6]) cells.add(Math.floor(a / DLAT) + ',' + Math.floor(o / DLON));
+  const required=new Set(cells),coverage={requestedMeters:coverageMeters,missingCells:0};
+  if(coverageMeters) for(const [la,lo] of samples) {
+    const dy=coverageMeters/111195,dx=dy/Math.max(.01,Math.cos(la*Math.PI/180));
+    for(let r=Math.floor((la-dy)/DLAT);r<=Math.floor((la+dy)/DLAT);r++)
+      for(let c=Math.floor((lo-dx)/DLON);c<=Math.floor((lo+dx)/DLON);c++)cells.add(r+','+c);
+  }
   for (const key of cells) {
     onProgress?.(n++, cells.size);
     let cell = await store.get(key);
+    if(!cell && !required.has(key) && navigator.onLine === false){coverage.missingCells++;continue;}
     if (!cell || cell.v !== CELL_V && navigator.onLine !== false || (Date.now() - cell.t > MAX_AGE && navigator.onLine !== false)) try {
       const [r, c] = key.split(',').map(Number); cell = { t: Date.now(), v: CELL_V, ...buildCell(await overpass(r, c), r, c) }; await store.put(key, cell);
-    } catch (e) { if (!cell) throw new Error('Kartendaten nicht geladen (' + e.message + '). Für eine neue Region ist Internet nötig.'); }   // old cell: still good
+    } catch (e) { if (!cell) {if(!required.has(key)){coverage.missingCells++;continue;} throw new Error('Kartendaten nicht geladen (' + e.message + '). Für eine neue Region ist Internet nötig.');} }   // old cell: still good
     navigationCells.push({ key, source: cell.navigationSource });
     for (const [id, kind, name, f, fl] of cell.lines) if (!lines.has(id)) {
       lines.set(id, { kind, name, pts: unflat(f), fl: fl || 0 });
@@ -246,6 +259,6 @@ export async function loadOSM(track, onProgress, store = phone) {
     if (original || legacyLines.has(id) || conflicts.has(Math.abs(id)))
       line.fl = (line.fl & ~64) | (original && roughSurface(original.tags) ? 64 : 0);
   }
-  return { navigationSource, lines: [...lines.values()], areas: [...areas.values()], water: [...water.values()], rails: [...rails.values()],
+  return { coverage, navigationSource, lines: [...lines.values()], areas: [...areas.values()], water: [...water.values()], rails: [...rails.values()],
     green: [...green.values()], trams: [...trams.values()], wlines: [...wlines.values()], signals: [...signals.values()], stops: [...stops.values()] };
 }

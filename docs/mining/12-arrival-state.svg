@@ -1,0 +1,46 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1030" viewBox="0 0 1000 1030" role="img" aria-labelledby="title desc">
+<title id="title">Arrival is armed before it is completed</title><desc id="desc">Extracted local transitions at 0x42052500; thresholds retain firmware numeric values.</desc>
+<rect x="0" y="0" width="1000" height="1030" rx="0" fill="#ffffff" stroke="none"/>
+<text x="38" y="46" font-family="Arial" font-size="27" font-weight="bold" fill="#182e43" text-anchor="start">Arrival is armed before it is completed</text>
+<text x="38" y="77" font-family="Arial" font-size="18" font-weight="normal" fill="#50677b" text-anchor="start">Extracted local transitions at 0x42052500; thresholds retain firmware numeric values.</text>
+<rect x="230" y="112" width="540" height="78" rx="9" fill="#edf4fa" stroke="#246b9b"/>
+<text x="500.0" y="148.0" font-family="Arial" font-size="21" font-weight="bold" fill="#182e43" text-anchor="middle">Caller eligibility / endpoint logic</text>
+<text x="500.0" y="174.0" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">Prompt, fix, off-route and progress gates</text>
+<line x1="500" y1="190" x2="500" y2="224" stroke="#50677b" stroke-width="2"/>
+<polygon points="500,224 495.6503446588877,214.99552897647322 504.3496553411123,214.99552897647322" fill="#50677b"/>
+<rect x="230" y="224" width="540" height="78" rx="9" fill="#edf4fa" stroke="#246b9b"/>
+<text x="500.0" y="260.0" font-family="Arial" font-size="21" font-weight="bold" fill="#182e43" text-anchor="middle">Arrival state 0</text>
+<text x="500.0" y="286.0" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">Remaining value ≤ 100?</text>
+<text x="38" y="268" font-family="Arial" font-size="16" font-weight="normal" fill="#50677b" text-anchor="start">If &gt;100: remain 0</text>
+<line x1="500" y1="302" x2="500" y2="341" stroke="#50677b" stroke-width="2"/>
+<polygon points="500,341 495.6503446588877,331.9955289764732 504.3496553411123,331.9955289764732" fill="#50677b"/>
+<rect x="230" y="341" width="540" height="106" rx="9" fill="#fff4dd" stroke="#976112"/>
+<text x="500.0" y="391.0" font-family="Arial" font-size="21" font-weight="bold" fill="#182e43" text-anchor="middle">Closed-route guard</text>
+<text x="500.0" y="417.0" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">Endpoint separation, total route and ridden distance</text>
+<text x="500" y="444" font-family="Arial" font-size="16" font-weight="normal" fill="#50677b" text-anchor="middle">Hold state 0 only when all guard conditions pass</text>
+<line x1="500" y1="447" x2="500" y2="486" stroke="#50677b" stroke-width="2"/>
+<polygon points="500,486 495.6503446588877,476.9955289764732 504.3496553411123,476.9955289764732" fill="#50677b"/>
+<text x="518" y="474" font-family="Arial" font-size="17" font-weight="normal" fill="#182e43" text-anchor="start">Otherwise</text>
+<rect x="230" y="486" width="540" height="78" rx="9" fill="#edf4fa" stroke="#246b9b"/>
+<text x="500.0" y="522.0" font-family="Arial" font-size="21" font-weight="bold" fill="#182e43" text-anchor="middle">Arm arrival state 1</text>
+<text x="500.0" y="548.0" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">No final-arrival action in the arming call</text>
+<line x1="500" y1="564" x2="500" y2="600" stroke="#50677b" stroke-width="2"/>
+<polygon points="500,600 495.6503446588877,590.9955289764732 504.3496553411123,590.9955289764732" fill="#50677b"/>
+<rect x="230" y="600" width="540" height="100" rx="9" fill="#edf4fa" stroke="#246b9b"/>
+<text x="500.0" y="647.0" font-family="Arial" font-size="21" font-weight="bold" fill="#182e43" text-anchor="middle">Later eligible call</text>
+<text x="500.0" y="673.0" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">Selected index ≥ count − 2 OR remaining ≤ 75</text>
+<text x="500" y="695" font-family="Arial" font-size="16" font-weight="normal" fill="#50677b" text-anchor="middle">Otherwise remain armed</text>
+<line x1="500" y1="700" x2="500" y2="740" stroke="#50677b" stroke-width="2"/>
+<polygon points="500,740 495.6503446588877,730.9955289764732 504.3496553411123,730.9955289764732" fill="#50677b"/>
+<rect x="230" y="740" width="540" height="96" rx="9" fill="#e6f3ed" stroke="#26715c"/>
+<text x="500.0" y="785.0" font-family="Arial" font-size="21" font-weight="bold" fill="#182e43" text-anchor="middle">Complete → arrival state 2</text>
+<text x="500.0" y="811.0" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">Notice type 9; conditional course-record event 11</text>
+<line x1="770" y1="526" x2="924" y2="526" stroke="#50677b" stroke-width="2" stroke-dasharray="7 5"/>
+<line x1="924" y1="526" x2="924" y2="650" stroke="#50677b" stroke-width="2" stroke-dasharray="7 5"/>
+<line x1="924" y1="650" x2="770" y2="650" stroke="#50677b" stroke-width="2" stroke-dasharray="7 5"/>
+<polygon points="770,650 779.0044710235268,645.6503446588877 779.0044710235268,654.3496553411123" fill="#50677b"/>
+<text x="885" y="590" font-family="Arial" font-size="16" font-weight="normal" fill="#50677b" text-anchor="middle">Next call</text>
+<text x="38" y="903" font-family="Arial" font-size="20" font-weight="normal" fill="#182e43" text-anchor="start">Closed-route guard uses start/end separation, route length and ridden distance.</text>
+<text x="38" y="945" font-family="Arial" font-size="20" font-weight="bold" fill="#182e43" text-anchor="start">Event 11 = RECORD_COURSE_DATA. Ride-stop event = 8 (END_RIDE).</text>
+<text x="38" y="994" font-family="Arial" font-size="18" font-weight="normal" fill="#50677b" text-anchor="start">State 2 returns without repeating completion. Caller/reset paths can change the state.</text>
+</svg>

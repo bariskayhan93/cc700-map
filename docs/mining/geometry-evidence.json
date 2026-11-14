@@ -1,0 +1,58 @@
+{
+  "sources": {
+    "stock_sha256": "7545ae4d4030b24b1f6198f481ce3a9a183a0e6eb3e5355b86ad2413aead2c31",
+    "saved_v16_sha256": "2af9c21a3c693c71fed1ffe26ed72ada545e7609c3a47c6dedcfe6c1e7fae8d5"
+  },
+  "ranges": [
+    {
+      "name": "geometry_distance",
+      "start": "0x4204aa9c",
+      "end_exclusive": "0x4204abf4",
+      "sha256": "22c045c331f37473efd4031e9b4ad0e0ac0f99c6f963943996c5b65099fd6dd3",
+      "saved_v16_matches": true,
+      "reachable_instructions": 130,
+      "gnu_runs": 1,
+      "boundary_and_direct_branch_errors": 0
+    },
+    {
+      "name": "geometry_heading",
+      "start": "0x4204a7d8",
+      "end_exclusive": "0x4204aa9c",
+      "sha256": "366769bd06bc67d323d7e0ca409bea87f2b6970be4dc8441cf3dc51617167f05",
+      "saved_v16_matches": true,
+      "reachable_instructions": 243,
+      "gnu_runs": 3,
+      "boundary_and_direct_branch_errors": 0
+    },
+    {
+      "name": "geometry_matcher",
+      "start": "0x4204b1e0",
+      "end_exclusive": "0x4204c020",
+      "sha256": "de498206e11707c4257ec27afc7aa2b9d61fcac6485a19133126cef90bcb81a3",
+      "saved_v16_matches": true,
+      "reachable_instructions": 1299,
+      "gnu_runs": 13,
+      "boundary_and_direct_branch_errors": 0
+    },
+    {
+      "name": "geometry_point_lookup",
+      "start": "0x4204a584",
+      "end_exclusive": "0x4204a5c4",
+      "sha256": "c792b760ac2d0b704693eac06725db94379ff655f2df851d9cfc2770ab97a197",
+      "saved_v16_matches": true,
+      "reachable_instructions": 25,
+      "gnu_runs": 1,
+      "boundary_and_direct_branch_errors": 0
+    },
+    {
+      "name": "degrees_to_radians",
+      "start": "0x42055b54",
+      "end_exclusive": "0x42055b84",
+      "sha256": "263ceae3f77ead590499015569f678e83b3f20d804e51828ceab9d450ec5c42a",
+      "saved_v16_matches": true,
+      "reachable_instructions": 16,
+      "gnu_runs": 1,
+      "boundary_and_direct_branch_errors": 0
+    }
+  ]
+}

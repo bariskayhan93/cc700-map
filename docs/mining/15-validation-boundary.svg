@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="920" viewBox="0 0 1000 920" role="img" aria-labelledby="title desc">
+<title id="title">What local work can prove — and what needs the device</title><desc id="desc">Coverage is a set of evidence boundaries, not a percentage of decoded instructions.</desc>
+<rect x="0" y="0" width="1000" height="920" rx="0" fill="#ffffff" stroke="none"/>
+<text x="38" y="46" font-family="Arial" font-size="27" font-weight="bold" fill="#182e43" text-anchor="start">What local work can prove — and what needs the device</text>
+<text x="38" y="77" font-family="Arial" font-size="18" font-weight="normal" fill="#50677b" text-anchor="start">Coverage is a set of evidence boundaries, not a percentage of decoded instructions.</text>
+<text x="38" y="126" font-family="Arial" font-size="19" font-weight="bold" fill="#26715c" text-anchor="start">AVAILABLE AND CHECKED</text>
+<text x="526" y="126" font-family="Arial" font-size="19" font-weight="bold" fill="#976112" text-anchor="start">NEXT VALIDATION BOUNDARY</text>
+<rect x="38" y="154" width="438" height="101" rx="9" fill="#e6f3ed" stroke="#26715c"/>
+<text x="257.0" y="201.5" font-family="Arial" font-size="21" font-weight="bold" fill="#182e43" text-anchor="middle">App / file generation</text>
+<text x="257.0" y="227.5" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">Preview suite + recovered route edge suite</text>
+<rect x="526" y="154" width="436" height="101" rx="9" fill="#fff4dd" stroke="#976112"/>
+<text x="744.0" y="201.5" font-family="Arial" font-size="21" font-weight="bold" fill="#182e43" text-anchor="middle">Two route edge failures reproduced</text>
+<text x="744.0" y="227.5" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">Noisy GPX and sparse GPX remain defects</text>
+<line x1="476" y1="204" x2="526" y2="204" stroke="#976112" stroke-width="2"/>
+<polygon points="526,204 516.9955289764732,208.3496553411123 516.9955289764732,199.6503446588877" fill="#976112"/>
+<rect x="38" y="293" width="438" height="101" rx="9" fill="#e6f3ed" stroke="#26715c"/>
+<text x="257.0" y="340.5" font-family="Arial" font-size="21" font-weight="bold" fill="#182e43" text-anchor="middle">Patch implementation</text>
+<text x="257.0" y="366.5" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">Saved v16 rebuilt byte-for-byte</text>
+<rect x="526" y="293" width="436" height="101" rx="9" fill="#fff4dd" stroke="#976112"/>
+<text x="744.0" y="340.5" font-family="Arial" font-size="21" font-weight="bold" fill="#182e43" text-anchor="middle">Native execution under moving input</text>
+<text x="744.0" y="366.5" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">Frame time, heap and queue freshness</text>
+<line x1="476" y1="343" x2="526" y2="343" stroke="#976112" stroke-width="2"/>
+<polygon points="526,343 516.9955289764732,347.3496553411123 516.9955289764732,338.6503446588877" fill="#976112"/>
+<rect x="38" y="432" width="438" height="101" rx="9" fill="#e6f3ed" stroke="#26715c"/>
+<text x="257.0" y="479.5" font-family="Arial" font-size="21" font-weight="bold" fill="#182e43" text-anchor="middle">Navigation logic</text>
+<text x="257.0" y="505.5" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">Matcher, heading, progress, notices, arrival</text>
+<rect x="526" y="432" width="436" height="101" rx="9" fill="#fff4dd" stroke="#976112"/>
+<text x="744.0" y="479.5" font-family="Arial" font-size="21" font-weight="bold" fill="#182e43" text-anchor="middle">Differential replay assertions</text>
+<text x="744.0" y="505.5" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">Geometry exceptions and task ordering</text>
+<line x1="476" y1="482" x2="526" y2="482" stroke="#976112" stroke-width="2"/>
+<polygon points="526,482 516.9955289764732,486.3496553411123 516.9955289764732,477.6503446588877" fill="#976112"/>
+<rect x="38" y="571" width="438" height="101" rx="9" fill="#e6f3ed" stroke="#26715c"/>
+<text x="257.0" y="618.5" font-family="Arial" font-size="21" font-weight="bold" fill="#182e43" text-anchor="middle">Sensor receiver</text>
+<text x="257.0" y="644.5" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">UART setup, subtype dispatch, arrival latches</text>
+<rect x="526" y="571" width="436" height="101" rx="9" fill="#fff4dd" stroke="#976112"/>
+<text x="744.0" y="618.5" font-family="Arial" font-size="21" font-weight="bold" fill="#182e43" text-anchor="middle">Board / peer evidence</text>
+<text x="744.0" y="644.5" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">Hardware population and actual sampling</text>
+<line x1="476" y1="621" x2="526" y2="621" stroke="#976112" stroke-width="2"/>
+<polygon points="526,621 516.9955289764732,625.3496553411123 516.9955289764732,616.6503446588877" fill="#976112"/>
+<rect x="38" y="710" width="438" height="101" rx="9" fill="#e6f3ed" stroke="#26715c"/>
+<text x="257.0" y="757.5" font-family="Arial" font-size="21" font-weight="bold" fill="#182e43" text-anchor="middle">Physical ride</text>
+<text x="257.0" y="783.5" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">Stationary warning and rotation observations</text>
+<rect x="526" y="710" width="436" height="101" rx="9" fill="#fff4dd" stroke="#976112"/>
+<text x="744.0" y="757.5" font-family="Arial" font-size="21" font-weight="bold" fill="#182e43" text-anchor="middle">One targeted acceptance ride</text>
+<text x="744.0" y="783.5" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">Motion quality, prompts and readability</text>
+<line x1="476" y1="760" x2="526" y2="760" stroke="#976112" stroke-width="2"/>
+<polygon points="526,760 516.9955289764732,764.3496553411123 516.9955289764732,755.6503446588877" fill="#976112"/>
+<text x="38" y="891" font-family="Arial" font-size="19" font-weight="normal" fill="#50677b" text-anchor="start">Host checks reduce ride repetitions; they do not establish hardware or timing equivalence.</text>
+</svg>

@@ -1,0 +1,49 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="900" viewBox="0 0 1000 900" role="img" aria-labelledby="title desc">
+<title id="title">A startup warning can outlive an off-route result</title><desc id="desc">Notice text, popup container and matcher state are separate. Stock / v16 evidence.</desc>
+<rect x="0" y="0" width="1000" height="900" rx="0" fill="#ffffff" stroke="none"/>
+<text x="38" y="46" font-family="Arial" font-size="27" font-weight="bold" fill="#182e43" text-anchor="start">A startup warning can outlive an off-route result</text>
+<text x="38" y="77" font-family="Arial" font-size="18" font-weight="normal" fill="#50677b" text-anchor="start">Notice text, popup container and matcher state are separate. Stock / v16 evidence.</text>
+<text x="38" y="126" font-family="Arial" font-size="19" font-weight="bold" fill="#246b9b" text-anchor="start">EXTRACTED TRIGGER</text>
+<text x="522" y="126" font-family="Arial" font-size="19" font-weight="bold" fill="#246b9b" text-anchor="start">OBSERVED ON “hin”</text>
+<rect x="38" y="152" width="440" height="105" rx="9" fill="#edf4fa" stroke="#246b9b"/>
+<text x="258.0" y="201.5" font-family="Arial" font-size="21" font-weight="bold" fill="#182e43" text-anchor="middle">Early-route eligibility</text>
+<text x="258.0" y="227.5" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">Index &lt; 2; valid position; navigation = 2</text>
+<text x="258" y="245" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">Arrival state = 0</text>
+<rect x="522" y="152" width="440" height="105" rx="9" fill="#edf4fa" stroke="#246b9b"/>
+<text x="742.0" y="201.5" font-family="Arial" font-size="21" font-weight="bold" fill="#182e43" text-anchor="middle">Active navigation, index 0</text>
+<text x="742.0" y="227.5" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">Valid position; override = 0</text>
+<line x1="258" y1="257" x2="258" y2="297" stroke="#50677b" stroke-width="2"/>
+<polygon points="258,297 253.6503446588877,287.9955289764732 262.3496553411123,287.9955289764732" fill="#50677b"/>
+<line x1="742" y1="257" x2="742" y2="297" stroke="#50677b" stroke-width="2"/>
+<polygon points="742,297 737.6503446588877,287.9955289764732 746.3496553411123,287.9955289764732" fill="#50677b"/>
+<rect x="38" y="297" width="440" height="82" rx="9" fill="#fff4dd" stroke="#976112"/>
+<text x="258.0" y="335.0" font-family="Arial" font-size="21" font-weight="bold" fill="#182e43" text-anchor="middle">Committed off-route = 1</text>
+<text x="258.0" y="361.0" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">Required to select the warning</text>
+<rect x="522" y="297" width="440" height="82" rx="9" fill="#e6f3ed" stroke="#26715c"/>
+<text x="742.0" y="335.0" font-family="Arial" font-size="21" font-weight="bold" fill="#182e43" text-anchor="middle">Committed off-route = 0</text>
+<text x="742.0" y="361.0" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">Matcher completion = 1</text>
+<line x1="258" y1="379" x2="258" y2="419" stroke="#50677b" stroke-width="2"/>
+<polygon points="258,419 253.6503446588877,409.9955289764732 262.3496553411123,409.9955289764732" fill="#50677b"/>
+<line x1="742" y1="379" x2="742" y2="419" stroke="#50677b" stroke-width="2"/>
+<polygon points="742,419 737.6503446588877,409.9955289764732 746.3496553411123,409.9955289764732" fill="#50677b"/>
+<rect x="38" y="419" width="440" height="104" rx="9" fill="#fff4dd" stroke="#976112"/>
+<text x="258.0" y="468.0" font-family="Arial" font-size="21" font-weight="bold" fill="#182e43" text-anchor="middle">Set notice 8 → request popup 4</text>
+<text x="258.0" y="494.0" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">“Current position is far from the new route”</text>
+<rect x="522" y="419" width="440" height="104" rx="9" fill="#fff4dd" stroke="#976112"/>
+<text x="742.0" y="468.0" font-family="Arial" font-size="21" font-weight="bold" fill="#182e43" text-anchor="middle">Notice 8 / popup 4 still stored</text>
+<text x="742.0" y="494.0" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">Planning step = 0; UI responsive</text>
+<line x1="258" y1="523" x2="258" y2="563" stroke="#50677b" stroke-width="2"/>
+<polygon points="258,563 253.6503446588877,553.9955289764732 262.3496553411123,553.9955289764732" fill="#50677b"/>
+<line x1="742" y1="523" x2="742" y2="563" stroke="#50677b" stroke-width="2"/>
+<polygon points="742,563 737.6503446588877,553.9955289764732 746.3496553411123,553.9955289764732" fill="#50677b"/>
+<rect x="38" y="563" width="440" height="104" rx="9" fill="#edf4fa" stroke="#246b9b"/>
+<text x="258.0" y="612.0" font-family="Arial" font-size="21" font-weight="bold" fill="#182e43" text-anchor="middle">Timer period = 0xffffffff</text>
+<text x="258.0" y="638.0" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">No converse clear in the start helper</text>
+<rect x="522" y="563" width="440" height="104" rx="9" fill="#edf4fa" stroke="#246b9b"/>
+<text x="742.0" y="612.0" font-family="Arial" font-size="21" font-weight="bold" fill="#182e43" text-anchor="middle">Early-index planning gate returns</text>
+<text x="742.0" y="638.0" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">No normal planning-state dispatch here</text>
+<text x="38" y="725" font-family="Arial" font-size="21" font-weight="bold" fill="#182e43" text-anchor="start">The warning helper contains no direct distance comparison.</text>
+<text x="38" y="766" font-family="Arial" font-size="20" font-weight="normal" fill="#182e43" text-anchor="start">Current on-route state does not by itself prove that an earlier notice was cleared.</text>
+<text x="38" y="811" font-family="Arial" font-size="19" font-weight="normal" fill="#50677b" text-anchor="start">The original warning transition was not captured; its earlier inputs remain unknown.</text>
+<text x="38" y="854" font-family="Arial" font-size="19" font-weight="normal" fill="#50677b" text-anchor="start">Timer expiry, dismissal, replacement and teardown have separate lifecycles.</text>
+</svg>

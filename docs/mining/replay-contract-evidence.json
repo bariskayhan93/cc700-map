@@ -1,0 +1,206 @@
+{
+  "stock_sha256": "7545ae4d4030b24b1f6198f481ce3a9a183a0e6eb3e5355b86ad2413aead2c31",
+  "v16_sha256": "2af9c21a3c693c71fed1ffe26ed72ada545e7609c3a47c6dedcfe6c1e7fae8d5",
+  "ranges": [
+    {
+      "name": "task_gate",
+      "start": "0x42009484",
+      "end_exclusive": "0x420094d0",
+      "sha256": "640b84554260e480f2c6e89aaccc123625874f3808ee2ee758982f2009906438",
+      "instructions": 29,
+      "runs": 1,
+      "v16_matches": true,
+      "gnu_errors": 0
+    },
+    {
+      "name": "config_queries",
+      "start": "0x420b5714",
+      "end_exclusive": "0x420b5764",
+      "sha256": "980d4d7f44ffc437b1d43997ac30ca63672c845fad2f95979d56d674215d44c6",
+      "instructions": 14,
+      "runs": 1,
+      "v16_matches": true,
+      "gnu_errors": 0
+    },
+    {
+      "name": "activation",
+      "start": "0x420b5764",
+      "end_exclusive": "0x420b5858",
+      "sha256": "50e4d202a75bde94714ac67404c6ddbb54b7da915cc6de6d2c54a7107a27ca55",
+      "instructions": 90,
+      "runs": 2,
+      "v16_matches": true,
+      "gnu_errors": 0
+    },
+    {
+      "name": "imu_config37",
+      "start": "0x420b5858",
+      "end_exclusive": "0x420b5864",
+      "sha256": "71fbd849d5b81883a4c011503cf90da57f47f9baa50962125feb4794d22f653b",
+      "instructions": 5,
+      "runs": 1,
+      "v16_matches": true,
+      "gnu_errors": 0
+    },
+    {
+      "name": "source_open",
+      "start": "0x420b4fd8",
+      "end_exclusive": "0x420b503c",
+      "sha256": "f1a42d505109c7ffa0313ae747b24870df32fc2e399e3d20092828e788992765",
+      "instructions": 37,
+      "runs": 2,
+      "v16_matches": true,
+      "gnu_errors": 0
+    },
+    {
+      "name": "replay_init",
+      "start": "0x420b5864",
+      "end_exclusive": "0x420b59dc",
+      "sha256": "94e52756262216724ab6c8ce38b02465baed86d1d605a312738b7d7138cc6ab7",
+      "instructions": 143,
+      "runs": 3,
+      "v16_matches": true,
+      "gnu_errors": 0
+    },
+    {
+      "name": "ride_dispatch",
+      "start": "0x4204193c",
+      "end_exclusive": "0x42041a06",
+      "sha256": "7ca93c78f97d540f1cc0ae34b6fd54e1f3111b743c40741e46a86e8d5d8f2559",
+      "instructions": 73,
+      "runs": 1,
+      "v16_matches": true,
+      "gnu_errors": 0
+    },
+    {
+      "name": "ride_end_guard",
+      "start": "0x42041b94",
+      "end_exclusive": "0x42041bc2",
+      "sha256": "e181e04897a3ddb09cb928a81238146a3dd628958ec14ba6946f3e0e97250f29",
+      "instructions": 16,
+      "runs": 1,
+      "v16_matches": true,
+      "gnu_errors": 0
+    },
+    {
+      "name": "ride_start",
+      "start": "0x420425de",
+      "end_exclusive": "0x42042620",
+      "sha256": "68f69db0256ab252c685fe063d074607683b9e3c8b3a5fde4acd3a886f817328",
+      "instructions": 24,
+      "runs": 1,
+      "v16_matches": true,
+      "gnu_errors": 0
+    },
+    {
+      "name": "ride_load",
+      "start": "0x420426f1",
+      "end_exclusive": "0x42042768",
+      "sha256": "c8e6403b77e7fce1ef1fc73c594ffb6fe78020f9ab59ee7554f4c2a3b7cd38f1",
+      "instructions": 43,
+      "runs": 1,
+      "v16_matches": true,
+      "gnu_errors": 0
+    },
+    {
+      "name": "ride_end",
+      "start": "0x42043900",
+      "end_exclusive": "0x42043915",
+      "sha256": "c5470d86d9765d8bf41b7ba7ae652b163c4ae60a45d8b3b3e3f6b7c8930a99d3",
+      "instructions": 7,
+      "runs": 1,
+      "v16_matches": true,
+      "gnu_errors": 0
+    },
+    {
+      "name": "ride_resume_gate",
+      "start": "0x420421c0",
+      "end_exclusive": "0x420421c8",
+      "sha256": "755f138164d52035ef7f6f8de848059d51b2761b77fe48c12d5773b219f9e962",
+      "instructions": 3,
+      "runs": 1,
+      "v16_matches": true,
+      "gnu_errors": 0
+    },
+    {
+      "name": "ride_resume_state",
+      "start": "0x420424cc",
+      "end_exclusive": "0x420424d3",
+      "sha256": "48261c99aeab975461d23c39136c849f870baa58292e02e29c11c3d103cc0d02",
+      "instructions": 3,
+      "runs": 1,
+      "v16_matches": true,
+      "gnu_errors": 0
+    },
+    {
+      "name": "resume_helper",
+      "start": "0x42041920",
+      "end_exclusive": "0x4204193c",
+      "sha256": "8f12d63e3e81e81b450f47918c01a72049b6fce90a63eb89b9db5ae660fed15d",
+      "instructions": 10,
+      "runs": 1,
+      "v16_matches": true,
+      "gnu_errors": 0
+    },
+    {
+      "name": "rtos_timer_setup",
+      "start": "0x40380ee8",
+      "end_exclusive": "0x40380fd0",
+      "sha256": "a2f7b35abbb6b28e478827209ee5ed54f77ebe13b1e3598e6702d762b4112a0e",
+      "instructions": 95,
+      "runs": 1,
+      "v16_matches": true,
+      "gnu_errors": 0
+    },
+    {
+      "name": "rtos_timer_isr",
+      "start": "0x403771c4",
+      "end_exclusive": "0x40377245",
+      "sha256": "3c71677b38d29dc7c63d489653ab5909d9a3c88cdb0ff44df25013db2a496268",
+      "instructions": 47,
+      "runs": 1,
+      "v16_matches": true,
+      "gnu_errors": 0
+    },
+    {
+      "name": "rtos_alarm_period",
+      "start": "0x403853d4",
+      "end_exclusive": "0x40385448",
+      "sha256": "fdba0752b099aa1637037ca0895da4a82659ff09ca16fb55ed29c5115edccc52",
+      "instructions": 44,
+      "runs": 1,
+      "v16_matches": true,
+      "gnu_errors": 0
+    },
+    {
+      "name": "rtos_tick_dispatch",
+      "start": "0x40380fd0",
+      "end_exclusive": "0x40380ff4",
+      "sha256": "93a42c9bc0090eb2f1dbbb3ded7cbdb3adc76b5b99c9270b8b335591b3d67109",
+      "instructions": 12,
+      "runs": 1,
+      "v16_matches": true,
+      "gnu_errors": 0
+    },
+    {
+      "name": "rtos_tick_increment",
+      "start": "0x40382a1a",
+      "end_exclusive": "0x40382a3e",
+      "sha256": "f928798249e2f8a78b930bc5725152ad526d8308dd552465e5361d770e2ae184",
+      "instructions": 14,
+      "runs": 1,
+      "v16_matches": true,
+      "gnu_errors": 0
+    },
+    {
+      "name": "us_to_hw_ticks",
+      "start": "0x4037f5f4",
+      "end_exclusive": "0x4037f608",
+      "sha256": "be6451b41331273746d8b4747cfa62140da156b0145c9ce29341e5263e67603c",
+      "instructions": 6,
+      "runs": 1,
+      "v16_matches": true,
+      "gnu_errors": 0
+    }
+  ]
+}

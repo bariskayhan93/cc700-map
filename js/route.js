@@ -311,10 +311,10 @@ export function buildRoute(gpx, allLines, opt) {
   if (mopt.rails) mopt.rails = (opt.rails || []).filter(pts => nearRoute({ pts }));
   const map = mopt.styled                                       // patched firmware: styled polylines and areas (patch v1)
     ? buildStyledSection(sections, { lines: allLines.filter(L =>      // options: real carriageways (lanes), detail ways (details)
-        L.fl & 1024 ? mopt.lanes !== false : L.fl & 512 ? mopt.lanes === false : L.fl & 256 ? mopt.details !== false : true).filter(nearRoute), areas: (opt.areas || []).filter(a => nearRoute({ pts: a[0] })),
-        green: (opt.green || []).filter(a => nearRoute({ pts: a[0] })), water: (opt.water || []).filter(a => nearRoute({ pts: a[0] })),
-        rails: (opt.rails || []).filter(pts => nearRoute({ pts })), trams: (opt.trams || []).filter(pts => nearRoute({ pts })), wlines: (opt.wlines || []).filter(pts => nearRoute({ pts })),
-        signals: (opt.signals || []).filter(p => nearRoute({ pts: [p] })), stops: (opt.stops || []).filter(p => nearRoute({ pts: [p] })), opt: mopt, turns: secs.map((s, k) => s.dir ? k : -1).filter(k => k >= 0),
+        L.fl & 1024 ? mopt.lanes !== false : L.fl & 512 ? mopt.lanes === false : L.fl & 256 ? mopt.details !== false : true), areas: (opt.areas || []),
+        green: (opt.green || []), water: (opt.water || []),
+        rails: (opt.rails || []), trams: (opt.trams || []), wlines: (opt.wlines || []),
+        signals: (opt.signals || []), stops: (opt.stops || []), opt: mopt, turns: secs.map((s, k) => s.dir ? k : -1).filter(k => k >= 0),
         routeNames: new Set(secs.map(s => s.name)),                                   // A3: names of the route streets first
         rough: P.reduce((a, p, i) => { if (mopt.rough !== false && (road[i]?.fl & 64)) { const l = a.at(-1); if (l && l[1] >= D[i - 1] * 100) l[1] = D[i] * 100; else a.push([D[i] * 100, D[i] * 100]); } return a; }, []).filter(x => x[1] - x[0] >= 2000) }, F)
     : buildMapSection(sections, lines.filter(nearRoute), F, mopt);   // only roads near the route (600 m grid)

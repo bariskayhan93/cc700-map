@@ -1,0 +1,184 @@
+{
+  "evidence_date": "2026-11-13",
+  "method": "Static byte-range comparison and disassembly; no firmware execution or device test.",
+  "stock_sha256": "7545ae4d4030b24b1f6198f481ce3a9a183a0e6eb3e5355b86ad2413aead2c31",
+  "saved_v16_sha256": "2af9c21a3c693c71fed1ffe26ed72ada545e7609c3a47c6dedcfe6c1e7fae8d5",
+  "ranges": [
+    {
+      "name": "calculation_queue_init",
+      "start": "0x420b2ab4",
+      "end_exclusive": "0x420b2b70",
+      "bytes": 188,
+      "sha256": "bdc0e0eb29262022ad3ca2c21f698bbc4bfb84430b7394562ff925881d593c2f",
+      "stock_matches_saved_v16": true
+    },
+    {
+      "name": "calculation_sender",
+      "start": "0x420b3964",
+      "end_exclusive": "0x420b3a68",
+      "bytes": 260,
+      "sha256": "05e66500a5afee7dd193efdfd6c006101955bdaaf8a7186d381f5dd77b8a9087",
+      "stock_matches_saved_v16": true
+    },
+    {
+      "name": "calculation_consumer",
+      "start": "0x420b343c",
+      "end_exclusive": "0x420b38ee",
+      "bytes": 1202,
+      "sha256": "f4dedd8c449e315752e50e2c188974dac25297359b35d44e4bf059559d7cbd50",
+      "stock_matches_saved_v16": true
+    },
+    {
+      "name": "calculation_input",
+      "start": "0x42143724",
+      "end_exclusive": "0x42143ad0",
+      "bytes": 940,
+      "sha256": "daed2146d739f526799d70c1da2eb76fd02b7571620d206c397c01f1f82feeab",
+      "stock_matches_saved_v16": true
+    },
+    {
+      "name": "calculation_processor",
+      "start": "0x42143e70",
+      "end_exclusive": "0x42147084",
+      "bytes": 12820,
+      "sha256": "887438c241d0f37a1902d1bcbef9ce424b1eaf41e9c50889c29c6eff86b2ba54",
+      "stock_matches_saved_v16": true
+    },
+    {
+      "name": "position_getter",
+      "start": "0x421434dc",
+      "end_exclusive": "0x421436e0",
+      "bytes": 516,
+      "sha256": "d568b06c4a6938e6038431b3dafd10d1ab959e84b22cd987daaf18c45d94dd41",
+      "stock_matches_saved_v16": true
+    },
+    {
+      "name": "gui_queue",
+      "start": "0x4208e6f4",
+      "end_exclusive": "0x4208e780",
+      "bytes": 140,
+      "sha256": "1b73a070e3d8ad88add17751b9e906665c21d9c0f22829c84138ebea8d0e1821",
+      "stock_matches_saved_v16": true
+    },
+    {
+      "name": "gui_consumer",
+      "start": "0x4208df70",
+      "end_exclusive": "0x4208e064",
+      "bytes": 244,
+      "sha256": "251e50839dc552ebf2e5167b92d0f51bb529d6149e72255450fce4467caf2ee4",
+      "stock_matches_saved_v16": true
+    },
+    {
+      "name": "ride_event_callback",
+      "start": "0x4205cb54",
+      "end_exclusive": "0x4205cfdc",
+      "bytes": 1160,
+      "sha256": "5d88b9f4bb65ad826cae829e9a5791d08bcc428105e1c0b7ed005f42be6eaa07",
+      "stock_matches_saved_v16": true
+    },
+    {
+      "name": "execute_navigation",
+      "start": "0x42054b1c",
+      "end_exclusive": "0x42054bb0",
+      "bytes": 148,
+      "sha256": "bb6d4ba4060cfb16edfb320245cf425de6de9d082d047a929fa0f04eeb104d67",
+      "stock_matches_saved_v16": true
+    },
+    {
+      "name": "navigation_callback",
+      "start": "0x4205095c",
+      "end_exclusive": "0x42050a48",
+      "bytes": 236,
+      "sha256": "537cb830b3c8c3a394a14ebbd4add60359e93014a76bbc94f3f1f20dc51d09bf",
+      "stock_matches_saved_v16": true
+    },
+    {
+      "name": "navigation_teardown",
+      "start": "0x4204cecc",
+      "end_exclusive": "0x4204cf40",
+      "bytes": 116,
+      "sha256": "96f8c34d72d260e067fbe0eddd50078cf2b789de276b3b8b23de55be6b42bf98",
+      "stock_matches_saved_v16": true
+    },
+    {
+      "name": "navigation_loader",
+      "start": "0x4204d0dc",
+      "end_exclusive": "0x4204d7d0",
+      "bytes": 1780,
+      "sha256": "6f77db6849ca201b895261bcf851fa34a63b8bc2f90beeec4431c3fd190357f8",
+      "stock_matches_saved_v16": true
+    },
+    {
+      "name": "navigation_start",
+      "start": "0x4204d7d0",
+      "end_exclusive": "0x4204d98c",
+      "bytes": 444,
+      "sha256": "48c760b9256f38a1d6ee5a4c6fcff5b44b14b7ede42e0cb436da44e9ca5a9310",
+      "stock_matches_saved_v16": true
+    },
+    {
+      "name": "navigation_restart",
+      "start": "0x4204d9c0",
+      "end_exclusive": "0x4204da24",
+      "bytes": 100,
+      "sha256": "53aeab9e9eec98af01ad3088a36b81f7dd630a11d2acd87aa3d56f08f73cf51f",
+      "stock_matches_saved_v16": true
+    },
+    {
+      "name": "file_teardown",
+      "start": "0x420488b4",
+      "end_exclusive": "0x42048940",
+      "bytes": 140,
+      "sha256": "17057f09b8c42dbd5b52cb209d3d23b7f50113ba327fea63153caa98bc709740",
+      "stock_matches_saved_v16": true
+    },
+    {
+      "name": "map_teardown",
+      "start": "0x4204976c",
+      "end_exclusive": "0x420497ac",
+      "bytes": 64,
+      "sha256": "b6eae23b55656b83deb8add69f21247d7759e0121ecbaeff8a04c93890a2a565",
+      "stock_matches_saved_v16": true
+    },
+    {
+      "name": "progress",
+      "start": "0x4205100c",
+      "end_exclusive": "0x42051588",
+      "bytes": 1404,
+      "sha256": "60a6e4b34828dcf999994bef4a395b5fdb1aa9586dba7264d32188350d272575",
+      "stock_matches_saved_v16": true
+    },
+    {
+      "name": "arrival",
+      "start": "0x42052500",
+      "end_exclusive": "0x420528e4",
+      "bytes": 996,
+      "sha256": "5efd25c5512859f454e2ae306894d82a8838fe5c2f3a0f6ad24fe2ed6f2c91ab",
+      "stock_matches_saved_v16": true
+    },
+    {
+      "name": "progress_record",
+      "start": "0x42050dd0",
+      "end_exclusive": "0x42050f20",
+      "bytes": 336,
+      "sha256": "ec3a70e1a8ca4b8ad521cb311797d11eb5a924c6e8f392959ca5db5336f62116",
+      "stock_matches_saved_v16": true
+    },
+    {
+      "name": "path_type",
+      "start": "0x42050ccc",
+      "end_exclusive": "0x42050dd0",
+      "bytes": 260,
+      "sha256": "4e21e5bea7523e7960491f852252a2323dfb7b579d63dcccac30de550794a74d",
+      "stock_matches_saved_v16": true
+    },
+    {
+      "name": "remaining_distance",
+      "start": "0x420503b4",
+      "end_exclusive": "0x42050404",
+      "bytes": 80,
+      "sha256": "0764bcf4a094292527fa10180c96ca5fcf2d5ebe75d65add2df92a3669e7759d",
+      "stock_matches_saved_v16": true
+    }
+  ]
+}

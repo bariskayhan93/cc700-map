@@ -1,0 +1,52 @@
+{
+  "stock_sha256": "7545ae4d4030b24b1f6198f481ce3a9a183a0e6eb3e5355b86ad2413aead2c31",
+  "v16_sha256": "2af9c21a3c693c71fed1ffe26ed72ada545e7609c3a47c6dedcfe6c1e7fae8d5",
+  "results": [
+    {
+      "range": "wrapper",
+      "start": "0x420c9b00",
+      "end": "0x420c9c84",
+      "sha256": "a438f6df2a5adf115dae8c48b19ee7a753a2d51984a972253f4ebe6e2137d263",
+      "stock_v16_identical": true
+    },
+    {
+      "range": "converter",
+      "start": "0x420cc8d0",
+      "end": "0x420ccf6c",
+      "sha256": "5f35cea6b51238d76a167a9efec6b102d672ea77750b53ff3010edb85aeecbf4",
+      "stock_v16_identical": true
+    },
+    {
+      "range": "CRC",
+      "start": "0x420ccfa0",
+      "end": "0x420ccfe0",
+      "sha256": "83e96865826964053e78e4d6182e2bc96bd26839a54d9894978e29dc245224f8",
+      "stock_v16_identical": true
+    },
+    {
+      "range": "profile_tables",
+      "start": "0x3c34bc3e",
+      "end": "0x3c34c850",
+      "sha256": "62067d522c98a880960fe4a883f5087fb6039766a73056ce7434f1f3fdc04a58",
+      "stock_v16_identical": true
+    },
+    {
+      "function": "fit-wrapper",
+      "instructions": 138,
+      "direct_targets_checked": 42,
+      "GNU_agrees": true
+    },
+    {
+      "function": "fit-converter",
+      "instructions": 614,
+      "direct_targets_checked": 139,
+      "GNU_agrees": true
+    },
+    {
+      "function": "fit-accessors",
+      "instructions": 7,
+      "direct_targets_checked": 0,
+      "GNU_agrees": true
+    }
+  ]
+}

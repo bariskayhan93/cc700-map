@@ -1,0 +1,306 @@
+{
+  "stock_sha256": "7545ae4d4030b24b1f6198f481ce3a9a183a0e6eb3e5355b86ad2413aead2c31",
+  "v16_sha256": "2af9c21a3c693c71fed1ffe26ed72ada545e7609c3a47c6dedcfe6c1e7fae8d5",
+  "ranges": [
+    {
+      "name": "tick_inc",
+      "start": "0x420213e0",
+      "end_exclusive": "0x420213fc",
+      "sha256": "b410e56a35d05e12ba1136d5feb284ebe3f5d5f47c2723e6459ab74618440007",
+      "instructions": 10,
+      "runs": 1,
+      "v16_matches": true,
+      "gnu_errors": 0
+    },
+    {
+      "name": "tick_get",
+      "start": "0x420213fc",
+      "end_exclusive": "0x42021420",
+      "sha256": "66ed72fdac70f9392f8c2ad2687baf4911f2c9e55f7672209266f93821192674",
+      "instructions": 12,
+      "runs": 1,
+      "v16_matches": true,
+      "gnu_errors": 0
+    },
+    {
+      "name": "tick_elapsed",
+      "start": "0x42021420",
+      "end_exclusive": "0x4202142c",
+      "sha256": "e2202d71200d411d2f166b2b89a9e7632e110046144e960546a32960c4c3cac7",
+      "instructions": 4,
+      "runs": 1,
+      "v16_matches": true,
+      "gnu_errors": 0
+    },
+    {
+      "name": "timer_create",
+      "start": "0x420223bc",
+      "end_exclusive": "0x420223f8",
+      "sha256": "20b150f740f676928a66654e818f60e7aca84b952ec942ef8c8461d89a9717c7",
+      "instructions": 22,
+      "runs": 1,
+      "v16_matches": true,
+      "gnu_errors": 0
+    },
+    {
+      "name": "timer_delete",
+      "start": "0x4202244c",
+      "end_exclusive": "0x4202246c",
+      "sha256": "f9d213d4fe572bbdb62c17228b853b349bf87fdadd1668c60c1636a2a26f62f3",
+      "instructions": 12,
+      "runs": 1,
+      "v16_matches": true,
+      "gnu_errors": 0
+    },
+    {
+      "name": "timer_handler",
+      "start": "0x4202246c",
+      "end_exclusive": "0x420225ec",
+      "sha256": "ab9ef0bcf82db40a0db9a3b295f02647ba1f9dd8c5f2d20dd65ef6739995ceb9",
+      "instructions": 144,
+      "runs": 2,
+      "v16_matches": true,
+      "gnu_errors": 0
+    },
+    {
+      "name": "tick_callback",
+      "start": "0x42037e04",
+      "end_exclusive": "0x42037e10",
+      "sha256": "11ee7ecc42396a56a2f6a6390662bf9a085310c6cfa1ebeb37dd2fe9f3441c7a",
+      "instructions": 4,
+      "runs": 1,
+      "v16_matches": true,
+      "gnu_errors": 0
+    },
+    {
+      "name": "tick_registration",
+      "start": "0x42038133",
+      "end_exclusive": "0x4203817d",
+      "sha256": "7ed829494ba2bda33fd75627b410e4d3df798375e9f1e9b8d2d2b4ce66ceebe3",
+      "instructions": 27,
+      "runs": 1,
+      "v16_matches": true,
+      "gnu_errors": 0
+    },
+    {
+      "name": "periodic_timer",
+      "start": "0x4037788c",
+      "end_exclusive": "0x40377910",
+      "sha256": "6ddda0910a42bcb648d8075e0aae5869a03a4aa54d50b55a65278d9f58e07cc0",
+      "instructions": 53,
+      "runs": 1,
+      "v16_matches": true,
+      "gnu_errors": 0
+    },
+    {
+      "name": "hardware_time",
+      "start": "0x403779f4",
+      "end_exclusive": "0x40377a0c",
+      "sha256": "99064e103e00669a3af6b545c594b70fa848f5695cee0098e017508b18464758",
+      "instructions": 9,
+      "runs": 1,
+      "v16_matches": true,
+      "gnu_errors": 0
+    },
+    {
+      "name": "timer_hal_init",
+      "start": "0x42006208",
+      "end_exclusive": "0x4200625c",
+      "sha256": "26578f57080532b8d3d540706e578253060586582492928de664e372d0113381",
+      "instructions": 33,
+      "runs": 1,
+      "v16_matches": true,
+      "gnu_errors": 0
+    },
+    {
+      "name": "timer_callback_set",
+      "start": "0x40385504",
+      "end_exclusive": "0x40385510",
+      "sha256": "43ecc1ab881418f3db600201fc249a1171459d19275180809fcc654b3ed6f352",
+      "instructions": 6,
+      "runs": 1,
+      "v16_matches": true,
+      "gnu_errors": 0
+    },
+    {
+      "name": "counter_read",
+      "start": "0x4038531c",
+      "end_exclusive": "0x40385368",
+      "sha256": "f118cdc4c8e2ef3564d1b378caaa66fff6cb18628e7078628cf1625f1f430dd8",
+      "instructions": 27,
+      "runs": 1,
+      "v16_matches": true,
+      "gnu_errors": 0
+    },
+    {
+      "name": "tick_to_us",
+      "start": "0x4037f5e0",
+      "end_exclusive": "0x4037f5f4",
+      "sha256": "dea5828aaab028ed3272b5f70e08db0c340934272d415822b28d65eb6d1a4c0e",
+      "instructions": 6,
+      "runs": 1,
+      "v16_matches": true,
+      "gnu_errors": 0
+    },
+    {
+      "name": "popup_close",
+      "start": "0x4204ddf0",
+      "end_exclusive": "0x4204de2c",
+      "sha256": "44036f4619ebcf22a0b83c1a0a544d91f9562e6d0b99d1ab1707c2a5c40aedb5",
+      "instructions": 22,
+      "runs": 1,
+      "v16_matches": true,
+      "gnu_errors": 0
+    },
+    {
+      "name": "popup_destroy",
+      "start": "0x4204de6c",
+      "end_exclusive": "0x4204de84",
+      "sha256": "6660330d0646a2525d39b9cc59f2b108eb35d83a98b0a00aa6327906a357aa68",
+      "instructions": 8,
+      "runs": 1,
+      "v16_matches": true,
+      "gnu_errors": 0
+    },
+    {
+      "name": "popup_cancel_a",
+      "start": "0x4204f3cc",
+      "end_exclusive": "0x4204f400",
+      "sha256": "55e9ff129f5d326efb033073456c8f47e2d63bfa8b9fb4a1e39ad9a9e51accf4",
+      "instructions": 18,
+      "runs": 1,
+      "v16_matches": true,
+      "gnu_errors": 0
+    },
+    {
+      "name": "popup_cancel_b",
+      "start": "0x4204f400",
+      "end_exclusive": "0x4204f444",
+      "sha256": "f3fc6cfe6c95426baea52cdab57d1789b733b4f2e103a04ca68b600cbca2b0c2",
+      "instructions": 25,
+      "runs": 1,
+      "v16_matches": true,
+      "gnu_errors": 0
+    },
+    {
+      "name": "popup_expiry",
+      "start": "0x4204f6b0",
+      "end_exclusive": "0x4204f6f8",
+      "sha256": "8305bc936541e014e2bec1c267b9efcad5ce4c03daa50f4f14c444840e978aa9",
+      "instructions": 27,
+      "runs": 1,
+      "v16_matches": true,
+      "gnu_errors": 0
+    },
+    {
+      "name": "popup_create",
+      "start": "0x4204f6f8",
+      "end_exclusive": "0x4204fa18",
+      "sha256": "3d7ac1726eb865a82fc4324c8c59ec1221ab3422a2e524ad608e339ea07c7580",
+      "instructions": 298,
+      "runs": 4,
+      "v16_matches": true,
+      "gnu_errors": 0
+    },
+    {
+      "name": "popup_request",
+      "start": "0x4204fa18",
+      "end_exclusive": "0x4204fa44",
+      "sha256": "92ebb4a65949824acdbfccaf95a740410aada64d29c2fbdd1f35564e756836e3",
+      "instructions": 6,
+      "runs": 1,
+      "v16_matches": true,
+      "gnu_errors": 0
+    },
+    {
+      "name": "navigation_end",
+      "start": "0x4204d01c",
+      "end_exclusive": "0x4204d048",
+      "sha256": "4aa6632d4777ccbeabb956f50b31d548cba0c59b98d2904544d6e4f4e97124e5",
+      "instructions": 16,
+      "runs": 1,
+      "v16_matches": true,
+      "gnu_errors": 0
+    },
+    {
+      "name": "navigation_end_params",
+      "start": "0x42050030",
+      "end_exclusive": "0x420500d0",
+      "sha256": "0017101053685ff4f4a6d0e3789c0d3cfdca0049ae079dba9da12160085f6e58",
+      "instructions": 59,
+      "runs": 1,
+      "v16_matches": true,
+      "gnu_errors": 0
+    },
+    {
+      "name": "navigation_end_full",
+      "start": "0x42050110",
+      "end_exclusive": "0x42050150",
+      "sha256": "8750e111f08498b8aee2873d29748d4bf911bd6a66fb71ea6b30ae0c631294c1",
+      "instructions": 24,
+      "runs": 1,
+      "v16_matches": true,
+      "gnu_errors": 0
+    },
+    {
+      "name": "navigation_start_params",
+      "start": "0x420506c4",
+      "end_exclusive": "0x420507bc",
+      "sha256": "e4446a962a9291c703a248fe0d86b4d67f1b45ed276abb381f959b142e967442",
+      "instructions": 93,
+      "runs": 1,
+      "v16_matches": true,
+      "gnu_errors": 0
+    },
+    {
+      "name": "navigation_teardown_tail",
+      "start": "0x420507bc",
+      "end_exclusive": "0x420507f0",
+      "sha256": "7db2fe92aafc0970eb535799cb65d6456923b486ecc7913e08fde4a58083bb92",
+      "instructions": 8,
+      "runs": 1,
+      "v16_matches": true,
+      "gnu_errors": 0
+    },
+    {
+      "name": "replay_task",
+      "start": "0x420b59dc",
+      "end_exclusive": "0x420b5e34",
+      "sha256": "e47dac5e863623111901557e14c197c7d8174fffe25b2ea3e44b47b08d414a44",
+      "instructions": 397,
+      "runs": 5,
+      "v16_matches": true,
+      "gnu_errors": 0
+    },
+    {
+      "name": "replay_decode",
+      "start": "0x420b5068",
+      "end_exclusive": "0x420b51bc",
+      "sha256": "53cc7d6005763907c74cd097918beff2f96728bb980191b923385498a34ecb39",
+      "instructions": 132,
+      "runs": 3,
+      "v16_matches": true,
+      "gnu_errors": 0
+    },
+    {
+      "name": "delay_until",
+      "start": "0x40383714",
+      "end_exclusive": "0x4038378c",
+      "sha256": "624f6233244b69c5f43f89d155c5640253f1b8d00d346569f24eda2d64bb3867",
+      "instructions": 40,
+      "runs": 3,
+      "v16_matches": true,
+      "gnu_errors": 0
+    },
+    {
+      "name": "rtos_tick_get",
+      "start": "0x403829b4",
+      "end_exclusive": "0x403829c4",
+      "sha256": "c0930d0a5f5f5abd84c09fd84bccb4761430d89764882164111a9aac04ab72e0",
+      "instructions": 5,
+      "runs": 1,
+      "v16_matches": true,
+      "gnu_errors": 0
+    }
+  ]
+}

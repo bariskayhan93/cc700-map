@@ -1,0 +1,28 @@
+{
+  "method": "Three bounded dual-core halt/read/resume samples of fixed RAM clocks; no reset/injection/storage writes",
+  "before_and_after_all_running": true,
+  "sampling_ms": [
+    103,
+    107,
+    104
+  ],
+  "replay_active": [
+    0,
+    0,
+    0
+  ],
+  "intervals": [
+    {
+      "gui_delta_ms": 1604,
+      "rtos_delta_ticks": 1604,
+      "host_between_gui_reads_ms": 1604
+    },
+    {
+      "gui_delta_ms": 1608,
+      "rtos_delta_ticks": 1608,
+      "host_between_gui_reads_ms": 1603
+    }
+  ],
+  "openocd_halt_timeout_warning_present": true,
+  "interpretation": "RTOS ticks track nominal GUI milliseconds; instrumentation and catchup included; not replay latency or jitter"
+}

@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="800" viewBox="0 0 1000 800" role="img" aria-labelledby="title desc">
+<title id="title">Existing assets and state reduce the unknowns</title><desc id="desc">Located in saved firmware. Integration, readability and sensor calibration remain unvalidated.</desc>
+<rect x="0" y="0" width="1000" height="800" rx="0" fill="#ffffff" stroke="none"/>
+<text x="38" y="46" font-family="Arial" font-size="27" font-weight="bold" fill="#182e43" text-anchor="start">Existing assets and state reduce the unknowns</text>
+<text x="38" y="77" font-family="Arial" font-size="18" font-weight="normal" fill="#50677b" text-anchor="start">Located in saved firmware. Integration, readability and sensor calibration remain unvalidated.</text>
+<text x="38" y="124" font-family="Arial" font-size="23" font-weight="bold" fill="#182e43" text-anchor="start">Font assets already embedded in the image</text>
+<rect x="38" y="146" width="924" height="52" rx="0" fill="#fcecef" stroke="none"/>
+<text x="55" y="180" font-family="Arial" font-size="20" font-weight="normal" fill="#182e43" text-anchor="start">Current map font</text>
+<text x="340" y="180" font-family="Arial" font-size="19" font-weight="normal" fill="#50677b" text-anchor="start">0x3c1e6f98</text>
+<text x="584" y="180" font-family="Arial" font-size="20" font-weight="normal" fill="#182e43" text-anchor="start">16 px</text>
+<text x="705" y="180" font-family="Arial" font-size="20" font-weight="normal" fill="#ae3546" text-anchor="start">No ä ö ü ß é</text>
+<rect x="38" y="204" width="924" height="52" rx="0" fill="#e6f3ed" stroke="none"/>
+<text x="55" y="238" font-family="Arial" font-size="20" font-weight="normal" fill="#182e43" text-anchor="start">SHS_N_10 fallback</text>
+<text x="340" y="238" font-family="Arial" font-size="19" font-weight="normal" fill="#50677b" text-anchor="start">0x3c2fb97c</text>
+<text x="584" y="238" font-family="Arial" font-size="20" font-weight="normal" fill="#182e43" text-anchor="start">14 px</text>
+<text x="705" y="238" font-family="Arial" font-size="20" font-weight="normal" fill="#26715c" text-anchor="start">Includes ä ö ü ß é</text>
+<rect x="38" y="262" width="924" height="52" rx="0" fill="#e6f3ed" stroke="none"/>
+<text x="55" y="296" font-family="Arial" font-size="20" font-weight="normal" fill="#182e43" text-anchor="start">SHS_N_12 fallback</text>
+<text x="340" y="296" font-family="Arial" font-size="19" font-weight="normal" fill="#50677b" text-anchor="start">0x3c308410</text>
+<text x="584" y="296" font-family="Arial" font-size="20" font-weight="normal" fill="#182e43" text-anchor="start">16 px</text>
+<text x="705" y="296" font-family="Arial" font-size="20" font-weight="normal" fill="#26715c" text-anchor="start">Includes ä ö ü ß é</text>
+<text x="38" y="365" font-family="Arial" font-size="23" font-weight="bold" fill="#182e43" text-anchor="start">Ambient-light record · 8 bytes at 0x3fc9facc</text>
+<rect x="38" y="387" width="462" height="99" rx="0" fill="#edf4fa" stroke="#ffffff"/>
+<text x="56" y="413" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="start">+0..3</text>
+<text x="56" y="446" font-family="Arial" font-size="20" font-weight="normal" fill="#182e43" text-anchor="start">Environment value</text>
+<text x="56" y="473" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="start">32-bit display read</text>
+<rect x="500" y="387" width="260" height="99" rx="0" fill="#edf4fa" stroke="#ffffff"/>
+<text x="518" y="413" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="start">+4..5</text>
+<text x="518" y="446" font-family="Arial" font-size="20" font-weight="normal" fill="#182e43" text-anchor="start">Voltage value</text>
+<text x="518" y="473" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="start">16-bit display read</text>
+<rect x="760" y="387" width="202" height="99" rx="0" fill="#edf4fa" stroke="#ffffff"/>
+<text x="778" y="413" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="start">+6..7</text>
+<text x="778" y="446" font-family="Arial" font-size="20" font-weight="normal" fill="#182e43" text-anchor="start">Other bytes</text>
+<text x="778" y="473" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="start">Not detailed here</text>
+<text x="38" y="526" font-family="Arial" font-size="19" font-weight="normal" fill="#182e43" text-anchor="start">Getter 0x4203b9c4 · setter 0x4203b9b0 · units / thresholds still open.</text>
+<text x="38" y="585" font-family="Arial" font-size="23" font-weight="bold" fill="#182e43" text-anchor="start">Existing zoom state and controls</text>
+<rect x="38" y="608" width="275" height="80" rx="9" fill="#edf4fa" stroke="#246b9b"/>
+<text x="175.5" y="645.0" font-family="Arial" font-size="21" font-weight="bold" fill="#182e43" text-anchor="middle">Conditional zoom logic</text>
+<text x="175.5" y="671.0" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">0x42050190 · constants 100/110</text>
+<line x1="313" y1="648" x2="352" y2="648" stroke="#50677b" stroke-width="2"/>
+<polygon points="352,648 342.9955289764732,652.3496553411123 342.9955289764732,643.6503446588877" fill="#50677b"/>
+<rect x="352" y="608" width="274" height="80" rx="9" fill="#edf4fa" stroke="#246b9b"/>
+<text x="489.0" y="645.0" font-family="Arial" font-size="21" font-weight="bold" fill="#182e43" text-anchor="middle">Navigation context</text>
+<text x="489.0" y="671.0" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">+44 saved · +48 target</text>
+<line x1="626" y1="648" x2="664" y2="648" stroke="#50677b" stroke-width="2"/>
+<polygon points="664,648 654.9955289764732,652.3496553411123 654.9955289764732,643.6503446588877" fill="#50677b"/>
+<rect x="664" y="608" width="298" height="80" rx="9" fill="#edf4fa" stroke="#246b9b"/>
+<text x="813.0" y="645.0" font-family="Arial" font-size="21" font-weight="bold" fill="#182e43" text-anchor="middle">Effective zoom</text>
+<text x="813.0" y="671.0" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">0x3c388d00</text>
+<text x="38" y="737" font-family="Arial" font-size="19" font-weight="normal" fill="#182e43" text-anchor="start">Setter 0x4204a56c · getter 0x4204a578 · target 16 appears in existing logic.</text>
+<text x="38" y="774" font-family="Arial" font-size="18" font-weight="normal" fill="#50677b" text-anchor="start">Finding an accessor does not establish a safe new feature or a calibrated threshold.</text>
+</svg>

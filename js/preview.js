@@ -244,36 +244,46 @@ export function draw(canvas, model, distM, styled = model.styled, options = {}) 
   drawLabels(g, labels, ['v19','v20','v21','cycling'].includes(options.profile)); // Map labels precede the firmware route and turn overlays.
   const routeColor = styled ? PATCH_ROUTE : ORIGINAL_ROUTE;
   g.lineCap = g.lineJoin = 'round';
-  stroke(g, [...all.slice(0, next), me].map(project), ROAD_EDGE, 6);
+  // Route widths follow the device: the styled route is the red core the patch draws
+  // 2 px narrower than its near-black edge (arrow.c cc_seg), matching the main-road
+  // edge width 10 from map.c OPS; device photos 2026-11-14 measure a ~8 px core.
+  // The stock route is the same thickness class: a solid ~6 px blue core over a light
+  // casing (device photos of the original software). Every mode shows small white
+  // chevrons along the route ahead, spaced ~63 px (owner reference: 1.75x the
+  // earlier 36 px trial).
+  if (styled) stroke(g, [...all.slice(0, next), me].map(project), '#140b08', 10);
+  else stroke(g, [...all.slice(0, next), me].map(project), ROAD_EDGE, 8);
   if (styled) g.globalAlpha = ['cycling','v21'].includes(options.profile) ? 1 : 180 / 255;                // v18–v20: 180/255; v21 is opaque
-  stroke(g, [me, ...all.slice(next)].map(project), routeColor, styled ? 4 : 6);
+  stroke(g, [me, ...all.slice(next)].map(project), routeColor, styled ? 8 : 6);
   g.globalAlpha = 1;
+  {                                               // small chevrons on the route, as on the device
+    const ahead = [me, ...all.slice(next)].map(project);
+    let walked = 0, nextChevron = 63;
+    for (let i = 1; i < ahead.length; i++) {
+      const [ax, ay] = ahead[i - 1], [bx, by] = ahead[i];
+      const length = Math.hypot(bx - ax, by - ay);
+      if (!length) continue;
+      const ux = (bx - ax) / length, uy = (by - ay) / length;
+      while (nextChevron <= walked + length) {
+        const t = nextChevron - walked, x = ax + ux * t, y = ay + uy * t;
+        if (x >= 0 && x < W && y >= 0 && y < H) {
+          stroke(g, [[x - ux * 2.5 - uy * 2, y - uy * 2.5 + ux * 2],
+            [x + ux * 2.5, y + uy * 2.5], [x - ux * 2.5 + uy * 2, y - uy * 2.5 - ux * 2]]
+            .map(p => p.map(Math.round)), '#ffffff', 1.5);
+        }
+        nextChevron += 63;
+      }
+      walked += length;
+    }
+  }
   if (styled) {                                   // rough parts of the route: dots over the route line
     for (const { style, points } of entries) if ((style & 15) === 15 && (style & 0x8000) && points?.length >= 2 && points.length <= 24) stroke(g, points.map(project), '#3a2410', 3, [2, 4]);
   }
   if (styled) drawTurns(g, entries, section, project, me);
 
-  // UI reconstruction: reference photos show white route chevrons and a
-  // circular rider marker. Spacing/fonts/raster are illustrative, not extracted
-  // native draw calls. Bound chevrons even for very long or degenerate routes.
-  const ahead = [me, ...all.slice(next)].map(project);
-  let walked = 0, nextChevron = 28, chevrons = 0;
-  for (let i = 1; i < ahead.length && chevrons < 64; i++) {
-    const [ax, ay] = ahead[i - 1], [bx, by] = ahead[i];
-    const length = Math.hypot(bx - ax, by - ay);
-    if (!length) continue;
-    const ux = (bx - ax) / length, uy = (by - ay) / length;
-    while (nextChevron <= walked + length && chevrons < 64) {
-      const t = nextChevron - walked, x = ax + ux * t, y = ay + uy * t;
-      if (x >= 0 && x < W && y >= 0 && y < H) {
-        stroke(g, [[x - ux * 2 - uy * 2, y - uy * 2 + ux * 2],
-          [x + ux * 2, y + uy * 2], [x - ux * 2 + uy * 2, y - uy * 2 - ux * 2]]
-          .map(p => p.map(Math.round)), '#ffffff', 1);
-      }
-      nextChevron += 28; chevrons++;
-    }
-    walked += length;
-  }
+  // UI reconstruction: circular rider marker (about 34 px disc + ring, measured on
+  // the supplied OnelapFit reference). Fonts and raster are illustrative, not
+  // extracted native draw calls.
   const [x, y] = project(me);
   g.beginPath(); g.arc(x, y, 17, 0, Math.PI * 2);
   g.fillStyle = rgb565('#fbfdff'); g.fill();

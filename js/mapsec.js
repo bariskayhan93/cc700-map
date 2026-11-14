@@ -5,6 +5,7 @@ import { hav, frame, rdp, sub, offset, lineLen } from './geo.js';
 import { prepareDisplayLines, clipDisplayLine } from './map_geometry.js';
 import { labelName, prepareLabelCandidates, labelsForBlock } from './map_labels.js';
 import { canonicalEntries } from './map_order.js';
+import {estimateBlock,budgetFailures,transitionPeak,MAP_BUDGET,TRANSITION_BUDGET,BUDGET_VERSION} from './map_budget.js';
 const R = 300;
 export const STYLE = {                       // kind: [draw, param, max distance from route (m)]
   // V4 (2026-11-11): same range for all classes (a normal map, not a corridor), width by class: main 3 lines,
@@ -16,15 +17,16 @@ export const STYLE = {                       // kind: [draw, param, max distance
 };
 const CAP_STD = 800, CAP_HI = 1200, AHEAD = 300, BEHIND = 400;   // BEHIND: the map follows the position (patch v4), also backwards and at the finish   // CAP_MAX: only for one section that alone is over CAP (dense city)
 class Corridor {                              // route window, densified, with headings; grid lookup
-  constructor(pts, F) {
+  constructor(pts, F, reach = 500) {
     this.F = F; this.G = new Map(); const P = pts.map(p => F.m(p[0], p[1]));
     for (let i = 1; i < P.length; i++) {
       const [ax, ay] = P[i - 1], [bx, by] = P[i]; const L = Math.hypot(bx - ax, by - ay), n = Math.max(1, Math.floor(L / 20)), h = Math.atan2(by - ay, bx - ax);
       for (let k = 0; k < n; k++) { const x = ax + (bx - ax) * k / n, y = ay + (by - ay) * k / n; this.add(x, y, h); }
     }
     if (P.length) this.add(P[P.length - 1][0], P[P.length - 1][1], 0);
+    this.rings = Math.ceil(reach / 100) + 1;
     this.zone = new Set();                     // cells within ~500 m of the window: everything else is "far" at once
-    for (const k of this.G.keys()) { const [x, y] = k.split(',').map(Number); for (let dx = -5; dx <= 5; dx++) for (let dy = -5; dy <= 5; dy++) this.zone.add((x + dx) + ',' + (y + dy)); }
+    for (const k of this.G.keys()) { const [x, y] = k.split(',').map(Number); for (let dx = -this.rings; dx <= this.rings; dx++) for (let dy = -this.rings; dy <= this.rings; dy++) this.zone.add((x + dx) + ',' + (y + dy)); }
     this.box = P.reduce((b, [x, y]) => [Math.min(b[0], x), Math.min(b[1], y), Math.max(b[2], x), Math.max(b[3], y)], [1e18, 1e18, -1e18, -1e18]);
   }
   within(R) {                                 // -> (x, y) => within R m of the route; 10 m raster, made once per R
@@ -40,7 +42,7 @@ class Corridor {                              // route window, densified, with h
   near(x, y, maxd = 1e9) {                    // -> [distance m, route heading rad]; stops beyond maxd
     const gx = Math.floor(x / 100), gy = Math.floor(y / 100); let best = [1e9, 0];
     if (!this.zone.has(gx + ',' + gy)) return best;
-    for (let r = 0; r <= 6; r++) {
+    for (let r = 0; r <= this.rings; r++) {
       for (let dx = -r; dx <= r; dx++) for (let dy = -r; dy <= r; dy++) {
         if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
         for (const [a, b, h] of this.G.get((gx + dx) + ',' + (gy + dy)) || []) { const d = Math.hypot(x - a, y - b); if (d < best[0]) best = [d, h]; }
@@ -298,7 +300,7 @@ export { frame };
 const S = { BUILT: 1, GREEN: 2, WATER: 3, WLINE: 4, MAJ: 5, MIN: 6, SRV: 7, PTH: 8, RAIL: 9, CYC: 10, TRAM: 11, LABEL: 12, SIG: 13, STOP: 14 };
 export { S as MAP_CLASS };
 const SR = { [S.MAJ]: 1000, [S.MIN]: 550, [S.SRV]: 350, [S.PTH]: 300, [S.CYC]: 350, [S.RAIL]: 450, [S.TRAM]: 450, [S.WLINE]: 450 };   // range from the route (m)
-const AREA_R = 600, MAXPTS = 60, BLOCK_PTS = 9000, BLOCK_ENT = 1150 /* device drew 1346 entries in one block (2026-11-12) */, BLOCK_LEN = 1500;
+const AREA_R = 600, MAXPTS = 60, BLOCK_LEN = 1500;
 function lineClass(L) {
   const k = L.kind & 0x7f;
   return k === 8 ? S.SRV : k === 1 ? S.MAJ :   // A1: motorways grey and thin, landmarks only
@@ -341,13 +343,14 @@ function runIsFar(run, cor) {
   }
   return true;
 }
-function styledEntries(data, cor, o = {}) {
+function styledEntries(data, cor, o = {}, coverageFloor = 0) {
   const F = cor.F, out = [], [bx0, by0, bx1, by1] = cor.box;
   const nearBox = (b, m) => !(b[2] < bx0 - m || b[0] > bx1 + m || b[3] < by0 - m || b[1] > by1 + m);
   // areas: built-up, green, water; each [outer, holes...] clipped to the window, holes joined by a doubled edge (even-odd fill)
-  const win = [bx0 - AREA_R, by0 - AREA_R, bx1 + AREA_R, by1 + AREA_R];
+  const areaR = Math.max(AREA_R, coverageFloor);
+  const win = [bx0 - areaR, by0 - areaR, bx1 + areaR, by1 + areaR];
   for (const [cls, list] of [[S.BUILT, data.areas], [S.GREEN, data.green], [S.WATER, data.water]]) for (const A of list || []) {
-    if (!nearBox(A.box, AREA_R)) continue;
+    if (!nearBox(A.box, areaR)) continue;
     const outer = clipRing(A.m[0], win); if (!outer) continue;
     const rings = [outer, ...A.m.slice(1).map(r => clipRing(r, win)).filter(Boolean)];
     const o = rings[0], pts = [...o, o[0]];
@@ -359,7 +362,7 @@ function styledEntries(data, cor, o = {}) {
   const lines = [...(data.lines || []).map(L => ({ L, cls: lineClass(L), fl: (L.fl || 0) & (o.rough === false ? ~64 : -1) })).filter(x => o.paths !== false || x.cls !== S.PTH), ...(data.displayRails || []).map(L => ({ L, cls: S.RAIL, fl: L.fl || 0 })),
     ...(data.displayTrams || []).map(L => ({ L, cls: S.TRAM, fl: L.fl || 0 })), ...(data.displayWlines || []).map(L => ({ L, cls: S.WLINE, fl: 0 }))];
   for (const { L, cls, fl } of lines) {
-    if (!cls) continue; const lim = SR[cls], b = L.box || (L.box = box(L.pts, F)); if (!nearBox(b, lim)) continue;
+    if (!cls) continue; const lim = Math.max(SR[cls], coverageFloor), b = L.box || (L.box = box(L.pts, F)); if (!nearBox(b, lim)) continue;
     for (const run of clipDisplayLine(L, q => cor.near(...F.m(...q), lim)[0] <= lim)) {
       const far = (cls === S.MIN || cls === S.SRV) && runIsFar(run, cor) ? 128 : 0;
       for (let s = 0; s < run.length - 1; s += MAXPTS - 1) out.push(sentry(styleOf(cls, fl | far), run.slice(s, s + MAXPTS)));
@@ -374,7 +377,6 @@ function styledEntries(data, cor, o = {}) {
       got.push(q); out.push(sentry(styleOf(cls), [p, p])); } }
   return out;
 }
-const entPts = es => es.reduce((n, e) => n + e.length, 0);       // rough size measure (bytes)
 export function buildStyledSection(sections, data, F) {
   const toM = rs => ({ m: rs.map(r => r.map(q => F.m(q[0], q[1]))), box: box(rs[0], F) });
   const D = { ...data, lines: prepareDisplayLines(data.lines || [], F),
@@ -385,15 +387,6 @@ export function buildStyledSection(sections, data, F) {
   const routeCor = new Corridor(all, F);
   D.labelCandidates = data.opt?.names === false ? [] : prepareLabelCandidates(D.lines.map(L => ({...L, cls: lineClass(L)})), F, (...q) => routeCor.near(...q), data.routeNames || new Set());
   const win = (i, j) => { const a = sections[i][0][2] - BEHIND * 100, b = sections[j].at(-1)[2] + AHEAD * 100; return all.filter(p => p[2] >= a && p[2] <= b); };
-  const ent = (i, j) => styledEntries(D, new Corridor(win(i, j), F), data.opt || {});
-  const groups = [];
-  for (let i = 0; i < sections.length;) {
-    let j = i, e = ent(i, i);
-    while (j + 1 < sections.length && (sections[j + 1].at(-1)[2] - sections[i][0][2]) / 100 <= BLOCK_LEN) {
-      const e2 = ent(i, j + 1); if (e2.length > BLOCK_ENT || entPts(e2) / 10 > BLOCK_PTS) break; e = e2; j++;
-    }
-    groups.push([i, j, e]); i = j + 1;
-  }
   // turn arrows (class 15): the route shape from 22 m before a turn to 22 m after it (through a turn <= 50 m later),
   // style bits 16+: index of the turn point in the inflection list (= section k + 1). The patch draws the next ones.
   const turns = data.turns || [], arrow = k => {
@@ -404,22 +397,65 @@ export function buildStyledSection(sections, data, F) {
     const T = sections[k].at(-1);
     return [...fu(2, 15 | (2 << 4) | ((k + 1) << 16)), ...fs(3, sc(T[0])), ...fs(4, sc(T[1])), ...fu(5, ps.length), ...ps.flatMap(q => fb(6, [...fs(1, sc(q[0])), ...fs(2, sc(q[1]))]))];
   };
-  if ((data.opt || {}).arrows) for (const g of groups) for (const k of turns) if (k >= g[0] - 1 && k <= g[1] + 1) g[2].push(arrow(k));   // option, off by default
+  const arrows = data.opt?.arrows ? turns.map(k => ({k, entry:arrow(k)})) : [];
+  const rough = [];
   // A5: rough parts of the route (tracks): class 15 with bit 15, the route shape; the patch draws dots over the route
   for (const [a, b] of data.opt?.rough === false ? [] : data.rough || []) for (let s = a; s < b; s += 30000) {
     let ps = all.filter(p => p[2] >= s && p[2] <= Math.min(b, s + 30000)).map(p => [p[0], p[1]]); if (ps.length < 2) continue;
     while (ps.length > 24) ps = ps.filter((_, i) => i % 2 === 0 || i === ps.length - 1);
     const e = [...fu(2, 15 | (2 << 4) | 0x8000), ...fs(3, sc(ps[0][0])), ...fs(4, sc(ps[0][1])), ...fu(5, ps.length), ...ps.flatMap(q => fb(6, [...fs(1, sc(q[0])), ...fs(2, sc(q[1]))]))];
-    for (const g of groups) if (sections[g[0]][0][2] - BEHIND * 100 <= Math.min(b, s + 30000) && sections[g[1]].at(-1)[2] + AHEAD * 100 >= s) g[2].push(e);
+    rough.push({a:s,b:Math.min(b,s+30000),entry:e});
   }
+  const limits = {...MAP_BUDGET};
+  for (const [key,value] of Object.entries(data.opt?.mapBudget || {})) {
+    if (!(key in limits) || !Number.isFinite(value) || value < 0 || value > limits[key])
+      throw new Error('Cannot increase or invalidate map budget: ' + key);
+    limits[key] = value;
+  }
+  const make = (i,j,floor=0) => {
+    const cor = new Corridor(win(i,j),F,1000);
+    const es = styledEntries(D,cor,data.opt || {},floor);
+    for (const {k,entry} of arrows) if (k >= i-1 && k <= j+1) es.push(entry);
+    const a=sections[i][0][2]-BEHIND*100,b=sections[j].at(-1)[2]+AHEAD*100;
+    for (const r of rough) if(a<=r.b && b>=r.a) es.push(r.entry);
+    const entries=canonicalEntries(es),cost=estimateBlock(entries);
+    return {i,j,entries,cost,coverageFloor:floor,omittedBaselineEntries:0,stoppedBy:[]};
+  };
+  const groups=[];
+  for(let i=0;i<sections.length;) {
+    let g=make(i,i),fail=budgetFailures(g.cost,limits);
+    if(fail.length)throw new Error(`Map section ${i+1} exceeds protected baseline budget: ${fail.join(', ')}`);
+    while(g.j+1<sections.length) {
+      if((sections[g.j+1].at(-1)[2]-sections[i][0][2])/100>BLOCK_LEN){g.stoppedBy=['routeSpan'];break;}
+      const candidate=make(i,g.j+1),failures=budgetFailures(candidate.cost,limits);
+      if(failures.length){g.stoppedBy=failures;break;}
+      g=candidate;
+    }
+    groups.push(g);i=g.j+1;
+  }
+  if(transitionPeak(groups.map(g=>g.cost))>TRANSITION_BUDGET)
+    throw new Error('Map protected baseline exceeds any-block transition budget');
+  // Base content is never pruned. Admit nested outer context only with spare
+  // capacity in every independent budget, including nonadjacent transitions.
+  for(let n=0;n<groups.length;n++) {
+    for(const floor of [600,800,1000]) {
+      const g=groups[n],candidate=make(g.i,g.j,floor),failures=budgetFailures(candidate.cost,limits);
+      const costs=groups.map((b,i)=>i===n?candidate.cost:b.cost);
+      if(transitionPeak(costs)>TRANSITION_BUDGET)failures.push('transitionBytes');
+      if(failures.length){g.expansionStoppedBy=failures;break;}
+      groups[n]={...candidate,stoppedBy:g.stoppedBy};
+    }
+  }
+  const stat={styled:true,budgetVersion:BUDGET_VERSION,limits,transitionLimitBytes:TRANSITION_BUDGET,
+    transitionPeakBytes:transitionPeak(groups.map(g=>g.cost)),omittedBaselineEntries:0,
+    blocks:groups.map(({entries,...report})=>report)};
   const body = new Bytes(), offs = new Array(sections.length).fill(0);
-  for (const [i, j, entries] of groups) {
-    const es = canonicalEntries(entries);
+  for (const {i,j,entries:es} of groups) {
     const m = es.length ? [...fu(1, es.length), ...es.flatMap((e, n) => fb(2, [...fu(1, n), ...e]))] : [8, 0x80, 0x80, 0x80, 0];
     const o = body.n; body.push(u32le(m.length)).push(m);
     for (let t = i; t <= j; t++) offs[t] = o;
   }
   const idx = [...fu(1, sections.length), ...offs.flatMap(o => fb(2, fu(1, o)))];
   const sec = new Bytes().push(u32le(idx.length)).push(idx).push(body.bytes).bytes;
-  return { bytes: sec, blocks: groups.length, maxBlock: Math.max(...groups.map(g => g[2].length)), stat: { styled: true } };
+  return { bytes: sec, blocks: groups.length, maxBlock: Math.max(0,...groups.map(g => g.entries.length)), stat };
 }

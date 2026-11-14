@@ -1,0 +1,138 @@
+{
+  "sources": {
+    "stock_sha256": "7545ae4d4030b24b1f6198f481ce3a9a183a0e6eb3e5355b86ad2413aead2c31",
+    "saved_v16_sha256": "2af9c21a3c693c71fed1ffe26ed72ada545e7609c3a47c6dedcfe6c1e7fae8d5"
+  },
+  "ranges": [
+    {
+      "name": "sensor_uart_init",
+      "start": "0x4203b11c",
+      "end_exclusive": "0x4203b1a0",
+      "sha256": "652f4d8d0f9c81a50a2b56e74a449f0e8bd1807d2905083943d7232ee562c337",
+      "saved_v16_matches": true,
+      "reachable_instructions": 49,
+      "gnu_runs": 1,
+      "boundary_and_direct_branch_errors": 0
+    },
+    {
+      "name": "sensor_task_entry",
+      "start": "0x420092d4",
+      "end_exclusive": "0x420092e4",
+      "sha256": "efca8bd7074d6a2b23132f291ec6fa93b8e4f395ddd223b305eeecd846216316",
+      "saved_v16_matches": true,
+      "reachable_instructions": 6,
+      "gnu_runs": 1,
+      "boundary_and_direct_branch_errors": 0
+    },
+    {
+      "name": "peer_uart_config",
+      "start": "0x421496b4",
+      "end_exclusive": "0x42149770",
+      "sha256": "7fdade12e95b2d2c530cd48c8a4e8d3c7cd46e04176bee5abbefa8fd8a85a388",
+      "saved_v16_matches": true,
+      "reachable_instructions": 73,
+      "gnu_runs": 2,
+      "boundary_and_direct_branch_errors": 0
+    },
+    {
+      "name": "peer_frame_builder",
+      "start": "0x4203ae48",
+      "end_exclusive": "0x4203aed0",
+      "sha256": "f343a3147f610864d3e1dca2964e33b65459d88c6a739ff08ce318bc3f9db994",
+      "saved_v16_matches": true,
+      "reachable_instructions": 51,
+      "gnu_runs": 1,
+      "boundary_and_direct_branch_errors": 0
+    },
+    {
+      "name": "peer_power_on",
+      "start": "0x4203c098",
+      "end_exclusive": "0x4203c0f0",
+      "sha256": "06d0454358974bd92bf0f2ea6f238486c7f62fa99af921b7a5d709d3373fae8c",
+      "saved_v16_matches": true,
+      "reachable_instructions": 31,
+      "gnu_runs": 1,
+      "boundary_and_direct_branch_errors": 0
+    },
+    {
+      "name": "imu_algorithm_init",
+      "start": "0x42143160",
+      "end_exclusive": "0x4214336c",
+      "sha256": "c5e24ffc761a1e0fa35f9c68730934ece3f499412936a1c8143abed1c65e4336",
+      "saved_v16_matches": true,
+      "reachable_instructions": 203,
+      "gnu_runs": 1,
+      "boundary_and_direct_branch_errors": 0
+    },
+    {
+      "name": "imu_algorithm_gate_prefix",
+      "start": "0x42143e70",
+      "end_exclusive": "0x42143fa0",
+      "sha256": "0076871b0418be3300a98ac6a380e567fdce6412250a8480be0e8c9a49d39d66",
+      "saved_v16_matches": true,
+      "reachable_instructions": 110,
+      "gnu_runs": 1,
+      "boundary_and_direct_branch_errors": 0
+    },
+    {
+      "name": "slave_update_start",
+      "start": "0x420b2484",
+      "end_exclusive": "0x420b2544",
+      "sha256": "5e20ccc1393c506b4693fad93f9b43d9f53126b9a92b1032bd7bb8969244499e",
+      "saved_v16_matches": true,
+      "reachable_instructions": 71,
+      "gnu_runs": 2,
+      "boundary_and_direct_branch_errors": 0
+    },
+    {
+      "name": "update_file_selector",
+      "start": "0x420ec0fc",
+      "end_exclusive": "0x420ec5b8",
+      "sha256": "905a5c512eabf108eca3a83bd06d98cb2e81aaf8698d0bb24dad1694bce32226",
+      "saved_v16_matches": true,
+      "reachable_instructions": 438,
+      "gnu_runs": 5,
+      "boundary_and_direct_branch_errors": 0
+    },
+    {
+      "name": "product_flag_0",
+      "start": "0x4200d128",
+      "end_exclusive": "0x4200d138",
+      "sha256": "10b490c569e84d9aca180bf6a36dcfee1c74a09e8d40b4988a9b3fbd720f9669",
+      "saved_v16_matches": true,
+      "reachable_instructions": 5,
+      "gnu_runs": 1,
+      "boundary_and_direct_branch_errors": 0
+    },
+    {
+      "name": "product_flag_1",
+      "start": "0x4200d148",
+      "end_exclusive": "0x4200d158",
+      "sha256": "114c12e0793c9f8e8509487ffd3ae3c5734e296bc958affb81dfe098b9effbca",
+      "saved_v16_matches": true,
+      "reachable_instructions": 5,
+      "gnu_runs": 1,
+      "boundary_and_direct_branch_errors": 0
+    },
+    {
+      "name": "product_flag_2",
+      "start": "0x4200d168",
+      "end_exclusive": "0x4200d178",
+      "sha256": "b316291ef68944088e9999babb2a09d9130ee444c1514e377abba3abea0490a1",
+      "saved_v16_matches": true,
+      "reachable_instructions": 5,
+      "gnu_runs": 1,
+      "boundary_and_direct_branch_errors": 0
+    },
+    {
+      "name": "file_access_adapter",
+      "start": "0x4200b11c",
+      "end_exclusive": "0x4200b138",
+      "sha256": "76e3112770f85fbd1a52e155b98aaac88ce190fd1fe194efbef71665376e26fc",
+      "saved_v16_matches": true,
+      "reachable_instructions": 7,
+      "gnu_runs": 1,
+      "boundary_and_direct_branch_errors": 0
+    }
+  ]
+}

@@ -28,29 +28,40 @@ a two-row turn card (distance and one caption), circular rider marker, compass,
 The map retains its **240 × 256** buffer. Fonts, rasterization, route-chevron
 spacing and the lower-panel split remain approximations.
 
-![Current two-row CC700 preview in three modes. All panels use one synthetic route; the left OnelapFit-style schematic is explicitly a reconstruction.](docs/comparison/synthetic-close-pair-current-ui.png)
+![Current two-row CC700 preview in three modes plus an OpenStreetMap reference, on the public Düsseldorf Tour D3 river section.](docs/comparison/tourd3-near-turn-current-ui.png)
 
-These are browser-rendered examples from the current page UI. The middle and
-right maps are read back from generated route files. **The left panel is an
-OnelapFit-style reconstruction**, with short pale-grey junction marks; it was
-not produced by OnelapFit. The right panel uses the v21 profile: v20 map colors
-with an opaque red route. No private ride coordinates or ride photos are used.
+These are browser-rendered examples from the current page UI on the real public
+[Düsseldorf Tour D3](https://www.duesseldorf.de/radverkehr/fahrradtouren/tour-d)
+(river section). The second to fourth maps are read back from generated route
+files. The three CC700 modes are: the **OnelapFit original** (a reconstruction:
+the thick blue route with small chevrons and uniform ~200 m stubs of every road
+that crosses the route — one size for every road class, no other map; not
+produced by OnelapFit), the **software original junction map** with grey
+built-up rows, striped water and dashed rail (works on unpatched firmware), and
+the **full Sunlight v21 map** (v20 colors with an opaque red route). The fourth
+panel shows the same cached OpenStreetMap data in simplified standard colours
+as a reference. Route line widths follow the device: the red route is an 8 px
+core over a near-black edge; the stock routes are the same thickness class,
+a solid ~6 px blue core with a light casing and small chevrons.
+No private ride coordinates or ride photos are used.
 [Open the interactive app](https://bariskayhan93.github.io/cc700-map/).
 
-![Animated synthetic replay with the current two-row card and full portrait display in the schematic, Original and Sunlight v21 views.](docs/comparison/synthetic-current-ui-replay.webp)
+![Animated Tour D3 river replay with the current two-row card in the schematic, Junction+areas, Sunlight v21 and OpenStreetMap reference views.](docs/comparison/tourd3-current-ui-replay.webp)
 
-The animation advances all three panels through the same synthetic positions,
-including a close right/left pair. It is an illustration of on-route progress,
-not a GPS or firmware timing simulation.
+The animation advances all four panels through the same on-route positions of
+the public tour. It is an illustration of progress, not a GPS or firmware
+timing simulation. The dense Altstadt part of the tour currently exceeds the
+generator's protected per-block budget and is not shown; the river section
+passes all checks.
 
 | Current UI example | View |
 |---|---|
-| Far from the maneuver: Go straight | [Three panels](docs/comparison/synthetic-far-straight-current-ui.png) |
-| Approaching the 300 m threshold | [Three panels](docs/comparison/synthetic-approaching-turn-current-ui.png) |
-| Near the first turn | [Three panels](docs/comparison/synthetic-near-turn-current-ui.png) |
-| Close pair: one `then left · …` caption | [Three panels](docs/comparison/synthetic-close-pair-current-ui.png) |
-| After the first maneuver | [Three panels](docs/comparison/synthetic-second-turn-current-ui.png) |
-| Following street | [Three panels](docs/comparison/synthetic-park-street-current-ui.png) |
+| Far from the maneuver: Go straight | [Four panels](docs/comparison/tourd3-far-straight-current-ui.png) |
+| Approaching the 300 m threshold | [Four panels](docs/comparison/tourd3-approaching-turn-current-ui.png) |
+| Near the turn | [Four panels](docs/comparison/tourd3-near-turn-current-ui.png) |
+| At the turn | [Four panels](docs/comparison/tourd3-at-turn-current-ui.png) |
+| After the maneuver | [Four panels](docs/comparison/tourd3-after-turn-current-ui.png) |
+| Following street | [Four panels](docs/comparison/tourd3-following-current-ui.png) |
 
 ### Original OnelapFit reference
 

@@ -1,0 +1,72 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="1040" viewBox="0 0 1000 1040" role="img" aria-labelledby="title desc">
+<title id="title">Navigation consumes published state and queued work</title><desc id="desc">Static stock/v16 chains. Queuing a pointer does not freeze the pointed-to data.</desc>
+<rect x="0" y="0" width="1000" height="1040" rx="0" fill="#ffffff" stroke="none"/>
+<text x="38" y="46" font-family="Arial" font-size="27" font-weight="bold" fill="#182e43" text-anchor="start">Navigation consumes published state and queued work</text>
+<text x="38" y="77" font-family="Arial" font-size="18" font-weight="normal" fill="#50677b" text-anchor="start">Static stock/v16 chains. Queuing a pointer does not freeze the pointed-to data.</text>
+<rect x="38" y="112" width="440" height="82" rx="9" fill="#edf4fa" stroke="#246b9b"/>
+<text x="258.0" y="150.0" font-family="Arial" font-size="21" font-weight="bold" fill="#182e43" text-anchor="middle">Live / replay GPS record</text>
+<text x="258.0" y="176.0" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">52-byte source; heading reads it directly</text>
+<rect x="522" y="112" width="440" height="82" rx="9" fill="#edf4fa" stroke="#246b9b"/>
+<text x="742.0" y="150.0" font-family="Arial" font-size="21" font-weight="bold" fill="#182e43" text-anchor="middle">Planning completion descriptor</text>
+<text x="742.0" y="176.0" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">Callback + shared status pointer</text>
+<line x1="258" y1="194" x2="258" y2="226" stroke="#50677b" stroke-width="2"/>
+<polygon points="258,226 253.6503446588877,216.99552897647322 262.3496553411123,216.99552897647322" fill="#50677b"/>
+<line x1="742" y1="194" x2="742" y2="226" stroke="#50677b" stroke-width="2"/>
+<polygon points="742,226 737.6503446588877,216.99552897647322 746.3496553411123,216.99552897647322" fill="#50677b"/>
+<rect x="38" y="226" width="440" height="82" rx="9" fill="#edf4fa" stroke="#246b9b"/>
+<text x="258.0" y="264.0" font-family="Arial" font-size="21" font-weight="bold" fill="#182e43" text-anchor="middle">Raw calculation queue</text>
+<text x="258.0" y="290.0" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">50 × 12-byte descriptors; zero-wait send</text>
+<rect x="522" y="226" width="440" height="82" rx="9" fill="#edf4fa" stroke="#246b9b"/>
+<text x="742.0" y="264.0" font-family="Arial" font-size="21" font-weight="bold" fill="#182e43" text-anchor="middle">GUI queue: event 91</text>
+<text x="742.0" y="290.0" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">10 × 12-byte messages; send may fail</text>
+<line x1="258" y1="308" x2="258" y2="340" stroke="#50677b" stroke-width="2"/>
+<polygon points="258,340 253.6503446588877,330.9955289764732 262.3496553411123,330.9955289764732" fill="#50677b"/>
+<line x1="742" y1="308" x2="742" y2="340" stroke="#50677b" stroke-width="2"/>
+<polygon points="742,340 737.6503446588877,330.9955289764732 746.3496553411123,330.9955289764732" fill="#50677b"/>
+<rect x="38" y="340" width="440" height="82" rx="9" fill="#edf4fa" stroke="#246b9b"/>
+<text x="258.0" y="378.0" font-family="Arial" font-size="21" font-weight="bold" fill="#182e43" text-anchor="middle">Drain queue → ingest type 8</text>
+<text x="258.0" y="404.0" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">Copy 44 bytes after speed check</text>
+<rect x="522" y="340" width="440" height="82" rx="9" fill="#edf4fa" stroke="#246b9b"/>
+<text x="742.0" y="378.0" font-family="Arial" font-size="21" font-weight="bold" fill="#182e43" text-anchor="middle">Current GUI target → ride handler</text>
+<text x="742.0" y="404.0" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">0x4205ccaa → ExecuteNavigation</text>
+<line x1="258" y1="422" x2="258" y2="454" stroke="#50677b" stroke-width="2"/>
+<polygon points="258,454 253.6503446588877,444.9955289764732 262.3496553411123,444.9955289764732" fill="#50677b"/>
+<line x1="742" y1="422" x2="742" y2="454" stroke="#50677b" stroke-width="2"/>
+<polygon points="742,454 737.6503446588877,444.9955289764732 746.3496553411123,444.9955289764732" fill="#50677b"/>
+<rect x="38" y="454" width="440" height="82" rx="9" fill="#edf4fa" stroke="#246b9b"/>
+<text x="258.0" y="492.0" font-family="Arial" font-size="21" font-weight="bold" fill="#182e43" text-anchor="middle">Calculation and position filtering</text>
+<text x="258.0" y="518.0" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">Raw fix and qualification are separate</text>
+<rect x="522" y="454" width="440" height="82" rx="9" fill="#edf4fa" stroke="#246b9b"/>
+<text x="742.0" y="492.0" font-family="Arial" font-size="21" font-weight="bold" fill="#182e43" text-anchor="middle">Invoke descriptor callback</text>
+<text x="742.0" y="518.0" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">Read status when callback runs</text>
+<line x1="258" y1="536" x2="258" y2="568" stroke="#50677b" stroke-width="2"/>
+<polygon points="258,568 253.6503446588877,558.9955289764732 262.3496553411123,558.9955289764732" fill="#50677b"/>
+<line x1="742" y1="536" x2="742" y2="568" stroke="#50677b" stroke-width="2"/>
+<polygon points="742,568 737.6503446588877,558.9955289764732 746.3496553411123,558.9955289764732" fill="#50677b"/>
+<rect x="38" y="568" width="440" height="82" rx="9" fill="#e6f3ed" stroke="#26715c"/>
+<text x="258.0" y="606.0" font-family="Arial" font-size="21" font-weight="bold" fill="#182e43" text-anchor="middle">Publish 724-byte snapshot</text>
+<text x="258.0" y="632.0" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">Record 15 = 20 bytes at offset 472</text>
+<rect x="522" y="568" width="440" height="82" rx="9" fill="#fff4dd" stroke="#976112"/>
+<text x="742.0" y="606.0" font-family="Arial" font-size="21" font-weight="bold" fill="#182e43" text-anchor="middle">Eligible restart → teardown</text>
+<text x="742.0" y="632.0" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">Clear route lists and all six file slots</text>
+<line x1="258" y1="650" x2="258" y2="682" stroke="#50677b" stroke-width="2"/>
+<polygon points="258,682 253.6503446588877,672.9955289764732 262.3496553411123,672.9955289764732" fill="#50677b"/>
+<line x1="742" y1="650" x2="742" y2="682" stroke="#50677b" stroke-width="2"/>
+<polygon points="742,682 737.6503446588877,672.9955289764732 746.3496553411123,672.9955289764732" fill="#50677b"/>
+<rect x="38" y="682" width="440" height="82" rx="9" fill="#edf4fa" stroke="#246b9b"/>
+<text x="258.0" y="720.0" font-family="Arial" font-size="21" font-weight="bold" fill="#182e43" text-anchor="middle">Navigation position / planning</text>
+<text x="258.0" y="746.0" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">Read snapshot; coordinates can be retained</text>
+<rect x="522" y="682" width="440" height="82" rx="9" fill="#fcecef" stroke="#ae3546"/>
+<text x="742.0" y="720.0" font-family="Arial" font-size="21" font-weight="bold" fill="#182e43" text-anchor="middle">Free current map allocations</text>
+<text x="742.0" y="746.0" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">Decoded entries, coordinates and map state</text>
+<line x1="742" y1="764" x2="742" y2="796" stroke="#50677b" stroke-width="2"/>
+<polygon points="742,796 737.6503446588877,786.9955289764732 746.3496553411123,786.9955289764732" fill="#50677b"/>
+<rect x="522" y="796" width="440" height="82" rx="9" fill="#edf4fa" stroke="#246b9b"/>
+<text x="742.0" y="834.0" font-family="Arial" font-size="21" font-weight="bold" fill="#182e43" text-anchor="middle">Start and reload route data</text>
+<text x="742.0" y="860.0" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">Mode, connector and direction dependent</text>
+<text x="38" y="821" font-family="Arial" font-size="21" font-weight="bold" fill="#182e43" text-anchor="start">Position and heading have</text>
+<text x="38" y="852" font-family="Arial" font-size="21" font-weight="bold" fill="#182e43" text-anchor="start">different publication stages.</text>
+<text x="38" y="934" font-family="Arial" font-size="20" font-weight="normal" fill="#182e43" text-anchor="start">Preserving the original map across restart needs an independent retention mechanism.</text>
+<text x="38" y="972" font-family="Arial" font-size="19" font-weight="normal" fill="#50677b" text-anchor="start">Queue delivery, shared-pointer lifetimes and timing still need runtime observation.</text>
+<text x="38" y="1010" font-family="Arial" font-size="18" font-weight="normal" fill="#50677b" text-anchor="start">No device changes. Evidence: byte comparisons and GNU Xtensa instruction traces.</text>
+</svg>

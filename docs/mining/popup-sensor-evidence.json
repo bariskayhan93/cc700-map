@@ -1,0 +1,216 @@
+{
+  "sources": {
+    "stock_sha256": "7545ae4d4030b24b1f6198f481ce3a9a183a0e6eb3e5355b86ad2413aead2c31",
+    "saved_v16_sha256": "2af9c21a3c693c71fed1ffe26ed72ada545e7609c3a47c6dedcfe6c1e7fae8d5"
+  },
+  "ranges": [
+    {
+      "name": "imu_init",
+      "start": "0x421414d4",
+      "end_exclusive": "0x421415e4",
+      "sha256": "bc9407865a6e2b6706ef6a72a86ce52794340570a14457f96d4a639ff2e43243",
+      "saved_v16_matches": true,
+      "reachable_instructions": 99,
+      "gnu_runs": 2,
+      "boundary_and_direct_branch_errors": 0
+    },
+    {
+      "name": "inertial_input_a",
+      "start": "0x42141674",
+      "end_exclusive": "0x42141760",
+      "sha256": "2da3f8d68f8f1430a9bba9d676a366724204469537c61b36af097f25047862f4",
+      "saved_v16_matches": true,
+      "reachable_instructions": 84,
+      "gnu_runs": 1,
+      "boundary_and_direct_branch_errors": 0
+    },
+    {
+      "name": "inertial_input_b",
+      "start": "0x42141760",
+      "end_exclusive": "0x42141850",
+      "sha256": "cddcf8af75a866538aaf1009c0497c8fc0f2752c1ab6387f842d825061b0a544",
+      "saved_v16_matches": true,
+      "reachable_instructions": 85,
+      "gnu_runs": 1,
+      "boundary_and_direct_branch_errors": 0
+    },
+    {
+      "name": "start_warning",
+      "start": "0x420502a8",
+      "end_exclusive": "0x42050330",
+      "sha256": "8448d1e644cd6e5e18dcefda6681b74e2990de600a6b71abd49135e83f1243dc",
+      "saved_v16_matches": true,
+      "reachable_instructions": 48,
+      "gnu_runs": 1,
+      "boundary_and_direct_branch_errors": 0
+    },
+    {
+      "name": "notice_parameters",
+      "start": "0x4204f4a8",
+      "end_exclusive": "0x4204f6b0",
+      "sha256": "8a1e5d44fc2abb465a880d5d07e8d263679f6daca6f87182331ae4739f3f770e",
+      "saved_v16_matches": true,
+      "reachable_instructions": 182,
+      "gnu_runs": 9,
+      "boundary_and_direct_branch_errors": 0
+    },
+    {
+      "name": "popup_event_sender",
+      "start": "0x4204e884",
+      "end_exclusive": "0x4204e8a4",
+      "sha256": "cd3f8a805af187173a152ee179cbdc8d3e262e84061c3d115faf1773ef916a26",
+      "saved_v16_matches": true,
+      "reachable_instructions": 12,
+      "gnu_runs": 1,
+      "boundary_and_direct_branch_errors": 0
+    },
+    {
+      "name": "popup_create",
+      "start": "0x4204f6f8",
+      "end_exclusive": "0x4204fa44",
+      "sha256": "fee0c82211899f17d678d41da7cfca58b34a529f2ab353b8f53133bb3a72fc88",
+      "saved_v16_matches": true,
+      "reachable_instructions": 298,
+      "gnu_runs": 4,
+      "boundary_and_direct_branch_errors": 0
+    },
+    {
+      "name": "popup_expiry",
+      "start": "0x4204f6b0",
+      "end_exclusive": "0x4204f6f8",
+      "sha256": "8305bc936541e014e2bec1c267b9efcad5ce4c03daa50f4f14c444840e978aa9",
+      "saved_v16_matches": true,
+      "reachable_instructions": 27,
+      "gnu_runs": 1,
+      "boundary_and_direct_branch_errors": 0
+    },
+    {
+      "name": "timer_create",
+      "start": "0x420223bc",
+      "end_exclusive": "0x420223f8",
+      "sha256": "20b150f740f676928a66654e818f60e7aca84b952ec942ef8c8461d89a9717c7",
+      "saved_v16_matches": true,
+      "reachable_instructions": 22,
+      "gnu_runs": 1,
+      "boundary_and_direct_branch_errors": 0
+    },
+    {
+      "name": "mag_input",
+      "start": "0x42142160",
+      "end_exclusive": "0x421423b8",
+      "sha256": "103857b58709574e99cfa4d720a77b54178c9a4f708b938e9c777748171be438",
+      "saved_v16_matches": true,
+      "reachable_instructions": 216,
+      "gnu_runs": 1,
+      "boundary_and_direct_branch_errors": 0
+    },
+    {
+      "name": "mag_otp",
+      "start": "0x42141c1c",
+      "end_exclusive": "0x42141cc4",
+      "sha256": "82fcafadfba5a0b4368b9efa2875d13e27598eb4d26863d511d4aa1c562d5b71",
+      "saved_v16_matches": true,
+      "reachable_instructions": 60,
+      "gnu_runs": 2,
+      "boundary_and_direct_branch_errors": 0
+    },
+    {
+      "name": "mag_raw_getter",
+      "start": "0x42141bc8",
+      "end_exclusive": "0x42141c04",
+      "sha256": "1cfbc0308b0b7b43b6629d3e25cf7e8be1f11275a940422ebefe5b0493ab2c7b",
+      "saved_v16_matches": true,
+      "reachable_instructions": 22,
+      "gnu_runs": 2,
+      "boundary_and_direct_branch_errors": 0
+    },
+    {
+      "name": "sensor_packet",
+      "start": "0x4203b9d8",
+      "end_exclusive": "0x4203bd08",
+      "sha256": "c586ecdf9e4965a4f506eaac30d28fa7c121e8ca7ff9ed87a292faab7bcbbafc",
+      "saved_v16_matches": true,
+      "reachable_instructions": 287,
+      "gnu_runs": 6,
+      "boundary_and_direct_branch_errors": 0
+    },
+    {
+      "name": "notice_ui_event",
+      "start": "0x4205cb54",
+      "end_exclusive": "0x4205d174",
+      "sha256": "be2058bfbc8dfa34a9483298cc6f80f67f853551bd1f535f38c0da8f23ab55e9",
+      "saved_v16_matches": true,
+      "reachable_instructions": 392,
+      "gnu_runs": 18,
+      "boundary_and_direct_branch_errors": 0
+    }
+  ],
+  "observations": {
+    "route_selection": "hin, user reported",
+    "rotation": "user confirmed before after_rotation sample",
+    "before_rotation": {
+      "sampling_sequence_ms": 146,
+      "both_running_before_and_after": true,
+      "popup_type": 4,
+      "notice_type": 8,
+      "selected_index": 0,
+      "matcher_distance_numeric": 20,
+      "committed_offroute": 0,
+      "notice_step": 0,
+      "early_index_override": 0,
+      "magnetic_status": 4,
+      "magnetic_initialized": 0,
+      "magnetic_parameters_nonnull": false,
+      "imu_context_nonnull": null,
+      "uart2_driver_nonnull": true,
+      "raw_magnetic_all_zero": true,
+      "raw_inertial_all_zero": null,
+      "imu_buffers_nonnull": null,
+      "imu_context_state20": null
+    },
+    "after_rotation": {
+      "sampling_sequence_ms": 154,
+      "both_running_before_and_after": true,
+      "popup_type": 4,
+      "notice_type": 8,
+      "selected_index": 0,
+      "matcher_distance_numeric": 20,
+      "committed_offroute": 0,
+      "notice_step": 0,
+      "early_index_override": 0,
+      "magnetic_status": 4,
+      "magnetic_initialized": 0,
+      "magnetic_parameters_nonnull": false,
+      "imu_context_nonnull": true,
+      "uart2_driver_nonnull": true,
+      "raw_magnetic_all_zero": true,
+      "raw_inertial_all_zero": null,
+      "imu_buffers_nonnull": null,
+      "imu_context_state20": null
+    },
+    "inertial_raw_followup": {
+      "sampling_sequence_ms": 151,
+      "both_running_before_and_after": true,
+      "popup_type": 4,
+      "notice_type": 8,
+      "selected_index": 0,
+      "matcher_distance_numeric": 20,
+      "committed_offroute": 0,
+      "notice_step": 0,
+      "early_index_override": 0,
+      "magnetic_status": 4,
+      "magnetic_initialized": 0,
+      "magnetic_parameters_nonnull": false,
+      "imu_context_nonnull": true,
+      "uart2_driver_nonnull": true,
+      "raw_magnetic_all_zero": true,
+      "raw_inertial_all_zero": true,
+      "imu_buffers_nonnull": [
+        true,
+        true,
+        true
+      ],
+      "imu_context_state20": 2
+    }
+  }
+}

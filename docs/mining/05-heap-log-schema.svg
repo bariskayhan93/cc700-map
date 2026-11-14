@@ -1,0 +1,34 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="516" viewBox="0 0 1000 516" role="img" aria-labelledby="title desc">
+<title id="title">Three heap numbers answer different questions</title><desc id="desc">Decoded November 13 mounted log: 23 samples. None reports the largest free block.</desc>
+<rect x="0" y="0" width="1000" height="516" rx="0" fill="#ffffff" stroke="none"/>
+<text x="38" y="46" font-family="Arial" font-size="27" font-weight="bold" fill="#182e43" text-anchor="start">Three heap numbers answer different questions</text>
+<text x="38" y="77" font-family="Arial" font-size="18" font-weight="normal" fill="#50677b" text-anchor="start">Decoded November 13 mounted log: 23 samples. None reports the largest free block.</text>
+<rect x="38" y="112" width="924" height="63" rx="9" fill="#edf4fa" stroke="#246b9b"/>
+<text x="500.0" y="140.5" font-family="Arial" font-size="21" font-weight="bold" fill="#182e43" text-anchor="middle">free_heap_size = first / second / third</text>
+<text x="500.0" y="166.5" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">AppLogTask · 0x420b4e60</text>
+<line x1="184" y1="175" x2="184" y2="213" stroke="#246b9b" stroke-width="2"/>
+<polygon points="184,213 179.6503446588877,203.99552897647322 188.3496553411123,203.99552897647322" fill="#246b9b"/>
+<rect x="38" y="213" width="292" height="220" rx="0" fill="#edf4fa" stroke="none"/>
+<text x="56" y="247" font-family="Arial" font-size="19" font-weight="bold" fill="#246b9b" text-anchor="start">First</text>
+<text x="56" y="285" font-family="Arial" font-size="19" font-weight="bold" fill="#182e43" text-anchor="start">Current default heap</text>
+<text x="56" y="325" font-family="Arial" font-size="18" font-weight="normal" fill="#50677b" text-anchor="start">Capability mask 0x1000</text>
+<text x="56" y="368" font-family="Arial" font-size="18" font-weight="normal" fill="#246b9b" text-anchor="start">1,449,968–1,680,164 B</text>
+<text x="56" y="405" font-family="Arial" font-size="19" font-weight="normal" fill="#50677b" text-anchor="start">At sample time</text>
+<line x1="500" y1="175" x2="500" y2="213" stroke="#976112" stroke-width="2"/>
+<polygon points="500,213 495.6503446588877,203.99552897647322 504.3496553411123,203.99552897647322" fill="#976112"/>
+<rect x="354" y="213" width="292" height="220" rx="0" fill="#fff4dd" stroke="none"/>
+<text x="372" y="247" font-family="Arial" font-size="19" font-weight="bold" fill="#976112" text-anchor="start">Second</text>
+<text x="372" y="285" font-family="Arial" font-size="19" font-weight="bold" fill="#182e43" text-anchor="start">Current internal DMA heap</text>
+<text x="372" y="325" font-family="Arial" font-size="18" font-weight="normal" fill="#50677b" text-anchor="start">Capability mask 0x80c</text>
+<text x="372" y="368" font-family="Arial" font-size="18" font-weight="normal" fill="#976112" text-anchor="start">48,324–48,396 B</text>
+<text x="372" y="405" font-family="Arial" font-size="19" font-weight="normal" fill="#50677b" text-anchor="start">At sample time</text>
+<line x1="816" y1="175" x2="816" y2="213" stroke="#26715c" stroke-width="2"/>
+<polygon points="816,213 811.6503446588877,203.99552897647322 820.3496553411123,203.99552897647322" fill="#26715c"/>
+<rect x="670" y="213" width="292" height="220" rx="0" fill="#e6f3ed" stroke="none"/>
+<text x="688" y="247" font-family="Arial" font-size="19" font-weight="bold" fill="#26715c" text-anchor="start">Third</text>
+<text x="688" y="285" font-family="Arial" font-size="19" font-weight="bold" fill="#182e43" text-anchor="start">Default heap low-water</text>
+<text x="688" y="325" font-family="Arial" font-size="18" font-weight="normal" fill="#50677b" text-anchor="start">Capability mask 0x1000</text>
+<text x="688" y="368" font-family="Arial" font-size="18" font-weight="normal" fill="#26715c" text-anchor="start">1,171,944–1,410,688 B</text>
+<text x="688" y="405" font-family="Arial" font-size="19" font-weight="normal" fill="#50677b" text-anchor="start">Past minima</text>
+<text x="38" y="477" font-family="Arial" font-size="22" font-weight="normal" fill="#182e43" text-anchor="start">Free totals do not establish contiguous allocation headroom or redraw speed.</text>
+</svg>

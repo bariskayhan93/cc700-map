@@ -1,0 +1,70 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="795" viewBox="0 0 1000 795" role="img" aria-labelledby="title desc">
+<title id="title">Loaded map data can still be hidden</title><desc id="desc">Confirmed saved-v16 control flow. Live off-route reproduction remains pending.</desc>
+<rect x="0" y="0" width="1000" height="795" rx="0" fill="#ffffff" stroke="none"/>
+<text x="38" y="46" font-family="Arial" font-size="27" font-weight="bold" fill="#182e43" text-anchor="start">Loaded map data can still be hidden</text>
+<text x="38" y="77" font-family="Arial" font-size="18" font-weight="normal" fill="#50677b" text-anchor="start">Confirmed saved-v16 control flow. Live off-route reproduction remains pending.</text>
+<rect x="60" y="116" width="330" height="72" rx="9" fill="#e6f3ed" stroke="#26715c"/>
+<text x="225.0" y="149.0" font-family="Arial" font-size="21" font-weight="bold" fill="#182e43" text-anchor="middle">Load nearby map block</text>
+<text x="225.0" y="175.0" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">cc_blk replaces 0x42050150</text>
+<line x1="225" y1="188" x2="225" y2="212" stroke="#26715c" stroke-width="2"/>
+<polygon points="225,212 220.6503446588877,202.99552897647322 229.3496553411123,202.99552897647322" fill="#26715c"/>
+<rect x="60" y="212" width="330" height="65" rx="9" fill="#e6f3ed" stroke="#26715c"/>
+<text x="225.0" y="241.5" font-family="Arial" font-size="21" font-weight="bold" fill="#182e43" text-anchor="middle">Map data available</text>
+<text x="225.0" y="267.5" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">Loading does not clear the flag</text>
+<rect x="540" y="116" width="370" height="72" rx="9" fill="#edf4fa" stroke="#246b9b"/>
+<text x="725.0" y="149.0" font-family="Arial" font-size="21" font-weight="bold" fill="#182e43" text-anchor="middle">Navigation draw callback</text>
+<text x="725.0" y="175.0" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">0x420515c8</text>
+<line x1="725" y1="188" x2="725" y2="212" stroke="#50677b" stroke-width="2"/>
+<polygon points="725,212 720.6503446588877,202.99552897647322 729.3496553411123,202.99552897647322" fill="#50677b"/>
+<rect x="540" y="212" width="370" height="65" rx="9" fill="#edf4fa" stroke="#246b9b"/>
+<text x="725.0" y="241.5" font-family="Arial" font-size="21" font-weight="bold" fill="#182e43" text-anchor="middle">Clear canvas</text>
+<text x="725.0" y="267.5" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">0x4205bcac</text>
+<line x1="725" y1="277" x2="725" y2="306" stroke="#50677b" stroke-width="2"/>
+<polygon points="725,306 720.6503446588877,296.9955289764732 729.3496553411123,296.9955289764732" fill="#50677b"/>
+<rect x="540" y="306" width="370" height="65" rx="9" fill="#edf4fa" stroke="#246b9b"/>
+<text x="725.0" y="335.5" font-family="Arial" font-size="21" font-weight="bold" fill="#182e43" text-anchor="middle">Draw map / route frame</text>
+<text x="725.0" y="361.5" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">0x4204da24</text>
+<line x1="725" y1="371" x2="725" y2="398" stroke="#50677b" stroke-width="2"/>
+<line x1="725" y1="398" x2="500" y2="398" stroke="#50677b" stroke-width="2"/>
+<line x1="500" y1="398" x2="500" y2="420" stroke="#50677b" stroke-width="2"/>
+<polygon points="500,420 495.6503446588877,410.9955289764732 504.3496553411123,410.9955289764732" fill="#50677b"/>
+<polygon points="500.0,420 660,475.0 500.0,530 340,475.0" fill="#fff4dd" stroke="#976112" stroke-width="2"/>
+<text x="500.0" y="474.0" font-family="Arial" font-size="20" font-weight="bold" fill="#182e43" text-anchor="middle">Map index present?</text>
+<text x="500.0" y="498.0" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">wrapper 0x4204c9b8</text>
+<line x1="340" y1="475" x2="225" y2="475" stroke="#ae3546" stroke-width="2"/>
+<line x1="225" y1="475" x2="225" y2="575" stroke="#ae3546" stroke-width="2"/>
+<polygon points="225,575 220.6503446588877,565.9955289764732 229.3496553411123,565.9955289764732" fill="#ae3546"/>
+<text x="263" y="463" font-family="Arial" font-size="18" font-weight="normal" fill="#ae3546" text-anchor="start">No</text>
+<line x1="500" y1="530" x2="500" y2="552" stroke="#50677b" stroke-width="2"/>
+<polygon points="500,552 495.6503446588877,542.9955289764732 504.3496553411123,542.9955289764732" fill="#50677b"/>
+<text x="514" y="548" font-family="Arial" font-size="18" font-weight="normal" fill="#182e43" text-anchor="start">Yes</text>
+<polygon points="500.0,552 660,607.0 500.0,662 340,607.0" fill="#fff4dd" stroke="#976112" stroke-width="2"/>
+<text x="500.0" y="606.0" font-family="Arial" font-size="20" font-weight="bold" fill="#182e43" text-anchor="middle">Off-route flag set?</text>
+<text x="500.0" y="630.0" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">0x42050618 reads +145</text>
+<line x1="340" y1="607" x2="280" y2="607" stroke="#ae3546" stroke-width="2"/>
+<polygon points="280,607 289.0044710235268,602.6503446588877 289.0044710235268,611.3496553411123" fill="#ae3546"/>
+<text x="310" y="593" font-family="Arial" font-size="18" font-weight="normal" fill="#ae3546" text-anchor="middle">Yes</text>
+<rect x="60" y="575" width="220" height="70" rx="9" fill="#fcecef" stroke="#ae3546"/>
+<text x="170.0" y="607.0" font-family="Arial" font-size="21" font-weight="bold" fill="#182e43" text-anchor="middle">Skip basemap</text>
+<text x="170.0" y="633.0" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">Return to frame caller</text>
+<line x1="500" y1="662" x2="500" y2="698" stroke="#26715c" stroke-width="2"/>
+<polygon points="500,698 495.6503446588877,688.9955289764732 504.3496553411123,688.9955289764732" fill="#26715c"/>
+<text x="514" y="687" font-family="Arial" font-size="18" font-weight="normal" fill="#26715c" text-anchor="start">No</text>
+<rect x="340" y="698" width="320" height="63" rx="9" fill="#e6f3ed" stroke="#26715c"/>
+<text x="500.0" y="726.5" font-family="Arial" font-size="21" font-weight="bold" fill="#182e43" text-anchor="middle">Draw patched basemap</text>
+<text x="500.0" y="752.5" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">0x4204c9cd → cc_iter</text>
+<line x1="910" y1="338" x2="955" y2="338" stroke="#246b9b" stroke-width="2" stroke-dasharray="7 5"/>
+<line x1="955" y1="338" x2="955" y2="724" stroke="#246b9b" stroke-width="2" stroke-dasharray="7 5"/>
+<line x1="955" y1="724" x2="895" y2="724" stroke="#246b9b" stroke-width="2" stroke-dasharray="7 5"/>
+<polygon points="895,724 904.0044710235268,719.6503446588877 904.0044710235268,728.3496553411123" fill="#246b9b"/>
+<rect x="704" y="686" width="191" height="75" rx="9" fill="#edf4fa" stroke="#246b9b"/>
+<text x="799.5" y="720.5" font-family="Arial" font-size="21" font-weight="bold" fill="#182e43" text-anchor="middle">Route / overlays</text>
+<text x="799.5" y="746.5" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">Separate frame path</text>
+<line x1="225" y1="277" x2="225" y2="398" stroke="#26715c" stroke-width="2" stroke-dasharray="7 5"/>
+<line x1="225" y1="398" x2="450" y2="398" stroke="#26715c" stroke-width="2" stroke-dasharray="7 5"/>
+<line x1="450" y1="398" x2="450" y2="437" stroke="#26715c" stroke-width="2" stroke-dasharray="7 5"/>
+<polygon points="450,437 445.6503446588877,427.9955289764732 454.3496553411123,427.9955289764732" fill="#26715c"/>
+<text x="60" y="319" font-family="Arial" font-size="18" font-weight="normal" fill="#26715c" text-anchor="start">Data path</text>
+<text x="60" y="348" font-family="Arial" font-size="18" font-weight="normal" fill="#26715c" text-anchor="start">does not bypass</text>
+<text x="60" y="377" font-family="Arial" font-size="18" font-weight="normal" fill="#26715c" text-anchor="start">the draw gate</text>
+</svg>

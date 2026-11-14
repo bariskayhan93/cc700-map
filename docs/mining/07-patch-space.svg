@@ -1,0 +1,22 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="427" viewBox="0 0 1000 427" role="img" aria-labelledby="title desc">
+<title id="title">Executable patch space is one specific envelope</title><desc id="desc">Saved v16, reproduced byte-for-byte. Other free flash is not automatically usable here.</desc>
+<rect x="0" y="0" width="1000" height="427" rx="0" fill="#ffffff" stroke="none"/>
+<text x="38" y="46" font-family="Arial" font-size="27" font-weight="bold" fill="#182e43" text-anchor="start">Executable patch space is one specific envelope</text>
+<text x="38" y="77" font-family="Arial" font-size="18" font-weight="normal" fill="#50677b" text-anchor="start">Saved v16, reproduced byte-for-byte. Other free flash is not automatically usable here.</text>
+<text x="38" y="130" font-family="Arial" font-size="23" font-weight="bold" fill="#182e43" text-anchor="start">Current mapped tail: 14,896 bytes</text>
+<rect x="38" y="158" width="343.3984962406015" height="78" rx="0" fill="#246b9b" stroke="none"/>
+<rect x="381.3984962406015" y="158" width="18.360902255639097" height="78" rx="0" fill="#976112" stroke="none"/>
+<rect x="399.7593984962406" y="158" width="562.2406015037594" height="78" rx="0" fill="#e6f3ed" stroke="none"/>
+<text x="38" y="268" font-family="Arial" font-size="18" font-weight="normal" fill="#50677b" text-anchor="start">0x421dc5d0</text>
+<text x="962" y="268" font-family="Arial" font-size="18" font-weight="normal" fill="#50677b" text-anchor="end">0x421e0000</text>
+<rect x="38" y="299" width="12" height="12" rx="0" fill="#246b9b" stroke="none"/>
+<text x="62" y="312" font-family="Arial" font-size="21" font-weight="normal" fill="#182e43" text-anchor="start">Code</text>
+<text x="62" y="345" font-family="Arial" font-size="24" font-weight="bold" fill="#246b9b" text-anchor="start">5536 B</text>
+<rect x="354" y="299" width="12" height="12" rx="0" fill="#976112" stroke="none"/>
+<text x="378" y="312" font-family="Arial" font-size="21" font-weight="normal" fill="#182e43" text-anchor="start">Constants</text>
+<text x="378" y="345" font-family="Arial" font-size="24" font-weight="bold" fill="#976112" text-anchor="start">296 B</text>
+<rect x="670" y="299" width="12" height="12" rx="0" fill="#26715c" stroke="none"/>
+<text x="694" y="312" font-family="Arial" font-size="21" font-weight="normal" fill="#182e43" text-anchor="start">Remaining</text>
+<text x="694" y="345" font-family="Arial" font-size="24" font-weight="bold" fill="#26715c" text-anchor="start">9064 B</text>
+<text x="38" y="396" font-family="Arial" font-size="22" font-weight="normal" fill="#182e43" text-anchor="start">RAM, draw time, globals and screen space remain separate constraints.</text>
+</svg>

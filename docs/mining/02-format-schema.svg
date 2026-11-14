@@ -1,0 +1,76 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="885" viewBox="0 0 1000 885" role="img" aria-labelledby="title desc">
+<title id="title">File schema → decoded map entry</title><desc id="desc">Selected fields only. Protobuf field numbers are scoped to their containing message.</desc>
+<rect x="0" y="0" width="1000" height="885" rx="0" fill="#ffffff" stroke="none"/>
+<text x="38" y="46" font-family="Arial" font-size="27" font-weight="bold" fill="#182e43" text-anchor="start">File schema → decoded map entry</text>
+<text x="38" y="77" font-family="Arial" font-size="18" font-weight="normal" fill="#50677b" text-anchor="start">Selected fields only. Protobuf field numbers are scoped to their containing message.</text>
+<rect x="38" y="112" width="924" height="62" rx="9" fill="#edf4fa" stroke="#246b9b"/>
+<text x="500.0" y="150.0" font-family="Arial" font-size="21" font-weight="bold" fill="#182e43" text-anchor="middle">Route file: 128-byte header + records + images + map section</text>
+<line x1="230" y1="174" x2="230" y2="210" stroke="#50677b" stroke-width="2"/>
+<polygon points="230,210 225.6503446588877,200.99552897647322 234.3496553411123,200.99552897647322" fill="#50677b"/>
+<line x1="750" y1="174" x2="750" y2="210" stroke="#50677b" stroke-width="2"/>
+<polygon points="750,210 745.6503446588877,200.99552897647322 754.3496553411123,200.99552897647322" fill="#50677b"/>
+<rect x="38" y="210" width="416" height="67" rx="9" fill="#edf4fa" stroke="#246b9b"/>
+<text x="246.0" y="240.5" font-family="Arial" font-size="21" font-weight="bold" fill="#182e43" text-anchor="middle">Route record</text>
+<text x="246.0" y="266.5" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">Field 1 info · 2 count · 3 points</text>
+<rect x="506" y="210" width="456" height="67" rx="9" fill="#edf4fa" stroke="#246b9b"/>
+<text x="734.0" y="240.5" font-family="Arial" font-size="21" font-weight="bold" fill="#182e43" text-anchor="middle">Header map offset: 0x5c</text>
+<text x="734.0" y="266.5" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">Index → block offsets → repeated entries</text>
+<line x1="230" y1="277" x2="230" y2="313" stroke="#50677b" stroke-width="2"/>
+<polygon points="230,313 225.6503446588877,303.9955289764732 234.3496553411123,303.9955289764732" fill="#50677b"/>
+<rect x="38" y="313" width="416" height="174" rx="0" fill="#edf4fa" stroke="none"/>
+<text x="58" y="346" font-family="Arial" font-size="20" font-weight="normal" fill="#246b9b" text-anchor="start">Info field 8: geohash index</text>
+<text x="58" y="380" font-family="Arial" font-size="20" font-weight="normal" fill="#182e43" text-anchor="start">cell → first / last point index × 2</text>
+<text x="58" y="430" font-family="Arial" font-size="20" font-weight="normal" fill="#246b9b" text-anchor="start">Point field 8: compass bearing</text>
+<text x="58" y="464" font-family="Arial" font-size="20" font-weight="normal" fill="#182e43" text-anchor="start">north = 0° · east = 90°</text>
+<line x1="750" y1="277" x2="750" y2="313" stroke="#50677b" stroke-width="2"/>
+<polygon points="750,313 745.6503446588877,303.9955289764732 754.3496553411123,303.9955289764732" fill="#50677b"/>
+<rect x="506" y="313" width="456" height="174" rx="0" fill="#edf4fa" stroke="none"/>
+<text x="526" y="345" font-family="Arial" font-size="20" font-weight="normal" fill="#246b9b" text-anchor="start">Map entry fields</text>
+<text x="526" y="379" font-family="Arial" font-size="20" font-weight="normal" fill="#182e43" text-anchor="start">1 index · 2 style · 3 latitude</text>
+<text x="526" y="413" font-family="Arial" font-size="20" font-weight="normal" fill="#182e43" text-anchor="start">4 longitude · 5 point-pair count</text>
+<text x="526" y="447" font-family="Arial" font-size="20" font-weight="normal" fill="#182e43" text-anchor="start">6 repeated {1 latitude, 2 longitude}</text>
+<text x="38" y="532" font-family="Arial" font-size="23" font-weight="bold" fill="#182e43" text-anchor="start">Decoded entry in RAM: 24-byte stride</text>
+<rect x="38" y="554" width="154" height="72" rx="0" fill="#edf4fa" stroke="#ffffff"/>
+<text x="115" y="580" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">+00</text>
+<text x="115" y="610" font-family="Arial" font-size="20" font-weight="normal" fill="#182e43" text-anchor="middle">index</text>
+<rect x="192" y="554" width="154" height="72" rx="0" fill="#edf4fa" stroke="#ffffff"/>
+<text x="269" y="580" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">+04</text>
+<text x="269" y="610" font-family="Arial" font-size="20" font-weight="normal" fill="#182e43" text-anchor="middle">style</text>
+<rect x="346" y="554" width="154" height="72" rx="0" fill="#edf4fa" stroke="#ffffff"/>
+<text x="423" y="580" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">+08</text>
+<text x="423" y="610" font-family="Arial" font-size="20" font-weight="normal" fill="#182e43" text-anchor="middle">latitude</text>
+<rect x="500" y="554" width="154" height="72" rx="0" fill="#edf4fa" stroke="#ffffff"/>
+<text x="577" y="580" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">+12</text>
+<text x="577" y="610" font-family="Arial" font-size="20" font-weight="normal" fill="#182e43" text-anchor="middle">longitude</text>
+<rect x="654" y="554" width="154" height="72" rx="0" fill="#edf4fa" stroke="#ffffff"/>
+<text x="731" y="580" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">+16</text>
+<text x="731" y="610" font-family="Arial" font-size="20" font-weight="normal" fill="#182e43" text-anchor="middle">count</text>
+<rect x="808" y="554" width="154" height="72" rx="0" fill="#e6f3ed" stroke="#ffffff"/>
+<text x="885" y="580" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">+20</text>
+<text x="885" y="610" font-family="Arial" font-size="20" font-weight="normal" fill="#182e43" text-anchor="middle">points ptr</text>
+<text x="38" y="655" font-family="Arial" font-size="20" font-weight="normal" fill="#182e43" text-anchor="start">Allocator reserves 28N bytes for the table; coordinate pairs add 8P bytes.</text>
+<text x="38" y="699" font-family="Arial" font-size="23" font-weight="bold" fill="#182e43" text-anchor="start">Style word: meaning depends on class</text>
+<rect x="38" y="718" width="132" height="64" rx="0" fill="#edf4fa" stroke="#ffffff"/>
+<text x="104" y="743" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">0–3</text>
+<text x="104" y="770" font-family="Arial" font-size="18" font-weight="normal" fill="#182e43" text-anchor="middle">class</text>
+<rect x="170" y="718" width="132" height="64" rx="0" fill="#edf4fa" stroke="#ffffff"/>
+<text x="236" y="743" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">4–6</text>
+<text x="236" y="770" font-family="Arial" font-size="18" font-weight="normal" fill="#182e43" text-anchor="middle">level + 2</text>
+<rect x="302" y="718" width="132" height="64" rx="0" fill="#edf4fa" stroke="#ffffff"/>
+<text x="368" y="743" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">7</text>
+<text x="368" y="770" font-family="Arial" font-size="18" font-weight="normal" fill="#182e43" text-anchor="middle">bridge</text>
+<rect x="434" y="718" width="132" height="64" rx="0" fill="#edf4fa" stroke="#ffffff"/>
+<text x="500" y="743" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">8</text>
+<text x="500" y="770" font-family="Arial" font-size="18" font-weight="normal" fill="#182e43" text-anchor="middle">tunnel</text>
+<rect x="566" y="718" width="132" height="64" rx="0" fill="#edf4fa" stroke="#ffffff"/>
+<text x="632" y="743" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">9</text>
+<text x="632" y="770" font-family="Arial" font-size="18" font-weight="normal" fill="#182e43" text-anchor="middle">rough</text>
+<rect x="698" y="718" width="132" height="64" rx="0" fill="#edf4fa" stroke="#ffffff"/>
+<text x="764" y="743" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">10</text>
+<text x="764" y="770" font-family="Arial" font-size="18" font-weight="normal" fill="#182e43" text-anchor="middle">no outline</text>
+<rect x="830" y="718" width="132" height="64" rx="0" fill="#edf4fa" stroke="#ffffff"/>
+<text x="896" y="743" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">11</text>
+<text x="896" y="770" font-family="Arial" font-size="18" font-weight="normal" fill="#182e43" text-anchor="middle">far</text>
+<text x="38" y="816" font-family="Arial" font-size="19" font-weight="normal" fill="#182e43" text-anchor="start">Class 15: bit 15 marks rough-route geometry; bits 16–31 carry the arrow index.</text>
+<text x="38" y="850" font-family="Arial" font-size="19" font-weight="normal" fill="#50677b" text-anchor="start">Class 12 labels pack text in the point payload; it is not geographic geometry.</text>
+</svg>

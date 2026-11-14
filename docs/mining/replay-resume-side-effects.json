@@ -1,0 +1,38 @@
+{
+  "stock_sha256": "7545ae4d4030b24b1f6198f481ce3a9a183a0e6eb3e5355b86ad2413aead2c31",
+  "v18_sha256": "ae3539c4a2b174b52f8dce866a93303d7aa2c12476d36cc94844adbb52410bd6",
+  "ranges": [
+    {
+      "name": "resume_session",
+      "start": "0x420cb8d4",
+      "end_exclusive": "0x420cc150",
+      "instructions": 779,
+      "runs": 10,
+      "sha256": "6f1298770c68e79f5331915adbedb58080dfd1c23f9b4aef7177c5ac0c177b44",
+      "v18_matches_stock": true,
+      "gnu_boundary_branch_errors": 0
+    },
+    {
+      "name": "truncate_recording",
+      "start": "0x420c96c4",
+      "end_exclusive": "0x420c9856",
+      "instructions": 148,
+      "runs": 2,
+      "sha256": "9b11b70451e5e42ba89867f5d80308cf281d060a3b1c2c6f3306ebc5b439393c",
+      "v18_matches_stock": true,
+      "gnu_boundary_branch_errors": 0
+    },
+    {
+      "name": "truncate_lap",
+      "start": "0x420c89ac",
+      "end_exclusive": "0x420c8ac8",
+      "instructions": 103,
+      "runs": 3,
+      "sha256": "0687d947e7380727daa152af76393c06148216c24e2363823ca41e6aa401a120",
+      "v18_matches_stock": true,
+      "gnu_boundary_branch_errors": 0
+    }
+  ],
+  "device_access": false,
+  "scope": "static branches/layout; no runtime or external filesystem-function implementation claim"
+}

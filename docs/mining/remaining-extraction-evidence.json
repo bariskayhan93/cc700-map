@@ -1,0 +1,254 @@
+{
+  "sources": {
+    "stock_sha256": "7545ae4d4030b24b1f6198f481ce3a9a183a0e6eb3e5355b86ad2413aead2c31",
+    "saved_v16_sha256": "2af9c21a3c693c71fed1ffe26ed72ada545e7609c3a47c6dedcfe6c1e7fae8d5"
+  },
+  "ranges": [
+    {
+      "name": "sensor_uart_producer",
+      "start": "0x4203aed0",
+      "end_exclusive": "0x4203afc0",
+      "sha256": "000aab70cc07c14e8cf8d3cc50df4afd9b22ff1f17017abd07c83c5ba916144e",
+      "saved_v16_matches": true,
+      "reachable_instructions": 86,
+      "gnu_runs": 2,
+      "boundary_and_direct_branch_errors": 0
+    },
+    {
+      "name": "sensor_frame_consumer",
+      "start": "0x4203afc0",
+      "end_exclusive": "0x4203b11c",
+      "sha256": "02c039e3dc8594c4713df883fa25ca300bedbe8a96eb8a09abb60b376e14db6f",
+      "saved_v16_matches": true,
+      "reachable_instructions": 125,
+      "gnu_runs": 3,
+      "boundary_and_direct_branch_errors": 0
+    },
+    {
+      "name": "sensor_dispatch",
+      "start": "0x4203bd08",
+      "end_exclusive": "0x4203bd74",
+      "sha256": "b128470a1bdd0168fef821f427a831f01cd795cee99d366aea43fdb020834c2c",
+      "saved_v16_matches": true,
+      "reachable_instructions": 36,
+      "gnu_runs": 5,
+      "boundary_and_direct_branch_errors": 0
+    },
+    {
+      "name": "uart_read_adapter",
+      "start": "0x42149844",
+      "end_exclusive": "0x421498a0",
+      "sha256": "3c7d4e452335feff27a3178f1634d5a1fc4f7fbd4e8f776b13b6d2c31e183909",
+      "saved_v16_matches": true,
+      "reachable_instructions": 34,
+      "gnu_runs": 2,
+      "boundary_and_direct_branch_errors": 0
+    },
+    {
+      "name": "road_arbitration",
+      "start": "0x4204abf4",
+      "end_exclusive": "0x4204b048",
+      "sha256": "fc0a5f03db8eac3c167f2a98cc9252220d44d294df39cc7fc352ecff5055f99c",
+      "saved_v16_matches": true,
+      "reachable_instructions": 394,
+      "gnu_runs": 7,
+      "boundary_and_direct_branch_errors": 0
+    },
+    {
+      "name": "road_advance",
+      "start": "0x4204fc30",
+      "end_exclusive": "0x4204fca4",
+      "sha256": "7c9316a66a299a0944e48f96690d02ff08869b496ee562c066a019fa36d23e37",
+      "saved_v16_matches": true,
+      "reachable_instructions": 44,
+      "gnu_runs": 2,
+      "boundary_and_direct_branch_errors": 0
+    },
+    {
+      "name": "replay_config",
+      "start": "0x420b51d8",
+      "end_exclusive": "0x420b5714",
+      "sha256": "8f3e72a01812173d4b9e835b47281b512c7af8eec361db109180537f909544d1",
+      "saved_v16_matches": true,
+      "reachable_instructions": 492,
+      "gnu_runs": 8,
+      "boundary_and_direct_branch_errors": 0
+    },
+    {
+      "name": "replay_numeric_query",
+      "start": "0x420b5714",
+      "end_exclusive": "0x420b5738",
+      "sha256": "79276a4d94d3e2bb3700c62fd55f542806ae493ebacde45be46a178257ec5721",
+      "saved_v16_matches": true,
+      "reachable_instructions": 14,
+      "gnu_runs": 1,
+      "boundary_and_direct_branch_errors": 0
+    },
+    {
+      "name": "replay_boolean_query",
+      "start": "0x420b5738",
+      "end_exclusive": "0x420b5764",
+      "sha256": "3578aa748a599ed3d12ca6530e6a7583db863d47b42540866bbc3bbbb26de935",
+      "saved_v16_matches": true,
+      "reachable_instructions": 17,
+      "gnu_runs": 1,
+      "boundary_and_direct_branch_errors": 0
+    },
+    {
+      "name": "planning",
+      "start": "0x42052b2c",
+      "end_exclusive": "0x42054684",
+      "sha256": "7736ac56f3646cd178a19d03c179c499e630720f888288d06e62a9998d7e1758",
+      "saved_v16_matches": true,
+      "reachable_instructions": 2506,
+      "gnu_runs": 42,
+      "boundary_and_direct_branch_errors": 0
+    },
+    {
+      "name": "planner_search",
+      "start": "0x420e23d0",
+      "end_exclusive": "0x420e249c",
+      "sha256": "985eaf9bbac6c83feead4db237d3e82ed3a05ab3e9150467e0da6d8dad48900d",
+      "saved_v16_matches": true,
+      "reachable_instructions": 86,
+      "gnu_runs": 2,
+      "boundary_and_direct_branch_errors": 0
+    },
+    {
+      "name": "planner_node",
+      "start": "0x420e1e4c",
+      "end_exclusive": "0x420e23d0",
+      "sha256": "3427ea9abeabdf7e8417f1cfda1de59f860f8912f98081e5095a2a2fcdea9c33",
+      "saved_v16_matches": true,
+      "reachable_instructions": 562,
+      "gnu_runs": 8,
+      "boundary_and_direct_branch_errors": 0
+    },
+    {
+      "name": "planner_wrapper",
+      "start": "0x420e249c",
+      "end_exclusive": "0x420e2600",
+      "sha256": "82d94e480ac007740234a5a2dade5f0a2a6ae3faad0c80828190b420eb6d5033",
+      "saved_v16_matches": true,
+      "reachable_instructions": 125,
+      "gnu_runs": 2,
+      "boundary_and_direct_branch_errors": 0
+    },
+    {
+      "name": "planner_time",
+      "start": "0x420de5a8",
+      "end_exclusive": "0x420de630",
+      "sha256": "8ac108b82e036ae6563c582454d5a86b91305aa0be46f0ff1eaa6b3f4b41580f",
+      "saved_v16_matches": true,
+      "reachable_instructions": 48,
+      "gnu_runs": 1,
+      "boundary_and_direct_branch_errors": 0
+    },
+    {
+      "name": "planner_heap",
+      "start": "0x421dbd00",
+      "end_exclusive": "0x421dbd18",
+      "sha256": "cda80f2b182cdf13fd92f37df0bf5ce50150a09fe880744c6d070d6431ae7fbd",
+      "saved_v16_matches": true,
+      "reachable_instructions": 7,
+      "gnu_runs": 1,
+      "boundary_and_direct_branch_errors": 0
+    },
+    {
+      "name": "planner_cache_floor",
+      "start": "0x420df532",
+      "end_exclusive": "0x420df570",
+      "sha256": "46cfaaefe8f215730dd3f154e8a4372ad170c935bc795fa793d12d7d6f5ada7b",
+      "saved_v16_matches": true,
+      "reachable_instructions": 24,
+      "gnu_runs": 1,
+      "boundary_and_direct_branch_errors": 0
+    },
+    {
+      "name": "clock_format",
+      "start": "0x4037755c",
+      "end_exclusive": "0x403775b8",
+      "sha256": "dc582f8caa75ec1efe514ed4511d3be973836c5a3a9d417d09b3765b635e17ea",
+      "saved_v16_matches": true,
+      "reachable_instructions": 36,
+      "gnu_runs": 1,
+      "boundary_and_direct_branch_errors": 0
+    }
+  ],
+  "live": {
+    "version": "CC700_V1.414-cc16",
+    "iterator_hook_start": "0x42049670",
+    "iterator_hook_bytes": 16,
+    "iterator_hook_matches_saved_v16": true,
+    "full_image_verified": false,
+    "sampling_sequence_ms": 144,
+    "before": [
+      "running",
+      "running"
+    ],
+    "after": [
+      "running",
+      "running"
+    ],
+    "navigation_active": false,
+    "replay_active": false,
+    "sensor_activity_demonstrated": false
+  },
+  "live_awake": {
+    "screen_awake": "user-confirmed",
+    "sampling_sequence_ms": 145,
+    "before": [
+      "running",
+      "running"
+    ],
+    "after": [
+      "running",
+      "running"
+    ],
+    "navigation_state": 2,
+    "map_canvas_nonnull": true,
+    "replay_active": false,
+    "gps_validity_byte1": 1,
+    "gps_speed_field24": 0,
+    "position_qualification_word": 1,
+    "position_raw_fix_byte4": 1,
+    "magnetic_status": 4,
+    "magnetic_axes_all_zero": true,
+    "magnetic_angles_all_zero": true,
+    "acceleration_vector_all_zero": true,
+    "map_heading_degrees": 90,
+    "physical_compass_activity_demonstrated": false
+  },
+  "live_hin": {
+    "route_name": "hin (user-reported; active filename not read)",
+    "warning": "Current position is far from the new route (user-reported)",
+    "ui_responsive": "user-reported",
+    "sampling_sequence_ms": 145,
+    "before": [
+      "running",
+      "running"
+    ],
+    "after": [
+      "running",
+      "running"
+    ],
+    "navigation_state": 2,
+    "map_canvas_nonnull": true,
+    "gps_validity_byte1": 1,
+    "gps_speed_field24": 0.0,
+    "position_qualification_word": 1,
+    "position_raw_fix_byte4": 1,
+    "map_heading_degrees": 90.0,
+    "magnetic_status": 4,
+    "magnetic_axes_all_zero": true,
+    "magnetic_angles_all_zero": true,
+    "acceleration_vector_all_zero": true,
+    "matcher_index": 0,
+    "matcher_distance_numeric": 20,
+    "matcher_candidate_repeat_counter": 10,
+    "matcher_committed_offroute": 0,
+    "matcher_completion_flag": 1,
+    "notice_planning_step": 0,
+    "replay_active": false
+  }
+}

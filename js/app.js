@@ -4,6 +4,7 @@ import { nameImage } from './names.js';
 import { readFile, draw } from './preview.js';
 import { CC700 } from './ble.js';
 import { previewGuidance } from './preview_guidance.js';
+import {auditMapSection,budgetFailures,transitionPeak,TRANSITION_BUDGET} from './map_budget.js';
 const $ = id => document.getElementById(id);
 function say(id, text) {
   const node = $(id);
@@ -78,8 +79,8 @@ async function build() {
     const gpx = parseGPX(await file.text());
     if (needsBuild) return;
     if (gpx.pts.length < 2) throw new Error('GPX ohne Trackpunkte');
-    const { lines, areas, water, rails, green, trams, wlines, signals, stops } =
-      await loadOSM(gpx.pts, (i, n) => { if (!needsBuild) say('sum', `Kartendaten ${i + 1}/${n} …`); });
+    const { lines, areas, water, rails, green, trams, wlines, signals, stops, coverage } =
+      await loadOSM(gpx.pts, (i, n) => { if (!needsBuild) say('sum', `Kartendaten ${i + 1}/${n} …`); }, undefined, {coverageMeters:styled?1000:0});
     if (needsBuild) return;
     say('sum', 'Route wird berechnet …');
     await new Promise(resolve => setTimeout(resolve, 30));
@@ -93,11 +94,14 @@ async function build() {
       noF9: styled,   // patched firmware: field 9 off, as tested on the device
       map: { styled, ...layers, ...(LIMIT > 1200 ? { cap: LIMIT, capMax: LIMIT } : {}) },
     });
-    const model = readFile(r.file), check = verify(r, model);
+    const model = readFile(r.file), check = verify(r, model, styled);
     if (check) throw new Error('Prüfung fehlgeschlagen: ' + check);
     built = { ...r, model, styled, speedKmh, name: `route_${id}.bin` };
     say('sum', `${gpx.name} → CC700 Route ${id} · ${(r.distance / 1000).toFixed(1)} km · ${(r.file.length / 1024).toFixed(0)} KB` +
-      (lines.length ? '' : ' · keine Straßendaten: ohne Karte und Straßennamen'));
+      (lines.length ? '' : ' · keine Straßendaten: ohne Karte und Straßennamen') +
+      (styled ? ` · erweitertes Kartenumfeld in ${r.mapStat.blocks.filter(b=>b.coverageFloor>0).length}/${r.mapBlocks} Blöcken` : '') +
+      (coverage.missingCells ? ' · äußere Kartendaten teilweise nicht verfügbar' : ''));
+    if(styled)log(JSON.stringify(r.mapStat));
     say('previewTitle', styled ? 'Kartenvorschau · Sunlight' : 'Kartenvorschau · Original');
     say('turnsN', `Abbiegungen (${r.sections.length})`);
     $('turns').innerHTML = r.sections.map(s => `<li>${s.type === 2 ? '🏁' : ARROW[s.dir]} ${s.text.replace(/</g, '&lt;')}</li>`).join('');
@@ -116,9 +120,13 @@ async function build() {
     upd();
   }
 }
-function verify(r, model) {                    // the same limits that were tested on the device
+function verify(r, model, styled) {
   if (model.secs.length !== r.sections.length) return 'Abschnitte';
-  if (r.maxBlock > LIMIT) return 'Kartenblock zu groß';
+  if (styled) {
+    const base=new DataView(r.file.buffer,r.file.byteOffset,r.file.byteLength).getUint32(0x5c,true);
+    const costs=auditMapSection(r.file.subarray(base));
+    if(costs.some(c=>budgetFailures(c).length)||transitionPeak(costs)>TRANSITION_BUDGET) return 'Kartenblock zu komplex';
+  } else if (r.maxBlock > LIMIT) return 'Kartenblock zu groß';
   if (r.file.length > 4_000_000) return 'Datei zu groß';
   if (model.blocks.length !== r.sections.length) return 'Kartenindex';
   return null;

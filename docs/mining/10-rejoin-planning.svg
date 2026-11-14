@@ -1,0 +1,63 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="965" viewBox="0 0 1000 965" role="img" aria-labelledby="title desc">
+<title id="title">Off-route detection and rejoin planning are separate</title><desc id="desc">Static control flow; numeric states and eligibility gates determine which work advances.</desc>
+<rect x="0" y="0" width="1000" height="965" rx="0" fill="#ffffff" stroke="none"/>
+<text x="38" y="46" font-family="Arial" font-size="27" font-weight="bold" fill="#182e43" text-anchor="start">Off-route detection and rejoin planning are separate</text>
+<text x="38" y="77" font-family="Arial" font-size="18" font-weight="normal" fill="#50677b" text-anchor="start">Static control flow; numeric states and eligibility gates determine which work advances.</text>
+<rect x="38" y="112" width="440" height="84" rx="9" fill="#edf4fa" stroke="#246b9b"/>
+<text x="258.0" y="151.0" font-family="Arial" font-size="21" font-weight="bold" fill="#182e43" text-anchor="middle">Matcher result</text>
+<text x="258.0" y="177.0" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">Committed +145; selected-point distance +112</text>
+<rect x="522" y="112" width="440" height="84" rx="9" fill="#edf4fa" stroke="#246b9b"/>
+<text x="742.0" y="151.0" font-family="Arial" font-size="21" font-weight="bold" fill="#182e43" text-anchor="middle">Calculation record 15</text>
+<text x="742.0" y="177.0" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">20-byte position / validity; separate GPS path</text>
+<line x1="258" y1="196" x2="258" y2="226" stroke="#50677b" stroke-width="2"/>
+<line x1="258" y1="226" x2="500" y2="226" stroke="#50677b" stroke-width="2"/>
+<line x1="500" y1="226" x2="500" y2="253" stroke="#50677b" stroke-width="2"/>
+<polygon points="500,253 495.6503446588877,243.99552897647322 504.3496553411123,243.99552897647322" fill="#50677b"/>
+<line x1="742" y1="196" x2="742" y2="226" stroke="#50677b" stroke-width="2"/>
+<line x1="742" y1="226" x2="500" y2="226" stroke="#50677b" stroke-width="2"/>
+<polygon points="500,226 509.0044710235268,221.6503446588877 509.0044710235268,230.3496553411123" fill="#50677b"/>
+<rect x="230" y="253" width="540" height="84" rx="9" fill="#fff4dd" stroke="#976112"/>
+<text x="500.0" y="292.0" font-family="Arial" font-size="21" font-weight="bold" fill="#182e43" text-anchor="middle">Notice / planning eligibility gates</text>
+<text x="500.0" y="318.0" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">Route count, point index, validity and category</text>
+<line x1="500" y1="337" x2="500" y2="368" stroke="#50677b" stroke-width="2"/>
+<polygon points="500,368 495.6503446588877,358.9955289764732 504.3496553411123,358.9955289764732" fill="#50677b"/>
+<rect x="230" y="368" width="540" height="76" rx="9" fill="#edf4fa" stroke="#246b9b"/>
+<text x="500.0" y="403.0" font-family="Arial" font-size="21" font-weight="bold" fill="#182e43" text-anchor="middle">Persistent control at 0x3c38940c</text>
+<text x="500.0" y="429.0" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">Steps 0–6; counters advance on eligible calls</text>
+<line x1="365" y1="444" x2="365" y2="477" stroke="#50677b" stroke-width="2"/>
+<line x1="365" y1="477" x2="258" y2="477" stroke="#50677b" stroke-width="2"/>
+<line x1="258" y1="477" x2="258" y2="507" stroke="#50677b" stroke-width="2"/>
+<polygon points="258,507 253.6503446588877,497.9955289764732 262.3496553411123,497.9955289764732" fill="#50677b"/>
+<line x1="635" y1="444" x2="635" y2="477" stroke="#50677b" stroke-width="2" stroke-dasharray="7 5"/>
+<line x1="635" y1="477" x2="742" y2="477" stroke="#50677b" stroke-width="2" stroke-dasharray="7 5"/>
+<line x1="742" y1="477" x2="742" y2="507" stroke="#50677b" stroke-width="2" stroke-dasharray="7 5"/>
+<polygon points="742,507 737.6503446588877,497.9955289764732 746.3496553411123,497.9955289764732" fill="#50677b"/>
+<text x="742" y="470" font-family="Arial" font-size="16" font-weight="normal" fill="#50677b" text-anchor="middle">Step-5 entry still being traced</text>
+<rect x="38" y="507" width="440" height="86" rx="9" fill="#edf4fa" stroke="#246b9b"/>
+<text x="258.0" y="547.0" font-family="Arial" font-size="21" font-weight="bold" fill="#182e43" text-anchor="middle">Steps 3–4: request / response</text>
+<text x="258.0" y="573.0" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">Only response 0 advances its timeout</text>
+<rect x="522" y="507" width="440" height="86" rx="9" fill="#edf4fa" stroke="#246b9b"/>
+<text x="742.0" y="547.0" font-family="Arial" font-size="21" font-weight="bold" fill="#182e43" text-anchor="middle">Step 5: local planning</text>
+<text x="742.0" y="573.0" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">FIT replay pause = 1 before planner work</text>
+<line x1="258" y1="593" x2="60" y2="593" stroke="#50677b" stroke-width="2"/>
+<line x1="60" y1="593" x2="60" y2="650" stroke="#50677b" stroke-width="2"/>
+<line x1="60" y1="650" x2="500" y2="650" stroke="#50677b" stroke-width="2"/>
+<line x1="500" y1="650" x2="500" y2="688" stroke="#50677b" stroke-width="2"/>
+<polygon points="500,688 495.6503446588877,678.9955289764732 504.3496553411123,678.9955289764732" fill="#50677b"/>
+<line x1="742" y1="593" x2="940" y2="593" stroke="#50677b" stroke-width="2"/>
+<line x1="940" y1="593" x2="940" y2="650" stroke="#50677b" stroke-width="2"/>
+<line x1="940" y1="650" x2="500" y2="650" stroke="#50677b" stroke-width="2"/>
+<polygon points="500,650 509.0044710235268,645.6503446588877 509.0044710235268,654.3496553411123" fill="#50677b"/>
+<text x="258" y="623" font-family="Arial" font-size="18" font-weight="normal" fill="#50677b" text-anchor="middle">Accepted response 3</text>
+<text x="742" y="623" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">Replay pause released on exit</text>
+<rect x="230" y="688" width="540" height="76" rx="9" fill="#e6f3ed" stroke="#26715c"/>
+<text x="500.0" y="723.0" font-family="Arial" font-size="21" font-weight="bold" fill="#182e43" text-anchor="middle">Accepted result → enqueue event 91</text>
+<text x="500.0" y="749.0" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">GUI queue → ride handler → ExecuteNavigation</text>
+<line x1="500" y1="764" x2="500" y2="805" stroke="#50677b" stroke-width="2"/>
+<polygon points="500,805 495.6503446588877,795.9955289764732 504.3496553411123,795.9955289764732" fill="#50677b"/>
+<rect x="230" y="805" width="540" height="76" rx="9" fill="#edf4fa" stroke="#246b9b"/>
+<text x="500.0" y="840.0" font-family="Arial" font-size="21" font-weight="bold" fill="#182e43" text-anchor="middle">Completion callback 0x4205095c</text>
+<text x="500.0" y="866.0" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">Status-dependent continuation; notice step → 0</text>
+<text x="38" y="924" font-family="Arial" font-size="18" font-weight="normal" fill="#50677b" text-anchor="start">Queue failure and GUI target changes can prevent delivery; callback reads shared status.</text>
+<text x="38" y="952" font-family="Arial" font-size="18" font-weight="normal" fill="#50677b" text-anchor="start">Solid arrows: extracted flow. Dashed step-5 entry: control integration still under extraction.</text>
+</svg>

@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="687" viewBox="0 0 1000 687" role="img" aria-labelledby="title desc">
+<title id="title">Resident memory is only part of the load peak</title><desc id="desc">Conceptual lifetimes; bar lengths indicate phases, not bytes or measured elapsed time.</desc>
+<rect x="0" y="0" width="1000" height="687" rx="0" fill="#ffffff" stroke="none"/>
+<text x="38" y="46" font-family="Arial" font-size="27" font-weight="bold" fill="#182e43" text-anchor="start">Resident memory is only part of the load peak</text>
+<text x="38" y="77" font-family="Arial" font-size="18" font-weight="normal" fill="#50677b" text-anchor="start">Conceptual lifetimes; bar lengths indicate phases, not bytes or measured elapsed time.</text>
+<text x="374.0" y="130" font-family="Arial" font-size="19" font-weight="bold" fill="#182e43" text-anchor="middle">Before load</text>
+<line x1="295" y1="149" x2="295" y2="405" stroke="#dce5ec" stroke-width="1" stroke-dasharray="7 5"/>
+<text x="532.0" y="130" font-family="Arial" font-size="19" font-weight="bold" fill="#182e43" text-anchor="middle">Read bytes</text>
+<line x1="453" y1="149" x2="453" y2="405" stroke="#dce5ec" stroke-width="1" stroke-dasharray="7 5"/>
+<text x="690.0" y="130" font-family="Arial" font-size="19" font-weight="bold" fill="#182e43" text-anchor="middle">Decode</text>
+<line x1="611" y1="149" x2="611" y2="405" stroke="#dce5ec" stroke-width="1" stroke-dasharray="7 5"/>
+<text x="848.0" y="130" font-family="Arial" font-size="19" font-weight="bold" fill="#182e43" text-anchor="middle">After load</text>
+<line x1="769" y1="149" x2="769" y2="405" stroke="#dce5ec" stroke-width="1" stroke-dasharray="7 5"/>
+<text x="38" y="197" font-family="Arial" font-size="21" font-weight="normal" fill="#182e43" text-anchor="start">Map canvas</text>
+<rect x="295" y="167" width="624" height="45" rx="5" fill="#edf4fa" stroke="#246b9b"/>
+<text x="607.0" y="197" font-family="Arial" font-size="20" font-weight="normal" fill="#246b9b" text-anchor="middle">122880 B</text>
+<text x="38" y="262" font-family="Arial" font-size="21" font-weight="normal" fill="#182e43" text-anchor="start">Old decoded block</text>
+<rect x="295" y="232" width="308" height="45" rx="5" fill="#fff4dd" stroke="#976112"/>
+<text x="449.0" y="262" font-family="Arial" font-size="20" font-weight="normal" fill="#976112" text-anchor="middle">Old payload</text>
+<text x="38" y="327" font-family="Arial" font-size="21" font-weight="normal" fill="#182e43" text-anchor="start">New serialized block</text>
+<rect x="453" y="297" width="308" height="45" rx="5" fill="#edf4fa" stroke="#246b9b"/>
+<text x="607.0" y="327" font-family="Arial" font-size="20" font-weight="normal" fill="#246b9b" text-anchor="middle">S bytes</text>
+<text x="38" y="392" font-family="Arial" font-size="21" font-weight="normal" fill="#182e43" text-anchor="start">New decoded block</text>
+<rect x="611" y="362" width="308" height="45" rx="5" fill="#e6f3ed" stroke="#26715c"/>
+<text x="765.0" y="392" font-family="Arial" font-size="20" font-weight="normal" fill="#26715c" text-anchor="middle">28N + 8P</text>
+<text x="38" y="456" font-family="Arial" font-size="23" font-weight="bold" fill="#182e43" text-anchor="start">Load-phase overlap</text>
+<text x="38" y="491" font-family="Arial" font-size="21" font-weight="normal" fill="#182e43" text-anchor="start">Old decoded + new serialized, then new serialized + new decoded.</text>
+<text x="38" y="537" font-family="Arial" font-size="23" font-weight="bold" fill="#182e43" text-anchor="start">Drawing-phase turnover</text>
+<text x="38" y="572" font-family="Arial" font-size="21" font-weight="normal" fill="#182e43" text-anchor="start">One float scratch buffer per iterator + one allocation per projection call.</text>
+<text x="38" y="607" font-family="Arial" font-size="21" font-weight="normal" fill="#246b9b" text-anchor="start">Saved fixture A: 1123 entries → 1741 projection calls per map iterator.</text>
+<text x="38" y="654" font-family="Arial" font-size="18" font-weight="normal" fill="#50677b" text-anchor="start">Also budget allocator overhead, map index, route state, fonts and other LVGL buffers.</text>
+</svg>

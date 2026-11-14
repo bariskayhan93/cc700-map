@@ -1,0 +1,84 @@
+{
+  "status": "offline allocator-only candidate; NOT integrated capture firmware",
+  "base_sha256": "ae3539c4a2b174b52f8dce866a93303d7aa2c12476d36cc94844adbb52410bd6",
+  "candidate_sha256": "2fd18e4f62e2107c7b9978c3d6a58a4ccf44a34a38b08c11fba29df1ba771869",
+  "version": "CC700_V1.414-capALLOC-only",
+  "host_checks": [
+    {
+      "name": "test_capture",
+      "exit_code": 0,
+      "output": "capture core: 10 scenarios passed"
+    },
+    {
+      "name": "test_lineage",
+      "exit_code": 0,
+      "output": ""
+    },
+    {
+      "name": "test_allocate",
+      "exit_code": 0,
+      "output": ""
+    },
+    {
+      "name": "test_observe",
+      "exit_code": 0,
+      "output": ""
+    },
+    {
+      "name": "test_race",
+      "exit_code": 0,
+      "output": "capture finalization races: 2 controlled interleavings passed"
+    }
+  ],
+  "remaining_page_bytes": 5488,
+  "data_bytes": 0,
+  "bss_bytes": 0,
+  "undefined_symbols": [],
+  "layout": {
+    "allocation_bytes": 512200,
+    "gps_prefix_bytes": 52,
+    "context_bytes": 512148,
+    "control_bytes": 24,
+    "event_bytes": 144,
+    "journal_offset": 88,
+    "journal_bytes": 147476,
+    "token_offset": 442516,
+    "token_bytes": 68,
+    "slots_per_journal": 1024,
+    "max_tokens": 1024
+  },
+  "unproven": [
+    "record/queue/adapter/publication/lifecycle hooks absent",
+    "all queue consumers and descriptor padding contract",
+    "target runtime and timing",
+    "stock pointer aliases/free ownership",
+    "actual queue drain and source EOF semantics"
+  ],
+  "device_access": false,
+  "static_proof": {
+    "scope": "static allocator-only image/ABI boundaries; no target execution",
+    "candidate_sha256": "2fd18e4f62e2107c7b9978c3d6a58a4ccf44a34a38b08c11fba29df1ba771869",
+    "original_span": [
+      "0x420b58dc",
+      "0x420b58eb"
+    ],
+    "original_instruction_sizes": [
+      3,
+      2,
+      2,
+      3,
+      2,
+      3
+    ],
+    "inline_literal_target": "0x421dea70",
+    "island_extra_entry_instructions": 0,
+    "original_interior_branch_destinations": [],
+    "original_rejoin_existing_or_failed": "0x420b58fc",
+    "original_rejoin_zero52": "0x420b58f2",
+    "other_existing_irom_bytes_unchanged": true,
+    "other_segments_unchanged_except_visible_version": true,
+    "image_checksum_valid": true,
+    "image_appended_sha256_valid": true,
+    "observer_symbols_linked": false
+  }
+}

@@ -1,0 +1,68 @@
+{
+  "observed_utc": "2026-11-14T10:18:17.899063+00:00",
+  "local_status": "incomplete",
+  "target_acceptance": "unvalidated",
+  "steps": [
+    {
+      "name": "python",
+      "status": "pass",
+      "returncode": 0,
+      "duration_seconds": 1.61,
+      "log": "python.log"
+    },
+    {
+      "name": "node",
+      "status": "known_failures",
+      "returncode": 0,
+      "duration_seconds": 0.135,
+      "log": "node.log"
+    },
+    {
+      "name": "offline_app",
+      "status": "pass",
+      "returncode": 0,
+      "duration_seconds": 10.237,
+      "log": "offline_app.log"
+    },
+    {
+      "name": "historical",
+      "status": "known_failures",
+      "returncode": 1,
+      "duration_seconds": 24.067,
+      "log": "historical.log"
+    },
+    {
+      "name": "ride_proxy",
+      "status": "pass",
+      "returncode": 0,
+      "duration_seconds": 1.495,
+      "log": "ride_proxy.log"
+    }
+  ],
+  "python_passed": 100,
+  "public_node_passed": 32,
+  "public_node_executed_todo": 1,
+  "offline_app_probes_passed": 7,
+  "historical_passed": 10,
+  "historical_cases": 12,
+  "known_generator_turn_counts": {
+    "reference": 15,
+    "noise": 25,
+    "sparse": 3
+  },
+  "ride_loader_proxy": {
+    "samples": 576,
+    "absent": 0,
+    "block_switches": 3,
+    "indexed_lookups": 0
+  },
+  "target_gaps": [
+    "native replay record delivery/timing/EOF observation",
+    "device frame/lock/heap budgets",
+    "live phone reroute",
+    "physical GNSS/heading and targeted motion acceptance"
+  ],
+  "firmware_installed": "CC700_V1.414-cc18",
+  "device_access_this_continuation": false,
+  "limits": "Host C and transcribed contracts are separate; no whole-device or instruction equivalence claim."
+}

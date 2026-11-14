@@ -1,0 +1,22 @@
+{
+  "observed_utc": "2026-11-14T05:23:34.615600+00:00",
+  "version": "CC700_V1.414-cc18",
+  "image_sha256": "ae3539c4a2b174b52f8dce866a93303d7aa2c12476d36cc94844adbb52410bd6",
+  "image_bytes": 3750336,
+  "programmed_partition": "ota_1",
+  "physical_offset": "0x440000",
+  "backup_bytes": 4325376,
+  "backup_sha256": "806223ee013fb56c110c847245cd3532c017c2c7ebb00ac4789212e77b3847fd",
+  "fresh_backup_matches_v16": true,
+  "readback_verified": true,
+  "rts_reset": true,
+  "app_loaded_at": "0x440000",
+  "boot_confirmed": true,
+  "boot_observation_seconds": 8,
+  "crash_observed": false,
+  "reset_count": 1,
+  "ota_0_written": false,
+  "ota_metadata_written": false,
+  "route_ride_storage_written": false,
+  "limits": "Successful verified programming and boot window; navigation, rendering duration, live reroute and motion acceptance were not observed."
+}

@@ -1,0 +1,44 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1000" height="820" viewBox="0 0 1000 820" role="img" aria-labelledby="title desc">
+<title id="title">Simulation test cleaned up after route crash</title><desc id="desc">Three simulation files removed. Storage verified and normal firmware boot confirmed.</desc>
+<rect x="0" y="0" width="1000" height="820" rx="0" fill="#ffffff" stroke="none"/>
+<text x="38" y="46" font-family="Arial" font-size="27" font-weight="bold" fill="#182e43" text-anchor="start">Simulation test cleaned up after route crash</text>
+<text x="38" y="77" font-family="Arial" font-size="18" font-weight="normal" fill="#50677b" text-anchor="start">Three simulation files removed. Storage verified and normal firmware boot confirmed.</text>
+<rect x="50" y="120" width="410" height="90" rx="9" fill="#fff4dd" stroke="#976112"/>
+<text x="255.0" y="162.0" font-family="Arial" font-size="21" font-weight="bold" fill="#182e43" text-anchor="middle">Synthetic route near 0°, 0°</text>
+<text x="255.0" y="188.0" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">Far from the real German route</text>
+<rect x="540" y="120" width="410" height="90" rx="9" fill="#fff4dd" stroke="#976112"/>
+<text x="745.0" y="162.0" font-family="Arial" font-size="21" font-weight="bold" fill="#182e43" text-anchor="middle">5,138 km label + restart</text>
+<text x="745.0" y="188.0" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">Distance mismatch fits; crash cause unknown</text>
+<line x1="255" y1="210" x2="255" y2="255" stroke="#26715c" stroke-width="2"/>
+<polygon points="255,255 250.6503446588877,245.99552897647322 259.3496553411123,245.99552897647322" fill="#26715c"/>
+<line x1="745" y1="210" x2="745" y2="255" stroke="#976112" stroke-width="2"/>
+<polygon points="745,255 740.6503446588877,245.99552897647322 749.3496553411123,245.99552897647322" fill="#976112"/>
+<rect x="50" y="255" width="410" height="105" rx="9" fill="#e6f3ed" stroke="#26715c"/>
+<text x="255.0" y="304.5" font-family="Arial" font-size="21" font-weight="bold" fill="#182e43" text-anchor="middle">Three simulation files removed</text>
+<text x="255.0" y="330.5" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">Config + synthetic FIT + generated route</text>
+<rect x="540" y="255" width="410" height="105" rx="9" fill="#e6f3ed" stroke="#26715c"/>
+<text x="745.0" y="304.5" font-family="Arial" font-size="21" font-weight="bold" fill="#182e43" text-anchor="middle">Only three storage blocks changed</text>
+<text x="745.0" y="330.5" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">22 other files preserved; no coredump read</text>
+<line x1="255" y1="360" x2="255" y2="405" stroke="#26715c" stroke-width="2"/>
+<polygon points="255,405 250.6503446588877,395.9955289764732 259.3496553411123,395.9955289764732" fill="#26715c"/>
+<line x1="745" y1="360" x2="745" y2="405" stroke="#976112" stroke-width="2"/>
+<polygon points="745,405 740.6503446588877,395.9955289764732 749.3496553411123,395.9955289764732" fill="#976112"/>
+<rect x="50" y="405" width="410" height="105" rx="9" fill="#e6f3ed" stroke="#26715c"/>
+<text x="255.0" y="454.5" font-family="Arial" font-size="21" font-weight="bold" fill="#182e43" text-anchor="middle">Full storage checksum verified</text>
+<text x="255.0" y="480.5" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">Exact cleanup candidate read back</text>
+<rect x="540" y="405" width="410" height="105" rx="9" fill="#e6f3ed" stroke="#26715c"/>
+<text x="745.0" y="454.5" font-family="Arial" font-size="21" font-weight="bold" fill="#182e43" text-anchor="middle">RTS reset booted normal app</text>
+<text x="745.0" y="480.5" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">Firmware partition unchanged</text>
+<line x1="255" y1="510" x2="255" y2="565" stroke="#976112" stroke-width="2"/>
+<polygon points="255,565 250.6503446588877,555.9955289764732 259.3496553411123,555.9955289764732" fill="#976112"/>
+<rect x="50" y="565" width="410" height="105" rx="9" fill="#fff4dd" stroke="#976112"/>
+<text x="255.0" y="614.5" font-family="Arial" font-size="21" font-weight="bold" fill="#182e43" text-anchor="middle">Resume simulation cautiously</text>
+<text x="255.0" y="640.5" font-family="Arial" font-size="17" font-weight="normal" fill="#50677b" text-anchor="middle">First rebuild route near actual ride area</text>
+<line x1="460" y1="617" x2="510" y2="617" stroke="#976112" stroke-width="2" stroke-dasharray="7 5"/>
+<line x1="510" y1="617" x2="510" y2="457" stroke="#976112" stroke-width="2" stroke-dasharray="7 5"/>
+<line x1="510" y1="457" x2="540" y2="457" stroke="#976112" stroke-width="2" stroke-dasharray="7 5"/>
+<polygon points="540,457 530.9955289764732,461.3496553411123 530.9955289764732,452.6503446588877" fill="#976112"/>
+<text x="540" y="590" font-family="Arial" font-size="21" font-weight="bold" fill="#182e43" text-anchor="start">FIT decoding was never reached.</text>
+<text x="540" y="628" font-family="Arial" font-size="19" font-weight="normal" fill="#50677b" text-anchor="start">Restart cause needs separate evidence.</text>
+<text x="50" y="747" font-family="Arial" font-size="19" font-weight="normal" fill="#50677b" text-anchor="start">Keep physical sensor evidence and runtime load measurements as separate acceptance work.</text>
+</svg>
