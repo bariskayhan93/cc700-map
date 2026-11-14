@@ -241,3 +241,32 @@ blank-field incident can be confirmed from those samples. Identify the affected
 field and correlate its timing before assigning it to the trip counter, remaining
 route distance, instruction distance or UI visibility state. No firmware display
 field was changed by this review.
+
+
+### Clarified remaining-distance placeholder
+
+The owner clarified that the value beside the finish flag sometimes showed only
+punctuation/dashes and “km.” A new static trace identifies a direct mechanism:
+
+- Getter `0x4204fd98` returns `0xffffffff` (unavailable) when committed off-route
+  is nonzero, when position-record byte +4 is zero, or in several inactive/
+  completed navigation states. Simulated-navigation states 6 and 7 bypass these
+  validity restrictions and return the retained remaining-distance word.
+- `GetDataValueDisplay` at `0x42060540` checks this sentinel. It selects the
+  localized **`--`** placeholder instead of formatting the kilometre number.
+- The inspected placeholder is identical in all twelve language-table slots.
+  A separate unit label can remain visible. The observed “. km” is compatible
+  with this path, but its exact glyph appearance was not captured in a screenshot.
+- Getter and formatter instruction bytes are **identical in stock and v20**.
+  This suppression was not introduced by the colour/width patch.
+
+For ordinary real navigation with an off-route flag, hiding the unavailable
+route-distance estimate is therefore explained by stock code. This does not
+prove the exact time of the owner's observation. It also makes the earlier
+on-line/off-route arbitration cases a plausible source of unnecessary hiding.
+
+The correct fix is not to treat `0xffffffff` as zero kilometres or to present an
+old retained value as current. Improve rejoin confidence first; consider an
+explicit “off route / distance unavailable” presentation separately. Keep trip
+kilometres independent from remaining route distance. The private instruction
+extracts and byte comparisons are saved with the ride evidence.

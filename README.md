@@ -28,6 +28,8 @@ The Tour D3 animations and comparison panels below are historical artwork from a
 older preview layout/palette; they are not exact current v20 screen captures.
 Use the [live v20 preview](https://bariskayhan93.github.io/cc700-map/) for the current style.
 
+See the [cycling turn/rejoin assessment](docs/cycling-turn-practices-2026-11-14.md) for primary-source comparisons and the proposed detour display states.
+
 ## Watch the ride preview
 
 ![Animated three-panel ride preview near the Hofgarten. OnelapFit junction hints, the Junction map, and Sunlight rotate together as the turn card and compass update.](docs/comparison/tour-d3-device-replay.webp)
