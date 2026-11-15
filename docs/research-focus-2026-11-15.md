@@ -108,3 +108,16 @@ On this flat route its limited benefit does not justify always covering 12.1%
 of the map. Keep it optional and unshipped. Native fonts, cross-section sample
 ownership, drawing timing and stable scale behaviour remain explicit gates.
 Recovery acquisition/real-detour validation remains the first research priority.
+
+## Regional-source obstacle resolved
+
+A checksum-verified regional PBF now supplies the original topology, tagged
+barriers and restrictions. The [real-detour study](regional-recovery-replay-2026-11-15.md)
+passes source reference integrity and exposes a different limitation: most
+sampled origins/rejoins are removed by conservative whole-way quarantine or the
+unvalidated access profile. Only one of 30 retrospective scenarios produced a
+candidate, and 25 span recording gaps. This is not useful recovery acceptance.
+Next refine barrier/turn transition handling and validate regional cycling
+access; preserve missing/conditional cases. Keep online visit association and
+1/2/3 km spatial evaluation separate from source coverage and retrospective
+destinations. The full graph's 15.7 MB JSON is not a target codec proposal.

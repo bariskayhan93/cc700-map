@@ -1,5 +1,9 @@
 # Original routing-source snapshot
 
+Update: the later [regional PBF acquisition and real-detour study](regional-recovery-replay-2026-11-15.md)
+resolved the source-download obstacle. The failed Overpass attempts below remain
+historical evidence; reference integrity now passes using the independent source.
+
 The next recovery increment is implemented in
 [tools/routing_snapshot.mjs](../tools/routing_snapshot.mjs). It is a separate PC
 pipeline; it never changes Pages, production OSM caches, route files or firmware.
