@@ -182,5 +182,9 @@ resource analysis and explicit remaining bench gates. Experimental turn changes
 are gated; startup measurements do not authorize increased map budgets.
 
 [Loop and turn fixes](docs/loop-and-turn-fixes-2026-11-15.md): cc23 departure
-preference and tested production noise/U-turn corrections. Broader historical
-noisy/sparse acceptance and native visible departure confirmation remain open.
+preference and tested production noise/U-turn corrections. The cc24 diagnostic
+was rejected after a map-view crash; ordinary cc23 was restored and verified.
+Broader historical noisy/sparse acceptance and native visible departure
+confirmation remain open. The [research focus](docs/research-focus-2026-11-15.md)
+connects the next coverage study to useful 3 km recovery rather than isolated
+radius expansion.

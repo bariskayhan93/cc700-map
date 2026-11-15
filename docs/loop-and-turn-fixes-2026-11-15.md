@@ -118,3 +118,34 @@ Mapped-page free space: 6,128 B. The follow-up target check stopped before devic
 access because USB was absent. cc24 is not installed at this checkpoint. The
 coordinated check must demonstrate repeated worker acceptance before ordinary
 cc24 installation; otherwise exact cc23 is restored.
+
+## cc24 target check rejected; cc23 restored
+
+On USB reconnection, the live full cc23 partition and OTA metadata matched their
+saved backups before installing the temporary cc24 diagnostic. Opening map view
+caused a restart, reported by the owner and captured as a backtrace. The runner
+rejected the candidate and restored the complete ordinary cc23 partition,
+verified its bytes and unchanged OTA metadata, and confirmed a normal boot with
+no captured crash. Ordinary cc24 was **not installed**; no diagnostic remains.
+
+The capture contains 50 valid checksummed records and zero rejected records.
+One GUI retry accepted point 0 / section 0 at 37 m, with 4,544 B remaining.
+Later stack samples reached 3,072 B, consistent with the compiled frame reduction,
+but repeated worker retry acceptance was not established. Some native results
+were off-route; post-restart records include navigation state 4. These are not
+equivalent to the earlier eligible cc23 worker failure.
+
+The crash trace traverses `cc_gate` → `cc_iter` → `draw_entry` → `cc_line` →
+the native canvas-line routine. This locates the active drawing path; it does
+**not** establish a bad pointer, stack overflow, watchdog cause, or causality
+from the candidate allocation. Host renderer tests stub native line rasterization,
+so their passing result cannot clear this crash. No speculative renderer patch
+or further target installation follows from this capture.
+
+Local evidence: `.local/navigation-phase/loop-diagnostic-24/session-02/`:
+`receipt.json`, `capture.log`, `decoded-after-rollback.json`, and command logs.
+Capture SHA256:
+`d17295dcd81a799e4fe704d0717edcda02b3a229c3873642e0bf945abe897014`.
+Restored full-partition SHA256:
+`8f3cebfd23232961e6711af38f2e031ff246e106f24686cb300264f3ea5ced6c`.
+The existing route BIN was not regenerated or replaced.

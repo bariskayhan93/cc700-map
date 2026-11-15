@@ -1,0 +1,28 @@
+{
+  "candidate_version": "CC700_V1.414-cc24",
+  "outcome": "rejected-and-rolled-back",
+  "candidate_sha256": "61db139e745841e36c58f64a121c02b4d394beae29cd2c68471cf6f8bccb5aa9",
+  "installed_version": "CC700_V1.414-cc23",
+  "full_partition_sha256": "8f3cebfd23232961e6711af38f2e031ff246e106f24686cb300264f3ea5ced6c",
+  "full_partition_verified": true,
+  "ota_metadata_sha256": "a1ed149677f974e7b1fd3b926c817a1db72ce01ca26b31929937d4ab01f5be22",
+  "ota_metadata_verified_unchanged": true,
+  "normal_boot_after_restoration": {
+    "boot_confirmed": true,
+    "crash_observed": false,
+    "bytes": 1085,
+    "reset_count": 0,
+    "explicit_reset": true,
+    "samples": 0,
+    "limits": "raw sample markers are not checksummed/identified measurements; analyze separately"
+  },
+  "diagnostic_removed": true,
+  "ordinary_cc24_installed": false,
+  "candidate_capture_crash_observed": true,
+  "checksummed_records": 50,
+  "rejected_records": 0,
+  "repeated_worker_acceptance": "not-established",
+  "route_file_replaced": false,
+  "tools_wrote_storage": false,
+  "limits": "Map-view crash captured during temporary diagnostic; causal attribution unresolved. Normal boot after rollback does not establish map-view acceptance on cc23."
+}

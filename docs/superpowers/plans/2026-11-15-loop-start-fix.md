@@ -68,3 +68,11 @@ it avoids weakening the guard or reserving a larger native task stack.
 - [ ] Run local checks; capture GUI and repeated worker acceptance on the same
   existing route, then remove diagnostics and verify ordinary cc24 installation.
 - [ ] Record stationary acceptance separately from moving/arrival/resume gaps.
+
+Target attempt completed but **acceptance failed**: the cc24 diagnostic captured
+a map-view crash. Ordinary cc24 was withheld; exact cc23 and unchanged OTA
+metadata were verified after restoration. Fifty checksummed records had no
+checksum failures, but repeated worker retry acceptance was not established.
+Do not mark the acceptance tasks above complete. Preserve this candidate and
+analyse the trace offline before another target test; see the latest fix report
+and [research focus](../../research-focus-2026-11-15.md).
