@@ -121,3 +121,16 @@ Next refine barrier/turn transition handling and validate regional cycling
 access; preserve missing/conditional cases. Keep online visit association and
 1/2/3 km spatial evaluation separate from source coverage and retrospective
 destinations. The full graph's 15.7 MB JSON is not a target codec proposal.
+
+## Transition handling measured: access and association now dominate
+
+The [transition-aware study](recovery-transitions-2026-11-15.md) implements local
+barrier cuts and incoming-edge via-node restrictions, preserving more topology
+without widening cycling defaults. Replay remains one candidate in 30 scenarios.
+Every remaining graph-absent association touches an access-excluded road class;
+some nearest-node candidates even lie on steps/footways. Next jointly validate
+segment/route association and regional cycling access rather than disabling
+filters or spending another firmware cycle. A real 44-byte proposed leg packet
+is measured, but association indices, coverage lookup and target ownership remain
+absent. The representation decision and 2–3 km sampling remain open. No ordinary
+firmware, generator, route or deployment changed.

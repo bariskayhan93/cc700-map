@@ -1,0 +1,158 @@
+{
+  "scope": "PC-only retrospective structural comparison; no legal-cycling/device acceptance",
+  "inputSha256": {
+    "snapshot": "aa99bf500275c99ec801089fddf839507645fedcc49dd90c64b4b37ab046038a",
+    "track": "8e7fbf3ac22e43f2bd1123781dc568c8d205f9676b22c6bff223661b855062df",
+    "timeline": "73b0c7708328f2ab1361b48eae71fa5f3a6962490a257ef681edc1a0856c9328"
+  },
+  "sourceIntegrity": "pass",
+  "sampledTrials": 30,
+  "trialsWithRecordingGap": 25,
+  "conservative": {
+    "results": {
+      "unknown-origin": 8,
+      "candidate": 1,
+      "origin-node-unassociated": 1,
+      "no-forward-target": 15,
+      "observed-forward-rejoin-unavailable": 5
+    },
+    "graph": {
+      "nodes": 74019,
+      "directedEdges": 137531,
+      "policyExcludedWays": 19921,
+      "issues": 0,
+      "jsonBytes": 15704430
+    },
+    "work": {
+      "unit": "settled nodes",
+      "maxSettledNodes": 6,
+      "maxRelaxedEdges": 9,
+      "maxQueueEntries": 2
+    },
+    "proposedLegPayload": {
+      "format": "CCRL study v1: 20-byte header + 8-byte E7 coordinate pairs",
+      "bytes": 44,
+      "points": 3,
+      "maxPacketBytes": 44,
+      "excludes": "origin/route association index, coverage lookup, transport, decoded target ownership, renderer; not native format"
+    }
+  },
+  "transitions": {
+    "results": {
+      "unknown-origin": 8,
+      "candidate": 1,
+      "origin-node-unassociated": 1,
+      "no-forward-target": 15,
+      "observed-forward-rejoin-unavailable": 5
+    },
+    "graph": {
+      "nodes": 86502,
+      "directedEdges": 162026,
+      "policyExcludedWays": 24226,
+      "issues": 0,
+      "jsonBytes": 18949398
+    },
+    "work": {
+      "unit": "settled incoming-edge states",
+      "maxSettledNodes": 13,
+      "maxRelaxedEdges": 26,
+      "maxQueueEntries": 4
+    },
+    "proposedLegPayload": {
+      "format": "CCRL study v1: 20-byte header + 8-byte E7 coordinate pairs",
+      "bytes": 44,
+      "points": 3,
+      "maxPacketBytes": 44,
+      "excludes": "origin/route association index, coverage lookup, transport, decoded target ownership, renderer; not native format"
+    },
+    "candidateLegsJsonBytes": 733,
+    "sourceExclusions": {
+      "highway-needs-explicit-bicycle-access": 16034,
+      "bicycle-access-not-admitted": 2565,
+      "unsupported-restriction-member": 72,
+      "unsupported-conditional-or-directional-access": 206,
+      "access-not-admitted": 5313,
+      "reference-only-way": 13,
+      "unsupported-highway": 22,
+      "unknown-direction": 1
+    },
+    "excludedUniqueAssociationsByCause": {
+      "originAssociation:highway-needs-explicit-bicycle-access": 8,
+      "targetAssociation:highway-needs-explicit-bicycle-access": 2
+    },
+    "restrictionHandling": {
+      "via-node-transition": 733,
+      "not-applicable-to-bicycle": 36,
+      "unsupported-quarantined": 30
+    },
+    "blockedNodeReasons": {
+      "unsupported-restriction-via": 6,
+      "barrier-access-unverified": 4688,
+      "node-access-not-admitted": 1022,
+      "node-bicycle-access-not-admitted": 171,
+      "unsupported-node-access": 13
+    }
+  },
+  "rings": [
+    {
+      "radiusMeters": 1000,
+      "sampledTrials": 30,
+      "results": {
+        "unknown-origin": 8,
+        "candidate": 1,
+        "origin-node-unassociated": 1,
+        "no-forward-target": 15,
+        "observed-forward-rejoin-unavailable": 5
+      }
+    },
+    {
+      "radiusMeters": 2000,
+      "sampledTrials": 30,
+      "results": {
+        "unknown-origin": 8,
+        "candidate": 1,
+        "origin-node-unassociated": 1,
+        "no-forward-target": 15,
+        "observed-forward-rejoin-unavailable": 5
+      }
+    },
+    {
+      "radiusMeters": 3000,
+      "sampledTrials": 30,
+      "results": {
+        "unknown-origin": 8,
+        "candidate": 1,
+        "origin-node-unassociated": 1,
+        "no-forward-target": 15,
+        "observed-forward-rejoin-unavailable": 5
+      }
+    }
+  ],
+  "validatedCyclingPaths": 0,
+  "deviceAcceptance": "unvalidated",
+  "gaps": [
+    "GPS-to-road connectors and target-to-route connectors unvalidated",
+    "retrospective target uses future ride evidence",
+    "unsupported restrictions quarantined; unknown barriers locally cut; physical passability unvalidated",
+    "regional cycling access profile unvalidated",
+    "only sampled actual detours; no continuous 1/2/3 km coverage proof",
+    "target memory, codec, draw cost and timing unmeasured"
+  ],
+  "legPacketSha256": "66252e6a897c91d7058402d9941fae0b6c792860901188d86e94738c1fe13be1",
+  "sourceCodeSha256": {
+    "tools/recovery_transitions.mjs": "b5340afd88964b238a752ab532460cdf1d887c827ff25a42da0b812632c8cb61",
+    "tools/recovery_study.mjs": "ab49b74a3f8e6cf3353ec13a44fcf7e6d2cf6bf46839c2dcbc7309ba40e02723",
+    "tools/recovery_ride_study.mjs": "1663ffd037a7c03f4e6d249b1525e0c8133f08bf64eea7c5240336795b8d7f1f",
+    "tools/routing_snapshot.mjs": "f39ec392b3e4986155146cfff448b6d0df045703a72f42e8f60eadc279db94c6",
+    "tools/recovery_leg_packet.mjs": "ad09b0b9c5df9482c7ec8905d433f4f212dde5f9d183f4d8bba8b579fe297c5d"
+  },
+  "verification": {
+    "nodeTests": 51,
+    "failures": 0,
+    "realReplayAfterReview": "identical aggregate summary",
+    "reviewImportantFixed": 1,
+    "deferredMinors": [
+      "Local blocked-node reasons are retained in private graph audit, but not included in missing-association cause aggregation."
+    ]
+  }
+}

@@ -69,7 +69,7 @@ export function captureRoutingSnapshot(response,metadata){
   nodes,ways,restrictions,issues:all,navigationSource:{version:1,complete,ways:selected,issues:all.map(i=>({...i}))},
   coverage:'requested region and referenced members only; not map completeness or cycling validation'};
 }
-export function snapshotCandidateSource(snapshot){
+export function validateRoutingSnapshot(snapshot){
  if(snapshot?.kind!=='routing-source-snapshot'||snapshot.version!==1||!Array.isArray(snapshot.nodes)||!Array.isArray(snapshot.ways)||!Array.isArray(snapshot.restrictions)||!Array.isArray(snapshot.navigationSource?.ways)||!Array.isArray(snapshot.issues))throw Error('Invalid routing snapshot');
  if(!['pass','incomplete'].includes(snapshot.integrity))throw Error('Invalid routing snapshot integrity');
  if(snapshot.integrity==='pass'){
@@ -79,6 +79,9 @@ export function snapshotCandidateSource(snapshot){
   const checked=captureRoutingSnapshot({elements,osm3s:{timestamp_osm_base:snapshot.provenance?.osmBaseTimestamp}},snapshot.provenance);
   if(checked.integrity!=='pass'||JSON.stringify(checked.navigationSource)!==JSON.stringify(snapshot.navigationSource))throw Error('Snapshot consistency mismatch');
  }
+}
+export function snapshotCandidateSource(snapshot){
+ validateRoutingSnapshot(snapshot);
  const blocked=new Set(snapshot.nodes.filter(n=>n.tags?.barrier&&n.tags.barrier!=='no').map(n=>n.id)),blockedWays=new Set(),excludedRestrictions=[];
  for(const r of snapshot.restrictions){
   // An unconditional bicycle exemption alone is handled. Conditional tags remain

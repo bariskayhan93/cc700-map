@@ -45,13 +45,27 @@ export function buildCandidateGraph(source){
  return {nodes:[...nodes.values()].sort((a,b)=>a.id-b.id),edges,excluded,issues:canonical([...s.issues]),
   sourceComplete:s.complete,cyclingValidity:'unvalidated'};
 }
+// Incoming directed edge is essential for same-way U-turns and alternative arrivals.
+export function transitionAllowed(rules,incoming,outgoing){
+ if(!incoming)return true;
+ const applies=rules.filter(r=>r.fromWay===incoming.way&&r.via===outgoing.from);
+ const reversal=outgoing.to===incoming.from&&outgoing.way===incoming.way;
+ if(reversal&&!applies.some(r=>r.kind==='only_u_turn'&&r.toWay===outgoing.way))return false;
+ for(const r of applies){
+  const matches=r.toWay===outgoing.way&&(r.fromWay!==r.toWay||reversal);
+  if(r.kind.startsWith('no_')&&matches)return false;
+  if(r.kind.startsWith('only_')&&!matches)return false;
+ }
+ return true;
+}
+
 // Min heap: host lookup work is reported separately from unknown target timing.
 class Queue{
  data=[];
  push(item){const a=this.data;a.push(item);let i=a.length-1;while(i){const p=(i-1)>>1;if(compare(a[p],item)<=0)break;a[i]=a[p];i=p;}a[i]=item;}
  pop(){const a=this.data,out=a[0],last=a.pop();if(a.length){let i=0;while(i*2+1<a.length){let c=i*2+1;if(c+1<a.length&&compare(a[c+1],a[c])<0)c++;if(compare(last,a[c])<=0)break;a[i]=a[c];i=c;}a[i]=last;}return out;}
 }
-const compare=(a,b)=>a.distance-b.distance||a.node-b.node;
+const compare=(a,b)=>a.distance-b.distance||a.node-b.node||(a.key??'').localeCompare(b.key??'');
 function validateRequest(r){
  if(!idOK(r.origin))throw Error('Invalid origin');
  if(!Number.isSafeInteger(r.afterVisit)||r.afterVisit<0||!Number.isSafeInteger(r.throughVisit)||r.throughVisit<r.afterVisit)throw Error('Invalid visit window');
@@ -71,23 +85,27 @@ export function findRecovery(graph,request){
   distanceMeters:null,target:null,nodes:[],ways:[],geometry:[],settledNodes,relaxedEdges,queuePeak});
  if(!nodes.has(request.origin))return unavailable('unknown-origin');
  if(!targets.size)return unavailable('no-forward-target');
- const queue=new Queue(),dist=new Map([[request.origin,0]]),parent=new Map(),settled=new Set();
- queue.push({node:request.origin,distance:0});
+ const turnAware=Array.isArray(graph.turnRules),rulesByNode=new Map();
+ if(turnAware)for(const r of graph.turnRules){if(!rulesByNode.has(r.via))rulesByNode.set(r.via,[]);rulesByNode.get(r.via).push(r);}
+ if(turnAware&&rulesByNode.has(request.origin))return unavailable('origin-incoming-edge-required');
+ const start=String(request.origin),queue=new Queue(),dist=new Map([[start,0]]),parent=new Map(),settled=new Set();
+ queue.push({node:request.origin,key:start,distance:0,incoming:null});
  while(queue.data.length){
-  const q=queue.pop();if(settled.has(q.node)||q.distance!==dist.get(q.node))continue;
+  const q=queue.pop();if(settled.has(q.key)||q.distance!==dist.get(q.key))continue;
   if(settledNodes>=maxSettled)return unavailable('work-limit');
-  settled.add(q.node);settledNodes++;
+  settled.add(q.key);settledNodes++;
   if(targets.has(q.node)){
-   const ids=[q.node],ways=[];let at=q.node;
-   while(at!==request.origin){if(ids.length>=maxPathNodes)return unavailable('path-limit');const e=parent.get(at);ways.push(e.way);at=e.from;ids.push(at);}
+   const ids=[q.node],ways=[];let at=q.key;
+   while(at!==start){if(ids.length>=maxPathNodes)return unavailable('path-limit');const p=parent.get(at);ways.push(p.edge.way);ids.push(p.edge.from);at=p.key;}
    ids.reverse();ways.reverse();
    return {origin:request.origin,status:'candidate',reason:null,cyclingValidity:'unvalidated',distanceMeters:q.distance,
     target:{...targets.get(q.node)},nodes:ids,ways,geometry:ids.map(n=>[...nodes.get(n).point]),settledNodes,relaxedEdges,queuePeak};
   }
   for(const e of adj.get(q.node)??[]){
    if(relaxedEdges>=maxRelaxed)return unavailable('edge-limit');
-   relaxedEdges++;const d=q.distance+e.meters;if(d>maxDistanceMeters){distanceClipped=true;continue;}
-   if(d<(dist.get(e.to)??Infinity)){if(queue.data.length>=maxQueue)return unavailable('queue-limit');dist.set(e.to,d);parent.set(e.to,e);queue.push({node:e.to,distance:d});queuePeak=Math.max(queuePeak,queue.data.length);}
+   relaxedEdges++;if(turnAware&&!transitionAllowed(rulesByNode.get(q.node)??[],q.incoming,e))continue;
+   const key=turnAware?`${e.to}:${e.from}:${e.way}`:String(e.to),d=q.distance+e.meters;if(d>maxDistanceMeters){distanceClipped=true;continue;}
+   if(d<(dist.get(key)??Infinity)){if(queue.data.length>=maxQueue)return unavailable('queue-limit');dist.set(key,d);parent.set(key,{key:q.key,edge:e});queue.push({node:e.to,key,distance:d,incoming:e});queuePeak=Math.max(queuePeak,queue.data.length);}
   }
  }
  return unavailable(distanceClipped?'distance-limit':'unreachable');

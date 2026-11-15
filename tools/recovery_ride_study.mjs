@@ -7,6 +7,8 @@ import { createHash } from 'node:crypto';
 import { hav } from '../js/geo.js';
 import { snapshotCandidateSource } from './routing_snapshot.mjs';
 import { buildCandidateGraph, findRecovery } from './recovery_study.mjs';
+import { buildTransitionGraph } from './recovery_transitions.mjs';
+import { encodeStudyLeg } from './recovery_leg_packet.mjs';
 
 export function detourEpisodes(rows) {
   let entry = null, active = null, stable = [];
@@ -73,14 +75,16 @@ export function retrospectiveCases(rows) {
   return result;
 }
 
-export function studyRide(snapshot, track, timeline) {
+export function studyRide(snapshot, track, timeline, {mode='conservative'}={}) {
+  if(!['conservative','transitions'].includes(mode))throw Error('Invalid recovery study mode');
   if (!Array.isArray(track) || !Array.isArray(timeline) || track.length !== timeline.length || track.length > 100000) throw Error('Track/timeline mismatch');
   const fixes = new Map();
   track.forEach((p, i) => {
     if (!Array.isArray(p) || p.length !== 3 || !p.every(Number.isFinite) || p[0] !== timeline[i].timestamp || Math.abs(p[1]) > 90 || Math.abs(p[2]) > 180) throw Error('Track/timeline mismatch');
     fixes.set(p[0], p.slice(1));
   });
-  const adapted = snapshotCandidateSource(snapshot), graph = buildCandidateGraph(adapted.source);
+  const adapted = snapshotCandidateSource(snapshot), graph = mode==='transitions'?buildTransitionGraph(snapshot):buildCandidateGraph(adapted.source);
+  if(mode==='transitions'){adapted.evidence=graph.transitionEvidence;adapted.excludedWays=graph.excluded;}
   // Associate before policy quarantine. Otherwise exclusion could silently snap
   // a rider on a blocked road onto a different nearby admitted road.
   const primaryIds = new Set(snapshot.navigationSource.ways.flatMap(w => w.nodes));
@@ -120,20 +124,24 @@ export function studyRide(snapshot, track, timeline) {
   for (const a of missingNodes.values()) for (const reason of a.reasons) {
     const key = a.role + ':' + reason; associationExclusions[key] = (associationExclusions[key] ?? 0) + 1;
   }
-  const summary = { scope: 'retrospective observed-rejoin structural study', sourceIntegrity: snapshot.integrity,
+  const summary = { mode, scope: 'retrospective observed-rejoin structural study', sourceIntegrity: snapshot.integrity,
     sourceEvidence: adapted.evidence, sourceExclusions: adapted.excludedWays.reduce((r, w) => { r[w.reason] = (r[w.reason] ?? 0) + 1; return r; }, {}),
     graph: { nodes: graph.nodes.length, directedEdges: graph.edges.length, policyExcludedWays: graph.excluded.length, issues: graph.issues.length,
       jsonBytes: Buffer.byteLength(JSON.stringify(graph)) },
     episodes: episodes.map((e, i) => ({ index: i, status: e.status, offRouteSamples: e.samples.length,
       maxOffRouteMeters: Math.max(...e.samples.map(s => s.off_original_route_m)) })),
     sampledTrials: trials.length, results: counts(trials), candidateLegsJsonBytes: Buffer.byteLength(JSON.stringify(candidates)),
+    proposedLegPayload: {format:'CCRL study v1: 20-byte header + 8-byte E7 coordinate pairs',
+      bytes:candidates.reduce((sum,t)=>sum+encodeStudyLeg(t).length,0),points:candidates.reduce((sum,t)=>sum+t.geometry.length,0),
+      maxPacketBytes:Math.max(0,...candidates.map(t=>encodeStudyLeg(t).length)),
+      excludes:'origin/route association index, coverage lookup, transport, decoded target ownership, renderer; not native format'},
     sampling: 'off-route >=50 m, one fix per 30 seconds plus maximum deviation; retrospective stable forward rejoin within 30 minutes',
     trialsWithRecordingGap: trials.filter(t => t.recordingGap).length,
     excludedUniqueAssociationsByCause: associationExclusions,
     rings: [1000, 2000, 3000].map(radiusMeters => { const rows = trials.filter(t => t.offRouteMeters <= radiusMeters); return { radiusMeters, sampledTrials: rows.length, results: counts(rows) }; }),
-    work: { maxSettledNodes: Math.max(0, ...trials.map(t => t.settledNodes ?? 0)), maxRelaxedEdges: Math.max(0, ...trials.map(t => t.relaxedEdges ?? 0)), maxQueueEntries: Math.max(0, ...trials.map(t => t.queuePeak ?? 0)) },
+    work: { unit: mode==='transitions'?'settled incoming-edge states':'settled nodes', maxSettledNodes: Math.max(0, ...trials.map(t => t.settledNodes ?? 0)), maxRelaxedEdges: Math.max(0, ...trials.map(t => t.relaxedEdges ?? 0)), maxQueueEntries: Math.max(0, ...trials.map(t => t.queuePeak ?? 0)) },
     gaps: ['GPS-to-road connectors and target-to-route connectors unvalidated', 'retrospective target uses future ride evidence',
-      'conservative whole-way restriction/barrier quarantine can remove rideable links', 'regional cycling access profile unvalidated',
+      mode==='transitions'?'unsupported restrictions quarantined; unknown barriers locally cut; physical passability unvalidated':'conservative whole-way restriction/barrier quarantine can remove rideable links', 'regional cycling access profile unvalidated',
       'only sampled actual detours; no continuous 1/2/3 km coverage proof', 'target memory, codec, draw cost and timing unmeasured'],
     validatedCyclingPaths: 0, deviceAcceptance: 'unvalidated' };
   return { summary, trials, graph };
@@ -146,10 +154,11 @@ if (process.argv[1] && path.resolve(process.argv[1]) === fileURLToPath(import.me
   for (const key of ['snapshot', 'track', 'timeline']) {
     const raw = fs.readFileSync(config[key]); hashes[key] = createHash('sha256').update(raw).digest('hex'); inputs[key] = JSON.parse(raw);
   }
-  const result = studyRide(inputs.snapshot, inputs.track, inputs.timeline);
+  const result = studyRide(inputs.snapshot, inputs.track, inputs.timeline,{mode:config.mode??'conservative'});
   fs.mkdirSync(a[3]);
   fs.writeFileSync(path.join(a[3], 'summary.json'), JSON.stringify({ ...result.summary, inputSha256: hashes }, null, 2) + '\n');
   fs.writeFileSync(path.join(a[3], 'trials.json'), JSON.stringify(result.trials) + '\n');
   fs.writeFileSync(path.join(a[3], 'graph.json'), JSON.stringify(result.graph) + '\n');
+  fs.writeFileSync(path.join(a[3], 'study-legs.bin'),Buffer.concat(result.trials.filter(t=>t.status==='candidate').map(encodeStudyLeg)));
   console.log(JSON.stringify(result.summary, null, 2));
 }

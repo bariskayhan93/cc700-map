@@ -49,3 +49,21 @@ test('a PBF receipt binds the exact original selection bbox', () => {
     sourceTimestamp:null,bbox:[51,7,51.01,7.01],responseBytes:raw.length,responseSha256:createHash('sha256').update(raw).digest('hex')};
   assert.throws(()=>capturePbfSelection(raw,{bbox:[51,7,51.02,7.02]},receipt));
 });
+
+test('integrated replay keeps conservative default and admits only the unaffected barrier segment in transition mode', async()=>{
+ const {studyRide}=await import('./recovery_ride_study.mjs');
+ const {captureRoutingSnapshot}=await import('./routing_snapshot.mjs');
+ const points=[[51,7],[51,7.001],[51,7.002],[51,7.003]];
+ const s=captureRoutingSnapshot({osm3s:{timestamp_osm_base:'2026-11-14T00:00:00Z'},elements:[
+  ...points.map(([lat,lon],i)=>({type:'node',id:i+1,lat,lon,tags:i===2?{barrier:'gate'}:{}})),
+  {type:'way',id:10,nodes:[1,2,3,4],tags:{highway:'residential'}}]},
+  {bbox:[50.99,6.99,51.01,7.01],querySha256:'a'.repeat(64)});
+ const rows=[row(0,0,100),row(1,80,100),...[2,3,4,5,6].map(t=>row(t,0,200))];
+ const track=rows.map(r=>[r.timestamp,...points[r.timestamp===1?0:1]]);
+ assert.equal(studyRide(s,track,rows).summary.results['unknown-origin'],1);
+ const r=studyRide(s,track,rows,{mode:'transitions'});
+ assert.equal(r.summary.results.candidate,1);assert.deepEqual(r.trials[0].nodes,[1,2]);
+ assert.equal(r.summary.validatedCyclingPaths,0);assert.equal(r.summary.mode,'transitions');
+ assert.equal(r.summary.work.unit,'settled incoming-edge states');
+ assert.throws(()=>studyRide(s,track,rows,{mode:'arbitrary'}),/mode/);
+});
