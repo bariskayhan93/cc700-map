@@ -4,7 +4,7 @@ import { fu, fs, fb, f32, u32le, sc, SC, Bytes } from './pb.js';
 import { hav, brg, adiff, frame, rdp, geohash } from './geo.js';
 import { buildMapSection, buildStyledSection } from './mapsec.js';
 import { junctionCandidates } from './junction_candidates.js';
-import { legacyDecisionPoints } from './navigation_legacy.js';
+import { legacyDecisionPoints, retracedReversals, roundedReversals } from './navigation_legacy.js';
 export const lo_hi = a => { let lo = Infinity, hi = -Infinity; for (const v of a) { if (v < lo) lo = v; if (v > hi) hi = v; } return [lo, hi]; };   // no spread: long routes exceed the argument limit on phones
 // header template from a server route file, route-specific values cleared (all set in buildRoute)
 const HEADER = Uint8Array.from(atob('AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAANAAAAAAAAAAAAAAD//wAAPv///wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAKVaVao='), c => c.charCodeAt(0));
@@ -203,9 +203,13 @@ export function buildRoute(gpx, allLines, opt) {
     for (let k = 1; k <= n; k++) { const f = k / (n + 1); P.push([r[0] + (q[0] - r[0]) * f, r[1] + (q[1] - r[1]) * f, r[2] == null || q[2] == null ? null : r[2] + (q[2] - r[2]) * f]); }
     P.push(q); }
   let D = [0]; for (let i = 1; i < P.length; i++) D.push(D[i - 1] + hav(P[i - 1], P[i]));
+  // Explicit retracing is stronger evidence than a smoothed heading window,
+  // which spans both ends of a short dead-end excursion and can hide its apex.
+  const reversals=retracedReversals(P,D);
   const grid = roadGrid(lines, F);
+  reversals.push(...roundedReversals(P0,P,D,lines,F,grid));
   // decision points from the road network; each gets a track point of its own, so a section can end exactly there
-  const NET = opt.classic || !lines.length ? null : (navigationPolicy==='legacy'?legacyDecisionPoints:decisionPoints)(P, D, lines, F, grid), DP = NET ? NET.points : [], dpAngle = new Map();
+  const NET = opt.classic || !lines.length ? null : (navigationPolicy==='legacy'?legacyDecisionPoints:decisionPoints)(P, D, lines, F, grid, reversals), DP = NET ? NET.points : [], dpAngle = new Map();
   for (const q of DP) { let i = D.findIndex(x => x >= q.d); if (i <= 0) continue;
     if (D[i] - q.d > 1 && q.d - D[i - 1] > 1) { const f = (q.d - D[i - 1]) / (D[i] - D[i - 1]), a = P[i - 1], b = P[i];
       P.splice(i, 0, [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, a[2] == null || b[2] == null ? null : a[2] + (b[2] - a[2]) * f]); D.splice(i, 0, q.d); }
@@ -228,19 +232,21 @@ export function buildRoute(gpx, allLines, opt) {
     for (let k = i + 1; k < P.length && D[k] - D[i] < sep; k++) if (Math.abs(X[k]) >= Math.abs(X[i])) return false; return true; };
   const junctionNear = i => { for (let k = i; k >= 0 && D[i] - D[k] <= 20; k--) if (junctionAt(k, P, D, lines, F, grid)) return true;
     for (let k = i + 1; k < P.length && D[k] - D[i] <= 20; k++) if (junctionAt(k, P, D, lines, F, grid)) return true; return false; };
-  const cut = new Set(), turnAngle = {};
+  const cut = new Set(), turnAngle = {}, retraced = new Set();
   for (let i = 1; i < P.length - 1; i++) {
     const a = Math.abs(A[i]);
     if (a >= T.lo && peak(A, i, T.sep) && (a >= T.hi || junctionNear(i))) { cut.add(i); turnAngle[i] = A[i]; }
     else if (Math.abs(J[i]) >= T.jog && peak(J, i, T.jogSep) && ![...cut].some(c => Math.abs(D[c] - D[i]) < T.jogSep)) { cut.add(i); turnAngle[i] = J[i]; }   // jogs, close double turns
     if (nm[i] !== nm[i - 1] && nm[i] && nm[i - 1]) cut.add(i);
   }
+  for(const d of reversals){const i=D.findIndex(x=>Math.abs(x-d)<1);if(i>0){cut.add(i);retraced.add(i);turnAngle[i]=180;}}
   // decision points win over shape turns and name changes close to them (one junction = one section end)
   // (angle: the larger of the two when they agree, the 15 m chord of the junction test cuts corners)
   for (const [i, a] of dpAngle) { let ang = a;
-    for (const c of [...cut]) if (Math.abs(D[c] - D[i]) < (turnAngle[c] !== undefined ? 12 : 15)) { if (turnAngle[c] !== undefined && turnAngle[c] * a > 0 && Math.abs(turnAngle[c]) > Math.abs(ang)) ang = turnAngle[c]; cut.delete(c); delete turnAngle[c]; }
+    for (const c of [...cut]) if (Math.abs(D[c] - D[i]) < (turnAngle[c] !== undefined ? 12 : 15) && !(retraced.has(c) && Math.abs(a) < 160)) { if (turnAngle[c] !== undefined && turnAngle[c] * a > 0 && Math.abs(turnAngle[c]) > Math.abs(ang)) ang = turnAngle[c]; cut.delete(c); delete turnAngle[c]; }
     cut.add(i); turnAngle[i] = ang; }
   if(navigationPolicy==='legacy') {
+    if(NET)for(const c of [...cut])if(turnAngle[c]!==undefined&&Math.abs(turnAngle[c])>=160&&NET.straightPassage(D[c])){cut.delete(c);delete turnAngle[c];}
     if (NET) for (const c of [...cut]) if (turnAngle[c] !== undefined && !dpAngle.has(c) && NET.matched(D[c]) && Math.abs(turnAngle[c]) < 160) {
       let keep=false;for(let e=-10;e<=10&&!keep;e+=2)keep=NET.judge(D[c]+e)!==null;
       if(!keep){delete turnAngle[c];cut.delete(c);if(nm[c]!==nm[c-1]&&nm[c]&&nm[c-1])cut.add(c);}

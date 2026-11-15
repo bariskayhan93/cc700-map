@@ -25,3 +25,10 @@ test('a shallow endpoint fork has one source location and no invented route bend
  const xy=[[0,0],[0,100],[50,200]],r=candidates(xy,[line([[0,0],[0,250]]),line([[0,100],[50,200]])]);
  assert.equal(r.length,1);assert.deepEqual(r[0].xy,[0,100]);
 });
+test('floating-point negative zero does not split one connected source junction',()=>{
+ // Intersection arithmetic lands infinitesimally west of the shared vertex.
+ // All three roads meet at (0,100); there is exactly one visit to that node.
+ const r=candidates([[0,0],[0,200]],[line([[-1/3,100],[3/7,100]]),line([[0,0],[0,100],[0,200]]),line([[0,100],[100,200]])]);
+ assert.equal(r.length,1);
+ assert.deepEqual([...r[0].ways].sort(),[0,1,2]);
+});

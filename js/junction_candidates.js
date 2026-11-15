@@ -20,7 +20,8 @@ export function junctionCandidates(P,D,lines,F) {
   const grade=i=>(lines[i].fl||8)&31;
   const end=(way,p)=>[local[way][0],local[way].at(-1)].some(q=>Math.hypot(p[0]-q[0],p[1]-q[1])<.0001);
   const add=(p,ways)=>{
-    const k=key(p[0].toFixed(4),p[1].toFixed(4));
+    // Stringifying rounded integers canonicalizes floating-point negative zero.
+    const k=key(Math.round(p[0]*1e4),Math.round(p[1]*1e4));
     const v=locations.get(k)||{xy:p,ways:new Set()};for(const way of ways)v.ways.add(way);locations.set(k,v);
   };
   local.forEach((pts,way)=>{

@@ -180,3 +180,7 @@ the deployed generator default.
 stale-guidance fix installed as [cc22](docs/cc22-release-2026-11-15.md), guarded stationary collectors, source-junction study,
 resource analysis and explicit remaining bench gates. Experimental turn changes
 are gated; startup measurements do not authorize increased map budgets.
+
+[Loop and turn fixes](docs/loop-and-turn-fixes-2026-11-15.md): cc23 departure
+preference and tested production noise/U-turn corrections. Broader historical
+noisy/sparse acceptance and native visible departure confirmation remain open.

@@ -1,0 +1,14 @@
+{
+  "version": "CC700_V1.414-cc23",
+  "phase": "installed",
+  "candidate_sha256": "6146fb25de504e4aa9684fe519a7ce46a6ce332ae109c698259dc8f00d836b43",
+  "readback_verified": true,
+  "ota_slot": "ota_1",
+  "ota_metadata_verified_unchanged": true,
+  "normal_boot_confirmed": true,
+  "crash_observed": false,
+  "native_departure_visible_acceptance": "pending",
+  "recorded_return_resume_acceptance": "pending",
+  "tools_wrote_storage": false,
+  "simulation_code_included": false
+}
