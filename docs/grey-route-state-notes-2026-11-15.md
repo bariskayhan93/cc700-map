@@ -251,9 +251,12 @@ alongside 20 iterator records, with zero parser rejections.
 Repeated fields agreed in every record; observations remain non-atomic. Scalar
 read brackets were 21–25 microseconds. These are not complete frame timings.
 Iterator work remained 491 entries, consistent with the previous final-block
-fingerprint. Yesterday's acquired log includes `AllPointNum:721` and a
-`PIndex:720` event, supporting final-point identification for this route history;
-the present capture does not independently read list count or file bytes.
+fingerprint. The historical log contains multiple native list sizes, including
+721 and 870; its `PIndex:720` event occurs with count 870. Therefore **720 alone
+must not be called the final point**. Native point indices belong to a changing
+loaded list, not a fixed whole-file point array. The present capture does not
+read the active list count or fresh file bytes. The end-like section and map
+fingerprint remain relevant, but do not close this identity/domain gap.
 
 The startup log additionally records `SetNavigationStartRidingDistance` with
 both route cycling baseline and total distance equal to 0. This makes an old
