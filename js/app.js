@@ -101,7 +101,9 @@ async function build() {
       (lines.length ? '' : ' · keine Straßendaten: ohne Karte und Straßennamen') +
       (styled ? ` · erweitertes Kartenumfeld in ${r.mapStat.blocks.filter(b=>b.coverageFloor>0).length}/${r.mapBlocks} Blöcken` +
         (r.mapStat.reducedContextBlocks ? ` · dichter Bereich: fernes Umfeld in ${r.mapStat.reducedContextBlocks} Blöcken begrenzt (mind. 300 m)` : '') : '') +
-      (coverage.missingCells ? ' · äußere Kartendaten teilweise nicht verfügbar' : ''));
+      (coverage.missingCells ? ' · äußere Kartendaten teilweise nicht verfügbar' : '') +
+      (r.navigationEvidence.warnings.includes('sparse-unmatched-route') ? ' · Warnung: grober GPX-Verlauf weicht von Straßendaten ab; Abbiegehinweise können fehlen. GPX mit mehr Originalpunkten verwenden.' : ''));
+    log(JSON.stringify({navigationEvidence:r.navigationEvidence}));
     if(styled)log(JSON.stringify(r.mapStat));
     say('previewTitle', styled ? 'Kartenvorschau · Sunlight' : 'Kartenvorschau · Original');
     say('turnsN', `Abbiegungen (${r.sections.length})`);

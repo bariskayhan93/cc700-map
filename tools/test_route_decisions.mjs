@@ -48,7 +48,7 @@ test('SYNTHETIC deterministic 3 m noise on a curved road has no prompt',()=> {
  const shape=Array.from({length:81},(_,i)=>[30*Math.sin(i/12),i*5]);
  labelled(generate(noisy(shape),[road('curved',shape)]),[]);
 });
-test('SYNTHETIC deterministic 3 m noise passing three side streets has no prompt', {todo:'Known limitation: one false slight-left remains near a side street; assertion executes'},()=> {
+test('SYNTHETIC deterministic 3 m noise passing three side streets has no prompt',()=> {
  const xy=noisy(Array.from({length:81},(_,i)=>[0,i*5]));
  const lines=[road('main',[[0,0],[0,100],[0,200],[0,300],[0,400]]),...[100,200,300].map(y=>road('side '+y,[[0,y],[100,y]]))];
  labelled(generate(xy,lines),[]);
@@ -95,4 +95,57 @@ test('SYNTHETIC heading filtering preserves decoded noisy route geometry',()=> {
  const ap=planar(a), bp=planar(b);
  for (const p of ap) assert(off(p,bp)<0.1);
  for (const p of bp) assert(off(p,ap)<0.1);
+});
+
+test('SYNTHETIC noisy approach retains a real 25-degree fork',()=> {
+ const end=[120*Math.sin(25*Math.PI/180),100+120*Math.cos(25*Math.PI/180)];
+ const shape=[];
+ for(let y=0;y<=100;y+=5) shape.push([0,y]);
+ for(let d=5;d<=120;d+=5) shape.push([d*Math.sin(25*Math.PI/180),100+d*Math.cos(25*Math.PI/180)]);
+ const result=generate(noisy(shape),[road('main',[[0,0],[0,100],[0,250]]),road('fork',[[0,100],end])]);
+ assert.deepEqual(turns(result).map(s=>s.dir),[TURN.SLIGHT_RIGHT]);
+ assert(hav(point([0,100]),readFile(result.file).secs[result.sections.findIndex(s=>s.dir)].at(-1))<15);
+});
+test('SYNTHETIC coarse but explicit right-angle junction retains its actual maneuver',()=> {
+ labelled(generate([[0,0],[0,300],[300,300]],[road('main',[[0,0],[0,300],[0,500]]),road('exit',[[0,300],[300,300]])]),[[TURN.RIGHT,300*6371000*Math.PI/180/111320]]);
+});
+test('SYNTHETIC seeded noisy right-left junctions retain both choices without extra maneuvers',()=> {
+ const shape=[];
+ for(let y=0;y<=100;y+=5)shape.push([0,y]);
+ for(let x=5;x<=100;x+=5)shape.push([x,100]);
+ for(let y=105;y<=200;y+=5)shape.push([100,y]);
+ const lines=[road('in',[[0,0],[0,200]]),road('cross',[[-100,100],[200,100]]),road('out',[[100,0],[100,200]])];
+ for(const seed of [1,7,11,23,41]) {
+  const result=generate(noisy(shape,seed),lines);
+  assert.deepEqual(turns(result).map(s=>s.dir),[TURN.RIGHT,TURN.LEFT],`seed ${seed}`);
+  const decoded=readFile(result.file);
+  result.sections.forEach((s,i)=> {if(s.dir)assert(hav(decoded.secs[i].at(-1),point(s.dir===TURN.RIGHT?[0,100]:[100,100]))<15,`seed ${seed}, ${s.dir}`)});
+ }
+});
+test('SYNTHETIC a road below a bridge bend does not create a cycling junction',()=> {
+ const xy=[[0,0],[0,100],[100,100]];
+ const upper={...road('bridge bend',xy),fl:13}; // bridge, layer +1
+ const lower={...road('below',[[-100,100],[0,100],[0,200]]),fl:8};
+ labelled(generate(xy,[upper,lower]),[]);
+});
+test('SYNTHETIC a connected bridge endpoint still gives its real turn',()=> {
+ const xy=[[0,0],[0,100],[100,100]];
+ const upper={...road('bridge',[[0,0],[0,100]]),fl:13};
+ const lower={...road('shore',[[-100,100],[0,100],[100,100]]),fl:8};
+ labelled(generate(xy,[upper,lower]),[[TURN.RIGHT,100]]);
+});
+test('SYNTHETIC sparse diagonal export reports missing maneuver evidence without inventing the omitted corner',()=> {
+ const xy=[[0,0],[60,100],[100,200]];
+ const lines=[road('actual streets',[[0,0],[0,100],[100,100],[100,200]])];
+ const result=generate(xy,lines);
+ assert(result.navigationEvidence.maxInputGapMeters>100);
+ assert(result.navigationEvidence.longestUnmatchedMeters>=20);
+ assert(result.navigationEvidence.warnings.includes('sparse-unmatched-route'));
+ const pts=readFile(result.file).secs.flat();
+ assert(!pts.some(p=>hav(p,point([0,100]))<5),'must not silently replace diagonal with guessed streets');
+});
+test('SYNTHETIC long mapped straight export does not warn just because input points are distant',()=> {
+ const result=generate([[0,0],[0,600]],[road('straight',[[0,0],[0,600]])]);
+ assert.deepEqual(result.navigationEvidence.warnings,[]);
+ assert.equal(result.navigationEvidence.longestUnmatchedMeters,0);
 });

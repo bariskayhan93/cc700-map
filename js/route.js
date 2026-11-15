@@ -114,13 +114,38 @@ export function decisionPoints(P, D, lines, F, grid) {
   // 2. the choice at a point: branches of all roads that pass within 8 m, relative to the arriving direction
   const judge = d => {
     if (d < 15 || d > total - 15) return null;
-    const p = at(d), hin = hdg(at(d - 15), p), tk = adiff(hdg(p, at(d + 15)), hin), alts = [];
+    const p = at(d), hin = hdg(at(d - 15), p), hout = hdg(p, at(d + 15)), alts = [];
     const near = new Set(); for (const [li, a, b] of segs(p[0], p[1])) if (ridable(li) && foot(p[0], p[1], a, b) < 8) near.add(li);
+    const anchor = M[Math.max(0, Math.floor(d / STEP) - 5)];
+    if (anchor >= 0) {
+      const grade = li => (lines[li].fl || 8) & 31;
+      const linkedEndpoint = li => {
+        const a = local(anchor)[0], b = local(li)[0];
+        // Display ways are simplified and cannot prove general connectivity.
+        // A shared endpoint can, however, retain a real bridge/ramp transition
+        // without treating an interior crossing on another level as a choice.
+        const joins = (ends, vertices) => [ends[0], ends.at(-1)].some(e =>
+          Math.hypot(e[0] - p[0], e[1] - p[1]) < 20 && vertices.some(v => Math.hypot(e[0] - v[0], e[1] - v[1]) < 0.75));
+        return joins(a, b) || joins(b, a);
+      };
+      for (const li of near) if (grade(li) !== grade(anchor) && !linkedEndpoint(li)) near.delete(li);
+    }
     for (const li of near) for (const q of branches(li, p)) alts.push(adiff(q, hin));   // per road: onwards and back, 12 m along it
     // A single road's forward and backward arms cannot form a junction.
     // Recording heading error must not turn its own forward arm into an exit.
     const arms = []; for (const q of alts) if (!arms.some(a => Math.abs(adiff(a, q)) < 20)) arms.push(q);
     if (arms.length < 3) return null;
+    // Track chords identify the selected arms; the road geometry supplies their
+    // headings. Otherwise a few metres of jitter can turn the main road's own
+    // forward arm into a supposedly straighter alternative at a side street.
+    const closest = heading => arms.reduce((a, b) => Math.abs(adiff(b, heading)) < Math.abs(adiff(a, heading)) ? b : a);
+    const incoming = closest(180), outgoing = closest(adiff(hout, hin));
+    const approach = adiff(incoming, 180), selectedTurn = adiff(outgoing, approach);
+    // A mapped straight continuation is not a maneuver, even when a noisy
+    // chord differs by twenty degrees. Keep the original track angle for real
+    // turns: quantizing every angle would change existing sharp/slight icons.
+    if (Math.abs(selectedTurn) < 20) return null;
+    const tk = adiff(hout, hin);
     const other = alts.filter(q => Math.abs(q) < 150 && Math.abs(adiff(q, tk)) > 20);
     if (!other.length) return null;                                                    // no choice: the road only bends
     if (other.some(q => Math.abs(q) < Math.abs(tk) + 10)) return Math.abs(tk) >= 20 ? tk : (tk >= 0 ? 25 : -25);   // another way is as straight or straighter: at least "slight"
@@ -128,7 +153,9 @@ export function decisionPoints(P, D, lines, F, grid) {
   };
   const R = runs.filter(r => r.d1 - r.d0 >= 6), points = [];
   for (let k = 1; k < R.length; k++) { if (R[k].li === R[k - 1].li) continue; const d = R[k - 1].d1, a = judge(d); if (a !== null) points.push({ d, a }); }
-  return { points, judge, matched };
+  let unmatched = 0, run = 0, longestUnmatched = 0;
+  for (const li of M) { run = li < 0 ? run + STEP : 0; if (li < 0) unmatched += STEP; longestUnmatched = Math.max(longestUnmatched, run); }
+  return { points, judge, matched, evidence: { unmatchedMeters: unmatched, longestUnmatchedMeters: longestUnmatched } };
 }
 const short = t => t.replace(/straße\b/g, 'str.').replace(/Straße\b/g, 'Str.').replace(/strasse\b/g, 'str.').replace(/Strasse\b/g, 'Str.');
 export function buildRoute(gpx, allLines, opt) {
@@ -182,7 +209,11 @@ export function buildRoute(gpx, allLines, opt) {
     cut.add(i); turnAngle[i] = ang; }
   // shape turns on matched roads need a choice at the junction; a bend of the road or cycleway is not a turn
   if (NET) for (const c of [...cut]) if (turnAngle[c] !== undefined && !dpAngle.has(c) && NET.matched(D[c]) && Math.abs(turnAngle[c]) < 160) {
-    let keep = false; for (let e = -10; e <= 10 && !keep; e += 2) keep = NET.judge(D[c] + e) !== null;
+    // Evidence belongs to this point, not any junction in a 20 m window.
+    // Borrowing a neighbour's decision creates extra prompts before/after one
+    // noisy corner (and can even borrow a turn in the opposite direction).
+    const choice = NET.judge(D[c]);
+    const keep = choice !== null && choice * turnAngle[c] > 0;
     if (!keep) { delete turnAngle[c]; cut.delete(c); if (nm[c] !== nm[c - 1] && nm[c] && nm[c - 1]) cut.add(c); }
   }
   const wp = {}; for (const w of gpx.wpts || []) { let bi = -1, bd = 40; P.forEach((p, i) => { const d = hav(p, [w.lat, w.lon]); if (d < bd) { bd = d; bi = i; } }); if (bi > 0 && bi < P.length - 1) { cut.add(bi); wp[bi] = w.name; } }
@@ -321,6 +352,13 @@ export function buildRoute(gpx, allLines, opt) {
   const ioa = out.n; out.push(map.bytes);
   const file = out.bytes.slice(); new DataView(file.buffer).setUint32(0x5c, ioa, true); file.set(h.subarray(0, 0x5c), 0); file.set(h.subarray(0x60, 0x80), 0x60);
   const padded = new Uint8Array(Math.ceil(file.length / 4096) * 4096); padded.set(file);
-  return { file: padded, sections: secs, distance: total, mapBlocks: map.blocks, maxBlock: map.maxBlock, mapStat: map.stat };
+  let maxInputGapMeters = 0;
+  for (let i = 1; i < gpx.pts.length; i++) maxInputGapMeters = Math.max(maxInputGapMeters, hav(gpx.pts[i - 1], gpx.pts[i]));
+  const navigationEvidence = { maxInputGapMeters, ...(NET?.evidence || { unmatchedMeters: null, longestUnmatchedMeters: null }), warnings: [] };
+  // This is a missing-evidence warning, not a route-quality score. A coarse
+  // diagonal may omit real corners. Filling file point gaps cannot recover
+  // those choices and must not silently replace the user's route with guesses.
+  if (maxInputGapMeters > 50 && navigationEvidence.longestUnmatchedMeters >= 20) navigationEvidence.warnings.push('sparse-unmatched-route');
+  return { file: padded, sections: secs, distance: total, mapBlocks: map.blocks, maxBlock: map.maxBlock, mapStat: map.stat, navigationEvidence };
 }
 function box(pts, F) { let b = [1e18, 1e18, -1e18, -1e18]; for (const p of pts) { const [x, y] = F.m(p[0], p[1]); b = [Math.min(b[0], x), Math.min(b[1], y), Math.max(b[2], x), Math.max(b[3], y)]; } return b; }
