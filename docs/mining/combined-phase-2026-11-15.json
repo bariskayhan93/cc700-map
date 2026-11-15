@@ -56,5 +56,15 @@
       "crash_observed": false,
       "screen_state_confirmed": false
     }
+  },
+  "second_initial_window_attempt": {
+    "explicit_rts": true,
+    "startup_gate_flags": 63,
+    "performance_sample_count": 0,
+    "ordinary_navigation_visible_before_install": true,
+    "test_navigation_visible_after_restart_confirmed": false,
+    "ordinary_route_grey_reported": true,
+    "grey_route_cause_established": false,
+    "ordinary_restored_and_verified": true
   }
 }

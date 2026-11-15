@@ -97,6 +97,17 @@ v21 without firmware writes: one app boot and no crash were observed. Screen-on
 state still requires owner confirmation; an app-load log alone does not prove
 that the display or navigation is active.
 
+The owner subsequently powered on ordinary v21 and confirmed navigation was
+visible, reporting grey route lines “like I finished route.” This observation
+predates the next measurement installation. A second initial-window attempt used
+the explicit RTS sequence and passed all startup gates, but produced no iterator
+records. Navigation visibility **after that test reboot** was not confirmed, so
+this does not isolate whether navigation never reached the iterator or an
+iterator-time guard rejected collection. Do not repeat installation without
+closing that observation gap. The grey-route symptom requires route identity and
+native progress-state evidence; the v21 opacity hook preserves native segment
+colour selection and cannot establish why the route appears completed.
+
 A review also corrected a timing label: the post-draw timestamp precedes mutex
 release. The parser now reports `draw_locked_us`, lock-acquisition duration, and
 conservative mutex-hold bounds instead of claiming an exact hold/wait duration.
