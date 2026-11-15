@@ -13,7 +13,7 @@ function nodeBlock(t){
  if(t.barrier&&t.barrier!=='no'&&(!knownBarriers.has(t.barrier)||!allowed.has(t.bicycle)))return 'barrier-access-unverified';
  return null;
 }
-export function buildTransitionGraph(snapshot){
+export function buildTransitionGraph(snapshot,{wayPolicy}={}){
  validateRoutingSnapshot(snapshot);
  const excluded=[],blockedNodes=new Map(),turnRules=[],quarantined=new Set(),restrictionAudit=[];
  const original=new Map(snapshot.ways.map(w=>[w.id,w]));
@@ -48,7 +48,7 @@ export function buildTransitionGraph(snapshot){
   const reason=snapshot.integrity!=='pass'?'snapshot-integrity-incomplete':quarantined.has(w.id)?'unsupported-restriction-member':null;
   if(reason)excluded.push({way:w.id,reason});else ways.push(w);
  }
- const base=buildCandidateGraph({...snapshot.navigationSource,ways});
+ const base=buildCandidateGraph({...snapshot.navigationSource,ways},{wayPolicy});
  const edges=base.edges.filter(e=>!blockedNodes.has(e.from)&&!blockedNodes.has(e.to));
  return {...base,nodes:base.nodes.filter(n=>!blockedNodes.has(n.id)),edges,
   excluded:[...excluded,...base.excluded].sort((a,b)=>a.way-b.way||a.reason.localeCompare(b.reason)),

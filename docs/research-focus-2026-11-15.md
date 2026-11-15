@@ -134,3 +134,22 @@ filters or spending another firmware cycle. A real 44-byte proposed leg packet
 is measured, but association indices, coverage lookup and target ownership remain
 absent. The representation decision and 2–3 km sampling remain open. No ordinary
 firmware, generator, route or deployment changed.
+
+## Complete PC feasibility pass: choose generation-time recovery
+
+The [completed study](recovery-feasibility-2026-11-15.md) implements original-
+segment association, ordered directed visits, regional inference comparison,
+real detours, 72 spatial origins in 1/2/3 km bands, actual graph/association/visit
+packets, sampled leg lookup and codec controls. Conservative replay now yields
+13/30 candidates; generation-time spatial search yields 12/7/13 candidates in
+24 samples per band, versus 11/1/0 under the smaller work cap. These are geometric
+structural candidates, not cycling or device acceptance.
+
+Decision: generation-time recovery legs with explicit covered edge portals and
+bounded lookup. Broad graph plus source locator is about 9 MB; sampled exact-
+origin legs/lookup about 37 KB, with 2.9 KB largest active leg. Those alternatives
+have different coverage: the latter is not arbitrary-position recovery. Next
+implement the covered edge/portal contract and native admission/state handling;
+do not restart stationary cosmetic fixes or port broad search. Native safety,
+resource/timing and real coverage gates remain separate and visible. Production
+map budgets, generator, app, route and firmware are unchanged.
