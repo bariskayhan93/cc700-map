@@ -1,0 +1,16 @@
+{
+  "version": "CC700_V1.414-cc22",
+  "image_sha256": "cc6613211b2796ae95ef19a6967759a53c6e48af4612906b22adcbddc088d50f",
+  "ota_slot": "ota_1",
+  "image_bytes": 3751024,
+  "installation_phase": "installed",
+  "readback_verified": true,
+  "ota_metadata_verified_unchanged": true,
+  "normal_app_boot_confirmed": true,
+  "captured_crash": false,
+  "tools_wrote_stock_ota0": false,
+  "tools_wrote_storage": false,
+  "simulation_or_measurement_code_included": false,
+  "native_card_transition_acceptance": "pending",
+  "grey_loop_fix": "not included; initial matching remains open"
+}
