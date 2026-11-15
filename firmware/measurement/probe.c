@@ -130,6 +130,52 @@ static void finish(tm_probe *p,uint32_t pointer,uint32_t entries,uint32_t width,
 void tm_probe_end(tm_probe *p,uint32_t pointer,uint32_t entries,uint32_t width,uint32_t height) {
     finish(p,pointer,entries,width,height,"CC7M3 ");
 }
+#ifdef TM_NAVIGATION_STATE
+#ifdef TM_HOST
+extern void tm_navigation_read(uint32_t out[13]);
+#else
+static void tm_navigation_read(uint32_t out[13]) {
+    /* Pinned stock scalar storage only. No object dereference or firmware call.
+     * The navigation task may write concurrently: this is NOT atomic. */
+    const volatile uint8_t *m=(const volatile uint8_t *)0x3c3894f0;
+    out[0]=*(volatile uint32_t *)0x3fc9fc34;
+    out[1]=*(volatile uint32_t *)0x3fc9fb44; /* raw state, before getter's 8->0 */
+    out[2]=*(volatile uint32_t *)0x3fc9fcd4;
+    out[3]=*(volatile uint16_t *)0x3c38930c;
+    out[4]=*(const volatile uint16_t *)(m+108);
+    out[5]=m[145]|((uint32_t)m[146]<<8)|((uint32_t)m[147]<<16);
+    out[6]=*(volatile uint16_t *)0x3fc9fc24;
+    out[7]=*(volatile uint16_t *)0x3fc9fc26;
+    out[8]=*(volatile uint32_t *)(0x3c38939c+68);
+    out[9]=*(volatile uint32_t *)0x3fc9fc34;
+    out[10]=*(const volatile uint16_t *)(m+108);
+    out[11]=*(volatile uint32_t *)(0x3c38939c+68);
+    out[12]=*(const volatile uint16_t *)(m+134);
+}
+#endif
+void tm_probe_navigation(uint32_t pointer,uint32_t entries) {
+    if(!tm_ready()) return;
+    uint64_t boot=tm_boot_clock();
+    if(boot<TM_START_US || boot>=TM_END_US) return;
+    uint32_t lowwater;
+    if(tm_stack(&lowwater)<2048) return;
+    uint32_t state[13];
+    uint64_t before=tm_clock();
+    tm_navigation_read(state);
+    uint64_t after=tm_clock();
+    char line[192],*d=line;
+    const char *prefix="CC7N1 ";
+    while(*prefix) *d++=*prefix++;
+    uint32_t sum=2166136261U;
+    d=hex32(d,(uint32_t)before,&sum);d=hex32(d,(uint32_t)(before>>32),&sum);
+    d=hex32(d,(uint32_t)after,&sum);d=hex32(d,(uint32_t)(after>>32),&sum);
+    d=hex32(d,pointer,&sum);d=hex32(d,entries,&sum);
+    for(unsigned i=0;i<13;i++) d=hex32(d,state[i],&sum);
+    uint32_t ignored=0;d=hex32(d,sum,&ignored);
+    *d++='\n';*d=0;
+    tm_emit(line,(uint32_t)(d-line));
+}
+#endif
 #ifdef TM_COMPOSITION
 #ifdef TM_HOST
 extern void tm_native_frame(void);

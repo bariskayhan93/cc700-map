@@ -2,8 +2,10 @@
 
 `probe.c` is the actual target probe. It owns one sample on each invocation's
 stack, with no dynamic allocation, writable globals, persistent pointer or
-borrowed buffer. It measures only during boot microseconds 60,000,000 through
-119,999,999. Outside that window native work still executes. It checks the
+borrowed buffer. By default it measures during boot microseconds 0 through
+119,999,999. The builder accepts `--window-seconds` from 1 through 600 and
+records the compiler defines and interval in its manifest. Outside that window
+native work still executes. It checks the
 native system-timer peripheral and conversion callback before activating.
 Ordinary v21 does not contain this probe. A second runtime gate checks the
 current task's stack before heap/export helpers: at least 3072 bytes before
@@ -40,7 +42,7 @@ is retained in the host bounds test. Current GUI stack margins still require a
 new observed startup diagnostic after this correction.
 
 Build separate modes with `python3 tools/target_measurement_build.py --mode
-iterator|composition|block --output NEW_DIRECTORY`. The builder pins the exact
+iterator|navigation|composition|block --output NEW_DIRECTORY`. The builder pins the exact
 stock image, ordinary v21 image and v21 source receipt, verifies unchanged native
 ABI ranges, compiles copied sources, enforces the existing code-page/global
 linker assertions, and writes disassembly, stack-usage files and a manifest.
@@ -53,6 +55,17 @@ is its test firmware, regardless of mode; use its manifest's mode and SHA-256.
   label storage bytes, counted in the iterator's existing first scan. These
   are source work totals, not executed projection or raster totals. Saturated
   work counters equal `UINT32_MAX`. The counter update overhead is included.
+- Navigation: iterator telemetry followed by a separate checksummed `CC7N1`
+  scalar observation. Raw clock brackets surround fixed scalar reads only:
+  navigation/ride/arrival states, matched point/road/flags, section, display
+  indices and producer snapshot threshold. No live object pointer is followed.
+  Repeated navigation state, matched point and threshold values can expose some
+  races; equal repeats are **not** a coherent/atomic snapshot. The producer
+  threshold is not the live widget threshold. This record is not a performance
+  sample, does not include position or ride baseline and cannot identify the
+  file without an external receipt. Export is after iterator timing, adds load
+  to subsequent frames, and is bounded to 188 bytes including NUL. Native scalar
+  sources are documented in the ABI receipt and grey-route state report.
 - Composition: wraps the unchanged native `0x4204da24` call at `0x420516a7`.
   Its trampoline occupies the remainder of the already replaced iterator
   body, `0x4204968c..0x420496a0`. This excludes preceding canvas preparation and
@@ -157,4 +170,11 @@ performs installation or treats an offline build as target acceptance. Missing
 full-frame, projection, raster/text, canvas, flush, block-overlap and heap-phase
 channels still prevent general resource calibration.
 
-The next bench capture enables the first 120 boot-relative seconds, including the initial map draw. This matters for stationary navigation: a paused device may not redraw during a delayed 60–120 second window. Host capture/restoration remains separately bounded; a window with no map invocation is not a timing sample.
+A manual bench session can use `--window-seconds 600` to allow time for physical
+power-on and reopening navigation after the test reboot. Default builds retain
+the first 120 seconds. Both include the initial map draw: a stationary device
+may not redraw during a delayed window. Host capture/restoration remains
+separately bounded; a window with no map invocation is not a timing sample.
+The operator must confirm navigation visibility **after** the test reboot;
+visibility on ordinary firmware before installation does not establish test
+workload activity. App-load output does not establish that the screen is on.

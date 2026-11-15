@@ -10,7 +10,7 @@ the new turn policy is explicitly experimental. No resource targets were raised.
 | Work package | Implemented and checked | Outstanding acceptance |
 |---|---|---|
 | Navigation correctness | Child-only stale-cue suppression, complete cc22 candidate, native distance-sentinel guards; experimental source-junction association and labelled regressions; sparse-input warning | Live card hide/restore; general noisy/sparse maneuver correctness; stock rejoin/progress arbitration |
-| Stationary measurement | Bounded per-invocation collector, startup selftest, correct scheduler-proven task getter, raw timing plus boot-relative activation, direct USB export, guarded programming/restoration | Identified active map workload and timing/heap capture; full frame/flush/load-overlap and component measurements |
+| Stationary measurement | Bounded per-invocation collector, startup selftest, correct scheduler-proven task getter, raw timing plus boot-relative activation, direct USB export, guarded programming/restoration | Exact route/block/camera identity; broader workload matrix; full frame/flush/load-overlap and component measurements |
 | Resource calibration | Strict and scoped partial analyzers, identity/log validation, separate resource axes, held-out run analysis and refusal of missing evidence | Actual workload data covering the agreed matrix; measured operating limits and prediction validation |
 
 The default generator retains the released decision mechanism. Three private
@@ -81,7 +81,7 @@ The old ROM-export route was replaced with a verified allocation-free native
 USB byte callback and flush. Concurrent logging can interleave: checksums reject
 damaged lines, but complete invocation loss remains unknown.
 
-No iterator timing records arrived in the completed windows. Startup output now
+No iterator timing records arrived in the initial completed windows (superseded by the successful long-window observation below). Startup output now
 proves the corrected bindings, but does not prove that navigation invoked the map
 iterator during the capture window. An active navigation workload has not been
 confirmed. A subsequent initial-window capture (boot seconds **0–120**,
@@ -175,3 +175,76 @@ Private logs, route coordinates, binaries and raw receipts remain under ignored
 `.local/navigation-phase/`. No firmware binary or private ride data is published.
 
 Checkpoint deployment status: source and report are on `feat/navigation-measurement-calibration`; Pages has not been updated by this phase. The device runs ordinary v21, not a measurement build or cc22. [Sanitized checkpoint evidence](mining/combined-phase-2026-11-15.json).
+
+## Successful long-window observation and restoration
+
+A measurement build with a configurable 0–600 s boot-relative window allowed
+the owner to reopen navigation after installation. The owner confirmed visibility
+and supplied the 15 November 10:22 device photo. The capture contains **131 valid
+iterator samples**, zero parser-rejected records, and a single observed work shape:
+491 entries, 2,342 input geometry points, 1,003 fill vertices and a 240 × 256 canvas.
+
+| Iterator observation | Time |
+|---|---:|
+| Minimum | 362.830 ms |
+| Median | 368.519 ms |
+| P95, lower order statistic | 388.613 ms |
+| Maximum | 442.246 ms |
+
+Minimum sampled stack remaining was 6,216 B. Minimum sampled post-iterator
+PSRAM free space was 1,357,216 B; minimum largest free PSRAM block was
+1,310,704 B. These are scoped observations, not peak allocation or high-water
+measurements. USB export occurs outside the measured interval but perturbs
+following frames. This is not full-frame time or general resource calibration.
+Exact route/block/section/camera identity remains unverified; no budget is raised.
+
+Raw capture SHA256: `d74c6d6233af0ea0431995d31dc29e61abbb2bf610ad1a973c0b670d1390468f`.
+At the scheduled capture end, the runner restored the exact full saved v21
+partition and verified it and unchanged OTA metadata. The receipt reports
+`ordinary_restored: true`, an ordinary app boot and no captured crash. The owner
+reported the view disappearing during this restoration; this coincides with the
+programming/reset phase and is not established as a navigation crash.
+
+The photo shows a stationary paused map. The owner again reports grey route
+segments, plus less path/bridge detail near the upper green/water area than in
+earlier versions. These remain correctness/visual-regression investigations.
+The measurement build does not intentionally remove map classes or rewrite
+route storage. v20 changed waterway/cycleway appearance; v21 changed route
+opacity. Missing details still require a same-location, same-route/block comparison
+between encoded geometry and draw order. Bridges, footpaths and cycleways remain
+in scope. See [the grey-route trace](grey-route-state-notes-2026-11-15.md).
+
+## Grey-loop diagnostic follow-up
+
+The owner identifies yesterday's Leichlinger Strasse 23 km route. Its final block
+matches all four captured work counters; its start block has 819 entries instead
+of 491. Actual loader C selects start at the encoded start and finish at the
+encoded finish, regardless of supplied section 0/111. The endpoints are about
+55.1 m apart. Final-block selection therefore does not establish a loader bug.
+
+Two new loader characterization tests cover exact-overlap preference and release
+on outbound departure. Native extraction additionally establishes a PAUSING-state
+map-update hold when the widget threshold is nonzero, and an independent native
+closed-route arrival guard. These mechanisms must be observed separately before
+fixing the grey display. Ordinary red opacity is not its selector.
+
+The optional `navigation` measurement mode builds successfully as cc21n01,
+3,752,992 bytes, SHA256
+`ec99b0c0248400c2b50a175851bbb8cbeb1f92c8a9d3ea80f6e4af59f4b46255`.
+Its added state reader exports fixed scalars after iterator timing, with no live
+object dereference, allocation or state writes; its compiled local frame is 288 B.
+Read observations are explicitly non-atomic, and the producer threshold is not
+claimed as the live widget threshold. All **169 Python tests** pass, including
+actual host collector output, checksum/truncation and readiness/window/stack
+gates. This prepares diagnosis, not a navigation fix or broader calibration.
+
+The owner then reopened navigation during a controlled cc21n01 capture. All 20
+valid state records show dispatcher 2, ride PAUSING 4, arrival 0, matched point
+720, matched road/firmware section 112 and producer display threshold 720. The
+separate display indices remain zero. This identifies the matcher-to-threshold
+path, rather than fractional display progress or completed arrival, in this
+reproduction. Twenty iterator records accompanied them; no records were rejected.
+The runner automatically restored and verified the exact full v21 partition,
+verified unchanged OTA metadata and confirmed ordinary app boot without a captured
+crash. The detailed report records remaining overlap/first-match evidence; a
+navigation fix is not claimed from this diagnostic capture.

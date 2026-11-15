@@ -42,6 +42,50 @@ class TargetAbiTests(unittest.TestCase):
         with self.assertRaises(ValueError): abi.verify(modified)
 
 class TargetProbeTests(unittest.TestCase):
+    def test_navigation_probe_exports_separate_guarded_scalar_observation(self):
+        import target_measurement as tm
+        with tempfile.TemporaryDirectory() as tmp:
+            binary=Path(tmp)/'navigation'
+            result=subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror',
+                '-DTM_HOST','-DTM_NAVIGATION_STATE','-I',str(ROOT/'firmware/measurement'),
+                str(ROOT/'tools/target_navigation_probe_test.c'),
+                str(ROOT/'firmware/measurement/probe.c'),'-o',str(binary)],capture_output=True,text=True)
+            self.assertEqual(result.returncode,0,result.stderr)
+            result=subprocess.run([str(binary)],capture_output=True,text=True)
+            self.assertEqual(result.returncode,0,result.stderr)
+            parsed=tm.parse_navigation_line(result.stdout.strip())
+            self.assertEqual(parsed['ticks_us'],[9000000000,9000000001])
+            self.assertEqual(parsed['entry_count'],491)
+            self.assertEqual(parsed['ride_state_raw'],4)
+            self.assertEqual(parsed['arrival_state'],0)
+            self.assertEqual(parsed['matched_point'],559)
+            self.assertEqual(parsed['firmware_section'],111)
+            self.assertEqual(parsed['snapshot_threshold'],559)
+            self.assertEqual(parsed['matcher_flags'],{'offroute':0,'valid':1,'candidate':1})
+            self.assertTrue(parsed['repeated_fields_equal'])
+            self.assertFalse(parsed['atomic_snapshot'])
+            self.assertFalse(parsed['performance_observation'])
+            with self.assertRaises(ValueError):tm.parse_navigation_line(result.stdout.replace('000001eb','000001ec'))
+            with self.assertRaises(ValueError):tm.parse_navigation_line(result.stdout[:80])
+            def reencode(values):
+                body=''.join(f'{v:08x} ' for v in values);checksum=2166136261
+                for byte in body.encode():checksum=((checksum^byte)*16777619)&0xffffffff
+                return 'CC7N1 '+body+f'{checksum:08x}'
+            words=[int(w,16) for w in result.stdout[6:].split()[:-1]]
+            words[15]=5
+            self.assertFalse(tm.parse_navigation_line(reencode(words))['repeated_fields_equal'])
+            words[2]=words[0]-1
+            with self.assertRaisesRegex(ValueError,'Nonmonotonic'):
+                tm.parse_navigation_line(reencode(words))
+            log=Path(tmp)/'nav.log';log.write_text(result.stdout)
+            cli=subprocess.run(['python3',str(ROOT/'tools/target_measurement.py'),str(log)],capture_output=True,text=True)
+            self.assertEqual(cli.returncode,0,cli.stderr)
+            import json
+            decoded=json.loads(cli.stdout)
+            self.assertFalse(decoded['performance_samples_present'])
+            self.assertEqual(len(decoded['navigation_observations']),1)
+            self.assertEqual(decoded['rejected'],[])
+
     def test_runtime_window_and_no_export_inside_interval(self):
         with tempfile.TemporaryDirectory() as tmp:
             binary=Path(tmp)/'probe-test'
@@ -66,12 +110,30 @@ class TargetProbeTests(unittest.TestCase):
 
 
 class TargetBuildTests(unittest.TestCase):
+    def test_extended_capture_window_accepts_late_navigation_and_expires(self):
+        import target_measurement_build as build
+        flags=build.window_defines(600)
+        with tempfile.TemporaryDirectory() as tmp:
+            source=Path(tmp)/'window.c';binary=Path(tmp)/'window'
+            source.write_text('#include "probe.h"\n#include <assert.h>\nstatic uint64_t boot;\nstatic unsigned heaps;\nuint64_t tm_clock(void){return 1;}\nuint64_t tm_boot_clock(void){return boot;}\nint tm_ready(void){return 1;}\nuint32_t tm_stack(uint32_t *low){*low=1024;return 4096;}\nvoid tm_heap(uint32_t *out,uint32_t caps){(void)caps;for(int i=0;i<7;i++)out[i]=0;heaps++;}\nvoid tm_usb_char(uint32_t fd,uint32_t byte){(void)fd;(void)byte;assert(0);}\nvoid tm_usb_flush(void){assert(0);}\nint main(void){tm_probe p;boot=180000000;assert(tm_probe_begin(&p));\nboot=599999999;assert(tm_probe_begin(&p));assert(heaps==2);\nboot=600000000;assert(!tm_probe_begin(&p));assert(heaps==2);return 0;}\n')
+            result=subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-DTM_HOST',*flags,
+                '-I',str(ROOT/'firmware/measurement'),str(source),
+                str(ROOT/'firmware/measurement/probe.c'),'-o',str(binary)],capture_output=True,text=True)
+            self.assertEqual(result.returncode,0,result.stderr)
+            result=subprocess.run([str(binary)],capture_output=True,text=True)
+            self.assertEqual(result.returncode,0,result.stderr)
+        for invalid in (0,601,-1,1.5,True):
+            with self.subTest(invalid=invalid), self.assertRaises(ValueError):build.window_defines(invalid)
+
     def test_instrumentation_refuses_drift_and_brackets_actual_lock(self):
         import target_measurement_build as build
         source='void cc_iter(proj_cb_t cb) {\n  fw_blk_lock();\n      const ent_t *e = &E[i];\n  fw_blk_unlock();\n}'
         changed=build.instrument(source)
         self.assertLess(changed.index('tm_probe_begin(&measurement)'),changed.index('fw_blk_lock();'))
         self.assertLess(changed.index('fw_blk_unlock();'),changed.index('tm_probe_end('))
+        self.assertNotIn('tm_probe_navigation(',changed)
+        navigation=build.instrument(source,navigation=True)
+        self.assertLess(navigation.index('tm_probe_end('),navigation.index('tm_probe_navigation('))
         with self.assertRaises(ValueError): build.instrument('void cc_iter(void) {}')
 
 class TargetModeTests(unittest.TestCase):

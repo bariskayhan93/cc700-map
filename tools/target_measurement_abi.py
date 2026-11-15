@@ -11,6 +11,12 @@ import tempfile
 STOCK_SHA256='7545ae4d4030b24b1f6198f481ce3a9a183a0e6eb3e5355b86ad2413aead2c31'
 # Half-open ranges, beginning at actual function entries to avoid Xtensa desync.
 RANGES=(('current_task_getter',0x403832e0,0x40383300),
+        ('ride_state_getter',0x4203c020,0x4203c030),
+        ('navigation_dispatch_loop',0x4204dabc,0x4204dadb),
+        ('display_index_updater',0x4204b048,0x4204b08e),
+        ('display_index_getters',0x4204b10c,0x4204b122),
+        ('matcher_result_publication',0x420547e0,0x420547ef),
+        ('paused_display_hold',0x42050404,0x4205047e),
         ('active_tcb_sp_save',0x40380be8,0x40380c2c),
         ('active_tcb_sp_restore',0x40380c2c,0x40380c6c),
         ('active_tcb_creation_publish',0x4038271c,0x40382788),
@@ -77,6 +83,14 @@ def verify(image, objdump=None):
                 record['gnu_disassembly']=proc.stdout
         ranges.append(record)
     return {'stock_sha256':STOCK_SHA256,'installable':False,'device_written':False,
+            'navigation_scalars':{'navigation_state':'0x3fc9fc34:u32',
+                'ride_state_raw':'0x3fc9fb44:u32 (getter maps 8 to 0)',
+                'arrival_state':'0x3fc9fcd4:u32','section':'0x3c38930c:u16',
+                'matcher':'0x3c3894f0:148 bytes; reads +108:u16, +134:u16, +145..147:u8',
+                'display_point':'0x3fc9fc24:u16','retained_display_point':'0x3fc9fc26:u16',
+                'snapshot_threshold':'0x3c38939c+68:u32',
+                'evidence':'docs/grey-route-state-notes-2026-11-15.md; companion extraction reports',
+                'coherence':'unsynchronized scalar reads; never treat equal repeats as atomic'},
             'clock':{'address':'0x403779f4','abi':'uint64_t (void), windowed Xtensa',
                      'counter':'coherent 52-bit hardware counter shifted right 4; no wall offset',
                      'wrap_output_bits':48,'runtime_init_verified':False,

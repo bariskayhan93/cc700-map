@@ -17,6 +17,9 @@ void cc_blk(uint32_t,uint32_t);
 #endif
 
 void tm_probe_work(tm_probe *,uint32_t style,uint32_t points);
+#ifdef TM_NAVIGATION_STATE
+void tm_probe_navigation(uint32_t decoded_pointer,uint32_t entries);
+#endif
 uint32_t tm_stack_bounds(uint32_t task,uint32_t base,uint32_t top,uint32_t sp);
 int tm_usb_state_valid(uint32_t tx_callback);
 #ifdef TM_DIAGNOSTIC

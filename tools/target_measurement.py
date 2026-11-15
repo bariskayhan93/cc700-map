@@ -78,10 +78,41 @@ def parse_diagnostic_line(line):
             'performance_observation':False}
 
 
+def parse_navigation_line(line):
+    line=line.rstrip('\r\n')
+    if line.endswith(' '):line=line[:-1]
+    if not re.fullmatch(r'CC7N1 (?:[0-9a-f]{8} ){19}[0-9a-f]{8}',line):
+        raise ValueError('Malformed navigation observation')
+    words=line[6:].split();checksum=2166136261
+    for char in ''.join(w+' ' for w in words[:-1]).encode():
+        checksum=((checksum^char)*16777619)&0xffffffff
+    if checksum!=int(words[-1],16):raise ValueError('Navigation observation checksum mismatch')
+    v=[int(w,16) for w in words]
+    ticks=[v[0]|v[1]<<32,v[2]|v[3]<<32]
+    if ticks[1]<ticks[0]:raise ValueError('Nonmonotonic navigation observation')
+    return {'channel':'navigation_state','ticks_us':ticks,
+            'decoded_pointer':v[4],'entry_count':v[5],
+            'navigation_state':v[6],'ride_state_raw':v[7],'arrival_state':v[8],
+            'firmware_section':v[9],'matched_point':v[10],
+            'matcher_flags':dict(zip(('offroute','valid','candidate'),
+                                    ((v[11]>>shift)&255 for shift in (0,8,16)))),
+            'display_point':v[12],'retained_display_point':v[13],
+            'snapshot_threshold':v[14],'navigation_state_after':v[15],
+            'matched_point_after':v[16],'snapshot_threshold_after':v[17],
+            'matched_road':v[18],
+            'repeated_fields_equal':v[6]==v[15] and v[10]==v[16] and v[14]==v[17],
+            'atomic_snapshot':False,'performance_observation':False,
+            'widget_threshold_observed':False}
+
+
 def main():
     p=argparse.ArgumentParser(description=__doc__);p.add_argument('serial_log',type=Path)
-    args=p.parse_args();samples=[];rejected=[];diagnostics=[]
+    args=p.parse_args();samples=[];rejected=[];diagnostics=[];navigation=[]
     for number,line in enumerate(args.serial_log.read_text(errors='replace').splitlines(),1):
+        if 'CC7N1' in line:
+            try:navigation.append(parse_navigation_line(line))
+            except ValueError as error:rejected.append({'line':number,'error':str(error)})
+            continue
         if 'CC7D1' in line:
             try:diagnostics.append(parse_diagnostic_line(line))
             except ValueError as error:rejected.append({'line':number,'error':str(error)})
@@ -89,9 +120,9 @@ def main():
         if not any(prefix in line for prefix in ('CC7M1','CC7M2','CC7M3','CC7F1','CC7F2','CC7B1','CC7B2')):continue
         try:samples.append(parse_line(line))
         except ValueError as error:rejected.append({'line':number,'error':str(error)})
-    print(json.dumps({'samples':samples,'startup_diagnostics':diagnostics,'performance_samples_present':bool(samples),'rejected':rejected,'general_calibration':'incomplete',
+    print(json.dumps({'samples':samples,'startup_diagnostics':diagnostics,'navigation_observations':navigation,'performance_samples_present':bool(samples),'rejected':rejected,'general_calibration':'incomplete',
         'sample_loss':'unknown: no cross-invocation sequence counter',
         'limits':['Iterator duration is not frame duration','Export overhead perturbs subsequent frames',
                   'External build/route/workload/camera and restoration receipt required']},indent=2))
-    return 0 if (samples or diagnostics) and not rejected else 2
+    return 0 if (samples or diagnostics or navigation) and not rejected else 2
 if __name__=='__main__':raise SystemExit(main())

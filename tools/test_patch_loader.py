@@ -42,6 +42,23 @@ class PatchLoader(unittest.TestCase):
                         [0,1,2,3], (0.001,0.001), 2, 3)
         self.assertEqual(r["section"], 2)
 
+    def test_closed_loop_shared_endpoint_preserves_supplied_start_or_finish(self):
+        # Characterization: GPS alone cannot distinguish a fresh start from
+        # an actual arrival. Unconditionally choosing the first segment would
+        # break the arrival case; fixing session initialization belongs upstream.
+        points = [(100,100),(300,100),(300,300),(100,300),(100,100)]
+        for current, expected in [(0,0),(3,3)]:
+            with self.subTest(current=current):
+                r = self.select(points, [0,1,2,3,4], (100,100), current, 4)
+                self.assertEqual(r["section"], expected)
+
+    def test_closed_loop_finish_preference_releases_on_outbound_departure(self):
+        points = [(100,100),(300,100),(300,300),(100,300),(100,100)]
+        for position, expected in [((110,100),3),((150,100),0),((100,150),3)]:
+            with self.subTest(position=position):
+                r = self.select(points, [0,1,2,3,4], position, 3, 4)
+                self.assertEqual(r["section"], expected)
+
     def test_combined_route_ids_resolve_to_requested_file_local_index(self):
         r = self.select([(0,0),(100,0),(200,0),(300,0)], [10,11,12,13], (150,0), 0, 3,
                         mappings=[(4,0)]*10+[(0,0),(0,1),(0,2),(0,3)])
