@@ -88,3 +88,12 @@ source cells. Next collect a separate routing-source snapshot including barrier
 nodes and restrictions; do not reconstruct junctions from display lines or change
 stationary native matching to compensate. Persistent rules are in
 [AGENTS.md](../AGENTS.md).
+
+## Original-source capture increment
+
+The [separate routing snapshot pipeline](routing-snapshot-2026-11-15.md) now
+preserves tagged nodes and restriction members, audits reference integrity, and
+feeds conservative exclusions into the structural evaluator. Three real-area
+acquisition attempts returned HTTP 406/403/429; no usable snapshot was obtained.
+Do not mistake implemented capture/filtering for validated real detour recovery.
+The saved query/receipts make acquisition resumable without another device cycle.

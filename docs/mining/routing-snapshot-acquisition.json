@@ -1,0 +1,35 @@
+{
+  "scope": "independent recovery research snapshot; no app cache/device writes",
+  "regionAreaKm2": 121.01,
+  "trackSamples": 4035,
+  "marginMeters": 3000,
+  "usableSnapshots": 0,
+  "runs": [
+    {
+      "status": "failed",
+      "endpoint": "https://overpass-api.de/api/interpreter",
+      "querySha256": "ea2a7505f28c70ae7ffab1746c15d1f4655ababcd3411e2188458918ce715f28",
+      "error": "Overpass HTTP 406",
+      "startedUtc": "2026-11-15T18:22:33.914Z",
+      "finishedUtc": "2026-11-15T18:22:34.143Z"
+    },
+    {
+      "status": "failed",
+      "endpoint": "https://overpass.openstreetmap.fr/api/interpreter",
+      "querySha256": "ea2a7505f28c70ae7ffab1746c15d1f4655ababcd3411e2188458918ce715f28",
+      "error": "Overpass HTTP 403",
+      "startedUtc": "2026-11-15T18:22:45.359Z",
+      "finishedUtc": "2026-11-15T18:22:45.529Z"
+    },
+    {
+      "status": "failed",
+      "endpoint": "https://overpass.private.coffee/api/interpreter",
+      "querySha256": "ea2a7505f28c70ae7ffab1746c15d1f4655ababcd3411e2188458918ce715f28",
+      "error": "Overpass HTTP 429",
+      "startedUtc": "2026-11-15T18:23:43.774Z",
+      "finishedUtc": "2026-11-15T18:23:44.262Z"
+    }
+  ],
+  "regionAndTrackCoordinates": "private; not included",
+  "nextAcquisition": "same saved query may be imported offline or retried once endpoint access recovers"
+}

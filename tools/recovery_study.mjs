@@ -6,6 +6,7 @@ import {fileURLToPath} from 'node:url';
 import {createHash} from 'node:crypto';
 import {mergeNavigationSources} from '../js/navsource.js';
 import {hav} from '../js/geo.js';
+import {snapshotCandidateSource} from './routing_snapshot.mjs';
 
 const idOK=n=>Number.isSafeInteger(n)&&n>0;
 const allowed=new Set(['yes','designated','official','permissive']);
@@ -96,7 +97,9 @@ export function evaluateRecovery(input){
  if(new Set(input.origins).size!==input.origins.length)throw Error('Duplicate origins');
  // Validate even an empty study; silently accepting an invalid policy hides gaps.
  validateRequest({...input,origin:input.origins[0]??1});
- const graph=buildCandidateGraph(input.source),nodes=new Map(graph.nodes.map(n=>[n.id,n.point]));
+ if(input.snapshot&&input.source)throw Error('Choose source or snapshot, not both');
+ const snapshot=input.snapshot?snapshotCandidateSource(input.snapshot):null;
+ const graph=buildCandidateGraph(snapshot?snapshot.source:input.source),nodes=new Map(graph.nodes.map(n=>[n.id,n.point]));
  const reference=input.targets.filter(t=>t.visit>input.afterVisit&&t.visit<=input.throughVisit&&nodes.has(t.node));
  const origins=input.origins.map(origin=>{
   const r=findRecovery(graph,{...input,origin}),point=nodes.get(origin);
@@ -105,7 +108,8 @@ export function evaluateRecovery(input){
  });
  const candidates=origins.filter(r=>r.status==='candidate'),jsonBytes=o=>Buffer.byteLength(JSON.stringify(o));
  return {version:1,scope:'offline-structural-candidates-only',targetAcceptance:'unvalidated',
-  gaps:[...new Set([...gaps,...graph.issues.map(i=>i.code)])].sort(),graph,origins,
+  gaps:[...new Set([...(snapshot?.evidence.integrity==='pass'?gaps.filter(g=>!['barrier-node-tags-not-preserved','turn-restrictions-not-preserved'].includes(g)):gaps),...(snapshot?['turn-restrictions-conservatively-quarantined']:[]),...graph.issues.map(i=>i.code)])].sort(),graph,origins,
+  ...(snapshot?{sourceEvidence:snapshot.evidence,sourceExclusions:{ways:snapshot.excludedWays,restrictions:snapshot.excludedRestrictions}}:{}),
   sampling:'explicit graph nodes; cumulative distance to nearest eligible target node, not route-polyline distance or continuous coverage',
   unlocatedOrigins:origins.filter(r=>r.referenceDistanceMeters===null).length,
   rings:[1000,2000,3000].map(radiusMeters=>{

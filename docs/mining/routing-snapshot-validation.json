@@ -1,0 +1,27 @@
+{
+  "scope": "PC original routing snapshot and conservative study filtering",
+  "snapshotAndRecoveryTests": {
+    "passed": 29,
+    "failed": 0
+  },
+  "mainNodeSuite": {
+    "passed": 214,
+    "failed": 0
+  },
+  "pythonSuite": {
+    "passed": 171,
+    "failed": 0
+  },
+  "offlineApp": "pass",
+  "rideCoverageProxy": "pass",
+  "historical": "known failures: 3 m GPS noise 25 vs 15 turns; every eighth planner point 3 vs 15 turns",
+  "realSnapshotAcquisition": "no usable response; HTTP 406/403/429",
+  "targetAcceptance": "unvalidated",
+  "independentReview": "closure issue fixed with failing-then-passing regression; outside member ways are reference-only",
+  "sha256": {
+    "tools/routing_snapshot.mjs": "6b363a456169d6b3fdcf2ddac59a59043d2a1565b7b19545d41fb8d8d6276002",
+    "tools/test_routing_snapshot.mjs": "41e75e48edce1b97c4137f3c3ea8a99f7132a5a90fc5e6137bae877de309a9dc",
+    "tools/recovery_study.mjs": "ea92ba9b2043e1f46759ee3c21bdaf989e59625e4034615a0ae3cf09cf68a550",
+    "tools/validate_local.py": "2df4cb5e3ee6b425709419154622cce72f8acfe80d6212e5a77c1ceff74788a5"
+  }
+}

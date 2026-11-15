@@ -22,6 +22,7 @@ for changes and remaining limitations. [Browser UI checks and artwork reproducti
 
 [Connected recovery study: implementation, costs and source gaps](docs/recovery-study-2026-11-15.md).
 Development follows the [persistent implementation rules](AGENTS.md).
+[Original routing-source capture and acquisition status](docs/routing-snapshot-2026-11-15.md).
 
 ## Current preview
 
