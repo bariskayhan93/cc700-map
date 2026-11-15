@@ -153,3 +153,15 @@ implement the covered edge/portal contract and native admission/state handling;
 do not restart stationary cosmetic fixes or port broad search. Native safety,
 resource/timing and real coverage gates remain separate and visible. Production
 map budgets, generator, app, route and firmware are unchanged.
+
+## Package/native-core implementation delivered; not live integration
+
+The [sidecar generator and portable C runtime](recovery-package-2026-11-15.md) now
+implement whole-leg source-guarded lookup, road distance, suffix geometry and
+activation/pause/stable-rejoin intents.274Node+12native tests pass; Xtensa object
+builds. Real replay exposes inadequate selective availability:12of809off-route
+frames, three of five historical windows empty. Keep this visible; passing tests
+are not useful-coverage acceptance. Native file/index/provider/task/UI adapter is
+still unbound, and cc24 native draw safety remains open. No device/app release or
+production budget change. Next work is useful covered selection and the verified
+native adapter, not another stationary matcher tweak.
