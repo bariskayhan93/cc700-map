@@ -1,8 +1,9 @@
 # Combined navigation, measurement and calibration phase
 
-Current installation: **cc22**, verified on ota_1, with the stale off-route cue
-fix and no test collector. See [the release report](cc22-release-2026-11-15.md).
-The chronological measurement sections below describe earlier v21 restorations.
+Current installation: **cc23**, verified on ota_1, with loop-departure preference
+and stale off-route cue suppression. See [the latest fix report](loop-and-turn-fixes-2026-11-15.md).
+Visible departure/return/resume acceptance remains separate. The chronological
+measurement and cc22 sections below describe earlier stages.
 
 The implementation and local checks are in place, but **this phase is not fully
 validated or released**. Ordinary v21 was restored and verified after every

@@ -7,7 +7,8 @@ countdown or “Go straight” caption from implying that an old on-route instru
 is current. It does not change matching, accepted progress, route files, remaining
 distance, recording or the v21 basemap gate.
 
-The reviewed cc22 image was subsequently installed and verified; see the
+The reviewed cc22 image was subsequently installed and verified, then retained
+in cc23; see the
 [installation report](cc22-release-2026-11-15.md). The extraction and candidate
 checks below preceded that installation. Native screen/transition acceptance
 remains separate from flash verification and boot.
