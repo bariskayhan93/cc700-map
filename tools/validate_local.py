@@ -55,12 +55,13 @@ def main():
             "limits":"Host C and transcribed contracts are separate; no whole-device or instruction equivalence claim."}
     # Fingerprint the inputs; no automatic source promotion or firmware write.
     paths=list((ROOT/"js").glob("*.js"))+list((ROOT/"tools").glob("*.py"))+list((ROOT/"tools").glob("*.mjs"))+list((ROOT/"tools").glob("*.c"))
+    paths += [p for p in (ROOT/"firmware").rglob("*") if p.is_file()]
     paths += [ROOT/n for n in ("sw.js","index.html","manifest.webmanifest")]
     paths += [PATCH/n for n in ("blk.c","arrow.c","map.c","fw.h")]
     for p in paths:
         if p.is_file():report["source_sha256"][str(p)]=hashlib.sha256(p.read_bytes()).hexdigest()
     commands=[("python",[sys.executable,"-I","-m","unittest","discover","-s","tools","-p","test_*.py"]),
-              ("node",["node","--test","tools/test_preview.mjs","tools/test_preview_guidance.mjs","tools/test_route_decisions.mjs","tools/test_route_captions.mjs","tools/test_navsource.mjs","tools/test_service_worker.mjs","tools/test_map_style.mjs","tools/test_surface.mjs","tools/test_map_geometry.mjs","tools/test_map_labels.mjs","tools/test_map_order.mjs","tools/test_map_contract.mjs","tools/test_device_parity.mjs","tools/test_adaptive_map.mjs","tools/test_map_budget.mjs","tools/test_map_coverage.mjs","tools/test_map_benchmark.mjs","tools/test_map_policy_study.mjs"]),
+              ("node",["node","--test","tools/test_preview.mjs","tools/test_preview_guidance.mjs","tools/test_route_decisions.mjs","tools/test_junction_candidates.mjs","tools/test_navigation_policy.mjs","tools/test_route_captions.mjs","tools/test_navsource.mjs","tools/test_service_worker.mjs","tools/test_map_style.mjs","tools/test_surface.mjs","tools/test_map_geometry.mjs","tools/test_map_labels.mjs","tools/test_map_order.mjs","tools/test_map_contract.mjs","tools/test_device_parity.mjs","tools/test_adaptive_map.mjs","tools/test_map_budget.mjs","tools/test_map_coverage.mjs","tools/test_map_benchmark.mjs","tools/test_map_policy_study.mjs"]),
               ("offline_app",["node","tools/test_app_offline.mjs"]),
               ("historical",["node","tools/test_route_historical.mjs"])]
     ride_root=ROOT/".local/ride-incident-20261113/fs"

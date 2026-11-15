@@ -175,3 +175,8 @@ The [reliability evaluation and feature-capability report](docs/map-evaluation-r
 contains the test matrix, layer-selection experiments, 3 km recovery requirements
 and explicit release gates. Experimental policies run offline and do not change
 the deployed generator default.
+
+[Combined implementation phase](docs/implementation-phase-2026-11-15.md): native
+stale-guidance candidate, guarded stationary collectors, source-junction study,
+resource analysis and explicit remaining bench gates. Experimental turn changes
+are gated; startup measurements do not authorize increased map budgets.

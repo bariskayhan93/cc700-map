@@ -1,4 +1,4 @@
-// SYNTHETIC labelled oracles. No recorded ride coordinates or cached map data.
+// SYNTHETIC candidate-policy labelled oracles. Production policy isolation is tested separately. No recorded ride coordinates or cached map data.
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { buildRoute, decisionPoints, TURN } from '../js/route.js';
@@ -6,7 +6,7 @@ import { readFile } from '../js/preview.js';
 import { hav, frame } from '../js/geo.js';
 const point = ([x,y]) => [y / 111320, x / 111320, 0];
 const road = (name, xy) => ({ name, kind: 1, pts: xy.map(point) });
-const generate = (xy, lines) => buildRoute({ name:'SYNTHETIC junction',pts:xy.map(point) }, lines, {id:'SYNTHETIC',nameImage:()=>new Uint8Array(42),map:{}});
+const generate = (xy, lines) => buildRoute({ name:'SYNTHETIC junction',pts:xy.map(point) }, lines, {id:'SYNTHETIC',navigationPolicy:'junction-evidence-v1',nameImage:()=>new Uint8Array(42),map:{}});
 const turns = r => r.sections.filter(s => s.dir);
 function labelled(result, labels) {
  const actual=turns(result);
@@ -102,9 +102,11 @@ test('SYNTHETIC noisy approach retains a real 25-degree fork',()=> {
  const shape=[];
  for(let y=0;y<=100;y+=5) shape.push([0,y]);
  for(let d=5;d<=120;d+=5) shape.push([d*Math.sin(25*Math.PI/180),100+d*Math.cos(25*Math.PI/180)]);
- const result=generate(noisy(shape),[road('main',[[0,0],[0,100],[0,250]]),road('fork',[[0,100],end])]);
- assert.deepEqual(turns(result).map(s=>s.dir),[TURN.SLIGHT_RIGHT]);
- assert(hav(point([0,100]),readFile(result.file).secs[result.sections.findIndex(s=>s.dir)].at(-1))<15);
+ for(const seed of [7,33,50,54]) {
+ const result=generate(noisy(shape,seed),[road('main',[[0,0],[0,100],[0,250]]),road('fork',[[0,100],end])]);
+ assert.deepEqual(turns(result).map(s=>s.dir),[TURN.SLIGHT_RIGHT],`seed ${seed}`);
+ assert(hav(point([0,100]),readFile(result.file).secs[result.sections.findIndex(s=>s.dir)].at(-1))<15, `seed ${seed}`);
+ }
 });
 test('SYNTHETIC coarse but explicit right-angle junction retains its actual maneuver',()=> {
  labelled(generate([[0,0],[0,300],[300,300]],[road('main',[[0,0],[0,300],[0,500]]),road('exit',[[0,300],[300,300]])]),[[TURN.RIGHT,300*6371000*Math.PI/180/111320]]);

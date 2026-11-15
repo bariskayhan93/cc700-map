@@ -34,6 +34,9 @@ class TargetAbiTests(unittest.TestCase):
         result = abi.verify(path.read_bytes())
         self.assertEqual(result['clock']['address'], '0x403779f4')
         self.assertFalse(result['installable'])
+        self.assertEqual(result['task_identity']['getter_address'],'0x403832e0')
+        self.assertEqual(result['task_identity']['active_tcb_array'],'0x3fc9ef64')
+        self.assertEqual(result['task_identity']['rejected_idle_getter'],'0x403829dc')
         self.assertGreater(len(result['ranges']), 8)
         modified=bytearray(path.read_bytes()); modified[100]^=1
         with self.assertRaises(ValueError): abi.verify(modified)
@@ -51,8 +54,12 @@ class TargetProbeTests(unittest.TestCase):
             import target_measurement as tm
             parsed=tm.parse_line(run.stdout.strip())
             self.assertEqual(parsed['iterator_us'],3)
-            self.assertEqual(parsed['mutex_wait_us'],1)
-            self.assertEqual(parsed['mutex_hold_us'],1)
+            self.assertEqual(parsed['lock_acquisition_us'],1)
+            self.assertNotIn('mutex_wait_us',parsed)
+            self.assertEqual(parsed['draw_locked_us'],1)
+            self.assertEqual(parsed['mutex_hold_lower_bound_us'],1)
+            self.assertEqual(parsed['mutex_hold_upper_bound_us'],3)
+            self.assertNotIn('mutex_hold_us',parsed)
             self.assertEqual(parsed['decoded_pointer'],4660)
             with self.assertRaises(ValueError): tm.parse_line(run.stdout.strip().replace('00001234','00001235'))
             with self.assertRaises(ValueError): tm.parse_line('CC7M1 00000000')
@@ -90,5 +97,23 @@ class TargetModeTests(unittest.TestCase):
                     self.assertNotIn('mutex_hold_us',sample)
                     axis='map_composition_us' if mode=='TM_COMPOSITION' else 'block_load_us'
                     self.assertEqual(sample[axis],11)
+
+
+class TargetStartupTests(unittest.TestCase):
+    def test_startup_selftest_bypasses_window_and_registry_gate_then_preserves_arg(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            binary=Path(tmp)/'startup'
+            result=subprocess.run(['cc','-std=c11','-Wall','-Wextra','-Werror','-DTM_HOST','-DTM_DIAGNOSTIC',
+                '-I',str(ROOT/'firmware/measurement'),str(ROOT/'tools/target_measurement_startup_test.c'),
+                str(ROOT/'firmware/measurement/probe.c'),'-o',str(binary)],capture_output=True,text=True)
+            self.assertEqual(result.returncode,0,result.stderr)
+            result=subprocess.run([str(binary)],capture_output=True,text=True)
+            self.assertEqual(result.returncode,0,result.stderr)
+            import target_measurement as tm
+            diag=tm.parse_diagnostic_line(result.stdout.strip())
+            self.assertEqual(diag['raw_clock_us'],9000000123)
+            self.assertEqual(diag['boot_clock_us'],1234)
+            self.assertEqual(diag['usb_registry_callback'],0x42000000)
+            self.assertEqual(diag['stack_remaining_bytes'],4096)
 
 if __name__ == '__main__': unittest.main()

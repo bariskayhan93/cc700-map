@@ -2,8 +2,8 @@
 
 `probe.c` is the actual target probe. It owns one sample on each invocation's
 stack, with no dynamic allocation, writable globals, persistent pointer or
-borrowed buffer. It measures only during boot microseconds 120,000,000 through
-149,999,999. Outside that window native work still executes. It checks the
+borrowed buffer. It measures only during boot microseconds 60,000,000 through
+119,999,999. Outside that window native work still executes. It checks the
 native system-timer peripheral and conversion callback before activating.
 Ordinary v21 does not contain this probe. A second runtime gate checks the
 current task's stack before heap/export helpers: at least 3072 bytes before
@@ -11,9 +11,13 @@ capture and 2048 bytes inside the export helper. This is a conservative local
 margin gate, not a proof of an unobserved native callee's maximum stack use.
 
 The current core comes from PRID bit 13, matching native code at `0x4038298c`.
-Core selection and `0x403829dc(core)` current-TCB lookup run in a short level-3
+Core selection and `0x403832e0()` current-TCB lookup run in a short level-3
 interrupt-masked section; the prior PS is restored immediately afterward. This
-prevents task migration between core selection and lookup. The TCB, stack base
+prevents task migration between core selection and lookup. The getter's identity is independently proved by native interrupt dispatch:
+`0x40380c11..0x40380c1b` saves current SP at the selected TCB's first word and
+`0x40380c4d..0x40380c57` restores SP from that same TCB. Both use per-core active
+TCBs at `0x3fc9ef64`, also used by the getter and task-creation publication.
+The TCB, stack base
 and top must lie within internal DRAM bounds, have valid alignment/order, and
 contain this invocation's SP. Only that task's stack is inspected. A bounded
 scan reads at most 1024 fill bytes from its base, below its current SP. Output
@@ -24,6 +28,16 @@ task creation proves an actual 8192-byte stack allocation, but other task
 invocations must pass their own bounds/margin checks. Telemetry versions are
 `CC7M3` (iterator), `CC7F2` (composition), and `CC7B2` (block); parsers retain older
 versions for prior host fixtures.
+
+An earlier ABI identification was wrong: `0x403829dc(core)` returns the per-core
+idle-task handle from `0x3fc9ecbc`, not the active task. A real startup diagnostic
+showed its 1536-byte idle stack did not contain the GUI's SP. The bounds guard
+returned zero before any stack-fill scan, so those candidates emitted no normal
+capture records. The earlier current-task identity claim is withdrawn. Native
+idle-task creation and active context save/restore now establish the distinction;
+current candidates use `0x403832e0()`. An actual mismatched idle-pointer/SP fixture
+is retained in the host bounds test. Current GUI stack margins still require a
+new observed startup diagnostic after this correction.
 
 Build separate modes with `python3 tools/target_measurement_build.py --mode
 iterator|composition|block --output NEW_DIRECTORY`. The builder pins the exact
@@ -49,11 +63,14 @@ is its test firmware, regardless of mode; use its manifest's mode and SHA-256.
   cached/no-op loads and reports requested type/road, not a proven loaded block
   offset. Before/after heap snapshots do not measure peak overlap phases.
 
-The clock is the no-argument 64-bit raw system timer at `0x403779f4`. GNU
+The timing clock is the no-argument 64-bit raw system timer at `0x403779f4`. GNU
 inspection follows its coherent 52-bit hardware latch read and installed
 right-shift-by-four conversion. The output wraps at 48 bits; captures must not
-span reset, wrap or timer reinitialization. Avoid `0x42005f38` and `0x40377954`,
-which add mutable clock offsets. The probe reports a pair of clock reads per
+span reset, wrap or timer reinitialization. Use `0x40377954` only for activation-window gating: initialization computes
+its offset from RTC-now minus saved RTC-at-app-start minus raw counter. Native
+raw timer initialization enables the counter without establishing a reset to
+zero, so raw counter age is not a justified boot-window clock. Timing intervals
+continue to use raw values exclusively. Avoid wall clock `0x42005f38`. The probe reports a pair of clock reads per
 sample; this is an observed clock-pair cost, not the full collector overhead.
 
 Heap information at `0x42003b50` accepts a 28-byte output followed by a capability
@@ -61,17 +78,56 @@ mask. It locks individual heap regions; the aggregate snapshot is not globally
 atomic. Its free/largest/minimum fields are at bytes 0/8/12. The narrow probe
 makes no internal-heap or total-allocation-margin claim.
 
-Export occurs only after the final timestamp. ROM `ets_printf` at `0x400005d0`
-is used with a caller-owned bounded string, bypassing the application's shared
-logger scratch. The address is present in exact stock call sites and in the
-[official S3 ROM map](https://github.com/espressif/esp-idf/blob/v4.4/components/esp_rom/esp32s3/ld/esp32s3.rom.ld).
-Runtime routing to the connected serial sink remains an installation check.
-Output may interleave with native logging: each line has an FNV-1a checksum.
-The iterator line is at most 233 bytes including its NUL; other modes use at
-most 206. Export and heap calls perturb subsequent frames. No global sequence
-counter exists, so a checksum detects damaged lines but cannot prove zero
-sample loss. `tools/target_measurement.py` parses observed axes only and
-explicitly preserves these limitations.
+Export occurs only after the final timestamp. The native USB Serial/JTAG byte
+callback at `0x420074ec` receives `(fd, byte)` exactly as its caller at
+`0x420073e4..0x420073ea` does. GNU inspection proves hardware FIFO writes,
+raw-clock polling with a 50,000-microsecond timeout, and no allocation or retained
+source pointer. The probe checks that the live native TX callback still equals
+that address. Its bounded caller-owned line is exported one byte at a time;
+then bit 0 at `0x60038004` is set, exactly matching the native newline flush.
+No printf, application logger buffer, mutex initialization or shared-storage
+commandeering is involved.
+
+This deliberately bypasses the native VFS writer's lazy mutex initialization,
+whose allocation failure can assert. Concurrent native console output may
+interleave; each measurement payload has an FNV-1a checksum and damaged lines
+must be rejected. The checksum excludes the prefix, so analysis must also
+require channel agreement with the pinned build manifest. The iterator line is
+at most 233 bytes including its NUL; other modes use at most 206. Export and heap
+calls perturb subsequent frames. No global sequence counter exists, so a
+checksum detects damaged lines but cannot prove zero sample loss. Runtime USB
+sink observation remains necessary. `tools/target_measurement.py` parses
+observed axes only and explicitly preserves these limitations.
+
+An earlier ROM-printf candidate produced no telemetry in its controlled trial.
+That establishes no performance observation. The valid S3 internal-DRAM range
+is `0x3fc88000..0x3fd00000` per the
+[official SoC definitions](https://github.com/espressif/esp-idf/blob/v4.4/components/soc/esp32s3/include/soc/soc.h).
+The earlier conservative `0x3fce0000` cutoff incorrectly rejected some valid
+stacks; a regression now exercises that upper region. This is a confirmed gate
+bug, but the actual trial's runtime TCB/stack addresses were not observed, so it
+cannot be claimed as the cause of missing output. Hook activity, window timing,
+other guards and ROM routing were not distinguished by that trial. Current
+USB-byte builds remove the ROM-routing ambiguity and correct the DRAM gate.
+
+Every current test build includes a once-per-GUI-task startup diagnostic. Only
+the existing creator literal at `0x420009a4` changes from the original entry
+`0x42009318` to a `void(void *)` wrapper. The wrapper preserves its argument,
+emits `CC7D1`, then calls the unchanged original entry. No writable marker flag
+or private RAM is needed: task-entry lifetime bounds the diagnostic to one call.
+Its separate no-inline temporary stack frame returns before the original GUI
+loop; the persistent wrapper frame is 32 bytes.
+
+`CC7D1` reports separate timer-device, timer-conversion, USB-registry, stack and
+capture-window gates, plus both clocks and own-task stack metadata. The normal
+capture window, stack policy and stdout registry do not suppress this startup
+marker. The initialized raw timer ABI remains essential because the native USB
+byte callback itself calls that timer. A diagnostic is never a performance
+sample. `parse_diagnostic_line` and CLI `startup_diagnostics` decode it separately.
+A host regression verifies a raw counter of 9,000,000,000 microseconds with a
+boot clock of 60,000,000 still activates capture. Another verifies startup output
+outside the window despite a different stdout registry callback, while
+preserving the original task-entry argument and making no heap observations.
 
 `journal.c` is a separate host-tested bounded journal for a future capture
 owner that can provide verified mutual exclusion. Initialization/reinitialization
@@ -100,3 +156,5 @@ ordinary-firmware restoration/readback/automatic boot verification. No builder
 performs installation or treats an offline build as target acceptance. Missing
 full-frame, projection, raster/text, canvas, flush, block-overlap and heap-phase
 channels still prevent general resource calibration.
+
+The next bench capture enables the first 120 boot-relative seconds, including the initial map draw. This matters for stationary navigation: a paused device may not redraw during a delayed 60–120 second window. Host capture/restoration remains separately bounded; a window with no map invocation is not a timing sample.

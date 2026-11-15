@@ -3,6 +3,8 @@
 import { fu, fs, fb, f32, u32le, sc, SC, Bytes } from './pb.js';
 import { hav, brg, adiff, frame, rdp, geohash } from './geo.js';
 import { buildMapSection, buildStyledSection } from './mapsec.js';
+import { junctionCandidates } from './junction_candidates.js';
+import { legacyDecisionPoints } from './navigation_legacy.js';
 export const lo_hi = a => { let lo = Infinity, hi = -Infinity; for (const v of a) { if (v < lo) lo = v; if (v > hi) hi = v; } return [lo, hi]; };   // no spread: long routes exceed the argument limit on phones
 // header template from a server route file, route-specific values cleared (all set in buildRoute)
 const HEADER = Uint8Array.from(atob('AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAANAAAAAAAAAAAAAAD//wAAPv///wAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAgAAAKVaVao='), c => c.charCodeAt(0));
@@ -112,10 +114,11 @@ export function decisionPoints(P, D, lines, F, grid) {
   }
   const matched = d => { const k = Math.round(d / STEP); for (let j = k - 5; j <= k + 5; j++) if (M[j] === -1) return false; return k >= 0 && k < M.length; };
   // 2. the choice at a point: branches of all roads that pass within 8 m, relative to the arriving direction
-  const judge = d => {
+  const judge = (d, junction = null) => {
     if (d < 15 || d > total - 15) return null;
-    const p = at(d), hin = hdg(at(d - 15), p), hout = hdg(p, at(d + 15)), alts = [];
-    const near = new Set(); for (const [li, a, b] of segs(p[0], p[1])) if (ridable(li) && foot(p[0], p[1], a, b) < 8) near.add(li);
+    const average = offsets => { const q=offsets.map(e=>at(d+e)); return [q.reduce((n,p)=>n+p[0],0)/q.length,q.reduce((n,p)=>n+p[1],0)/q.length]; };
+    const p = junction?.xy || at(d), hin = hdg(junction ? average([-15,-20,-25]) : at(d - 15), p), hout = hdg(p, at(d + 15)), alts = [];
+    const near = new Set(junction?.ways || []); if (!junction) for (const [li, a, b] of segs(p[0], p[1])) if (ridable(li) && foot(p[0], p[1], a, b) < 8) near.add(li);
     const anchor = M[Math.max(0, Math.floor(d / STEP) - 5)];
     if (anchor >= 0) {
       const grade = li => (lines[li].fl || 8) & 31;
@@ -139,26 +142,56 @@ export function decisionPoints(P, D, lines, F, grid) {
     // headings. Otherwise a few metres of jitter can turn the main road's own
     // forward arm into a supposedly straighter alternative at a side street.
     const closest = heading => arms.reduce((a, b) => Math.abs(adiff(b, heading)) < Math.abs(adiff(a, heading)) ? b : a);
-    const incoming = closest(180), outgoing = closest(adiff(hout, hin));
+    const incoming = closest(180);
+    let outgoing = closest(adiff(hout, hin));
+    const shortError = Math.abs(adiff(outgoing, adiff(hout, hin)));
+    // A shallow fork can put both exits inside the old 20-degree exclusion
+    // cone. Use a longer probe only for that ambiguous arm selection; short
+    // unambiguous probes retain close double turns.
+    if (arms.some(q => q !== outgoing && Math.abs(adiff(q, adiff(hout,hin))) - shortError < 10))
+      outgoing = closest(adiff(hdg(p, junction ? average([25,30,35]) : at(d + 30)), hin));
     const approach = adiff(incoming, 180), selectedTurn = adiff(outgoing, approach);
     // A mapped straight continuation is not a maneuver, even when a noisy
     // chord differs by twenty degrees. Keep the original track angle for real
     // turns: quantizing every angle would change existing sharp/slight icons.
     if (Math.abs(selectedTurn) < 20) return null;
-    const tk = adiff(hout, hin);
-    const other = alts.filter(q => Math.abs(q) < 150 && Math.abs(adiff(q, tk)) > 20);
+    const tk = selectedTurn;
+    const other = arms.filter(q => q !== outgoing).map(q=>adiff(q,approach)).filter(q => Math.abs(q) < 150);
     if (!other.length) return null;                                                    // no choice: the road only bends
     if (other.some(q => Math.abs(q) < Math.abs(tk) + 10)) return Math.abs(tk) >= 20 ? tk : (tk >= 0 ? 25 : -25);   // another way is as straight or straighter: at least "slight"
     return Math.abs(tk) >= 45 ? tk : null;                                             // the straightest way: only a real turn needs a prompt
   };
-  const R = runs.filter(r => r.d1 - r.d0 >= 6), points = [];
-  for (let k = 1; k < R.length; k++) { if (R[k].li === R[k - 1].li) continue; const d = R[k - 1].d1, a = judge(d); if (a !== null) points.push({ d, a }); }
+  const R = runs.filter(r => r.d1 - r.d0 >= 6); let points = [];
+  for (let k = 1; k < R.length; k++) {
+    if (R[k].li === R[k - 1].li) continue;
+    const d = R[k - 1].d1, a = judge(d); if(a!==null)points.push({d,a});
+  }
+  const junctions = junctionCandidates(P,D,lines,F);
+  const ownerAt = d => {
+    const p=at(d);let best=null,error=12;
+    for(const node of junctions)if(Math.abs(node.d-d)<35){const e=Math.hypot(p[0]-node.xy[0],p[1]-node.xy[1]);if(e<error){error=e;best=node;}}
+    return best ? best.xy[0].toFixed(4)+','+best.xy[1].toFixed(4) : null;
+  };
+  for (const node of junctions) {
+    const a=judge(node.d,node);
+    const owner=node.xy[0].toFixed(4)+','+node.xy[1].toFixed(4);
+    // A noisy run boundary cannot claim the opposite maneuver at this same
+    // source junction. Retain existing well-positioned records when compatible.
+    points=points.filter(p=>Math.abs(p.d-node.d)>=35 || ownerAt(p.d)!==owner || (a!==null && p.a*a>0));
+    if(a===null)continue;
+    const existing=points.find(p=>Math.abs(p.d-node.d)<20 && p.a*a>0);
+    if(existing)existing.owner=owner;
+    else points.push({d:node.d,a,owner});
+  }
+  points.sort((a,b)=>a.d-b.d);
   let unmatched = 0, run = 0, longestUnmatched = 0;
   for (const li of M) { run = li < 0 ? run + STEP : 0; if (li < 0) unmatched += STEP; longestUnmatched = Math.max(longestUnmatched, run); }
-  return { points, judge, matched, evidence: { unmatchedMeters: unmatched, longestUnmatchedMeters: longestUnmatched } };
+  return { points, judge, matched, ownerAt, evidence: { unmatchedMeters: unmatched, longestUnmatchedMeters: longestUnmatched } };
 }
 const short = t => t.replace(/straße\b/g, 'str.').replace(/Straße\b/g, 'Str.').replace(/strasse\b/g, 'str.').replace(/Strasse\b/g, 'Str.');
 export function buildRoute(gpx, allLines, opt) {
+  const navigationPolicy=opt.navigationPolicy ?? 'legacy';
+  if(!['legacy','junction-evidence-v1'].includes(navigationPolicy))throw new RangeError('Unknown navigation policy');
   const lines = (opt.navigationLines || allLines).filter(L => !(L.fl & 256));   // 512 (dual-carriageway centreline) stays here: turns and the original map use it   // detail ways (park footways, short paths, cycle tracks next to a street): map only, not for turns
   const speed = (opt.speedKmh || 18) / 3.6, F = frame(gpx.pts[0][0]);
   // 1. clean points + cumulative distance
@@ -172,7 +205,7 @@ export function buildRoute(gpx, allLines, opt) {
   let D = [0]; for (let i = 1; i < P.length; i++) D.push(D[i - 1] + hav(P[i - 1], P[i]));
   const grid = roadGrid(lines, F);
   // decision points from the road network; each gets a track point of its own, so a section can end exactly there
-  const NET = opt.classic || !lines.length ? null : decisionPoints(P, D, lines, F, grid), DP = NET ? NET.points : [], dpAngle = new Map();
+  const NET = opt.classic || !lines.length ? null : (navigationPolicy==='legacy'?legacyDecisionPoints:decisionPoints)(P, D, lines, F, grid), DP = NET ? NET.points : [], dpAngle = new Map();
   for (const q of DP) { let i = D.findIndex(x => x >= q.d); if (i <= 0) continue;
     if (D[i] - q.d > 1 && q.d - D[i - 1] > 1) { const f = (q.d - D[i - 1]) / (D[i] - D[i - 1]), a = P[i - 1], b = P[i];
       P.splice(i, 0, [a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f, a[2] == null || b[2] == null ? null : a[2] + (b[2] - a[2]) * f]); D.splice(i, 0, q.d); }
@@ -207,14 +240,31 @@ export function buildRoute(gpx, allLines, opt) {
   for (const [i, a] of dpAngle) { let ang = a;
     for (const c of [...cut]) if (Math.abs(D[c] - D[i]) < (turnAngle[c] !== undefined ? 12 : 15)) { if (turnAngle[c] !== undefined && turnAngle[c] * a > 0 && Math.abs(turnAngle[c]) > Math.abs(ang)) ang = turnAngle[c]; cut.delete(c); delete turnAngle[c]; }
     cut.add(i); turnAngle[i] = ang; }
-  // shape turns on matched roads need a choice at the junction; a bend of the road or cycleway is not a turn
+  if(navigationPolicy==='legacy') {
+    if (NET) for (const c of [...cut]) if (turnAngle[c] !== undefined && !dpAngle.has(c) && NET.matched(D[c]) && Math.abs(turnAngle[c]) < 160) {
+      let keep=false;for(let e=-10;e<=10&&!keep;e+=2)keep=NET.judge(D[c]+e)!==null;
+      if(!keep){delete turnAngle[c];cut.delete(c);if(nm[c]!==nm[c-1]&&nm[c]&&nm[c-1])cut.add(c);}
+    }
+  } else {
+  // Shape turns may be a few metres from their network evidence. Associate that
+  // evidence before deduplication; requiring an exact point loses noisy forks,
+  // while borrowing the same evidence twice invents additional maneuvers.
+  const shapeEvidence = [];
   if (NET) for (const c of [...cut]) if (turnAngle[c] !== undefined && !dpAngle.has(c) && NET.matched(D[c]) && Math.abs(turnAngle[c]) < 160) {
-    // Evidence belongs to this point, not any junction in a 20 m window.
-    // Borrowing a neighbour's decision creates extra prompts before/after one
-    // noisy corner (and can even borrow a turn in the opposite direction).
-    const choice = NET.judge(D[c]);
-    const keep = choice !== null && choice * turnAngle[c] > 0;
+    let evidence = null;
+    for (const offset of [0,-2,2,-4,4,-6,6,-8,8,-10,10]) {
+      const choice = NET.judge(D[c] + offset);
+      if (choice !== null && choice * turnAngle[c] > 0) { evidence = { c, d: D[c] + offset, offset: Math.abs(offset), owner: NET.ownerAt(D[c]+offset) }; break; }
+    }
+    const keep = evidence !== null;
+    if (keep) shapeEvidence.push(evidence);
     if (!keep) { delete turnAngle[c]; cut.delete(c); if (nm[c] !== nm[c - 1] && nm[c] && nm[c - 1]) cut.add(c); }
+  }
+  const ownedEvidence = DP.map(q => ({d:q.d,a:q.a,owner:q.owner}));
+  for (const q of shapeEvidence.sort((a,b) => a.offset - b.offset || a.c - b.c)) {
+    if (ownedEvidence.some(p => p.a * turnAngle[q.c] > 0 && (p.owner && q.owner ? p.owner === q.owner && Math.abs(p.d-q.d)<35 : Math.abs(p.d-q.d)<12))) { cut.delete(q.c); delete turnAngle[q.c]; }
+    else ownedEvidence.push({ d: q.d, a: turnAngle[q.c], owner:q.owner });
+  }
   }
   const wp = {}; for (const w of gpx.wpts || []) { let bi = -1, bd = 40; P.forEach((p, i) => { const d = hav(p, [w.lat, w.lon]); if (d < bd) { bd = d; bi = i; } }); if (bi > 0 && bi < P.length - 1) { cut.add(bi); wp[bi] = w.name; } }
   let B = [0, ...[...cut].sort((a, b) => a - b), P.length - 1].filter((v, k, a) => k === 0 || v !== a[k - 1]);
@@ -359,6 +409,6 @@ export function buildRoute(gpx, allLines, opt) {
   // diagonal may omit real corners. Filling file point gaps cannot recover
   // those choices and must not silently replace the user's route with guesses.
   if (maxInputGapMeters > 50 && navigationEvidence.longestUnmatchedMeters >= 20) navigationEvidence.warnings.push('sparse-unmatched-route');
-  return { file: padded, sections: secs, distance: total, mapBlocks: map.blocks, maxBlock: map.maxBlock, mapStat: map.stat, navigationEvidence };
+  return { file: padded, sections: secs, distance: total, mapBlocks: map.blocks, maxBlock: map.maxBlock, mapStat: map.stat, navigationEvidence, navigationPolicy };
 }
 function box(pts, F) { let b = [1e18, 1e18, -1e18, -1e18]; for (const p of pts) { const [x, y] = F.m(p[0], p[1]); b = [Math.min(b[0], x), Math.min(b[1], y), Math.max(b[2], x), Math.max(b[3], y)]; } return b; }

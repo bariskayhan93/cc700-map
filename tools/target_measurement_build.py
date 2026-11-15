@@ -68,6 +68,16 @@ def build(stock_path,v21,out,mode="iterator"):
             asm.write('\n  TRAMP0 measure, tm_measure_frame\n .section .call_measure, "ax"\n .begin no-transform\n call8 tramp_measure\n .end no-transform\n')
         allowed.update(('.tramp_measure','.call_measure'))
     else:raise ValueError('Unknown capture mode')
+    # Replace only the creator's existing task-entry literal. The wrapper has
+    # the same void(void*) ABI and calls the unchanged original task entry.
+    extra.append('-DTM_DIAGNOSTIC')
+    linker=(src/'patch.ld').read_text()
+    linker=linker.replace('MEMORY {','MEMORY { l_gui_entry (rx) : ORIGIN = 0x420009a4, LENGTH = 4\n')
+    linker=linker.replace('SECTIONS {','SECTIONS { .gui_entry_literal : { KEEP(*(.gui_entry_literal)) } > l_gui_entry\n')
+    (src/'patch.ld').write_text(linker)
+    with (src/'tramp.S').open('a') as asm:
+        asm.write('\n .section .gui_entry_literal, "a"\n .word tm_gui_entry\n')
+    allowed.add('.gui_entry_literal')
     for name in ('probe.c','probe.h'):shutil.copyfile(ROOT/'firmware/measurement'/name,src/name)
     run(str(PREFIX)+'gcc','-Os','-mlongcalls','-mtext-section-literals','-ffreestanding',
         '-fno-builtin','-nostdlib','-Wall','-Wextra','-fstack-usage','-Wl,-T,patch.ld',
@@ -94,7 +104,7 @@ def build(stock_path,v21,out,mode="iterator"):
         if at+size>len(irom):irom.extend(bytes(at+size-len(irom)))
         irom[at:at+size]=data
         changed.append({'section':name,'address':hex(address),'bytes':size,'sha256':hashlib.sha256(data).hexdigest()})
-    version={'iterator':b'CC700_V1.414-cc21m01','composition':b'CC700_V1.414-cc21f01','block':b'CC700_V1.414-cc21b01'}[mode];drom[16:48]=version+bytes(32-len(version))
+    version={'iterator':b'CC700_V1.414-cc21m04','composition':b'CC700_V1.414-cc21f04','block':b'CC700_V1.414-cc21b04'}[mode];drom[16:48]=version+bytes(32-len(version))
     image=esp.build(hdr,segs);assert esp.build(*esp.read(image)[:2])==image
     (out/'iterator-probe.bin').write_bytes(image)
     (out/'probe.dis').write_text(run(str(PREFIX)+'objdump','-d',out/'probe.elf'))
@@ -102,14 +112,18 @@ def build(stock_path,v21,out,mode="iterator"):
     manifest={'version':version.decode(),'test_only':True,'device_written':False,
         'mode':mode,'stock_sha256':abi['stock_sha256'],'ordinary_v21_sha256':pinned,
         'image_sha256':hashlib.sha256(image).hexdigest(),'image_bytes':len(image),
-        'sections':changed,'window_boot_us':[120000000,150000000],
-        'channels':{'iterator':['iterator wall/mutex wait/hold','PSRAM heap before/after'],'composition':['map composition duration; excludes canvas setup and flush','PSRAM heap before/after'],'block':['cc_blk duration; includes no-op/cache hits','PSRAM heap before/after; peak overlap unmeasured']}[mode],
+        'sections':changed,'window_boot_us':[0,120000000],
+        'channels':{'iterator':['iterator wall, lock acquisition, draw-under-lock, conservative mutex-hold bounds','PSRAM heap before/after'],'composition':['map composition duration; excludes canvas setup and flush','PSRAM heap before/after'],'block':['cc_blk duration; includes no-op/cache hits','PSRAM heap before/after; peak overlap unmeasured']}[mode],
         'unmeasured':['full frame','projection/raster/text component durations','actual projection call/point totals','block load overlap','internal heap'],
         'source_sha256':{f.name:hashlib.sha256(f.read_bytes()).hexdigest() for f in src.iterdir() if f.is_file()},
+        'startup_diagnostic':'CC7D1 once at GUI task entry; reports separate clock/USB/stack/window gates, not performance',
+        'startup_hook':{'literal_address':'0x420009a4','original_task_entry':'0x42009318','abi':'void(void*), argument preserved'},
+        'task_identity':{'current_getter':'0x403832e0','active_tcb_array':'0x3fc9ef64','old_idle_getter_not_used':'0x403829dc'},
+        'clock_domains':{'timing':'raw system timer0x403779f4','window':'RTC boot-referenced clock0x40377954; avoids unproved raw boot epoch'},
         'capture_ownership':'stack per invocation; no writable capture globals or allocation',
-        'export':'ROM printf0x400005d0 after timed interval; iterator CC7M3<=233B, other modes CC7F2/CC7B2<=206B including NUL',
+        'export':'Allocation-free native USB byte callback0x420074ec+newline flush; concurrent output may interleave after timed interval; iterator CC7M3<=233B, other modes CC7F2/CC7B2<=206B including NUL',
         'disturbance':'heap before/after and serial after each invocation disturb subsequent frames; iterator source-work counters add per-entry overhead',
-        'runtime_gates':['clock initialized with exact conversion callback','boot time window120..150s','own current-task stack bounds and >=3072B before heap; >=2048B before export'],
+        'runtime_gates':['clock initialized with exact conversion callback','boot time window60..120s','own current-task stack bounds and >=3072B before heap; >=2048B before export','USB callback0x420074ec; no mutex initialization or commandeering'],
         'acceptance_gates':['fresh exact rollback backup and guarded install','runtime serial sink and complete output observation',
           'route hash/block/section/camera/workload identity receipt','timer overhead observed; no full-frame calibration',
           'automatic ordinary firmware restore/readback/boot receipt'],

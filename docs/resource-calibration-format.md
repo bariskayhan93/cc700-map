@@ -173,7 +173,7 @@ The current channels mean:
 
 | Channel | Measured duration | Explicitly absent |
 |---|---|---|
-| `iterator` (CC7M1) | iterator wall, mutex wait/hold, unlock | full frame and draw component breakdown |
+| `iterator` (CC7M1/M2/M3) | iterator wall, lock acquisition, draw-under-lock, unlock-call interval and conservative hold bounds | full frame and draw component breakdown |
 | `map_composition` (CC7F1) | native map composition call | native canvas construction/clear and flush |
 | `block_load` (CC7B1) | cc_blk call including possible cache hit/no-op | peak serialized/decoded overlap and phase heap |
 
@@ -228,3 +228,5 @@ A payload-preserving composition-to-block prefix relabel therefore cannot silent
 become a valid different-channel observation. Runtime receipt verification must
 also bind the original installed image to this build manifest. An embedded JSON
 manifest alone is not proof of an installed binary.
+
+Current iterator probes timestamp before and after the lock call, after drawing, and after the unlock call. `draw_locked_us` is a lower bound on actual mutex hold; `mutex_hold_upper_bound_us` conservatively uses the entire iterator interval. `lock_acquisition_us` includes call overhead. Neither is an exact mutex-wait/hold measurement; the full-mode schema above still requires genuinely measured boundaries.

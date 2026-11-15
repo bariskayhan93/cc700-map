@@ -27,27 +27,29 @@
 
 ### Task 1: Reproduce and repair maneuver decisions
 
-- [ ] Run existing historical and labelled tests; preserve baseline evidence privately.
-- [ ] Add labelled noisy junction, sparse junction, grade-separated and close-turn regressions; observe failures before changes.
-- [ ] Fix confirmed decision-generation causes with separate geometry/decision logic where needed.
-- [ ] Run all route tests and historical comparison; record residual ambiguities explicitly.
+- [x] Run existing historical and labelled tests; preserve baseline evidence privately.
+- [x] Add labelled noisy junction, sparse junction, grade-separated and close-turn regressions; observe failures before changes.
+- [x] Fix confirmed decision-generation causes (scoped experimental policy; broad promotion withheld) with separate geometry/decision logic where needed.
+- [x] Run all route tests and historical comparison; record residual ambiguities explicitly.
 
 ### Task 2: Trace and repair guidance validity
 
-- [ ] Trace native card, caption and distance consumers and state ownership.
-- [ ] Add host tests for actual hook/state behavior before changes, including off-route/rejoin, sentinels and descriptor restoration.
-- [ ] Implement only proven interfaces; compile and independently inspect changed binary ranges.
+- [x] Trace native card, caption and distance consumers and state ownership.
+- [x] Add host tests for actual hook/state behavior before changes, including off-route/rejoin, sentinels and descriptor restoration.
+- [x] Implement only proven interfaces; compile and independently inspect changed binary ranges.
 
 ### Task 3: Implement bounded target collection
 
-- [ ] Verify native clock, heap and export interfaces against exact image ranges.
-- [ ] Write failing host tests for journal bounds/lifetime, failure/overflow and sample identity.
-- [ ] Implement test-only instrumentation; compile, inspect code/stack and test failure paths.
+- [x] Verify native clock, heap and export interfaces against exact image ranges.
+- [x] Write failing host tests for journal bounds/lifetime, failure/overflow and sample identity.
+- [x] Implement test-only instrumentation; compile, inspect code/stack and test failure paths.
 - [ ] Capture identified stationary workloads if all installation/ABI prerequisites hold; restore ordinary firmware and verify boot.
 
 ### Task 4: Calibration and closure
 
-- [ ] Add failing tests for sample validation, held-out evaluation and refusal on missing target evidence.
-- [ ] Implement resource calibration/reporting with separate measured versus unmeasured channels.
-- [ ] Run full validation and one independent review; repair important findings through failing regressions.
-- [ ] Publish implementation/evidence report and explicitly list any incomplete target gates.
+- [x] Add failing tests for sample validation, held-out evaluation and refusal on missing target evidence.
+- [x] Implement resource calibration/reporting with separate measured versus unmeasured channels.
+- [x] Run full validation and one independent review; repair important findings through failing regressions.
+- [x] Publish implementation/evidence report (implementation checkpoint; target gates remain open) and explicitly list any incomplete target gates.
+
+Status: implementation checkpoint only. Active workload matrix, live guidance acceptance, complete calibration and release remain open; see ../../implementation-phase-2026-11-15.md.

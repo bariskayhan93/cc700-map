@@ -1,0 +1,46 @@
+{
+  "scope": "implementation checkpoint; not full phase acceptance",
+  "production_baseline_commit": "0c02d276b1250fc38ccc9567c046d92d701d09a6",
+  "ordinary_firmware_sha256": "7deb201d797bdd974bfc0460870288feed2632bb41c81b65338e3307f5d0a139",
+  "ordinary_restored": true,
+  "ordinary_boot_confirmed": true,
+  "ota_selection_sha256": "a1ed149677f974e7b1fd3b926c817a1db72ce01ca26b31929937d4ab01f5be22",
+  "candidate_guidance_installed": false,
+  "experimental_turn_policy_default": false,
+  "performance_sample_count": 0,
+  "resource_budgets_increased": false,
+  "startup_only": {
+    "gate_flags": 31,
+    "gui_allocation_bytes": 8192,
+    "aligned_stack_span_bytes": 8184,
+    "nested_sampler_remaining_bytes": 7448,
+    "a5_prefix_bytes": 1024,
+    "a5_scan_capped": true,
+    "map_margin_observed": false
+  },
+  "ride_replay": {
+    "position_samples": 4035,
+    "absent_coverage_proxies": 0,
+    "full_native_navigation_simulation": false
+  },
+  "production_route_byte_parity": {
+    "source_commit": "0c02d27",
+    "cases": 3,
+    "excluded_bytes": "generation timestamp only"
+  },
+  "bench_ready": {
+    "version": "CC700_V1.414-cc21m04",
+    "image_sha256": "cd9fe2732f504804381c07ef27407f0e838604e6e6cd14a3d1e702b571ff8003",
+    "window_boot_us": [
+      0,
+      120000000
+    ],
+    "installed": false
+  },
+  "open_gates": [
+    "identified active map capture",
+    "live guidance hide/restore",
+    "general noisy/sparse maneuver validation",
+    "full calibration and held-out target matrix"
+  ]
+}

@@ -3,7 +3,10 @@ from pathlib import Path
 import importlib.util
 import unittest
 
-from guidance_build import NATIVE_GUARDS, assert_native_guards
+if __package__:
+    from .guidance_build import NATIVE_GUARDS, assert_native_guards
+else:
+    from guidance_build import NATIVE_GUARDS, assert_native_guards
 
 ROOT = Path(__file__).resolve().parents[1]
 BASE = ROOT/'.local/patch-v21/ota_1_v21.bin'

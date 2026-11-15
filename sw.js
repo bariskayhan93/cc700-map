@@ -1,6 +1,6 @@
 // Service worker: receives GPX files shared from other apps (Web Share Target) and keeps the app usable offline.
-const APP = 'cc700-app-v13';
-const FILES = ['./', 'index.html', 'manifest.webmanifest', 'js/app.js', 'js/preview_guidance.js', 'js/pb.js', 'js/geo.js', 'js/osm.js', 'js/navsource.js', 'js/map_style.js', 'js/device_draw.js', 'js/map_geometry.js', 'js/map_labels.js', 'js/map_order.js', 'js/map_budget.js', 'js/mapsec.js', 'js/route.js', 'js/names.js', 'js/preview.js', 'js/ble.js', 'icons/icon-192.png'];
+const APP = 'cc700-app-v14';
+const FILES = ['./', 'index.html', 'manifest.webmanifest', 'js/app.js', 'js/preview_guidance.js', 'js/pb.js', 'js/geo.js', 'js/osm.js', 'js/navsource.js', 'js/map_style.js', 'js/device_draw.js', 'js/map_geometry.js', 'js/map_labels.js', 'js/map_order.js', 'js/map_budget.js', 'js/mapsec.js', 'js/route.js', 'js/junction_candidates.js', 'js/navigation_legacy.js', 'js/names.js', 'js/preview.js', 'js/ble.js', 'icons/icon-192.png'];
 self.addEventListener('install', e => { self.skipWaiting(); e.waitUntil(caches.open(APP).then(c => c.addAll(FILES.map(path => new Request(path, { cache: 'reload' }))))); });
 self.addEventListener('activate', e => e.waitUntil(self.clients.claim()));
 self.addEventListener('fetch', e => {

@@ -17,3 +17,8 @@ void cc_blk(uint32_t,uint32_t);
 #endif
 
 void tm_probe_work(tm_probe *,uint32_t style,uint32_t points);
+uint32_t tm_stack_bounds(uint32_t task,uint32_t base,uint32_t top,uint32_t sp);
+int tm_usb_state_valid(uint32_t tx_callback);
+#ifdef TM_DIAGNOSTIC
+void tm_gui_entry(void *);
+#endif

@@ -8,7 +8,10 @@ import sys
 import tempfile
 import unittest
 
-from guidance_build import build_candidate, assert_native_guards, VERSION
+if __package__:
+    from .guidance_build import build_candidate, assert_native_guards, VERSION
+else:
+    from guidance_build import build_candidate, assert_native_guards, VERSION
 
 ROOT=Path(__file__).resolve().parents[1]
 BASE=ROOT/'.local/patch-v21/ota_1_v21.bin'

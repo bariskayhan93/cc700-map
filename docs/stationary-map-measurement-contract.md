@@ -19,7 +19,7 @@ were performed. Boot output alone does not prove runtime timing or build identit
 
 | Component | Boundary to instrument | What an observation would establish |
 |---|---|---|
-| Map iterator | Entry, mutex-acquired, post-draw and post-unlock around current `cc_iter` | Iterator wall duration and mutex wait/hold for that actual block |
+| Map iterator | Entry, mutex-acquired, post-draw and post-unlock around current `cc_iter` | Iterator wall, lock-call duration, draw-under-lock and conservative hold bounds; exact wait/hold need closer boundaries |
 | Projection | Native projection callback entry/exit, counts and point totals | Projection component and agreement with calculated work |
 | Raster/text | Actual native line/text calls and custom fill component | Component durations; browser drawing does not substitute |
 | Block load | Serialized allocation, old decoded free, new decode and serialized free | Peak overlap phases and load duration |
@@ -49,3 +49,11 @@ it has already been implemented. The offline selector candidates remain withheld
 from production while this target-runtime gate and the intended recovery feature
 contract remain open. This preserves useful current behavior instead of spending
 unmeasured capacity based on a map-only radius result.
+
+## Implementation follow-up, 2026-11-15
+
+A bounded collector, startup selftest and calibration tools now exist. The
+[combined-phase report](implementation-phase-2026-11-15.md) separates implemented
+code, actual startup observations, corrected native bindings and outstanding
+active-workload acceptance. The earlier "missing collector" statements above
+refer to the pre-implementation baseline; they are not a workload validation.
