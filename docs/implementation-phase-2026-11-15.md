@@ -1,9 +1,14 @@
 # Combined navigation, measurement and calibration phase
 
+Current installation: **cc22**, verified on ota_1, with the stale off-route cue
+fix and no test collector. See [the release report](cc22-release-2026-11-15.md).
+The chronological measurement sections below describe earlier v21 restorations.
+
 The implementation and local checks are in place, but **this phase is not fully
-validated or released**. Ordinary v21 has been restored and verified after every
-successful temporary test installation. The new off-route UI image is a candidate;
-the new turn policy is explicitly experimental. No resource targets were raised.
+validated or released**. Ordinary v21 was restored and verified after every
+successful temporary test installation. The separately verified off-route UI
+image is now installed as cc22; native transition acceptance remains open. The
+new turn policy is explicitly experimental. No resource targets were raised.
 
 ## Implemented, released and still open
 

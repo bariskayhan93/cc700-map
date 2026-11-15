@@ -7,8 +7,10 @@ countdown or “Go straight” caption from implying that an old on-route instru
 is current. It does not change matching, accepted progress, route files, remaining
 distance, recording or the v21 basemap gate.
 
-This is compiled and host-tested candidate code, **not installed firmware**.
-No device was accessed. Native screen observation remains required.
+The reviewed cc22 image was subsequently installed and verified; see the
+[installation report](cc22-release-2026-11-15.md). The extraction and candidate
+checks below preceded that installation. Native screen/transition acceptance
+remains separate from flash verification and boot.
 
 ## Actual consumers and the stale-pixel mechanism
 

@@ -279,3 +279,27 @@ and unchanged OTA metadata, and observed its normal app boot without a captured
 crash. `ordinary_restored` is true. No simulation input or route/ride storage
 writes were performed by the tools. Ordinary v21 remains installed; this capture
 is diagnosis, not a deployed fix.
+
+## Fresh file and first-match evidence acquired during cc22 installation
+
+The subsequent read-only storage acquisition contains the selected route file
+with exactly the saved 23 km file's SHA256
+`87a8ac2ea0a4a7d599cb1407b1020fddb5c8506367ea712e919a8b6d35032a75`.
+The route identity gap is now closed for this acquisition. The current log names
+that file and records 112 sections and 113 basic inflection points at fresh start.
+
+The first matcher update records `AllPointNum:721,road:0,Start:0,End:721`, then
+`PIndex:720` and selected-point distance 23. The ride then enters automatic pause.
+Later entries repeatedly pair active count 721 with section 112 and point 720.
+This establishes final-loaded-point selection for this fresh reproduction;
+unlike the earlier historical comparison, the count and selected index now occur
+in the same startup sequence. It also shows that a previously retained section
+112 is not required: the first matcher input is section 0. Inflection-list count,
+full decoded-point count, file-local section and global section remain separate.
+
+The matching policy must distinguish fresh departure near the shared origin
+from legitimate return, resume or nearby mid-route entry. Painting grey red or
+forcing a loaded-list point zero would bypass this requirement. The cc22
+installation applies only the separately verified stale-guidance fix; this
+endpoint-association defect remains open. Device firmware is now ordinary cc22,
+with no diagnostic collector; its readback and boot are verified.
