@@ -68,3 +68,53 @@ cc23 is installed: exact flash readback, unchanged OTA selection metadata and a
 normal app boot were verified. No captured crash. cc22 is the rollback image.
 Normal boot/readback do not establish live departure, arrival or resume behavior.
 The production Pages update requires successful publication and live asset checks.
+
+### Subsequent owner observation
+
+After installation, the owner reopened the existing **22.56 km Leichlinger
+Straße** loop and still saw a grey route while stationary. The route BIN was
+not regenerated or replaced: generator changes on Pages apply to newly generated
+and imported routes. The cc23 departure wrapper is firmware-side and is intended
+to work with this existing BIN, so an unchanged BIN does not establish the cause.
+Visible stationary departure acceptance therefore remains failed, not resolved.
+
+The owner notes that movement may restore the expected display and asks to avoid
+overengineering this special case. Previous captures establish PAUSING with
+arrival state zero and a retained end-like map threshold; they do not establish
+what the current cc23 session does after movement. Do not change pause thresholds,
+force route colour, or weaken resource guards without evidence of the failing
+boundary. Distinguish stationary display correctness from moving progress and
+legitimate arrival/resume behaviour.
+
+## cc24: target-confirmed worker-stack cause
+
+A coordinated temporary cc23 diagnostic captured 50 checksummed records with
+zero rejected records on the existing route. The initial GUI call had 4,416 B
+remaining and accepted the native departure candidate (point 0 / section 0).
+The following worker call had 2,944 B, skipped at the 3,072 B stack gate, and
+published the unchanged native point 720 / section 112. Subsequent calls then
+inherited that terminal section. The diagnostic was removed and the complete
+ordinary cc23 partition and unchanged OTA metadata were verified.
+
+cc24 retains the 3,072 B guard and every matcher eligibility/validation rule.
+It moves the 148 B candidate to an invocation-owned PSRAM allocation using the
+existing heap-cap allocator/free ABI. Allocation failure preserves the complete
+normal result; every allocated rejection and acceptance path frees the candidate.
+The heap-info helper has its own small frame rather than retaining its scratch
+array throughout the retry. Compiled retry stack falls from 272 to 144 B; the
+wrapper remains 64 B. This admits the observed worker with exactly 3,072 B rather
+than weakening the guard. Other call contexts may still reject safely.
+
+Regressions first failed on the observed worker budget and allocation failure,
+then passed after the change. Full local verification: 171 Python tests, 185 Node
+tests, offline application checks and existing ride coverage proxy pass; the same
+two historical noisy/sparse acceptance cases remain unresolved. The C wrapper
+also passes address/undefined-behavior sanitizers. These checks do not substitute
+for native moving/arrival/resume acceptance or prove all runtime stack peaks.
+
+Ordinary cc24 candidate: 3,752,800 B, SHA256
+`61db139e745841e36c58f64a121c02b4d394beae29cd2c68471cf6f8bccb5aa9`.
+Mapped-page free space: 6,128 B. The follow-up target check stopped before device
+access because USB was absent. cc24 is not installed at this checkpoint. The
+coordinated check must demonstrate repeated worker acceptance before ordinary
+cc24 installation; otherwise exact cc23 is restored.

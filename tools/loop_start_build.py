@@ -10,7 +10,7 @@ from guidance_build import assert_native_guards
 
 ROOT=Path(__file__).resolve().parents[1]
 BASE_SHA='cc6613211b2796ae95ef19a6967759a53c6e48af4612906b22adcbddc088d50f'
-VERSION=b'CC700_V1.414-cc23'
+VERSION=b'CC700_V1.414-cc24'
 SCOPES={'.text':(0x421de120,0x421e0000-0x421de120),
         '.tramp_loop_start':(0x420496d8,0x40),'.call_loop_start':(0x420547dd,3)}
 
@@ -117,7 +117,7 @@ def main():
     call=dis.split('Disassembly of section .call_loop_start:')[1]
     if 'call8\t420496d8' not in call:raise ValueError('matcher call target differs')
     image,receipt=build_candidate(base,sections,lambda n:(a.output/n).read_bytes())
-    (a.output/'ota_1_v23.bin').write_bytes(image)
+    (a.output/'ota_1_v24.bin').write_bytes(image)
     m={'base_sha256':BASE_SHA,'sections':sections,**receipt,
        'source_sha256':{p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in src.iterdir() if p.is_file()}}
     (a.output/'manifest.json').write_text(json.dumps(m,indent=2)+'\n')
