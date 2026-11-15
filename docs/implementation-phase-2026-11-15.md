@@ -84,8 +84,18 @@ damaged lines, but complete invocation loss remains unknown.
 No iterator timing records arrived in the completed windows. Startup output now
 proves the corrected bindings, but does not prove that navigation invoked the map
 iterator during the capture window. An active navigation workload has not been
-confirmed. The next ready build includes the **initial map draw in boot seconds
-0–120**: a stationary/paused device might not redraw in a delayed window.
+confirmed. A subsequent initial-window capture (boot seconds **0–120**,
+140-second host observation) passed all six startup gates (`0x3f`) but again
+produced zero iterator records. The owner reported the screen was off; active
+navigation was not confirmed. This does not establish a renderer failure or any
+performance limit. The exact ordinary v21 partition and OTA metadata were then
+verified after restoration.
+
+That session used the reset caused by opening USB and skipped an explicit RTS
+pulse. The documented explicit RTS sequence was subsequently tested on ordinary
+v21 without firmware writes: one app boot and no crash were observed. Screen-on
+state still requires owner confirmation; an app-load log alone does not prove
+that the display or navigation is active.
 
 A review also corrected a timing label: the post-draw timestamp precedes mutex
 release. The parser now reports `draw_locked_us`, lock-acquisition duration, and

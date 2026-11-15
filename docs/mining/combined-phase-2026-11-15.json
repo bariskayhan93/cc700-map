@@ -42,5 +42,19 @@
     "live guidance hide/restore",
     "general noisy/sparse maneuver validation",
     "full calibration and held-out target matrix"
-  ]
+  ],
+  "initial_window_attempt": {
+    "startup_gate_flags": 63,
+    "host_capture_seconds": 140,
+    "performance_sample_count": 0,
+    "operator_screen_state": "off",
+    "navigation_active_confirmed": false,
+    "ordinary_restored_and_verified": true,
+    "explicit_rts_followup": {
+      "firmware_writes": false,
+      "app_boot_confirmed": true,
+      "crash_observed": false,
+      "screen_state_confirmed": false
+    }
+  }
 }
