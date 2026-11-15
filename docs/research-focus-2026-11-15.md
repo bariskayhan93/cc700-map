@@ -97,3 +97,14 @@ feeds conservative exclusions into the structural evaluator. Three real-area
 acquisition attempts returned HTTP 406/403/429; no usable snapshot was obtained.
 Do not mistake implemented capture/filtering for validated real detour recovery.
 The saved query/receipts make acquisition resumable without another device cycle.
+
+## Elevation spike delivered while source acquisition is blocked
+
+One resumed POST and one GET returned HTTP 406 again; no routing-source snapshot
+was obtained. The independent [elevation spike](elevation-study-2026-11-15.md)
+now reads the actual route, preserves gaps, enforces explicit progress admission,
+and produces 448-byte upcoming-profile buffers and a 240 × 320 layout study.
+On this flat route its limited benefit does not justify always covering 12.1%
+of the map. Keep it optional and unshipped. Native fonts, cross-section sample
+ownership, drawing timing and stable scale behaviour remain explicit gates.
+Recovery acquisition/real-detour validation remains the first research priority.

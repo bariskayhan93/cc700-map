@@ -1,0 +1,158 @@
+{
+  "scope": "PC-only elevation spike",
+  "sourcePoints": 2197,
+  "routeMeters": 22561.29,
+  "profiles": [
+    {
+      "status": "candidate",
+      "start": 0,
+      "end": 1000,
+      "horizonMeters": 1000,
+      "width": 224,
+      "height": 16,
+      "domainMeters": [
+        17.875,
+        57.875
+      ],
+      "elevationRangeMeters": [
+        34.75,
+        41
+      ],
+      "cost": {
+        "packetBytes": 448,
+        "validColumns": 224,
+        "missingColumns": 0,
+        "sourcePointsScanned": 2197,
+        "intersectingSegments": 119,
+        "columnVisits": 342,
+        "verticalRasterPixels": 229,
+        "deviceStackBytes": null,
+        "deviceHeapPeakBytes": null,
+        "deviceFrameTimeMs": null
+      },
+      "elevationAccuracy": "unvalidated",
+      "deviceValidated": false
+    },
+    {
+      "status": "candidate",
+      "start": 5640,
+      "end": 6640,
+      "horizonMeters": 1000,
+      "width": 224,
+      "height": 16,
+      "domainMeters": [
+        17.350533980582526,
+        57.350533980582526
+      ],
+      "elevationRangeMeters": [
+        33.75,
+        40.95106796116505
+      ],
+      "cost": {
+        "packetBytes": 448,
+        "validColumns": 224,
+        "missingColumns": 0,
+        "sourcePointsScanned": 2197,
+        "intersectingSegments": 113,
+        "columnVisits": 336,
+        "verticalRasterPixels": 227,
+        "deviceStackBytes": null,
+        "deviceHeapPeakBytes": null,
+        "deviceFrameTimeMs": null
+      },
+      "elevationAccuracy": "unvalidated",
+      "deviceValidated": false
+    },
+    {
+      "status": "candidate",
+      "start": 11281,
+      "end": 12281,
+      "horizonMeters": 1000,
+      "width": 224,
+      "height": 16,
+      "domainMeters": [
+        15.830040322580643,
+        55.83004032258064
+      ],
+      "elevationRangeMeters": [
+        31.25,
+        40.410080645161294
+      ],
+      "cost": {
+        "packetBytes": 448,
+        "validColumns": 224,
+        "missingColumns": 0,
+        "sourcePointsScanned": 2197,
+        "intersectingSegments": 184,
+        "columnVisits": 406,
+        "verticalRasterPixels": 229,
+        "deviceStackBytes": null,
+        "deviceHeapPeakBytes": null,
+        "deviceFrameTimeMs": null
+      },
+      "elevationAccuracy": "unvalidated",
+      "deviceValidated": false
+    },
+    {
+      "status": "candidate",
+      "start": 22061,
+      "end": 22561.29,
+      "horizonMeters": 500.2900000000009,
+      "width": 224,
+      "height": 16,
+      "domainMeters": [
+        20.023144104803492,
+        60.02314410480349
+      ],
+      "elevationRangeMeters": [
+        39.04628820960699,
+        41
+      ],
+      "cost": {
+        "packetBytes": 448,
+        "validColumns": 224,
+        "missingColumns": 0,
+        "sourcePointsScanned": 2197,
+        "intersectingSegments": 89,
+        "columnVisits": 312,
+        "verticalRasterPixels": 225,
+        "deviceStackBytes": null,
+        "deviceHeapPeakBytes": null,
+        "deviceFrameTimeMs": null
+      },
+      "elevationAccuracy": "unvalidated",
+      "deviceValidated": false
+    }
+  ],
+  "fallback": "hide strip; ordinary map and guidance stay intact",
+  "restoration": "rebuild only after route progress and elevation are valid again",
+  "layout": {
+    "screen": [
+      240,
+      320
+    ],
+    "map": [
+      240,
+      256
+    ],
+    "strip": [
+      4,
+      68,
+      232,
+      32
+    ],
+    "mapOcclusionPixels": 7424,
+    "acceptance": "proposed overlay below turn card; readability and native hook unvalidated"
+  },
+  "routeSha256": "87a8ac2ea0a4a7d599cb1407b1020fddb5c8506367ea712e919a8b6d35032a75",
+  "elevationSourceRangeMeters": [
+    31.25,
+    46.5
+  ],
+  "verification": {
+    "focusedTests": 38,
+    "elevationTests": 9,
+    "deviceTested": false,
+    "productionChanged": false
+  }
+}
