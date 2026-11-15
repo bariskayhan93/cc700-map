@@ -1,0 +1,33 @@
+{
+  "scope": "offline recovery evaluator; no device, route or production app changes",
+  "recoveryTests": {
+    "passed": 15,
+    "failed": 0
+  },
+  "nodeSuite": {
+    "passed": 200,
+    "failed": 0
+  },
+  "pythonSuite": {
+    "passed": 171,
+    "failed": 0
+  },
+  "offlineApp": "pass",
+  "rideCoverageProxy": "pass",
+  "historical": {
+    "status": "known_failures",
+    "failures": [
+      "GPS recording, 3 m noise: 25 turns vs 15",
+      "planner export, every 8th point: 3 turns vs 15"
+    ]
+  },
+  "targetAcceptance": "unvalidated",
+  "independentReview": "no correctness blockers",
+  "sha256": {
+    "AGENTS.md": "d16779aaf56977a16e9817ffd8188aa755bbf40faa90bab4b1aeeca4725bfc96",
+    "tools/recovery_study.mjs": "91016ff353e7088b0217c0f8d426b685a13ec423919ed5bc4dc8b36ea119b535",
+    "tools/recovery_study_cases.mjs": "c4cf791eb03391c04613560832176cee5009b3cf2ce432486c2d3903ae2b4d0f",
+    "tools/test_recovery_study.mjs": "483a9d486818ee840ffc665b837b12a0c1335ede5ce2ee47f755223b59bea008",
+    "tools/validate_local.py": "6dec59458ac0c4a10a4e4b736ea1f18d3ae4f7d2ca215d06674452c1ab47d252"
+  }
+}

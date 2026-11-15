@@ -20,6 +20,9 @@ for changes and remaining limitations. [Browser UI checks and artwork reproducti
 
 [Project status: findings, shipped changes and next priorities](docs/project-status-2026-11-14.md).
 
+[Connected recovery study: implementation, costs and source gaps](docs/recovery-study-2026-11-15.md).
+Development follows the [persistent implementation rules](AGENTS.md).
+
 ## Current preview
 
 The preview follows the supplied CC700 references: a **240 × 320** portrait display,

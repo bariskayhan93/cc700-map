@@ -1,0 +1,179 @@
+[
+  {
+    "case": "urban-grid",
+    "inputSha256": "a81b213628488399a4e88b67fdd00acb5f338e5bc2cc0bbd22203b4ff990704e",
+    "nodes": 963,
+    "directedEdges": 3722,
+    "rings": [
+      {
+        "radiusMeters": 1000,
+        "sampledOrigins": 5,
+        "candidatePaths": 4,
+        "unavailable": [
+          {
+            "origin": 900000,
+            "reason": "unreachable"
+          }
+        ],
+        "validatedCyclingPaths": 0
+      },
+      {
+        "radiusMeters": 2000,
+        "sampledOrigins": 9,
+        "candidatePaths": 8,
+        "unavailable": [
+          {
+            "origin": 900000,
+            "reason": "unreachable"
+          }
+        ],
+        "validatedCyclingPaths": 0
+      },
+      {
+        "radiusMeters": 3000,
+        "sampledOrigins": 13,
+        "candidatePaths": 12,
+        "unavailable": [
+          {
+            "origin": 900000,
+            "reason": "unreachable"
+          }
+        ],
+        "validatedCyclingPaths": 0
+      }
+    ],
+    "candidatePaths": 12,
+    "unavailable": [
+      {
+        "origin": 900000,
+        "reason": "unreachable"
+      }
+    ],
+    "graphJsonBytes": 277097,
+    "legsJsonBytes": 6443,
+    "maxSettledNodes": 244,
+    "maxRelaxedEdges": 949,
+    "maxQueueEntries": 53,
+    "cyclingValidity": "unvalidated",
+    "targetMemoryAndTiming": "unmeasured",
+    "sampling": "13 explicit graph nodes per synthetic case; not continuous coverage"
+  },
+  {
+    "case": "village-grid",
+    "inputSha256": "e95a354c4d4b56e017639193d75d112412def4e86365405f6b5debdc3f403213",
+    "nodes": 171,
+    "directedEdges": 626,
+    "rings": [
+      {
+        "radiusMeters": 1000,
+        "sampledOrigins": 5,
+        "candidatePaths": 4,
+        "unavailable": [
+          {
+            "origin": 900000,
+            "reason": "unreachable"
+          }
+        ],
+        "validatedCyclingPaths": 0
+      },
+      {
+        "radiusMeters": 2000,
+        "sampledOrigins": 9,
+        "candidatePaths": 8,
+        "unavailable": [
+          {
+            "origin": 900000,
+            "reason": "unreachable"
+          }
+        ],
+        "validatedCyclingPaths": 0
+      },
+      {
+        "radiusMeters": 3000,
+        "sampledOrigins": 13,
+        "candidatePaths": 12,
+        "unavailable": [
+          {
+            "origin": 900000,
+            "reason": "unreachable"
+          }
+        ],
+        "validatedCyclingPaths": 0
+      }
+    ],
+    "candidatePaths": 12,
+    "unavailable": [
+      {
+        "origin": 900000,
+        "reason": "unreachable"
+      }
+    ],
+    "graphJsonBytes": 45511,
+    "legsJsonBytes": 4495,
+    "maxSettledNodes": 45,
+    "maxRelaxedEdges": 167,
+    "maxQueueEntries": 22,
+    "cyclingValidity": "unvalidated",
+    "targetMemoryAndTiming": "unmeasured",
+    "sampling": "13 explicit graph nodes per synthetic case; not continuous coverage"
+  },
+  {
+    "case": "forest-spokes",
+    "inputSha256": "96845878cc7c1bb9719788e2320da7747a866c20fd50ef27b12df735d06c456e",
+    "nodes": 123,
+    "directedEdges": 242,
+    "rings": [
+      {
+        "radiusMeters": 1000,
+        "sampledOrigins": 5,
+        "candidatePaths": 4,
+        "unavailable": [
+          {
+            "origin": 900000,
+            "reason": "unreachable"
+          }
+        ],
+        "validatedCyclingPaths": 0
+      },
+      {
+        "radiusMeters": 2000,
+        "sampledOrigins": 9,
+        "candidatePaths": 8,
+        "unavailable": [
+          {
+            "origin": 900000,
+            "reason": "unreachable"
+          }
+        ],
+        "validatedCyclingPaths": 0
+      },
+      {
+        "radiusMeters": 3000,
+        "sampledOrigins": 13,
+        "candidatePaths": 12,
+        "unavailable": [
+          {
+            "origin": 900000,
+            "reason": "unreachable"
+          }
+        ],
+        "validatedCyclingPaths": 0
+      }
+    ],
+    "candidatePaths": 12,
+    "unavailable": [
+      {
+        "origin": 900000,
+        "reason": "unreachable"
+      }
+    ],
+    "graphJsonBytes": 19780,
+    "legsJsonBytes": 9361,
+    "maxSettledNodes": 31,
+    "maxRelaxedEdges": 59,
+    "maxQueueEntries": 2,
+    "cyclingValidity": "unvalidated",
+    "targetMemoryAndTiming": "unmeasured",
+    "sampling": "13 explicit graph nodes per synthetic case; not continuous coverage"
+  }
+]

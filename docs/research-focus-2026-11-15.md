@@ -74,3 +74,17 @@ References: [capability ledger](feature-capability-ledger.md),
 [map evaluation](map-evaluation-report-2026-11-15.md),
 [adaptive budgets](adaptive-map-budget-2026-11-14.md),
 [cc24 rejected target check](loop-and-turn-fixes-2026-11-15.md#cc24-target-check-rejected-cc23-restored).
+
+## First implementation delivered
+
+The [PC recovery evaluator](recovery-study-2026-11-15.md) now implements original
+node topology, conservative candidate direction/access filtering, bounded search,
+explicit forward-visit windows, per-origin unavailable results, cumulative radius
+samples and actual JSON representation comparisons. Synthetic city/village/forest
+cases pass; no legal cycling or target-resource acceptance is inferred.
+
+The saved real ride cache audit found four legacy display cells and zero original
+source cells. Next collect a separate routing-source snapshot including barrier
+nodes and restrictions; do not reconstruct junctions from display lines or change
+stationary native matching to compensate. Persistent rules are in
+[AGENTS.md](../AGENTS.md).
