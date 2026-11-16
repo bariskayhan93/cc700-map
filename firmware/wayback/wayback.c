@@ -14,6 +14,16 @@
 #define WB_MAX_POINTS 4096u
 #define WB_MAX_CHUNKS 4096u
 #define WB_FWD_STEPS 64u            /* forward walk limit for the distance to the route */
+#ifndef WB_BLOCK
+#define WB_BLOCK 192u             /* block read: 16 nodes or 24 extra pieces */
+#endif
+#define WB_NEAR 1940u             /* 240 units (15 m) + 1,700 units (longest piece on one axis) */
+/* WB_NO_FWD: the device test image has no trusted exit, so the forward code is compiled out. */
+#ifdef WB_NO_FWD
+#define WB_FWD(v) 0
+#else
+#define WB_FWD(v) (v)
+#endif
 #define WB_EXTRA_LEN_MASK 0x3FFFu   /* extra piece length in 0.1 m */
 
 struct wb_engine {
@@ -77,49 +87,44 @@ static void wb_to_e7(const wb_engine *e, uint32_t x, uint32_t y, int32_t p[2]) {
 }
 
 /* One node record: X, Y, the tree A next (WB_NIL on the route) and the ride distance in dm. */
-static int load_node(const wb_engine *e, uint32_t n, uint32_t *x, uint32_t *y, uint32_t *next, uint32_t *dist) {
-  uint8_t r[WB_NODE_BYTES];
-  uint32_t nx;
-  if (n >= e->node_count) return 0;
-  if (!rd(e, e->off_nodes + n * WB_NODE_BYTES, r, WB_NODE_BYTES)) return 0;
+static void node_parse(const uint8_t *r, uint32_t *x, uint32_t *y, uint32_t *next, uint32_t *dist) {
+  uint32_t nx = rd_u24(r + 6);
   *x = rd_u24(r);
   *y = rd_u24(r + 3);
-  nx = rd_u24(r + 6);
   *next = nx == 0xFFFFFFu ? WB_NIL : nx;
   *dist = rd_u24(r + 9);
+}
+
+static int load_node(const wb_engine *e, uint32_t n, uint32_t *x, uint32_t *y, uint32_t *next, uint32_t *dist) {
+  uint8_t r[WB_NODE_BYTES];
+  if (n >= e->node_count) return 0;
+  if (!rd(e, e->off_nodes + n * WB_NODE_BYTES, r, WB_NODE_BYTES)) return 0;
+  node_parse(r, x, y, next, dist);
   return 1;
 }
 
-static int read_cell(const wb_engine *e, uint32_t i, uint32_t *key, uint32_t *first_node, uint32_t *first_extra) {
-  uint8_t r[WB_CELL_BYTES];
-  if (!rd(e, WB_HEADER_BYTES + i * WB_CELL_BYTES, r, WB_CELL_BYTES)) return 0;
-  *key = rd_u32(r);
-  *first_node = rd_u32(r + 4);
-  *first_extra = rd_u32(r + 8);
-  return 1;
-}
-
-/* Binary search for a cell. Returns 1 found, 0 absent, -1 read failure. */
-static int find_cell(const wb_engine *e, uint32_t key, uint32_t *n0, uint32_t *n1, uint32_t *x0, uint32_t *x1) {
-  uint32_t lo = 0u, hi = e->cell_count, k, fn, fe, k2, fn2, fe2;
+/* Index of the first cell whose key is not less than key. Returns 0 on a read failure. */
+static int find_row(const wb_engine *e, uint32_t key, uint32_t *at) {
+  uint8_t r[4];
+  uint32_t lo = 0u, hi = e->cell_count;
   while (lo < hi) {
     uint32_t mid = lo + (hi - lo) / 2u;
-    if (!read_cell(e, mid, &k, &fn, &fe)) return -1;
-    if (k < key) lo = mid + 1u;
+    if (!rd(e, WB_HEADER_BYTES + mid * WB_CELL_BYTES, r, 4u)) return 0;
+    if (rd_u32(r) < key) lo = mid + 1u;
     else hi = mid;
   }
-  if (lo >= e->cell_count) return 0;
-  if (!read_cell(e, lo, &k, &fn, &fe) || !read_cell(e, lo + 1u, &k2, &fn2, &fe2)) return -1;
-  if (k != key) return 0;
-  *n0 = fn;
-  *n1 = fn2;
-  *x0 = fe;
-  *x1 = fe2;
+  *at = lo;
   return 1;
+}
+
+/* 1 when no point of a piece that starts at coordinate v can be 15 m or less from the rider at c.
+ * A piece is at most 1,700 units long on each axis (wb_measure refuses a longer piece). */
+static int wb_far(uint32_t v, uint32_t c) {
+  return v - c + WB_NEAR > 2u * WB_NEAR;
 }
 
 /* Exception record of node n in chunk c. Returns 1 found, 0 absent, -1 read failure. */
-static int rec_find(const wb_engine *e, uint32_t c, uint32_t n, uint32_t *next, uint32_t *dist) {
+__attribute__((unused)) static int rec_find(const wb_engine *e, uint32_t c, uint32_t n, uint32_t *next, uint32_t *dist) {
   uint8_t t[8], r[WB_EXC_BYTES];
   uint32_t lo, hi;
   if (c >= e->chunk_count) return 0;
@@ -147,7 +152,7 @@ static int next_of(const wb_engine *e, uint32_t n, uint32_t anext, uint32_t *out
   uint32_t nx = 0u, d = 0u;
   int r;
   *out = anext;
-  if (!e->fwd) return 1;
+  if (!WB_FWD(e->fwd)) return 1;
   r = rec_find(e, e->chunk, n, &nx, &d);
   if (r < 0) return 0;
   if (r == 1) *out = nx;
@@ -157,7 +162,7 @@ static int next_of(const wb_engine *e, uint32_t n, uint32_t anext, uint32_t *out
 /* Forward distance in dm from end to the route, by a walk of at most WB_FWD_STEPS nodes.
  * At the first node with a record: end_dist - dist(k) + record dist. At a route node: end_dist - dist(k).
  * Leaves *dm at WB_DIST_UNKNOWN when neither occurs. Returns 0 on a read failure. */
-static int fwd_dm(const wb_engine *e, uint32_t end, uint32_t end_dist, uint32_t *dm) {
+__attribute__((unused)) static int fwd_dm(const wb_engine *e, uint32_t end, uint32_t end_dist, uint32_t *dm) {
   uint32_t x = end, k;
   *dm = WB_DIST_UNKNOWN;
   for (k = 0u; k < WB_FWD_STEPS; k++) {
@@ -277,7 +282,8 @@ void wb_tick(wb_engine *e, const wb_input *in, wb_output *out) {
   wb_piece best, cand;
   uint32_t X, Y, dlat, dlon, prev_kind, prev_a, prev_b, prev_chunk, chunk = WB_NO_CHUNK;
   uint32_t end = WB_NIL, end_first = 0u, end_dist = 0u, end_dm = WB_DIST_UNKNOWN, way, dist_dm;
-  int prev, have = 0, changed, fwd = 0, dy, dx, r;
+  int prev, have = 0, changed, fwd = 0, dy;
+  uint8_t buf[WB_BLOCK], cb[4u * WB_CELL_BYTES];
   int32_t p[2];
 
   out->state = WB_NONE;
@@ -306,51 +312,65 @@ void wb_tick(wb_engine *e, const wb_input *in, wb_output *out) {
   if (X >= 0x1000000u || Y >= 0x1000000u) { out->reason = WB_NO_STREET; return; }
 
   /* Forward mode: a trusted exit whose km is in the file. */
-  if ((in->flags & WB_EXIT_TRUSTED) && e->chunk_count > 0u) {
+  if (WB_FWD(1) && (in->flags & WB_EXIT_TRUSTED) && e->chunk_count > 0u) {
     uint32_t c = in->exit_progress_cm / 100000u;
     if (c < e->chunk_count) { chunk = c; fwd = 1; }
   }
 
+  /* The three cells of one row are neighbours in the cell table: one search and one read for each row.
+   * Node and extra records are read in blocks. A second node is read alone only when its piece can be near. */
   for (dy = -1; dy <= 1; dy++) {
-    for (dx = -1; dx <= 1; dx++) {
-      int32_t cx = (int32_t)(X >> 11) + dx, cy = (int32_t)(Y >> 11) + dy;
-      uint32_t key, n0, n1, x0, x1, i, j;
-      if (cx < 0 || cy < 0) continue;
-      key = ((uint32_t)cy << 16) | (uint32_t)cx;
-      r = find_cell(e, key, &n0, &n1, &x0, &x1);
-      if (r < 0) { out->reason = WB_READ; return; }
-      if (r == 0) continue;
-      for (i = n0; i < n1; i++) {
-        uint32_t ux, uy, un, ud, vx, vy, vn, vd, d2, t;
-        if (!load_node(e, i, &ux, &uy, &un, &ud)) { out->reason = WB_READ; return; }
-        if (un == WB_NIL) continue;
-        if (!load_node(e, un, &vx, &vy, &vn, &vd)) { out->reason = WB_READ; return; }
-        if (ud < vd) continue;
-        if (!wb_measure((int32_t)ux - (int32_t)X, (int32_t)uy - (int32_t)Y,
-                        (int32_t)vx - (int32_t)X, (int32_t)vy - (int32_t)Y, &d2, &t)) continue;
-        cand.d2 = d2; cand.t = t; cand.kind = 1u; cand.a = i; cand.b = un;
-        cand.da = ud; cand.db = vd; cand.len = ud - vd; cand.bits = 0u; cand.vn = vn;
-        cand.xa = ux; cand.ya = uy; cand.xb = vx; cand.yb = vy;
-        if (!have || d2 < best.d2) { piece_set(&best, &cand); have = 1; }
+    int32_t cx = (int32_t)(X >> 11), cy = (int32_t)(Y >> 11) + dy;
+    uint32_t khi, at, cnt, c;
+    if (cy < 0) continue;
+    khi = ((uint32_t)cy << 16) | (uint32_t)(cx + 1);
+    if (!find_row(e, ((uint32_t)cy << 16) | (uint32_t)(cx > 0 ? cx - 1 : 0), &at)) { out->reason = WB_READ; return; }
+    cnt = e->cell_count + 1u - at;
+    if (cnt > 4u) cnt = 4u;
+    if (!rd(e, WB_HEADER_BYTES + at * WB_CELL_BYTES, cb, cnt * WB_CELL_BYTES)) { out->reason = WB_READ; return; }
+    for (c = 0u; c + 1u < cnt && rd_u32(cb + c * WB_CELL_BYTES) <= khi; c++) {
+      const uint8_t *q = cb + c * WB_CELL_BYTES;
+      uint32_t n0 = rd_u32(q + 4), n1 = rd_u32(q + 16), x0 = rd_u32(q + 8), x1 = rd_u32(q + 20), i, k, m;
+      if (n1 > e->node_count || x1 > e->extra_count) { out->reason = WB_READ; return; }
+      for (i = n0; i < n1; i += m) {
+        m = n1 - i;
+        if (m > WB_BLOCK / WB_NODE_BYTES) m = WB_BLOCK / WB_NODE_BYTES;
+        if (!rd(e, e->off_nodes + i * WB_NODE_BYTES, buf, m * WB_NODE_BYTES)) { out->reason = WB_READ; return; }
+        for (k = 0u; k < m; k++) {
+          uint32_t ux, uy, un, ud, vx, vy, vn, vd, d2, t;
+          node_parse(buf + k * WB_NODE_BYTES, &ux, &uy, &un, &ud);
+          if (un == WB_NIL || wb_far(ux, X) || wb_far(uy, Y)) continue;
+          if (un >= i && un < i + m) node_parse(buf + (un - i) * WB_NODE_BYTES, &vx, &vy, &vn, &vd);
+          else if (!load_node(e, un, &vx, &vy, &vn, &vd)) { out->reason = WB_READ; return; }
+          if (ud < vd) continue;
+          if (!wb_measure((int32_t)ux - (int32_t)X, (int32_t)uy - (int32_t)Y,
+                          (int32_t)vx - (int32_t)X, (int32_t)vy - (int32_t)Y, &d2, &t)) continue;
+          cand.d2 = d2; cand.t = t; cand.kind = 1u; cand.a = i + k; cand.b = un;
+          cand.da = ud; cand.db = vd; cand.len = ud - vd; cand.bits = 0u; cand.vn = vn;
+          cand.xa = ux; cand.ya = uy; cand.xb = vx; cand.yb = vy;
+          if (!have || d2 < best.d2) { piece_set(&best, &cand); have = 1; }
+        }
       }
-      for (j = x0; j < x1; j++) {
-        uint8_t rec[WB_EXTRA_BYTES];
-        uint32_t ea, eb, lf, xa, ya, xb, yb, da, db, dummy, d2, t;
-        if (!rd(e, e->off_extras + j * WB_EXTRA_BYTES, rec, WB_EXTRA_BYTES)) { out->reason = WB_READ; return; }
-        ea = rd_u24(rec);
-        eb = rd_u24(rec + 3);
-        lf = rd_u16(rec + 6);
-        if (!(lf & 0xC000u)) continue;
-        if (!load_node(e, ea, &xa, &ya, &dummy, &da)) { out->reason = WB_READ; return; }
-        if (!load_node(e, eb, &xb, &yb, &dummy, &db)) { out->reason = WB_READ; return; }
-        if (!wb_measure((int32_t)xa - (int32_t)X, (int32_t)ya - (int32_t)Y,
-                        (int32_t)xb - (int32_t)X, (int32_t)yb - (int32_t)Y, &d2, &t)) continue;
-        cand.d2 = d2; cand.t = t; cand.kind = 2u; cand.a = ea; cand.b = eb;
-        cand.da = da; cand.db = db; cand.len = lf & WB_EXTRA_LEN_MASK;
-        cand.bits = ((lf >> 14) & 1u) | (((lf >> 15) & 1u) << 1);
-        cand.vn = 0u;
-        cand.xa = xa; cand.ya = ya; cand.xb = xb; cand.yb = yb;
-        if (!have || d2 < best.d2) { piece_set(&best, &cand); have = 1; }
+      for (i = x0; i < x1; i += m) {
+        m = x1 - i;
+        if (m > WB_BLOCK / WB_EXTRA_BYTES) m = WB_BLOCK / WB_EXTRA_BYTES;
+        if (!rd(e, e->off_extras + i * WB_EXTRA_BYTES, buf, m * WB_EXTRA_BYTES)) { out->reason = WB_READ; return; }
+        for (k = 0u; k < m; k++) {
+          const uint8_t *rec = buf + k * WB_EXTRA_BYTES;
+          uint32_t ea = rd_u24(rec), eb = rd_u24(rec + 3), lf = rd_u16(rec + 6), xa, ya, xb, yb, da, db, dummy, d2, t;
+          if (!(lf & 0xC000u)) continue;
+          if (!load_node(e, ea, &xa, &ya, &dummy, &da)) { out->reason = WB_READ; return; }
+          if (wb_far(xa, X) || wb_far(ya, Y)) continue;
+          if (!load_node(e, eb, &xb, &yb, &dummy, &db)) { out->reason = WB_READ; return; }
+          if (!wb_measure((int32_t)xa - (int32_t)X, (int32_t)ya - (int32_t)Y,
+                          (int32_t)xb - (int32_t)X, (int32_t)yb - (int32_t)Y, &d2, &t)) continue;
+          cand.d2 = d2; cand.t = t; cand.kind = 2u; cand.a = ea; cand.b = eb;
+          cand.da = da; cand.db = db; cand.len = lf & WB_EXTRA_LEN_MASK;
+          cand.bits = ((lf >> 14) & 1u) | (((lf >> 15) & 1u) << 1);
+          cand.vn = 0u;
+          cand.xa = xa; cand.ya = ya; cand.xb = xb; cand.yb = yb;
+          if (!have || d2 < best.d2) { piece_set(&best, &cand); have = 1; }
+        }
       }
     }
   }
@@ -362,7 +382,7 @@ void wb_tick(wb_engine *e, const wb_input *in, wb_output *out) {
     e->chunk = chunk;
     if (best.kind == 1u) {
       uint32_t ev = WB_NIL;
-      if (fwd) {
+      if (WB_FWD(fwd)) {
         /* The end is the piece's first node when the forward next of the second node is the first node. */
         if (!next_of(e, best.b, best.vn, &ev)) { out->reason = WB_READ; return; }
         end_first = ev == best.a ? 1u : 0u;
@@ -378,7 +398,7 @@ void wb_tick(wb_engine *e, const wb_input *in, wb_output *out) {
       end = use_a ? best.a : best.b;
       end_dist = use_a ? best.da : best.db;
     }
-    if (!fwd) end_dm = end_dist;
+    if (!WB_FWD(fwd)) end_dm = end_dist;
     else if (!fwd_dm(e, end, end_dist, &end_dm)) { out->reason = WB_READ; return; }
     e->kind = (uint8_t)best.kind;
     e->a = best.a;

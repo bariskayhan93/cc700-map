@@ -2,10 +2,41 @@
 
 ## Status
 
-Nothing is on the device. A test image exists on the host only: `cc23wb1` = installed cc23 plus the adapter `wb_device.c`.
-The core with the adapter is 4,240 B of Xtensa code (core 2,784 B, adapter 1,456 B). The usable room is 4,376 B. 1,904 B stay free in the code page (reserve: 1,768 B).
+A first test image (`cc23wb1`) was on the device on 16 November 2026. It drew no line: each off-route frame reached the 300 ms limit (`wb5`), because the cell search made about 500 small file reads at the median.
+The core now reads node records in blocks of 16 and filters by distance before it loads a second node. On the host this gives about 100 to 130 reads at the median with identical output. The time of one read on the device is not measured. The new image is not installed.
+The core with the adapter is 4,284 B of Xtensa code. The usable room is 4,376 B. 1,860 B stay free in the code page (reserve: 1,768 B).
 The core has no heap, no float and no library call. Its only external call is the reader callback.
-The test image uses tree A values only. The device has no trusted exit km, so forward mode is off.
+The test image is built with `-DWB_NO_FWD`: forward mode is compiled out to stay inside the code room. The device has no trusted exit km, so it uses tree A values only.
+
+## How the line is made
+
+```
+   stored street points: each stores its next point and its distance to the route
+
+        o--->o--->o--->o                      R = route
+                       |                      o = stored street point
+                       v                      > = direction of "next" (not a one-way sign)
+   P ~ ~ x--->o--->o-->R=====R=====R          P = rider, x = nearest point on a stored piece
+     (15 m or less)                           line: x, o, o, R
+```
+
+1. The host (`tools/wayback_build.mjs`) calculates the shortest permitted street way to the route for each street point within the reach. Each stored point keeps only its next point and its distance.
+2. The device finds the stored street piece nearest to the rider. The piece must be within 15 m. The search reads the 3 x 3 cells of 128 m around the rider.
+3. The line starts at the nearest point on that piece. Then it goes from point to next point until the route. The test image draws the first 32 points and makes the line again on each map frame.
+
+- The heading and the speed of the rider have no effect. The line goes by street to the nearest route point, which can be behind the rider. Only forward mode aims at the route ahead, and it is off in the test image.
+- No stored street within 15 m (yard, field, building, bad GPS), or a street with no permitted way to the route: no line. The stock off-route arrow stays.
+- `node tools/wayback_draw.mjs <route.bin> <file.ccwb> <out.html>` makes an interactive page of an 800 m x 600 m part of a route. The pointer is the rider, and the line for each 4 m square comes from the real core. The page holds real street geometry, so keep it in `.local/`.
+
+## Page option (test)
+
+The page has the option "Rückweg-Linie (Test)" in the patch settings. The default is off, and the route file is then unchanged.
+With the option on, the page loads the streets in the box of the route plus 2.2 km from Overpass (node ids, way tags, turn restrictions), builds the tree and appends the data after the checked route file.
+
+- The page writes no way-back data when the street data is not complete, when the box exceeds 600 km², or when the data exceeds 1,536 KB at both reaches (2 km, then 1.5 km). The plain route file stays, and the summary line gives the cause.
+- One short route was compared: the page data from Overpass and the host data from the PBF snapshot are byte-identical (210,916 B, 15,982 stored nodes). This is one route on one day.
+- Not measured: a long route. A 70 km loop can exceed the 600 km² box. The load time and memory on a phone are not measured.
+- Only the way-back test firmware reads the data. The effect of the longer file on other firmware is not tested, except that the test unit opened and followed such a route.
 
 ## Normal behaviour
 
@@ -56,24 +87,24 @@ The map frame (`0x4204da24`) makes one hooked route call for each frame, so the 
 On the route, the test image writes `wb3` and does nothing else. This text shows that the hook runs. A release image must not have it.
 While the off-route byte (`0x3c3894f0 + 145`) is set, the adapter does the steps below. It has no stored state.
 
-1. Checks the free stack of the task (3,072 B or more), as `loop_start.c` does.
+1. Checks the free stack of the task (3,360 B or more), as `loop_start.c` does.
 2. Takes the position through `cc_pos` with a zero-wait navigation lock, as `cc_rt` does.
 3. Finds the path of the first open route file in the open-file table of the firmware (zero-wait lock).
 4. Opens that file a second time for reading. It never moves the position of the firmware's own handle.
 5. Reads the trailer, mounts the data, runs one tick and reads at most 32 points. A read later than 300 ms after the frame start fails (raw timer `0x403779f4`).
 6. Closes the file. Draws the line two times through the projection callback (`0x4204c1bc`): operation 17 (white, 7 px), then 14 (dark purple, 4 px).
-7. Writes a text at the top left of the map: the ride distance to the route in metres, or a code, and then the time of this work in ms.
+7. Writes a text at the top left of the map: the ride distance to the route in metres, or a code, then the time of this work in ms, then the number of file reads.
 
 | Text | Cause |
 |---|---|
-| `123m 45` | A line is drawn. 123 m is the ride distance to the route. The work took 45 ms. |
+| `123m 45 130` | A line is drawn. 123 m is the ride distance to the route. The work took 45 ms and 130 file reads. |
 | `wb3` | The rider is on the route (test image only). |
 | `wb2 45` | No position, no route list, or the navigation lock is busy. |
 | `wb4 45` | No stored street within 15 m. |
 | `wb5 45` | A file read failed, or the 300 ms limit was reached. |
 | `wb6 45` | The open-file table lock is busy. |
 | `wb7 45` | No open route file, no way-back data at its end, or the data is refused by `wb_mount`. |
-| `wb8 45` | Less than 3,072 B of stack are free. No file call is made. |
+| `wb8 45` | Less than 3,360 B of stack are free. No file call is made. |
 | `wb9 45` | The second open of the route file failed. |
 
 **Way-back data in the route file.** `tools/wayback_embed.mjs` appends the way-back file to the route file.
@@ -106,9 +137,11 @@ It never writes to the device.
 - `wb_device.c`, `wb_device.ld`, `wb_tramp.S`: the device adapter. `tools/wayback_device_build.py`: the test image. `tools/wayback_embed.mjs`: way-back data into a route file.
 - `tools/wayback_device_host.c`, `tools/test_wayback_device.mjs`, `tools/test_wayback_device_build.py`: adapter tests on the host.
 - `tools/wayback_host.c`: host command. `tools/wayback_core_host.mjs`: builds it and runs it.
-- `tools/wayback_tree.mjs`: model. `tools/wayback_format.mjs`: file format.
+- `js/wayback_tree.js`: model. `js/wayback_format.js`: file format. `js/wayback_embed.js`: trailer. `js/routing_snapshot.js`, `js/recovery_transitions.js`, `js/recovery_graph.js`: street graph. `js/native_route.js`: route points. The files of the same name in `tools/` export this code again.
+- `js/wayback.js`: the build path of the page and of `tools/wayback_build.mjs`. `tools/test_wayback_page.mjs`: its test.
 - `tools/wayback_build.mjs`: private inputs to a file and a size report. `tools/wayback_replay.mjs`: replay on the recorded ride.
 - `tools/wayback_size.py`: code size on the Xtensa target.
+- `tools/wayback_draw.mjs`, `tools/wayback_draw.html`: interactive drawing of the stored streets and the line.
 
 ## File format
 

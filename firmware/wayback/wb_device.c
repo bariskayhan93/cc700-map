@@ -6,11 +6,11 @@
 
 #define WBD_POINTS 32u              /* line points for each frame */
 #define WBD_TIME_US 300000u         /* file work for each frame; a later read fails */
-#define WBD_STACK 3072u             /* free stack needed before any file call */
+#define WBD_STACK 3360u             /* free stack needed before any file call */
 #define WBD_REC 132u                /* open-file table record: handle, then the name */
 enum { WBD_LOCK = 6, WBD_NODATA = 7, WBD_STACK_LOW = 8, WBD_OPEN = 9 };   /* codes after the core reasons 1 to 5 */
 
-typedef struct { void *fp; uint32_t base, t0, late; } wbd_ctx;
+typedef struct { void *fp; uint32_t base, t0, late, reads; } wbd_ctx;
 
 #ifdef HOST
 void host_cc_rt(uint32_t);
@@ -137,22 +137,30 @@ static int wbd_read(void *vctx, uint32_t off, void *dst, uint32_t n) {
   wbd_ctx *c = (wbd_ctx *)vctx;
   if (fw_clock() - c->t0 > WBD_TIME_US) { c->late = 1; return 0; }
   if (fw_fseek(c->fp, (int32_t)(c->base + off), 0) != 0) return 0;
+  c->reads++;
   return fw_fread(dst, 1u, n, c->fp) == n;
 }
 static uint32_t le32(const uint8_t *p) { return p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24); }
 
 /* Mounts the data at the file end, runs one tick and reads the line. Returns 0 with n points, or a code. */
-static __attribute__((noinline)) uint32_t wbd_run(void *fp, uint32_t t0, const float *pos, float *line, uint32_t *n, uint32_t *dm) {
-  uint32_t store[32 + 2 * (sizeof(void *) - 4)]; wb_engine *e = (wb_engine *)store;   /* 128 B on the device */
-  uint8_t t[16]; wbd_ctx c; wb_input in; wb_output out; int32_t p[2]; uint32_t i;
-  if (wb_size() > sizeof store) return WBD_NODATA;
+static uint32_t wbd_core(wbd_ctx *, uint32_t, uint8_t *, const float *, float *, uint32_t *, uint32_t *);
+static __attribute__((noinline)) uint32_t wbd_run(void *fp, uint32_t t0, const float *pos, float *line, uint32_t *n, uint32_t *dm, uint32_t *reads) {
+  uint8_t t[16]; wbd_ctx c; uint32_t i;
+  if (wb_size() > 128u + 8u * (sizeof(void *) - 4)) return WBD_NODATA;
   /* Trailer, the last 12 bytes: "CCWT", offset of the way-back data, its size. */
   if (fw_fseek(fp, -12, 2) != 0 || fw_fread(t, 1u, 12u, fp) != 12u || le32(t) != 0x54574343u) return WBD_NODATA;
-  c.fp = fp; c.base = le32(t + 4); c.t0 = t0; c.late = 0;
+  c.fp = fp; c.base = le32(t + 4); c.t0 = t0; c.late = 0; c.reads = 0;
   i = le32(t + 8);
-  if (!wbd_read(&c, 8u, t, 16u)) return WB_READ;              /* identity: the data is inside its route file */
+  i = wbd_core(&c, i, t, pos, line, n, dm);
+  *reads = c.reads;
+  return i;
+}
+static uint32_t wbd_core(wbd_ctx *cp, uint32_t i, uint8_t *t, const float *pos, float *line, uint32_t *n, uint32_t *dm) {
+  uint32_t store[32 + 2 * (sizeof(void *) - 4)]; wb_engine *e = (wb_engine *)store;   /* 128 B on the device */
+  wb_input in; wb_output out; int32_t p[2];
+  if (!wbd_read(cp, 8u, t, 16u)) return WB_READ;              /* identity: the data is inside its route file */
   for (out.state = 0; out.state < sizeof store / 4u; out.state++) store[out.state] = 0;
-  if (!wb_mount(e, wbd_read, &c, i, t)) return c.late ? WB_READ : WBD_NODATA;
+  if (!wb_mount(e, wbd_read, cp, i, t)) return cp->late ? WB_READ : WBD_NODATA;
   in.lat_e7 = (int32_t)(pos[0] * 1e7f); in.lon_e7 = (int32_t)(pos[1] * 1e7f);
   in.exit_progress_cm = 0; in.flags = WB_GPS_VALID | WB_OFF_ROUTE;   /* no trusted exit on the device: tree A values */
   wb_tick(e, &in, &out);
@@ -164,14 +172,14 @@ static __attribute__((noinline)) uint32_t wbd_run(void *fp, uint32_t t0, const f
 }
 
 static __attribute__((noinline)) void wbd_frame(void) {
-  float pos[2], line[2 * WBD_POINTS]; char s[128], *o = s; uint32_t n = 0, dm = 0, code, t0 = fw_clock(); int found;
+  float pos[2], line[2 * WBD_POINTS]; char s[128], *o = s; uint32_t n = 0, dm = 0, rd = 0, code, t0 = fw_clock(); int found;
   uint32_t mode = 0x00006272u;                                 /* "rb" */
   void *fp;
   if (fw_stack() < WBD_STACK) code = WBD_STACK_LOW;
   else if (!wbd_pos(pos)) code = WB_GPS;
   else if ((found = wbd_path(s)) <= 0) code = found ? WBD_LOCK : WBD_NODATA;
   else if (!(fp = fw_fopen(s, (const char *)&mode))) code = WBD_OPEN;
-  else { code = wbd_run(fp, t0, pos, line, &n, &dm); fw_fclose(fp); }
+  else { code = wbd_run(fp, t0, pos, line, &n, &dm, &rd); fw_fclose(fp); }
   if (code) { *o++ = 'w'; *o++ = 'b'; *o++ = (char)('0' + code); }
   else {
     wbd_line(line, n, 17u);                                    /* white 7 px, then dark purple 4 px */
@@ -181,6 +189,8 @@ static __attribute__((noinline)) void wbd_frame(void) {
   }
   *o++ = ' ';
   o = wbd_num(o, (fw_clock() - t0) / 1000u);                   /* file and core time of this frame, ms */
+  *o++ = ' ';
+  o = wbd_num(o, rd);                                          /* file reads of this frame */
   *o = 0;
   wbd_text(s);
 }

@@ -50,7 +50,7 @@ test('off the route near a street: the line is drawn two times, with the distanc
   assert.equal(r.opened, withData);                            // the name of the route handle, not of record 0
   assert.deepEqual(r.lines.map(l => [l.op, l.n]), [[17, 4], [14, 4]]);
   near(r.lines[0].first, 0, 120); near(r.lines[0].last, 0, 0);
-  assert.match(r.text, /^1[12]\dm \d+$/);                     // 120 m to the route, then ms
+  assert.match(r.text, /^1[12]\dm \d+ \d+$/);                 // 120 m to the route, then ms, then reads
   assert.deepEqual([r.takes, r.gives, r.dashAfter, r.badDash, r.labelCol], [2, 2, 0, 0, 0x1234]);
 });
 test('the route call of state 3 (part 1) is handled as part 0', () => {
@@ -62,7 +62,7 @@ test('on the route, the test image shows wb3 and makes no lock, file or line cal
 });
 test('no street within 15 m shows code 4 and no line', () => {
   const r = run({x: 60, y: 100});
-  assert.deepEqual([r.lines.length, r.opens, r.closes], [0, 1, 1]); assert.match(r.text, /^wb4 \d+$/);
+  assert.deepEqual([r.lines.length, r.opens, r.closes], [0, 1, 1]); assert.match(r.text, /^wb4 \d+ \d+$/);
 });
 test('a route file without way-back data shows code 7 and is closed again', () => {
   const r = run({file: plain});
@@ -83,7 +83,7 @@ test('a failed open shows code 9 and no close is made', () => {
 });
 test('file work above 300 ms stops with code 5, no line, and the file is closed', () => {
   const r = run({step: 200000});
-  assert.deepEqual([r.lines.length, r.opens, r.closes], [0, 1, 1]); assert.match(r.text, /^wb5 \d+$/);
+  assert.deepEqual([r.lines.length, r.opens, r.closes], [0, 1, 1]); assert.match(r.text, /^wb5 \d+ \d+$/);
   assert(r.reads <= 3);
 });
 test('damaged way-back data shows code 7 and no line', () => {
