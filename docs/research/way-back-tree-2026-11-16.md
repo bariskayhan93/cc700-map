@@ -61,7 +61,9 @@ Exception build statistics (`.local/wayback/aplus-line2k-build.json`, `aplus-rid
 - The device read time is not measured. One frame reads up to 1,966 times from the file.
 - 23 forward frames give `WB_DIST_UNKNOWN`. The 64-node walk limit causes them: with a 512-node limit, the same replay gives 0 (measured on the 1 km build; the core was restored after the test). The plan keeps 64. On the 2 km build, the longest chain that reaches the route has 363 nodes (`forwardChains.maxSteps`). The owner decides the limit.
 - In forward mode, an extra piece uses the tree A cost to choose its end (as the plan states). The replay counts 4 frames that turn back at point 1. This count is a geometric proxy, not checked against node ids.
-- No adapter draws the line. The cause of the cc24 map-view restart is not known.
+- A device adapter and a test image (`cc23wb1`) exist on the host (`firmware/wayback/README.md`). They are not installed. The cause of the cc24 map-view restart is not known.
+- The adapter replay on the recorded ride gives the same result as the core replay: 636 lines in 809 off-route frames, 173 frames with no street. One frame needs at most 792 file reads (median 375) with a mount for each frame.
+- Direction. Tree A leads to the nearest route point by ride distance, in any direction. The owner wants the closest join without turning back. Tree A does not give that. A host search with a heading from 10 m of track finds such a join for 436 of 443 frames of the long detour and 93 of 100 frames of the short detour. No file format or device code for it exists. The "wrong part" count above uses a km window and is not a measure of direction.
 - The map paints main roads up to 1,000 m from the route. A line at 2 km can cross an area with no painted streets. This is not measured.
 - Parallel streets less than 15 m apart can give a wrong match.
 - Turn restrictions are not in the tree. A node stores one next node only.
