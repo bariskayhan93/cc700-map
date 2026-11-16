@@ -29,7 +29,7 @@ device command is:
   --chip esp32s3 --port /dev/cu.usbmodem1101 --baud 921600 \
   --before default_reset --after hard_reset --connect-attempts 3 \
   read_flash 0x860000 0x79e000 \
-  /Users/baris/cc700-map/.local/native-replay-readiness/acquisition/storage-current.bin
+  .local/native-replay-readiness/acquisition/storage-current.bin
 ```
 
 Effects: reset into download mode, upload/execute the standard esptool RAM stub,
@@ -47,7 +47,7 @@ does not prove replay readiness or a safe future write delta.
 
 ## Recovery and approval scope
 
-The [owner's handoff addendum](/Users/baris/cc700-backup/HANDOFF_ADDENDUM.md)
+The owner's handoff addendum (private: `~/cc700-backup/HANDOFF_ADDENDUM.md`)
 records: “the CC700 stays OFF” after an esptool reset, and says the owner performs
 the physical power-button operation. Be prepared to unplug USB, wait about five
 seconds and long-press power if needed, following the recorded recovery method.

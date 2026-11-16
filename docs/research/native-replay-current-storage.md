@@ -114,7 +114,7 @@ by this candidate. See the latest status for the subsequent approved install.
 
 ## Installation and rollback conditions
 
-The [owner handoff](/Users/baris/cc700-backup/HANDOFF.md) explicitly says:
+The owner handoff (private: `~/cc700-backup/HANDOFF.md`) explicitly says:
 “Before a flash or storage write, ask the owner.” Installation approval has been
 requested separately from the approved read. It covers the six-block candidate,
 one requested reset and initialization checks, not replay activation or alteration
