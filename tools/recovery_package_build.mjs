@@ -6,7 +6,8 @@ import {retrospectiveCases} from './recovery_ride_study.mjs';import {hav,brg} fr
 const sha=b=>createHash('sha256').update(b).digest('hex');
 export function buildBundle(config){
  const rawRoute=fs.readFileSync(config.route),rawSource=fs.readFileSync(config.snapshot),snapshot=JSON.parse(rawSource),route=readNativeRoute(rawRoute),index=new SegmentIndex(snapshot.navigationSource.ways),visits=buildRouteVisits(route,index);
- const policy={version:1,kind:'experimental-conservative-no-motorroad',windowCm:25000,maxSegments:1024,maxLegPoints:512,maxGuardsPerSegment:64,maxPackageBytes:65536};
+ const reachCm=config.reachM===undefined?300000:Math.round(config.reachM*100);if(!Number.isInteger(reachCm)||reachCm<100||reachCm>300000)throw Error('Reach admission: 100 m to 3000 m');
+ const policy={version:1,kind:'experimental-conservative-no-motorroad',windowCm:25000,maxSegments:1024,maxLegPoints:512,maxGuardsPerSegment:64,maxPackageBytes:65536,...(config.reachM===undefined?{}:{reachCm})};
  const graph=buildTransitionGraph(snapshot,{wayPolicy:t=>t.motorroad&&t.motorroad!=='no'?{reason:'motorroad-not-admitted'}:conservativeWayPolicy(t)});
  const identity={routeSha256:sha(rawRoute),sourceSha256:sha(rawSource),policySha256:sha(JSON.stringify(policy))},seeds=new Map();let sampling='deterministic source edges near window route anchor';
  if(config.track&&config.timeline){
@@ -22,7 +23,7 @@ export function buildBundle(config){
  const packages=[],receipts=[];
  for(const [window,selected] of [...seeds].sort(([a],[b])=>a-b)){
   const entryMin=window*25000,entryMax=Math.min(entryMin+25000,route.at(-1).progress+1),center=route.reduce((a,b)=>Math.abs(a.progress-entryMin)<Math.abs(b.progress-entryMin)?a:b).point;
-  const r=generateWindow(graph,index,visits,{...identity,entryMin,entryMax,center},[...selected.values()]),name=`r${String(window).padStart(4,'0')}.rcp`;
+  const r=generateWindow(graph,index,visits,{...identity,entryMin,entryMax,center,reachCm},[...selected.values()]),name=`r${String(window).padStart(4,'0')}.rcp`;
   packages.push({name,bytes:r.bytes,entryMin,entryMax});receipts.push({...r.receipt,name,sha256:sha(r.bytes)});
  }
  if(sha(fs.readFileSync(config.route))!==identity.routeSha256)throw Error('Route changed during generation');
