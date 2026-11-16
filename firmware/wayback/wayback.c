@@ -7,11 +7,13 @@
 #define WB_CELL_BYTES 12u
 #define WB_NODE_BYTES 12u
 #define WB_EXTRA_BYTES 8u
+#define WB_EXC_BYTES 8u
 #define WB_NIL 0xFFFFFFFFu
 #define WB_NO_CHUNK 0xFFFFFFFFu
 #define WB_D2_LIMIT 57600u          /* 15 m = 240 units; 240 * 240 */
 #define WB_MAX_POINTS 4096u
 #define WB_MAX_CHUNKS 4096u
+#define WB_FWD_STEPS 64u            /* forward walk limit for the distance to the route */
 #define WB_EXTRA_LEN_MASK 0x3FFFu   /* extra piece length in 0.1 m */
 
 struct wb_engine {
@@ -116,11 +118,65 @@ static int find_cell(const wb_engine *e, uint32_t key, uint32_t *n0, uint32_t *n
   return 1;
 }
 
-/* The next node of n on the line. Task 6 changes only this function. */
+/* Exception record of node n in chunk c. Returns 1 found, 0 absent, -1 read failure. */
+static int rec_find(const wb_engine *e, uint32_t c, uint32_t n, uint32_t *next, uint32_t *dist) {
+  uint8_t t[8], r[WB_EXC_BYTES];
+  uint32_t lo, hi;
+  if (c >= e->chunk_count) return 0;
+  if (!rd(e, e->off_chunks + c * 4u, t, 8u)) return -1;
+  lo = rd_u32(t);
+  hi = rd_u32(t + 4);
+  while (lo < hi) {
+    uint32_t mid = lo + (hi - lo) / 2u, nd;
+    if (!rd(e, e->off_exc + mid * WB_EXC_BYTES, r, WB_EXC_BYTES)) return -1;
+    nd = rd_u24(r);
+    if (nd < n) lo = mid + 1u;
+    else if (nd > n) hi = mid;
+    else {
+      *next = rd_u24(r + 3);
+      *dist = rd_u16(r + 6);
+      return 1;
+    }
+  }
+  return 0;
+}
+
+/* The next node of n on the line: the exception value in forward mode, else the tree A value.
+ * Returns 0 on a read failure. The record test comes first, so a route node with a record is handled. */
 static int next_of(const wb_engine *e, uint32_t n, uint32_t anext, uint32_t *out) {
-  (void)e;
-  (void)n;
+  uint32_t nx = 0u, d = 0u;
+  int r;
   *out = anext;
+  if (!e->fwd) return 1;
+  r = rec_find(e, e->chunk, n, &nx, &d);
+  if (r < 0) return 0;
+  if (r == 1) *out = nx;
+  return 1;
+}
+
+/* Forward distance in dm from end to the route, by a walk of at most WB_FWD_STEPS nodes.
+ * At the first node with a record: end_dist - dist(k) + record dist. At a route node: end_dist - dist(k).
+ * Leaves *dm at WB_DIST_UNKNOWN when neither occurs. Returns 0 on a read failure. */
+static int fwd_dm(const wb_engine *e, uint32_t end, uint32_t end_dist, uint32_t *dm) {
+  uint32_t x = end, k;
+  *dm = WB_DIST_UNKNOWN;
+  for (k = 0u; k < WB_FWD_STEPS; k++) {
+    uint32_t xx, xy, xn, xd, rn = 0u, rd_dist = 0u;
+    int r;
+    if (!load_node(e, x, &xx, &xy, &xn, &xd)) return 0;
+    if (xd > end_dist) return 1;
+    r = rec_find(e, e->chunk, x, &rn, &rd_dist);
+    if (r < 0) return 0;
+    if (r == 1) {
+      *dm = end_dist - xd + rd_dist * 10u;
+      return 1;
+    }
+    if (xn == WB_NIL) {
+      *dm = end_dist - xd;
+      return 1;
+    }
+    x = xn;
+  }
   return 1;
 }
 
@@ -185,7 +241,7 @@ int wb_mount(wb_engine *e, wb_reader r, void *ctx, uint32_t file_bytes, const ui
     exc_count = rd_u32(t);
     if (exc_count > 0xFFFFFu) return 0;
   }
-  total = e->off_exc + exc_count * 8u;
+  total = e->off_exc + exc_count * WB_EXC_BYTES;
   if (total != file_bytes) return 0;
 
   /* The sentinel cell record must follow the last cell. */
@@ -215,8 +271,8 @@ void wb_unmount(wb_engine *e) {
 void wb_tick(wb_engine *e, const wb_input *in, wb_output *out) {
   wb_piece best, cand;
   uint32_t X, Y, dlat, dlon, prev_kind, prev_a, prev_b, prev_chunk, chunk = WB_NO_CHUNK;
-  uint32_t end, end_dm, end_first, way, dist_dm;
-  int prev, have = 0, changed, dy, dx, r;
+  uint32_t end = WB_NIL, end_first = 0u, end_dist = 0u, end_dm = WB_DIST_UNKNOWN, way, dist_dm;
+  int prev, have = 0, changed, fwd = 0, dy, dx, r;
   int32_t p[2];
 
   out->state = WB_NONE;
@@ -243,6 +299,12 @@ void wb_tick(wb_engine *e, const wb_input *in, wb_output *out) {
   Y = wb_scale(dlat, e->lat_u);
   X = wb_scale(dlon, e->lon_u);
   if (X >= 0x1000000u || Y >= 0x1000000u) { out->reason = WB_NO_STREET; return; }
+
+  /* Forward mode: a trusted exit whose km is in the file. */
+  if ((in->flags & WB_EXIT_TRUSTED) && e->chunk_count > 0u) {
+    uint32_t c = in->exit_progress_cm / 100000u;
+    if (c < e->chunk_count) { chunk = c; fwd = 1; }
+  }
 
   for (dy = -1; dy <= 1; dy++) {
     for (dx = -1; dx <= 1; dx++) {
@@ -279,7 +341,8 @@ void wb_tick(wb_engine *e, const wb_input *in, wb_output *out) {
         if (!wb_measure((int32_t)xa - (int32_t)X, (int32_t)ya - (int32_t)Y,
                         (int32_t)xb - (int32_t)X, (int32_t)yb - (int32_t)Y, &d2, &t)) continue;
         cand.d2 = d2; cand.t = t; cand.kind = 2u; cand.a = ea; cand.b = eb;
-        cand.da = da; cand.db = db; cand.len = lf & WB_EXTRA_LEN_MASK; cand.bits = ((lf >> 14) & 1u) | (((lf >> 15) & 1u) << 1);
+        cand.da = da; cand.db = db; cand.len = lf & WB_EXTRA_LEN_MASK;
+        cand.bits = ((lf >> 14) & 1u) | (((lf >> 15) & 1u) << 1);
         cand.vn = 0u;
         cand.xa = xa; cand.ya = ya; cand.xb = xb; cand.yb = yb;
         if (!have || d2 < best.d2) { piece_set(&best, &cand); have = 1; }
@@ -290,10 +353,17 @@ void wb_tick(wb_engine *e, const wb_input *in, wb_output *out) {
 
   changed = !prev || best.kind != prev_kind || best.a != prev_a || best.b != prev_b || chunk != prev_chunk;
   if (changed) {
+    e->fwd = (uint8_t)fwd;
+    e->chunk = chunk;
     if (best.kind == 1u) {
-      end_first = 0u;
-      end = best.b;
-      end_dm = best.db;
+      uint32_t ev = WB_NIL;
+      if (fwd) {
+        /* The end is the piece's first node when the forward next of the second node is the first node. */
+        if (!next_of(e, best.b, best.vn, &ev)) { out->reason = WB_READ; return; }
+        end_first = ev == best.a ? 1u : 0u;
+      }
+      end = end_first ? best.a : best.b;
+      end_dist = end_first ? best.da : best.db;
     } else {
       uint32_t cost_a = 0xFFFFFFFFu, cost_b = 0xFFFFFFFFu, use_a = 0u;
       if (best.bits & 1u) cost_a = best.len * best.t / 256u + best.da;
@@ -301,22 +371,27 @@ void wb_tick(wb_engine *e, const wb_input *in, wb_output *out) {
       if (best.bits & 1u) use_a = (!(best.bits & 2u) || cost_a <= cost_b) ? 1u : 0u;
       end_first = use_a;
       end = use_a ? best.a : best.b;
-      end_dm = use_a ? best.da : best.db;
+      end_dist = use_a ? best.da : best.db;
     }
+    if (!fwd) end_dm = end_dist;
+    else if (!fwd_dm(e, end, end_dist, &end_dm)) { out->reason = WB_READ; return; }
     e->kind = (uint8_t)best.kind;
     e->a = best.a;
     e->b = best.b;
     e->len = best.len;
-    e->chunk = chunk;
-    e->fwd = 0;
     e->end = end;
     e->end_first = (uint8_t)end_first;
     e->end_dm = end_dm;
   }
   out->changed = changed ? 1u : 0u;
+  out->forward = e->fwd;
 
-  way = e->end_first ? best.len * best.t / 256u : best.len * (256u - best.t) / 256u;
-  dist_dm = way + e->end_dm;
+  if (e->end_dm == WB_DIST_UNKNOWN) {
+    dist_dm = WB_DIST_UNKNOWN;
+  } else {
+    way = e->end_first ? best.len * best.t / 256u : best.len * (256u - best.t) / 256u;
+    dist_dm = way + e->end_dm;
+  }
 
   {
     int32_t dxp = (int32_t)best.xb - (int32_t)best.xa, dyp = (int32_t)best.yb - (int32_t)best.ya;
@@ -329,7 +404,6 @@ void wb_tick(wb_engine *e, const wb_input *in, wb_output *out) {
   out->state = WB_LINE;
   out->reason = WB_OK;
   out->distance_dm = dist_dm;
-  out->forward = 0;
 }
 
 int wb_read_point(wb_engine *e, uint32_t index, int32_t point_e7[2]) {

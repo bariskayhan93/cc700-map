@@ -1,7 +1,7 @@
 // tools/test_wayback_format.mjs
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {gridFixture} from './wayback_fixture.mjs';
+import {gridFixture, loopFixture} from './wayback_fixture.mjs';
 import {buildWaybackModel} from './wayback_tree.mjs';
 import {makeFrame, encodeWayback, decodeWayback} from './wayback_format.mjs';
 const {graph, route, p} = gridFixture();
@@ -39,4 +39,13 @@ test('decode refuses a wrong magic and a wrong size', () => {
   const bytes = encodeWayback(model, id);
   assert.throws(() => decodeWayback(bytes.slice(0, bytes.length - 1)));
   const bad = bytes.slice(); bad[0] = 88; assert.throws(() => decodeWayback(bad));
+});
+test('exception lists survive encode and decode, sorted by node', () => {
+  const L = loopFixture(), m = buildWaybackModel(L.graph, L.route, {reach: 'ride1500', exceptions: true});
+  const bytes = encodeWayback(m, id), d = decodeWayback(bytes);
+  assert.equal(d.header.flags & 1, 1); assert.equal(d.chunks.length, 6);
+  assert.equal(d.chunks[4].length, m.chunks[4].length); assert(d.chunks[4].length > 0);
+  d.chunks[4].forEach((r, i) => { if (i) assert(d.chunks[4][i - 1].node < r.node); });
+  const n = d.chunks.reduce((s, c) => s + c.length, 0);
+  assert.equal(bytes.length, 64 + (d.header.cellCount + 1) * 12 + d.nodes.length * 12 + d.extras.length * 8 + 7 * 4 + n * 8);
 });

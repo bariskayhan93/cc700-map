@@ -2,7 +2,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {hav} from '../js/geo.js';
-import {gridFixture} from './wayback_fixture.mjs';
+import {gridFixture, loopFixture} from './wayback_fixture.mjs';
 import {buildWaybackModel} from './wayback_tree.mjs';
 const {graph, route, p} = gridFixture();
 const at = (m, x, y) => { const i = m.nodes.findIndex(n => hav(n.point, p(x, y)) < 1); assert(i >= 0, `no node at ${x},${y}`); return i; };
@@ -41,4 +41,21 @@ test('reach ride1500 drops nodes that are more than 1,500 m of ride from the rou
 test('the distance decreases along each next chain and the chain ends on the route', () => {
   const m = buildWaybackModel(graph, route, {reach: 'line2k'});
   m.nodes.forEach((n, i) => { let k = i, steps = 0; while (m.nodes[k].next >= 0) { const q = m.nodes[m.nodes[k].next]; assert(q.dist < m.nodes[k].dist); k = m.nodes[k].next; assert(++steps < 1000); } assert.equal(m.nodes[k].dist, 0); });
+});
+test('a chunk holds only the nodes whose forward next node is different from tree A', () => {
+  const L = loopFixture(), m = buildWaybackModel(L.graph, L.route, {reach: 'ride1500', exceptions: true});
+  const ix = (x, y) => m.nodes.findIndex(n => hav(n.point, L.p(x, y)) < 1);
+  assert.equal(m.chunks.length, 6);
+  assert.equal(m.nodes[ix(0, 150)].next, ix(0, 100));          // tree A goes to the first pass
+  assert.equal(m.nodes[ix(0, 250)].next, ix(0, 300));          // tree A goes to the second pass
+  const e = m.chunks[4].find(r => r.node === ix(0, 150));       // exit in km 4: go to the second pass
+  assert(e); assert.equal(e.next, ix(0, 200)); near(e.dist, 270);
+  assert(!m.chunks[4].some(r => r.node === ix(0, 250)));
+  const f = m.chunks[0].find(r => r.node === ix(0, 250));       // exit in km 0: go to the first pass
+  assert(f); assert.equal(f.next, ix(0, 200)); near(f.dist, 250);
+  assert(!m.chunks[0].some(r => r.node === ix(0, 150)));
+});
+test('with exceptions off the model has no chunks', () => {
+  const L = loopFixture();
+  assert.deepEqual(buildWaybackModel(L.graph, L.route, {reach: 'ride1500'}).chunks, []);
 });

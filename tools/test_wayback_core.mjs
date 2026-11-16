@@ -2,7 +2,7 @@
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {hav} from '../js/geo.js';
-import {gridFixture} from './wayback_fixture.mjs';
+import {gridFixture, loopFixture} from './wayback_fixture.mjs';
 import {buildWaybackModel} from './wayback_tree.mjs';
 import {encodeWayback} from './wayback_format.mjs';
 import {runCore} from './wayback_core_host.mjs';
@@ -70,4 +70,39 @@ test('200 seeded positions: each line starts near the rider, ends on the route, 
     assert(Math.abs(len - r.distanceDm / 10) <= 3);
   });
   assert(lines >= 10);
+});
+const L = loopFixture();
+const loopFile = encodeWayback(buildWaybackModel(L.graph, L.route, {reach: 'ride1500', exceptions: true}), id);
+const le7 = (x, y) => { const q = L.p(x, y); return {latE7: Math.round(q[0] * 1e7), lonE7: Math.round(q[1] * 1e7)}; };
+const yOf = pt => (pt[0] / 1e7 - 51) * 111320;
+test('a trusted exit in km 4 leads forward to the second pass of the route', () => {
+  const [r] = runCore(loopFile, id, [{...le7(4, 150), flags: 7, exitCm: 450000}]);
+  assert.equal(r.state, 1); assert.equal(r.forward, 1);
+  assert(Math.abs(yOf(r.points.at(-1)) - 420) <= 1.5); assert(Math.abs(r.distanceDm - 2700) <= 30);
+});
+test('an exit that is not trusted uses tree A', () => {
+  const [r] = runCore(loopFile, id, [{...le7(4, 150), flags: 3, exitCm: 450000}]);
+  assert.equal(r.forward, 0); assert(Math.abs(yOf(r.points.at(-1))) <= 1.5); assert(Math.abs(r.distanceDm - 1500) <= 30);
+});
+test('a trusted exit in km 0 leads to the first pass, also from a node that is nearer to the second pass', () => {
+  const [r, q] = runCore(loopFile, id, [{...le7(4, 150), flags: 7, exitCm: 10000}, {...le7(4, 270), flags: 7, exitCm: 10000}]);
+  assert.equal(r.forward, 1); assert(Math.abs(yOf(r.points.at(-1))) <= 1.5); assert(Math.abs(r.distanceDm - 1500) <= 30);
+  assert(Math.abs(yOf(q.points.at(-1))) <= 1.5); assert(Math.abs(q.distanceDm - 2700) <= 30);
+});
+test('an exit km that is not in the file uses tree A', () => {
+  const [r] = runCore(loopFile, id, [{...le7(4, 150), flags: 7, exitCm: 900000}]);
+  assert.equal(r.state, 1); assert.equal(r.forward, 0); assert(Math.abs(yOf(r.points.at(-1))) <= 1.5);
+});
+test('a file with no exception lists uses tree A with a trusted exit', () => {
+  const [r] = runCore(file, id, [{...e7(5, 120), flags: 7, exitCm: 10000}]);
+  assert.equal(r.forward, 0); assert.equal(r.points.length, 4);
+});
+test('changed is 1 when the exit km changes on the same piece', () => {
+  const r = runCore(loopFile, id, [{...le7(4, 150), flags: 7, exitCm: 10000}, {...le7(4, 150), flags: 7, exitCm: 450000}]);
+  assert.deepEqual(r.map(x => x.changed), [1, 1]);
+});
+test('a rider beside the first pass with a forward exit in km 4 ends on the second pass', () => {
+  const [r] = runCore(loopFile, id, [{...le7(130, 3), flags: 7, exitCm: 450000}]);
+  assert.equal(r.state, 1); assert.equal(r.forward, 1);
+  assert(Math.abs(yOf(r.points.at(-1)) - 420) <= 1.5); assert(Math.abs(r.distanceDm - 5490) <= 30);
 });
