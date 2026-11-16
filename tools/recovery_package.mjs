@@ -50,7 +50,7 @@ export function buildPortal(graph,index,segment,direction,visits,meta){
  const unavailable=reason=>({status:'unavailable',reason});
  if(!graph.edges.some(e=>e.from===s.from&&e.to===s.to&&e.way===s.way))return unavailable('direction-not-admitted');
  if(s.meters<8)return unavailable('source-edge-too-short');
- const afterVisit=meta.entryMax+2500,throughVisit=Math.min(meta.entryMin+(meta.reachCm??300000),visits.at(-1)?.progress??0);if(afterVisit>=throughVisit)return unavailable('no-forward-window');
+ const afterVisit=meta.entryMax+2500,throughVisit=Math.min(meta.entryMin+300000,visits.at(-1)?.progress??0);if(afterVisit>=throughVisit)return unavailable('no-forward-window');
  const t=2.5/s.meters,point=s.a.map((v,i)=>v+(s.b[i]-v)*t),origin={status:'associated',segment:s,t,point,distanceMeters:0};
  const r=planRecovery(graph,origin,visits,{afterVisit,throughVisit,heading:s.bearing,maxSettled:50000,maxRelaxed:800000,maxQueue:50000});
  if(r.status!=='candidate')return unavailable(r.reason);if(r.geometry.length>512||hav(r.geometry[0],r.geometry[1])<5)return unavailable('leg-points-or-first-edge-limit');
