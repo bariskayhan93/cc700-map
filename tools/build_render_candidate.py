@@ -26,7 +26,7 @@ def main():
     src = OUT / 'src'
     src.mkdir(exist_ok=True)
     for name in ('map.c', 'blk.c', 'arrow.c', 'fw.h', 'tramp.S', 'patch.ld'):
-        shutil.copyfile(BACKUP / 'patch/src' / name, src / name)
+        shutil.copyfile(ROOT.parent / 'cc700-patch' / 'src' / name, src / name)
     run(str(PREFIX)+'gcc', '-Os', '-mlongcalls', '-mtext-section-literals',
         '-ffreestanding', '-fno-builtin', '-nostdlib', '-Wall', '-fstack-usage',
         '-Wl,-T,patch.ld', '-Wl,--gc-sections', '-Wl,-e,cc_line',

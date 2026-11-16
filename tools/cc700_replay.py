@@ -31,13 +31,13 @@ import tempfile
 from pathlib import Path
 from zoneinfo import ZoneInfo
 
-sys.path.insert(0, "/Users/baris/cc700-backup/tools")
+sys.path.insert(0, os.path.expanduser("~/cc700-backup/tools"))
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from ride import route  # noqa: E402
 from fit_track import read_track  # noqa: E402
 
 KY = 111195.0
-PATCH_SRC = "/Users/baris/cc700-map/.local/cc700-evidence-20261113/patch/src/blk.c"
+PATCH_SRC = os.path.join(os.path.dirname(os.path.abspath(__file__)), "..", ".local", "cc700-evidence-20261113", "patch", "src", "blk.c")
 SCREEN_R = 300.0  # m: half-diagonal of the visible map at typical zoom
 
 

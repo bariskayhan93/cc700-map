@@ -1,0 +1,677 @@
+{
+  "scope": "PC-only segment/ordered-visit feasibility",
+  "inputSha256": {
+    "snapshot": "aa99bf500275c99ec801089fddf839507645fedcc49dd90c64b4b37ab046038a",
+    "track": "8e7fbf3ac22e43f2bd1123781dc568c8d205f9676b22c6bff223661b855062df",
+    "timeline": "73b0c7708328f2ab1361b48eae71fa5f3a6962490a257ef681edc1a0856c9328",
+    "route": "87a8ac2ea0a4a7d599cb1407b1020fddb5c8506367ea712e919a8b6d35032a75"
+  },
+  "validatedCyclingPaths": 0,
+  "deviceAcceptance": "unvalidated",
+  "accessProfile": {
+    "id": "nrw-firm-path-study-v1",
+    "status": "inference-unvalidated",
+    "sources": [
+      "https://wiki.openstreetmap.org/wiki/OSM_tags_for_routing/Access_restrictions#Germany",
+      "https://recht.nrw.de/lrgv/gesetz/30102026-landesforstgesetz-lfog/"
+    ],
+    "gaps": [
+      "ownership/signs/closures and forest/protected-area context not established",
+      "surface is an imperfect fixed-way proxy",
+      "physical bicycle suitability unvalidated"
+    ]
+  },
+  "gaps": [
+    "geometric associations and connectors unvalidated",
+    "historical progress anchors and recording gaps not live-state acceptance",
+    "regional default inference is not legal/physical validation",
+    "target memory/stack/draw time unmeasured",
+    "source timestamp after ride"
+  ],
+  "profiles": {
+    "conservative": {
+      "profile": "conservative",
+      "results": {
+        "origin-competing-source-segments": 15,
+        "candidate": 13,
+        "origin-edge-not-admitted": 2
+      },
+      "sampledTrials": 30,
+      "candidateTrials": 13,
+      "inferredAccessCandidates": 0,
+      "candidatesWithoutRecordingGap": 5,
+      "visits": 227,
+      "associatedVisits": 130,
+      "graphNodes": 86502,
+      "graphEdges": 162026,
+      "inferredWays": 0,
+      "candidatePacketBytes": 10532,
+      "maxPacketBytes": 1404,
+      "work": {
+        "unit": "incoming-edge states",
+        "maxSettled": 4092,
+        "maxExaminedEdges": 8705,
+        "maxQueue": 84
+      },
+      "spatial": {
+        "sampling": "deterministic hashed original nodes before access filtering; disjoint whole-route distance bands; within-band rank thirds of original segments within 100 m",
+        "scanned": 4096,
+        "eligible": 2936,
+        "boundaryExcluded": 255,
+        "outsideBands": 905,
+        "sampleCount": 72,
+        "strata": [
+          {
+            "band": 1,
+            "densityTier": 0,
+            "eligible": 225,
+            "sampled": 8,
+            "minSegments": 6,
+            "maxSegments": 66
+          },
+          {
+            "band": 1,
+            "densityTier": 1,
+            "eligible": 224,
+            "sampled": 8,
+            "minSegments": 66,
+            "maxSegments": 121
+          },
+          {
+            "band": 1,
+            "densityTier": 2,
+            "eligible": 224,
+            "sampled": 8,
+            "minSegments": 122,
+            "maxSegments": 337
+          },
+          {
+            "band": 2,
+            "densityTier": 0,
+            "eligible": 363,
+            "sampled": 8,
+            "minSegments": 9,
+            "maxSegments": 76
+          },
+          {
+            "band": 2,
+            "densityTier": 1,
+            "eligible": 363,
+            "sampled": 8,
+            "minSegments": 76,
+            "maxSegments": 158
+          },
+          {
+            "band": 2,
+            "densityTier": 2,
+            "eligible": 363,
+            "sampled": 8,
+            "minSegments": 158,
+            "maxSegments": 736
+          },
+          {
+            "band": 3,
+            "densityTier": 0,
+            "eligible": 392,
+            "sampled": 8,
+            "minSegments": 3,
+            "maxSegments": 83
+          },
+          {
+            "band": 3,
+            "densityTier": 1,
+            "eligible": 391,
+            "sampled": 8,
+            "minSegments": 83,
+            "maxSegments": 159
+          },
+          {
+            "band": 3,
+            "densityTier": 2,
+            "eligible": 391,
+            "sampled": 8,
+            "minSegments": 160,
+            "maxSegments": 460
+          }
+        ],
+        "results": {
+          "candidate": 32,
+          "hypothetical-progress-ambiguous": 18,
+          "unknown-origin": 16,
+          "no-associated-admitted-forward-visit": 3,
+          "unreachable": 3
+        },
+        "generationRetried": 20,
+        "bands": [
+          {
+            "bandMeters": [
+              0,
+              1000
+            ],
+            "samples": 24,
+            "results": {
+              "candidate": 12,
+              "hypothetical-progress-ambiguous": 7,
+              "unknown-origin": 4,
+              "no-associated-admitted-forward-visit": 1
+            },
+            "boundedCandidates": 11,
+            "validatedCyclingPaths": 0
+          },
+          {
+            "bandMeters": [
+              1000,
+              2000
+            ],
+            "samples": 24,
+            "results": {
+              "unknown-origin": 8,
+              "hypothetical-progress-ambiguous": 7,
+              "candidate": 7,
+              "no-associated-admitted-forward-visit": 2
+            },
+            "boundedCandidates": 1,
+            "validatedCyclingPaths": 0
+          },
+          {
+            "bandMeters": [
+              2000,
+              3000
+            ],
+            "samples": 24,
+            "results": {
+              "candidate": 13,
+              "unknown-origin": 4,
+              "unreachable": 3,
+              "hypothetical-progress-ambiguous": 4
+            },
+            "boundedCandidates": 0,
+            "validatedCyclingPaths": 0
+          }
+        ],
+        "representations": {
+          "fullGraphPacketBytes": 2992116,
+          "routeVisitIndexBytes": 2800,
+          "sourceAssociationIndexBytes": 6020588,
+          "combinedGraphAndIndicesBytes": 9015504,
+          "graphFormat": "CCRG v1: 32 header + 12/node + 4 terminal offset + 12/edge + 16/turn; dense identities; no audit/labels/visit index",
+          "inertTurnsOmitted": 124,
+          "localGraphs": [
+            {
+              "routeFraction": 0.25,
+              "radiusMeters": 1000,
+              "nodes": 509,
+              "edges": 1018,
+              "bytes": 18360,
+              "visitBytes": 496,
+              "associationBytes": 46088,
+              "combinedBytes": 64944
+            },
+            {
+              "routeFraction": 0.25,
+              "radiusMeters": 2000,
+              "nodes": 4397,
+              "edges": 8442,
+              "bytes": 154568,
+              "visitBytes": 1528,
+              "associationBytes": 360108,
+              "combinedBytes": 516204
+            },
+            {
+              "routeFraction": 0.25,
+              "radiusMeters": 3000,
+              "nodes": 16109,
+              "edges": 30982,
+              "bytes": 566424,
+              "visitBytes": 2248,
+              "associationBytes": 1176932,
+              "combinedBytes": 1745604
+            },
+            {
+              "routeFraction": 0.5,
+              "radiusMeters": 1000,
+              "nodes": 1422,
+              "edges": 2579,
+              "bytes": 48096,
+              "visitBytes": 400,
+              "associationBytes": 130688,
+              "combinedBytes": 179184
+            },
+            {
+              "routeFraction": 0.5,
+              "radiusMeters": 2000,
+              "nodes": 6614,
+              "edges": 12574,
+              "bytes": 230660,
+              "visitBytes": 616,
+              "associationBytes": 563596,
+              "combinedBytes": 794872
+            },
+            {
+              "routeFraction": 0.5,
+              "radiusMeters": 3000,
+              "nodes": 17275,
+              "edges": 32253,
+              "bytes": 596100,
+              "visitBytes": 1000,
+              "associationBytes": 1366324,
+              "combinedBytes": 1963424
+            }
+          ],
+          "precomputedLegBytes": 36056,
+          "exactOriginLookupBytes": 1040,
+          "combinedPrecomputedBytes": 37096,
+          "candidateLegs": 32,
+          "maxActiveLegBytes": 2868,
+          "maxLegPoints": 356,
+          "largestTwoLegPayloadBytes": 5064,
+          "lookupCoverage": "exact sampled network positions and hypothetical progress windows only; zero area tolerance",
+          "excluded": "guidance/labels, production framing, codec implementation on target, runtime allocation/transition overhead and draw timing; exact-origin legs do not cover arbitrary GPS positions"
+        },
+        "maxGenerationSettledStates": 31268,
+        "maxGenerationExaminedEdges": 64139,
+        "maxQueue": 290,
+        "sourceScope": "one regional ride-area snapshot; density ranks are not land-cover labels",
+        "originScope": "exact original network nodes; not GPS snapping; nearest ordered visit is a hypothetical prior-progress anchor",
+        "validatedCyclingPaths": 0,
+        "deviceAcceptance": "unvalidated"
+      }
+    },
+    "nrwFirm": {
+      "profile": "nrwFirm",
+      "results": {
+        "origin-competing-source-segments": 15,
+        "candidate": 9,
+        "unreachable": 1,
+        "work-limit": 5
+      },
+      "sampledTrials": 30,
+      "candidateTrials": 9,
+      "inferredAccessCandidates": 1,
+      "candidatesWithoutRecordingGap": 5,
+      "visits": 227,
+      "associatedVisits": 130,
+      "graphNodes": 94407,
+      "graphEdges": 178585,
+      "inferredWays": 2049,
+      "candidatePacketBytes": 4724,
+      "maxPacketBytes": 884,
+      "work": {
+        "unit": "incoming-edge states",
+        "maxSettled": 4096,
+        "maxExaminedEdges": 8864,
+        "maxQueue": 81
+      },
+      "spatial": {
+        "sampling": "deterministic hashed original nodes before access filtering; disjoint whole-route distance bands; within-band rank thirds of original segments within 100 m",
+        "scanned": 4096,
+        "eligible": 2936,
+        "boundaryExcluded": 255,
+        "outsideBands": 905,
+        "sampleCount": 72,
+        "strata": [
+          {
+            "band": 1,
+            "densityTier": 0,
+            "eligible": 225,
+            "sampled": 8,
+            "minSegments": 6,
+            "maxSegments": 66
+          },
+          {
+            "band": 1,
+            "densityTier": 1,
+            "eligible": 224,
+            "sampled": 8,
+            "minSegments": 66,
+            "maxSegments": 121
+          },
+          {
+            "band": 1,
+            "densityTier": 2,
+            "eligible": 224,
+            "sampled": 8,
+            "minSegments": 122,
+            "maxSegments": 337
+          },
+          {
+            "band": 2,
+            "densityTier": 0,
+            "eligible": 363,
+            "sampled": 8,
+            "minSegments": 9,
+            "maxSegments": 76
+          },
+          {
+            "band": 2,
+            "densityTier": 1,
+            "eligible": 363,
+            "sampled": 8,
+            "minSegments": 76,
+            "maxSegments": 158
+          },
+          {
+            "band": 2,
+            "densityTier": 2,
+            "eligible": 363,
+            "sampled": 8,
+            "minSegments": 158,
+            "maxSegments": 736
+          },
+          {
+            "band": 3,
+            "densityTier": 0,
+            "eligible": 392,
+            "sampled": 8,
+            "minSegments": 3,
+            "maxSegments": 83
+          },
+          {
+            "band": 3,
+            "densityTier": 1,
+            "eligible": 391,
+            "sampled": 8,
+            "minSegments": 83,
+            "maxSegments": 159
+          },
+          {
+            "band": 3,
+            "densityTier": 2,
+            "eligible": 391,
+            "sampled": 8,
+            "minSegments": 160,
+            "maxSegments": 460
+          }
+        ],
+        "results": {
+          "candidate": 32,
+          "hypothetical-progress-ambiguous": 18,
+          "unknown-origin": 16,
+          "no-associated-admitted-forward-visit": 3,
+          "unreachable": 3
+        },
+        "generationRetried": 20,
+        "bands": [
+          {
+            "bandMeters": [
+              0,
+              1000
+            ],
+            "samples": 24,
+            "results": {
+              "candidate": 12,
+              "hypothetical-progress-ambiguous": 7,
+              "unknown-origin": 4,
+              "no-associated-admitted-forward-visit": 1
+            },
+            "boundedCandidates": 11,
+            "validatedCyclingPaths": 0
+          },
+          {
+            "bandMeters": [
+              1000,
+              2000
+            ],
+            "samples": 24,
+            "results": {
+              "unknown-origin": 8,
+              "hypothetical-progress-ambiguous": 7,
+              "candidate": 7,
+              "no-associated-admitted-forward-visit": 2
+            },
+            "boundedCandidates": 1,
+            "validatedCyclingPaths": 0
+          },
+          {
+            "bandMeters": [
+              2000,
+              3000
+            ],
+            "samples": 24,
+            "results": {
+              "candidate": 13,
+              "unknown-origin": 4,
+              "unreachable": 3,
+              "hypothetical-progress-ambiguous": 4
+            },
+            "boundedCandidates": 0,
+            "validatedCyclingPaths": 0
+          }
+        ],
+        "representations": {
+          "fullGraphPacketBytes": 3285684,
+          "routeVisitIndexBytes": 2848,
+          "sourceAssociationIndexBytes": 6020588,
+          "combinedGraphAndIndicesBytes": 9309120,
+          "graphFormat": "CCRG v1: 32 header + 12/node + 4 terminal offset + 12/edge + 16/turn; dense identities; no audit/labels/visit index",
+          "inertTurnsOmitted": 124,
+          "localGraphs": [
+            {
+              "routeFraction": 0.25,
+              "radiusMeters": 1000,
+              "nodes": 588,
+              "edges": 1180,
+              "bytes": 21252,
+              "visitBytes": 496,
+              "associationBytes": 46088,
+              "combinedBytes": 67836
+            },
+            {
+              "routeFraction": 0.25,
+              "radiusMeters": 2000,
+              "nodes": 4776,
+              "edges": 9218,
+              "bytes": 168428,
+              "visitBytes": 1528,
+              "associationBytes": 360108,
+              "combinedBytes": 530064
+            },
+            {
+              "routeFraction": 0.25,
+              "radiusMeters": 3000,
+              "nodes": 17592,
+              "edges": 34075,
+              "bytes": 621336,
+              "visitBytes": 2248,
+              "associationBytes": 1176932,
+              "combinedBytes": 1800516
+            },
+            {
+              "routeFraction": 0.5,
+              "radiusMeters": 1000,
+              "nodes": 1572,
+              "edges": 2875,
+              "bytes": 53448,
+              "visitBytes": 424,
+              "associationBytes": 130688,
+              "combinedBytes": 184560
+            },
+            {
+              "routeFraction": 0.5,
+              "radiusMeters": 2000,
+              "nodes": 7440,
+              "edges": 14234,
+              "bytes": 260492,
+              "visitBytes": 664,
+              "associationBytes": 563596,
+              "combinedBytes": 824752
+            },
+            {
+              "routeFraction": 0.5,
+              "radiusMeters": 3000,
+              "nodes": 18656,
+              "edges": 35040,
+              "bytes": 646116,
+              "visitBytes": 1048,
+              "associationBytes": 1366324,
+              "combinedBytes": 2013488
+            }
+          ],
+          "precomputedLegBytes": 36200,
+          "exactOriginLookupBytes": 1040,
+          "combinedPrecomputedBytes": 37240,
+          "candidateLegs": 32,
+          "maxActiveLegBytes": 2868,
+          "maxLegPoints": 356,
+          "largestTwoLegPayloadBytes": 5064,
+          "lookupCoverage": "exact sampled network positions and hypothetical progress windows only; zero area tolerance",
+          "excluded": "guidance/labels, production framing, codec implementation on target, runtime allocation/transition overhead and draw timing; exact-origin legs do not cover arbitrary GPS positions"
+        },
+        "maxGenerationSettledStates": 34394,
+        "maxGenerationExaminedEdges": 71594,
+        "maxQueue": 311,
+        "sourceScope": "one regional ride-area snapshot; density ranks are not land-cover labels",
+        "originScope": "exact original network nodes; not GPS snapping; nearest ordered visit is a hypothetical prior-progress anchor",
+        "validatedCyclingPaths": 0,
+        "deviceAcceptance": "unvalidated"
+      }
+    }
+  },
+  "syntheticCodecControls": [
+    {
+      "case": "urban-grid",
+      "origins": 13,
+      "candidates": 12,
+      "unavailable": [
+        "unreachable"
+      ],
+      "graphBytes": 56256,
+      "candidateLegBytes": 1104,
+      "maxSettledStates": 826,
+      "maxExaminedEdges": 3235,
+      "scope": "synthetic known environment control; not legal cycling or continuous area acceptance"
+    },
+    {
+      "case": "village-grid",
+      "origins": 13,
+      "candidates": 12,
+      "unavailable": [
+        "unreachable"
+      ],
+      "graphBytes": 9600,
+      "candidateLegBytes": 624,
+      "maxSettledStates": 116,
+      "maxExaminedEdges": 437,
+      "scope": "synthetic known environment control; not legal cycling or continuous area acceptance"
+    },
+    {
+      "case": "forest-spokes",
+      "origins": 13,
+      "candidates": 12,
+      "unavailable": [
+        "unreachable"
+      ],
+      "graphBytes": 4416,
+      "candidateLegBytes": 1872,
+      "maxSettledStates": 31,
+      "maxExaminedEdges": 59,
+      "scope": "synthetic known environment control; not legal cycling or continuous area acceptance"
+    }
+  ],
+  "actualCodecRoundTripProbes": [
+    {
+      "profile": "conservative",
+      "band": 1,
+      "status": "candidate",
+      "targetVisitMatches": true,
+      "distanceDeltaMeters": 0.016811156482162914,
+      "sourcePoints": 39,
+      "decodedPoints": 39
+    },
+    {
+      "profile": "conservative",
+      "band": 2,
+      "status": "candidate",
+      "targetVisitMatches": true,
+      "distanceDeltaMeters": 0.06528446354241169,
+      "sourcePoints": 166,
+      "decodedPoints": 166
+    },
+    {
+      "profile": "conservative",
+      "band": 3,
+      "status": "candidate",
+      "targetVisitMatches": true,
+      "distanceDeltaMeters": 0.011325957956159982,
+      "sourcePoints": 162,
+      "decodedPoints": 162
+    },
+    {
+      "profile": "nrwFirm",
+      "band": 1,
+      "status": "candidate",
+      "targetVisitMatches": true,
+      "distanceDeltaMeters": 0.016811156482162914,
+      "sourcePoints": 39,
+      "decodedPoints": 39
+    },
+    {
+      "profile": "nrwFirm",
+      "band": 2,
+      "status": "candidate",
+      "targetVisitMatches": true,
+      "distanceDeltaMeters": 0.06528446354241169,
+      "sourcePoints": 166,
+      "decodedPoints": 166
+    },
+    {
+      "profile": "nrwFirm",
+      "band": 3,
+      "status": "candidate",
+      "targetVisitMatches": true,
+      "distanceDeltaMeters": 0.09334869209897079,
+      "sourcePoints": 193,
+      "decodedPoints": 193
+    }
+  ],
+  "verification": {
+    "focusedNodeTests": 76,
+    "failures": 0,
+    "reviewImportantFixed": 1,
+    "reviewedReplayReproducesEntireCostedSummary": true,
+    "productionOrDeviceChanges": false,
+    "registeredNodeSuite": {
+      "tests": 270,
+      "failures": 0,
+      "skipped": 0
+    }
+  },
+  "interpretation": {
+    "decision": "Prefer generation-time candidate legs and bounded device lookup; full graph is not a drop-in within current map targets.",
+    "scope": "Precomputed lookup covers exact sampled network positions and hypothetical forward windows only; not arbitrary GPS coverage.",
+    "legalCyclingValidation": false,
+    "physicalPassabilityValidation": false,
+    "targetMemoryStackTimingValidation": false,
+    "comparatorCaveat": "Conservative mode preserves pre-existing motorroad semantics; NRW explicitly excludes it. No candidate ride traversal in either profile uses motorroad=yes.",
+    "recordingGapCaveat": "Historical scenario gap flag can include evidence through a future observed rejoin; not merely information available at query timestamp."
+  },
+  "sourceCodeSha256": {
+    "tools/recovery_association.mjs": "093c3c2093d6411b81670ae57f37066d3af5f072c0ead7c7e2c11b832f876dac",
+    "tools/recovery_access.mjs": "b181f6024da89539d14dd3413a573e4f09a949b47a56589d8e4f833495a9c519",
+    "tools/recovery_planner.mjs": "74d8475ed8a73856bf4e439ffa7daa7dc6340d859157b07ca9897010ff92984d",
+    "tools/recovery_feasibility.mjs": "d2a4541a389721c18b95c09200ca6e198fcbfa785864d6b98f2823eb02dbf38a",
+    "tools/recovery_spatial.mjs": "088d155619e9162711ed75829142fc2b46ff726cfcaa6f3217fd9acc1b1f781e",
+    "tools/recovery_graph_packet.mjs": "7932466a7ef19a07824beea4181fb7da0edda0efcab59dda73fac32c84d38041",
+    "tools/recovery_study.mjs": "dbdb02c23ffb92654ead488e18b9d5412f6a5c87c759c992f9e8d540daf46c8c",
+    "tools/recovery_transitions.mjs": "9fcfc833480e2322c5104a04170bd9157f22e0faa375ea53310ab807bb428cd4",
+    "tools/routing_snapshot.mjs": "f39ec392b3e4986155146cfff448b6d0df045703a72f42e8f60eadc279db94c6",
+    "tools/recovery_leg_packet.mjs": "ad09b0b9c5df9482c7ec8905d433f4f212dde5f9d183f4d8bba8b579fe297c5d",
+    "tools/elevation_study.mjs": "94255682c0459d463eb95fbd0b9e156645003a439719947bbe7a13bdc04796d7",
+    "js/pb.js": "1eb05356cd191ac359020157ee92b7c2d9a6615d591a1ac966a3ba4e9578852a",
+    "js/geo.js": "7955db5d616ea49c9ed1384ffe0ba995cc5953fe7e5a39b29653efb6ff4c0c43"
+  },
+  "packetSha256": {
+    "nrwFirm-graph.bin": "0ffb5ab26ca724529ac8ddb139c198430c2458cf9bc73f9871fbace7e9cd5474",
+    "conservative-graph.bin": "e96b194e89ee1ee026885d42ee0cfaf0341273f6dfaef21367c51d8f7ed0af3d",
+    "conservative-spatial-lookup.bin": "ee921c16ef0637316a0389f8eb13602e9dcdc19afc05216558165461e72a4baa",
+    "nrwFirm-association.bin": "a0b05b4255d3e2693e5ce747207bbd41c585cf31bf25e23a9ae146de83a8403f",
+    "conservative-visits.bin": "5de9b668d69f84918b70c7a8baeca5909ee05ac8bb2e713048af044a7bcb1383",
+    "conservative-spatial-legs.bin": "a8113d124778535a95f0bcb4bb60b19907f585345c8b0b899f160d420c8b441c",
+    "nrwFirm-legs.bin": "8d1088fa3b41dd3cfdbe26117ad169d32fe33583feea9fd72a6e6c6a504bd734",
+    "conservative-association.bin": "6f75b0f18d6e1baefb04bda5b6d7bf89d950d560b99ec4849ed0986e309e2228",
+    "nrwFirm-spatial-legs.bin": "3c71c43470218c8abcdfeaba2341877bd7ead56fcbedb532aa3f88ad2fb3a12e",
+    "nrwFirm-spatial-lookup.bin": "7a1c18d9d4235b829335fea9d716aa494da6bb0ec3fe64fe0e89c5b72b28731f",
+    "nrwFirm-visits.bin": "4c85c82908e798e94f30b71ffd69b797208d66b6aa1ce718899c769b45c9c0d9",
+    "conservative-legs.bin": "3f9084ca5608dc7b85ac0a2190da0ccbd5024319b0110b87aa07839cafb376fa"
+  }
+}

@@ -117,7 +117,7 @@ def main():
     p.add_argument('--ordinary',type=Path,required=True);p.add_argument('--probe',type=Path,required=True)
     p.add_argument('--manifest',type=Path,required=True);p.add_argument('--output',type=Path,required=True)
     p.add_argument('--port',default='/dev/cu.usbmodem101');p.add_argument('--seconds',type=int,default=170)
-    p.add_argument('--pylib',type=Path,default=Path('/Users/baris/cc700-backup/pylib'));p.add_argument('--apply',action='store_true')
+    p.add_argument('--pylib',type=Path,default=Path.home()/'cc700-backup'/'pylib');p.add_argument('--apply',action='store_true')
     a=p.parse_args();manifest=json.loads(a.manifest.read_text())
     if sha(a.ordinary)!=V21_SHA or manifest.get('ordinary_v21_sha256')!=V21_SHA or manifest.get('test_only') is not True:
         p.error('expected verified ordinary v21 and test-only manifest')

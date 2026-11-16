@@ -12,7 +12,7 @@ import subprocess
 import tempfile
 
 
-DEFAULT_SOURCE = Path(__file__).resolve().parents[2] / "cc700-backup/patch/src/blk.c"
+DEFAULT_SOURCE = Path(__file__).resolve().parents[2] / "cc700-patch/src/blk.c"
 
 HEADER = r"""
 extern void *host_list;
