@@ -6,7 +6,7 @@ Status: host analysis. No firmware or device change. Private inputs stay in `.lo
 
 - Keep the current package format and the current bicycle policy. No format change now.
 - A leg never uses a way without bicycle access. If the rider goes onto such a way, the core reports unavailable and ordinary guidance continues. The replay ran 4035 fixes, including 262 such moments, with no error.
-- Not pursued now: shared guard pool, tree of legs, reach field, seed ordering, entry-relative targets. Each would add a format or firmware change for a detour that does not fit yet.
+- Not pursued now: shared piece layout, guard table, reach field, seed ordering, entry-relative targets. Each would add a format or firmware change for a detour that does not fit yet.
 - Open decision: how packages are limited per route. See "Sizing".
 
 ## Answer
@@ -16,7 +16,7 @@ Status: host analysis. No firmware or device change. Private inputs stay in `.lo
   - Its road is `track` or `path` with no bicycle tag. The bicycle policy refuses both.
   - Its rejoin lies inside its own window. The target rule never allows a target there.
 - Guard and byte limits block more legs in the 19.9 km window. Guards take 87% of the package. 223 distinct guards are stored 3,103 times.
-- A shared guard pool saves the most bytes. The estimate is 2.5 to 3.4 times smaller. A tree of legs saves about 7%. The guard pool comes first.
+- Sharing street pieces across legs saves the most bytes. Estimate: about 0.25 MB instead of 3.3 MB for the 22.56 km route, with the same legs and coverage. The earlier tree estimate counted leg data only, and understated the saving.
 - A reach of 1 km, 2 km or 3 km gives the same packages on this ride.
 - Full coverage of a 70 km route needs about 10 MB of packages at today's rule. The device storage partition is 7.99 MB. The open decision is a per-route size rule (see "Sizing").
 
@@ -80,9 +80,9 @@ Estimates. No format exists for these.
 |---|---|
 | Shared guard pool, 16-byte entry per distinct guard, 2-byte index per guard record | 16.9 KB, 3.4 times smaller |
 | Same, 4-byte index | 23.1 KB, 2.5 times smaller |
-| Tree of legs: each distinct piece stored once | Leg data about 2.6 KB instead of 6.8 KB. Saves about 4 KB, 7% of the package. |
+| Shared pieces, route-wide: each distinct piece and its guards stored once | Route about 0.25 MB instead of 3.3 MB, 13 times smaller (estimate). Legs and coverage unchanged. |
 
-The guard pool is the lever. The tree is second.
+Sharing pieces is the lever. A guard table alone saves less. Splitting legs alone saves nothing, because the same pieces and guards are still stored again.
 
 ## Reach
 
@@ -95,7 +95,7 @@ A rejoin inside the entry window cannot be a target. The rule admits targets onl
 
 ## Options not pursued (each needs a firmware or format change)
 
-1. **Shared guard pool.** Estimated 2.5 to 3.4 times smaller packages. Changes the guard reads in `recovery.c` (lines 46 to 50 and 123 to 125).
+1. **Shared piece layout.** Estimated 13 times smaller, same legs and coverage. Legs become lists of piece IDs. Changes the leg format and the read path in `recovery.c` (lines 46 to 50 and 123 to 125).
 2. **Entry-relative targets.** Removes the blind zone. Changes the target check in `recovery.c` line 43 and `recovery_package.mjs` line 53.
 3. **Seed order.** Under the byte limit, the way-id order decides which legs fit (`recovery_package.mjs` line 68). Tuning this to one ride would overfit.
 
