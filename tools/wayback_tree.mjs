@@ -99,6 +99,51 @@ function splitGraph(graph, pts) {
   return {edges, index};
 }
 
+// Removes the records that make a forward chain loop or never reach the route. A chain follows a
+// record's next, else the tree A next. Rounds repeat until no chain is open. Input and output use
+// original node indexes: {x, nx, dist}.
+export function removeForwardCycles(records, treeNext, limit = treeNext.length) {
+  let recs = records, removed = 0;
+  for (;;) {
+    const byNode = new Map(recs.map(r => [r.x, r]));
+    const bad = new Set();
+    for (const r of recs) {
+      let y = r.nx, steps = 0;
+      for (;;) {
+        if (y === r.x) { bad.add(r.x); break; }
+        const rr = byNode.get(y);
+        if (!rr && treeNext[y] === -1) break;
+        y = rr ? rr.nx : treeNext[y];
+        if (++steps > limit) { bad.add(r.x); break; }
+      }
+    }
+    if (!bad.size) return {records: recs, removed};
+    removed += bad.size;
+    recs = recs.filter(r => !bad.has(r.x));
+  }
+}
+
+// Counts the stored nodes whose forward chain, in some chunk, does not end at a route node.
+// Returns {open, maxSteps}: open chains, and the longest chain that ends.
+export function forwardChainsOpen(model) {
+  const N = model.nodes.length;
+  const lists = model.chunks.length ? model.chunks : [[]];
+  let open = 0, maxSteps = 0;
+  for (const list of lists) {
+    const rec = new Map(list.map(r => [r.node, r.next]));
+    for (let n = 0; n < N; n++) {
+      let y = n, steps = 0, ok = false;
+      for (; steps <= N; steps++) {
+        const hasRec = rec.has(y);
+        if (!hasRec && model.nodes[y].next === -1) { ok = true; break; }
+        y = hasRec ? rec.get(y) : model.nodes[y].next;
+      }
+      if (ok) maxSteps = Math.max(maxSteps, steps); else open++;
+    }
+  }
+  return {open, maxSteps};
+}
+
 // Forward exception lists, one per route km (see the plan, Task 6, rules 1 to 8).
 // Records are made only for stored nodes; a record whose next node is not stored is dropped.
 function forwardLists({N, outAdj, inAdj, onRoute, keep, next, newIndex, totalM, R, stats}) {
@@ -132,13 +177,16 @@ function forwardLists({N, outAdj, inAdj, onRoute, keep, next, newIndex, totalM, 
         if (!ok) {
           if (!keep[x]) stats.skippedNotStored++;
           else if (!keep[nx]) stats.droppedExceptions++;
-          else records.push({node: newIndex[x], next: newIndex[nx], dist: Math.round(F[x])});
+          else records.push({x, nx, dist: F[x]});
         }
         x = nx;
       }
     }
-    records.sort((p, q) => p.node - q.node);
-    chunks.push(records);
+    const cleaned = removeForwardCycles(records, next);
+    stats.cycleRecordsRemoved += cleaned.removed;
+    chunks.push(cleaned.records
+      .map(r => ({node: newIndex[r.x], next: newIndex[r.nx], dist: Math.round(r.dist)}))
+      .sort((p, q) => p.node - q.node));
   }
   return chunks;
 }
@@ -253,11 +301,12 @@ export function buildWaybackModel(graph, route, {reach = 'line2k', exceptions = 
 
   const model = {nodes, extras, chunks: [], stats};
   if (exceptions) {
-    const fstats = {skippedNotStored: 0, droppedExceptions: 0};
+    const fstats = {skippedNotStored: 0, droppedExceptions: 0, cycleRecordsRemoved: 0};
     model.chunks = forwardLists({N, outAdj, inAdj, onRoute, keep, next, newIndex, totalM: route.at(-1).progress / 100, R, stats: fstats});
     stats.exceptionRecords = model.chunks.reduce((s, c) => s + c.length, 0);
     stats.skippedNotStored = fstats.skippedNotStored;
     stats.droppedExceptions = fstats.droppedExceptions;
+    stats.cycleRecordsRemoved = fstats.cycleRecordsRemoved;
   }
   return model;
 }

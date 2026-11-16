@@ -3,7 +3,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {hav} from '../js/geo.js';
 import {gridFixture, loopFixture} from './wayback_fixture.mjs';
-import {buildWaybackModel} from './wayback_tree.mjs';
+import {buildWaybackModel, removeForwardCycles, forwardChainsOpen} from './wayback_tree.mjs';
 const {graph, route, p} = gridFixture();
 const at = (m, x, y) => { const i = m.nodes.findIndex(n => hav(n.point, p(x, y)) < 1); assert(i >= 0, `no node at ${x},${y}`); return i; };
 const near = (a, b, tol = 1.5) => assert(Math.abs(a - b) <= tol, `${a} is not near ${b}`);
@@ -58,4 +58,23 @@ test('a chunk holds only the nodes whose forward next node is different from tre
 test('with exceptions off the model has no chunks', () => {
   const L = loopFixture();
   assert.deepEqual(buildWaybackModel(L.graph, L.route, {reach: 'ride1500'}).chunks, []);
+});
+test('a forward record that closes a loop with tree A is removed', () => {
+  // Tree A: 0 -> 1 -> 2 -> route. The record of 1 goes to 0, and 0 has no record, so 0 goes back to 1.
+  const {records, removed} = removeForwardCycles([{x: 1, nx: 0, dist: 100}], [1, 2, -1]);
+  assert.deepEqual(records, []);
+  assert.equal(removed, 1);
+});
+test('a forward record that leads to the route is kept', () => {
+  const recs = [{x: 0, nx: 2, dist: 300}];
+  const {records, removed} = removeForwardCycles(recs, [1, 2, -1]);
+  assert.deepEqual(records, recs);
+  assert.equal(removed, 0);
+});
+test('no forward chain in any chunk stays open, on the loop and grid fixtures', () => {
+  const L = loopFixture(), G = gridFixture();
+  for (const reach of ['line2k', 'ride1500']) {
+    assert.deepEqual(forwardChainsOpen(buildWaybackModel(L.graph, L.route, {reach, exceptions: true})).open, 0);
+    assert.deepEqual(forwardChainsOpen(buildWaybackModel(G.graph, G.route, {reach, exceptions: true})).open, 0);
+  }
 });

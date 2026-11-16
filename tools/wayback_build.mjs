@@ -9,7 +9,7 @@ import {pathToFileURL} from 'node:url';
 import {readNativeRoute} from './recovery_planner.mjs';
 import {buildTransitionGraph} from './recovery_transitions.mjs';
 import {conservativeWayPolicy} from './recovery_study.mjs';
-import {buildWaybackModel} from './wayback_tree.mjs';
+import {buildWaybackModel, forwardChainsOpen} from './wayback_tree.mjs';
 import {encodeWayback, decodeWayback} from './wayback_format.mjs';
 
 const MB = 1048576, FREE_MB = 5.58;
@@ -79,6 +79,7 @@ function main() {
     totalAt70km: {routeFile2_5: mbAt70km + 2.5, routeFile4_0: mbAt70km + 4.0},
     freeMb: FREE_MB,
     stats: model.stats,
+    forwardChains: args.exceptions ? forwardChainsOpen(model) : null,
   };
   console.log(JSON.stringify(report, null, 2));
   return 0;

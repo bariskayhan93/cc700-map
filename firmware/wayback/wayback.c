@@ -204,7 +204,7 @@ size_t wb_size(void) {
 }
 
 int wb_mount(wb_engine *e, wb_reader r, void *ctx, uint32_t file_bytes, const uint8_t route_id[16]) {
-  uint8_t h[WB_HEADER_BYTES], t[8];
+  uint8_t h[WB_HEADER_BYTES], t[8], s[WB_CELL_BYTES];
   uint32_t i, version, flags, node_count, cell_count, extra_count, chunk_count, exc_count, off_cells, total;
   e->mounted = 0;
   e->has_line = 0;
@@ -236,17 +236,22 @@ int wb_mount(wb_engine *e, wb_reader r, void *ctx, uint32_t file_bytes, const ui
 
   exc_count = 0u;
   if (chunk_count) {
-    if (!rd(e, e->off_chunks, t, 4u) || rd_u32(t) != 0u) return 0;
-    if (!rd(e, e->off_chunks + chunk_count * 4u, t, 4u)) return 0;
-    exc_count = rd_u32(t);
+    uint32_t c, prev = 0u, v;
+    for (c = 0u; c <= chunk_count; c++) {
+      if (!rd(e, e->off_chunks + c * 4u, t, 4u)) return 0;
+      v = rd_u32(t);
+      if (c == 0u ? v != 0u : v < prev) return 0;
+      prev = v;
+    }
+    exc_count = prev;
     if (exc_count > 0xFFFFFu) return 0;
   }
   total = e->off_exc + exc_count * WB_EXC_BYTES;
   if (total != file_bytes) return 0;
 
-  /* The sentinel cell record must follow the last cell. */
-  if (!rd(e, off_cells + cell_count * WB_CELL_BYTES, t, 8u)) return 0;
-  if (rd_u32(t) != 0xFFFFFFFFu || rd_u32(t + 4) != node_count) return 0;
+  /* The sentinel cell record must follow the last cell: key, node count and extra count. */
+  if (!rd(e, off_cells + cell_count * WB_CELL_BYTES, s, WB_CELL_BYTES)) return 0;
+  if (rd_u32(s) != 0xFFFFFFFFu || rd_u32(s + 4) != node_count || rd_u32(s + 8) != extra_count) return 0;
 
   e->lat0_e7 = (int32_t)rd_u32(h + 24);
   e->lon0_e7 = (int32_t)rd_u32(h + 28);

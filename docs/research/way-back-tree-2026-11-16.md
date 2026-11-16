@@ -1,6 +1,6 @@
 # Way-back street tree: results, 16 Nov 2026
 
-The core fits the code room: 2,730 B with forward mode (room 4,376 B). Tree A plus exceptions gives 12,772 records at 2 km and 2,544 records at 1 km, and no wrong-part frames in the replay; tree A alone gives 69.
+The core fits the code room: 2,782 B with forward mode and the mount checks (room 4,376 B). Tree A plus exceptions gives 12,722 records at 2 km and 2,544 at 1 km. No forward chain stays open on either file. The replay with exceptions has no wrong-part frames; tree A alone gives 69.
 
 Host only. Nothing is on the device. Values come from `.local/wayback/` files written by the commands listed in each section.
 
@@ -13,7 +13,7 @@ Command: `python3 -I tools/wayback_size.py` (`.local/wayback/size-a.json`, `size
 | Build | text | literal | rodata | total | room | fits | undefined |
 |---|---:|---:|---:|---:|---:|---|---|
 | Tree A (before forward mode) | 2,294 | 0 | 0 | 2,294 | 4,376 | fits | none |
-| Tree A plus exceptions (current core) | 2,730 | 0 | 0 | 2,730 | 4,376 | fits | none |
+| Tree A plus exceptions (current core) | 2,782 | 0 | 0 | 2,782 | 4,376 | fits | none |
 
 Literal pools sit in `.text` with these flags, so `literal` is 0.
 
@@ -25,7 +25,7 @@ Command: `node tools/wayback_build.mjs .local/eq/v4.json <out> --reach <line2k|r
 |---|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|---:|
 | Tree A, 2 km | 472,452 | 64 | 27,504 | 422,748 | 22,136 | 0 | 0 | 20.45 | 1.40 | 3.90 | 5.40 |
 | Tree A, 1 km | 236,072 | 64 | 13,920 | 208,320 | 13,768 | 0 | 0 | 10.22 | 0.70 | 3.20 | 4.70 |
-| Tree A plus exceptions, 2 km | 574,724 | 64 | 27,504 | 422,748 | 22,136 | 96 | 102,176 | 24.88 | 1.70 | 4.20 | **5.70** |
+| Tree A plus exceptions, 2 km | 574,324 | 64 | 27,504 | 422,748 | 22,136 | 96 | 101,776 | 24.86 | 1.70 | 4.20 | **5.70** |
 | Tree A plus exceptions, 1 km | 256,520 | 64 | 13,920 | 208,320 | 13,768 | 96 | 20,352 | 11.10 | 0.76 | 3.26 | 4.76 |
 
 Free space: 5.58 MB. Bold: does not fit.
@@ -45,11 +45,11 @@ Other counts from the same reports: 173 frames have no street within 15 m. The l
 
 Wrong part is the episode with the exit at 21,815 m in tree A: 69 frames. With exceptions, it falls to 0.
 
-Exception build statistics (`.local/wayback/aplus-line2k-build.json`, `aplus-ride1500-build.json`): 12,772 records at 2 km, 44 records skipped because the node is not stored, 13 dropped because the next node is not stored. At 1 km: 2,544 records, none skipped or dropped.
+Exception build statistics (`.local/wayback/aplus-line2k-build.json`, `aplus-ride1500-build.json`): at 2 km, 12,722 records remain. 50 records closed a loop and were removed. 44 records were skipped because the node is not stored, and 13 were dropped because the next node is not stored. At 1 km: 2,544 records, none removed, skipped or dropped. The builds report `forwardChains.open` = 0 for both files (every stored node reaches the route in every chunk). Before the loop fix, the 2 km file had 478 such nodes in 5 chunks.
 
 ## Answer by question
 
-- **Does the core fit 4,376 B?** Yes: 2,730 B.
+- **Does the core fit 4,376 B?** Yes: 2,782 B.
 - **Does the file fit for 70 km?** Yes with a 2.5 MB route file, for all four builds. With a 4.0 MB route file, tree A at 2 km (5.40 MB) and both 1 km builds fit. Tree A plus exceptions at 2 km does not (5.70 MB against 5.58 MB).
 - **How many frames get a line?** 636 of 809, with and without exceptions.
 - **How many lead to the wrong part?** 69 without exceptions; 0 with exceptions.
@@ -59,7 +59,7 @@ Exception build statistics (`.local/wayback/aplus-line2k-build.json`, `aplus-rid
 - One ride on one 22.56 km loop. The 70 km values are scaled from it.
 - No device provider gives a trusted exit km. The replay took the exit from the ride record.
 - The device read time is not measured. One frame reads up to 1,966 times from the file.
-- 23 forward frames give `WB_DIST_UNKNOWN`. The 64-node walk limit is the cause. The distance is not known for those frames.
+- 23 forward frames give `WB_DIST_UNKNOWN`. The 64-node walk limit causes them: with a 512-node limit, the same replay gives 0 (measured on the 1 km build; the core was restored after the test). The plan keeps 64. On the 2 km build, the longest chain that reaches the route has 363 nodes (`forwardChains.maxSteps`). The owner decides the limit.
 - In forward mode, an extra piece uses the tree A cost to choose its end (as the plan states). The replay counts 4 frames that turn back at point 1. This count is a geometric proxy, not checked against node ids.
 - No adapter draws the line. The cause of the cc24 map-view restart is not known.
 - The map paints main roads up to 1,000 m from the route. A line at 2 km can cross an area with no painted streets. This is not measured.
