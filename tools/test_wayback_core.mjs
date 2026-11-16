@@ -106,3 +106,16 @@ test('a rider beside the first pass with a forward exit in km 4 ends on the seco
   assert.equal(r.state, 1); assert.equal(r.forward, 1);
   assert(Math.abs(yOf(r.points.at(-1)) - 420) <= 1.5); assert(Math.abs(r.distanceDm - 5490) <= 30);
 });
+const u32at = (b, off, v) => new DataView(b.buffer, b.byteOffset, b.byteLength).setUint32(off, v, true);
+const u32of = (b, off) => new DataView(b.buffer, b.byteOffset, b.byteLength).getUint32(off, true);
+test('mount refuses a chunk table whose middle entry is larger than the exception count', () => {
+  const bad = loopFile.slice();
+  const off = 64 + (u32of(bad, 52) + 1) * 12 + u32of(bad, 48) * 12 + u32of(bad, 56) * 8;   // chunk table
+  u32at(bad, off + 2 * 4, 0xFFFFFF);
+  assert.equal(runCore(bad, id, [{...le7(4, 150), flags: 7, exitCm: 450000}])[0].mounted, 0);
+});
+test('mount refuses a sentinel cell record whose first extra index is wrong', () => {
+  const bad = file.slice();
+  u32at(bad, 64 + u32of(bad, 52) * 12 + 8, 0x7FFFFF);
+  assert.equal(runCore(bad, id, [{...e7(5, 120), flags: ON}])[0].mounted, 0);
+});

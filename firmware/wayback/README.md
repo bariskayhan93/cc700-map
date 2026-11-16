@@ -3,7 +3,7 @@
 ## Status
 
 Host only. Nothing is on the device. No adapter to the map patch exists.
-The core is 2,730 B of Xtensa code, for every file. The room is 4,376 B. Before forward mode was added, the core was 2,294 B.
+The core is 2,782 B of Xtensa code, for every file. The room is 4,376 B. Before forward mode was added, the core was 2,294 B.
 The core has no heap, no float and no library call. Its only external call is the reader callback.
 
 ## Normal behaviour
@@ -20,7 +20,8 @@ The line has up to 4,096 points. Point 0 is the nearest point on the piece. Poin
 - The route identity (16 bytes) equals the route identity of the caller.
 - The scale fields are not 0.
 - The header and the section sizes add up to the file size.
-- The chunk table starts at 0 and the sentinel cell record is correct.
+- Every chunk-table value is in order, the first is 0, and the last is the exception count.
+- The sentinel cell record matches the node count and the extra count.
 
 Forward mode needs a trusted exit (`WB_EXIT_TRUSTED` in the flags) and an exit km that is in the file.
 
