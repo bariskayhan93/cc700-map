@@ -5,6 +5,7 @@ import { readFile, draw } from './preview.js';
 import { CC700 } from './ble.js';
 import { previewGuidance } from './preview_guidance.js';
 import {auditMapSection,budgetFailures,transitionPeak,TRANSITION_BUDGET} from './map_budget.js';
+import { addWayback } from './wayback.js';
 const $ = id => document.getElementById(id);
 function say(id, text) {
   const node = $(id);
@@ -50,6 +51,11 @@ $('gpx').onchange = () => {
   requestBuild();
 };
 $('speed').onchange = requestBuild;
+try { $('wayback').checked = localStorage.getItem('cc700-wayback') === '1'; } catch {}   // default off
+$('wayback').onchange = () => {
+  try { localStorage.setItem('cc700-wayback', $('wayback').checked ? '1' : '0'); } catch {}
+  requestBuild();
+};
 for (const k of LAYERS) {
   try {
     const v = localStorage.getItem('cc700-' + k);
@@ -96,8 +102,26 @@ async function build() {
     });
     const model = readFile(r.file), check = verify(r, model, styled);
     if (check) throw new Error('Prüfung fehlgeschlagen: ' + check);
+    // Way-back data (test): appended after the check, so the route part of the file is the verified one.
+    // Any failure keeps the plain route file.
+    let wayback = '';
+    if (styled && $('wayback').checked) {
+      say('sum', 'Rückweg-Daten werden geladen …');
+      try {
+        const w = await addWayback(r.file);
+        if (needsBuild) return;
+        r.file = w.file;
+        wayback = ` · Rückweg-Daten ${(w.bytes / 1024).toFixed(0)} KB (${w.reach === 'line2k' ? '2 km' : '1,5 km'})`;
+        log(JSON.stringify({wayback: {bytes: w.bytes, reach: w.reach, stats: w.stats}}));
+      } catch (e) {
+        if (needsBuild) return;
+        wayback = ' · ohne Rückweg-Daten: ' + e.message;
+        log(e.stack || e.message);
+      }
+    }
     built = { ...r, model, styled, speedKmh, name: `route_${id}.bin` };
     say('sum', `${gpx.name} → CC700 Route ${id} · ${(r.distance / 1000).toFixed(1)} km · ${(r.file.length / 1024).toFixed(0)} KB` +
+      wayback +
       (lines.length ? '' : ' · keine Straßendaten: ohne Karte und Straßennamen') +
       (styled ? ` · erweitertes Kartenumfeld in ${r.mapStat.blocks.filter(b=>b.coverageFloor>0).length}/${r.mapBlocks} Blöcken` +
         (r.mapStat.reducedContextBlocks ? ` · dichter Bereich: fernes Umfeld in ${r.mapStat.reducedContextBlocks} Blöcken begrenzt (mind. 300 m)` : '') : '') +

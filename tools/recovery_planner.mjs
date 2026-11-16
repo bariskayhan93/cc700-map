@@ -4,26 +4,8 @@ import {hav,brg,adiff} from '../js/geo.js';
 import {readRouteElevations} from './elevation_study.mjs';
 import {associateSegment} from './recovery_association.mjs';
 import {findRecovery} from './recovery_study.mjs';
-export function readNativeRoute(bytes){
- readRouteElevations(bytes); // validates varints, section/point bounds and progress wire type
- const view=new DataView(bytes.buffer,bytes.byteOffset,bytes.byteLength),count=view.getUint16(0x46,true),out=[];
- let offset=128;
- for(let n=0;n<count;n++){
-  const length=view.getUint32(offset,true);
-  for(const [field,type,p] of parse(bytes.subarray(offset+4,offset+4+length))){
-   if(field!==3)continue;
-   const rows=parse(p),get=k=>{const a=rows.filter(r=>r[0]===k);if(a.length!==1||a[0][1]!==0)throw Error('Invalid native route coordinate/progress');return a[0][2];};
-   const point=[unzz(get(1))*SC,unzz(get(2))*SC],progress=get(5);
-   if(!point.every(Number.isFinite)||Math.abs(point[0])>85||Math.abs(point[1])>180||!Number.isSafeInteger(progress)||progress<0||progress>0xffffffff)throw Error('Invalid native route point');
-   const prior=out.at(-1);if(prior&&progress<prior.progress)throw Error('Route progress not ordered');
-   if(prior?.progress===progress){if(hav(prior.point,point)>.01)throw Error('Conflicting duplicate route progress');}
-   else out.push({point,progress});
-  }
-  offset+=4+length;
- }
- const map=view.getUint32(0x5c,true);if(map&&offset>map)throw Error('Route overlaps map');
- if(out.length<2)throw Error('Insufficient native route points');return out;
-}
+import {readNativeRoute} from '../js/native_route.js';
+export {readNativeRoute};
 function routePoint(route,progress){
  let hi=route.findIndex(p=>p.progress>=progress);if(hi<0)return null;if(hi===0)return route[0].point;
  const a=route[hi-1],b=route[hi];if(b.progress-a.progress>25000)return null;

@@ -1,0 +1,64 @@
+<!doctype html><meta charset="utf-8"><title>Way-back line</title>
+<style>
+body{font:15px/1.45 -apple-system,Helvetica,sans-serif;margin:16px;background:#f4f4f1;color:#222;max-width:1250px}
+h1{font-size:20px;margin:0 0 6px} .row{display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap}
+svg{background:#fff;border:1px solid #bbb;cursor:crosshair;flex:1 1 760px;max-width:900px}
+.side{flex:1 1 280px;max-width:330px} .box{background:#fff;border:1px solid #ccc;border-radius:6px;padding:10px 12px;margin-bottom:10px}
+.k{display:inline-block;width:34px;height:0;vertical-align:middle;margin-right:8px}
+#st{font-weight:600;font-size:17px} .ok{color:#5b1a8c} .no{color:#b3261e} ol,ul{margin:6px 0;padding-left:20px} li{margin:3px 0}
+</style>
+<h1>Way-back line: a part of the route (800 m × 600 m)</h1>
+<div>Move the pointer on the map. The pointer is the rider. The purple line is the line that the unit draws. Click to hold a position; click again to release. The answers come from the real device code, run on the PC for each 4 m square.</div>
+<div class="row" style="margin-top:10px"><svg id="m"></svg>
+<div class="side">
+<div class="box"><div id="st">Move the pointer.</div><div id="de"></div></div>
+<div class="box"><b>Legend</b><br>
+<span class="k" style="border-top:5px solid #1f6feb"></span>Route<br>
+<span class="k" style="border-top:2px solid #999"></span>Stored street. The arrow shows the way to the route.<br>
+<span class="k" style="border-top:2px dashed #d08700"></span>Stored street piece that is not on a shortest way (the rider can still be on it)<br>
+<span class="k" style="border-top:6px solid #5b1a8c"></span>Way-back line (first 32 points)<br>
+<span class="k" style="border-top:10px solid #d9f2d9"></span>Green area: a line exists here (street within 15 m)<br>
+<span class="k" style="border:1px dashed #e8590c;border-radius:50%;width:14px;height:14px"></span>15 m circle around the rider</div>
+<div class="box"><b>How the unit makes the line</b><ol>
+<li>The PC calculates, for each stored street point, the shortest street way to the route. Each point stores only its <i>next point</i> and its distance.</li>
+<li>The unit finds the stored street piece nearest to the rider, within 15 m.</li>
+<li>The line starts at the nearest point on that piece. Then it goes from point to next point until the route.</li></ol></div>
+<div class="box"><b>Does the rider's direction matter?</b><ul>
+<li>No. This test image uses the position only. It does not use heading or speed.</li>
+<li>So the line can start behind the rider. It always goes to the nearest route point by street, not to the route point ahead.</li>
+<li>The arrows on the grey streets are not one-way signs. They show only the stored direction to the route.</li></ul></div>
+<div class="box"><b>No line (white area)</b><ul><li>No stored street within 15 m: yard, field, park, building, bad GPS.</li><li>A street that has no permitted way to the route.</li><li>On the route itself the stock navigation is active and no way-back line is necessary.</li></ul></div>
+</div></div>
+<script>
+/*DATA*/
+const NS='http://www.w3.org/2000/svg',m=document.getElementById('m');m.setAttribute('viewBox',`0 0 ${D.W} ${D.H}`);
+const el=(t,a,p=m)=>{const e=document.createElementNS(NS,t);for(const k in a)e.setAttribute(k,a[k]);p.appendChild(e);return e};
+const Y=y=>D.H-y;                                  // north is up
+// green area
+let g=el('g',{fill:'#d9f2d9'});D.grid.forEach((c,i)=>{if(c)el('rect',{x:(i%D.cols)*D.G,y:Y((Math.floor(i/D.cols)+1)*D.G),width:D.G,height:D.G},g)});
+// streets with arrows
+g=el('g',{stroke:'#999','stroke-width':22,fill:'none'});const ar=el('g',{fill:'#777'});
+D.nodes.forEach(n=>{if(n[2]<0)return;const b=D.nodes[n[2]];el('line',{x1:n[0],y1:Y(n[1]),x2:b[0],y2:Y(b[1])},g);
+ const dx=b[0]-n[0],dy=b[1]-n[1],L=Math.hypot(dx,dy);if(L<260)return;const ux=dx/L,uy=dy/L,cx=n[0]+dx*.55,cy=n[1]+dy*.55,s=62;
+ el('path',{d:`M${cx+ux*s},${Y(cy+uy*s)}L${cx-ux*s-uy*s*.7},${Y(cy-uy*s+ux*s*.7)}L${cx-ux*s+uy*s*.7},${Y(cy-uy*s-ux*s*.7)}Z`},ar)});
+g=el('g',{stroke:'#d08700','stroke-width':22,'stroke-dasharray':'70 50',fill:'none'});
+D.extras.forEach(([a,b])=>el('line',{x1:D.nodes[a][0],y1:Y(D.nodes[a][1]),x2:D.nodes[b][0],y2:Y(D.nodes[b][1])},g));
+g=el('g',{fill:'#666'});D.nodes.forEach(n=>{if(n[0]>0&&n[0]<D.W&&n[1]>0&&n[1]<D.H)el('circle',{cx:n[0],cy:Y(n[1]),r:26},g)});
+el('polyline',{points:D.route.map(p=>p[0]+','+Y(p[1])).join(' '),stroke:'#1f6feb','stroke-width':80,fill:'none','stroke-linejoin':'round','stroke-opacity':.85});
+// scale
+el('line',{x1:300,y1:D.H-300,x2:1900,y2:D.H-300,stroke:'#000','stroke-width':30});el('text',{x:300,y:D.H-380,'font-size':260}).textContent='100 m';
+el('text',{x:D.W-600,y:420,'font-size':300}).textContent='N ↑';
+const circ=el('circle',{r:240,fill:'none',stroke:'#e8590c','stroke-width':18,'stroke-dasharray':'50 40',visibility:'hidden'});
+const l1=el('polyline',{fill:'none',stroke:'#fff','stroke-width':150,'stroke-linejoin':'round','stroke-linecap':'round'}),l2=el('polyline',{fill:'none',stroke:'#5b1a8c','stroke-width':90,'stroke-linejoin':'round','stroke-linecap':'round'});
+const rider=el('circle',{r:110,fill:'#e8590c',stroke:'#fff','stroke-width':30,visibility:'hidden'});
+const st=document.getElementById('st'),de=document.getElementById('de');let hold=false;
+function show(ev){const r=m.getBoundingClientRect(),x=(ev.clientX-r.left)/r.width*D.W,y=D.H-(ev.clientY-r.top)/r.height*D.H;
+ if(x<0||y<0||x>=D.W||y>=D.H)return;const c=D.grid[Math.floor(y/D.G)*D.cols+Math.floor(x/D.G)];
+ rider.setAttribute('cx',x);rider.setAttribute('cy',Y(y));rider.setAttribute('visibility','visible');
+ circ.setAttribute('cx',x);circ.setAttribute('cy',Y(y));circ.setAttribute('visibility','visible');
+ if(!c){l1.setAttribute('points','');l2.setAttribute('points','');st.className='no';st.textContent='No line';de.textContent='No stored street with a way to the route within 15 m. The unit shows a wb code and the stock arrow.';return}
+ const pts=[[c[0],c[1]]];let k=c[2];while(k>=0&&pts.length<32){pts.push([D.nodes[k][0],D.nodes[k][1]]);k=D.nodes[k][2]}
+ const s=pts.map(p=>p[0]+','+Y(p[1])).join(' ');l1.setAttribute('points',s);l2.setAttribute('points',s);
+ st.className='ok';st.textContent='Line: '+c[3]+' m to the route';de.textContent=(k>=0?'The line stops after 32 points. It continues when the rider moves along it.':'The line reaches the route.')+' Points drawn: '+pts.length+'.'}
+m.addEventListener('mousemove',e=>{if(!hold)show(e)});m.addEventListener('click',e=>{hold=!hold;show(e)});
+</script>
