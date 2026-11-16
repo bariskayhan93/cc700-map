@@ -17,6 +17,7 @@ Each summary below comes from the file title and opening section. Read the file 
 Read these first. They describe the rules, limits and procedures that apply now.
 
 - [research focus 2026 11 15](current/research-focus-2026-11-15.md): Owner priority and the rules for returning to navigation research.
+- [budget plan 2026 11 16](current/budget-plan-2026-11-16.md): The ten types of limits, what each goal costs, and the order in which optional features may use spare room.
 - [map reliability contract](current/map-reliability-contract.md): Contract and evaluation matrix for map reliability.
 - [implementation backlog 2026 11 15](current/implementation-backlog-2026-11-15.md): Ordered work packages: navigation first, then measurement, selection and recovery.
 - [technical context](current/technical-context.md): Device limits (memory, stack, display, firmware) and development context. Parts are superseded by later reports.
@@ -72,6 +73,7 @@ Feasibility studies, firmware extraction notes and design work.
 - [recovery package 2026 11 15](research/recovery-package-2026-11-15.md): Recovery package format and the portable native core (host only).
 - [recovery study 2026 11 15](research/recovery-study-2026-11-15.md): First connected-recovery study and its gaps.
 - [recovery transitions 2026 11 15](research/recovery-transitions-2026-11-15.md): Turn-aware recovery: measured result and next decision.
+- [recovery ordered input 2026 11 16](research/recovery-ordered-input-2026-11-16.md): Why 512 off-route moments had no trusted position, and the host rule that resolves shared streets.
 - [regional recovery replay 2026 11 15](research/regional-recovery-replay-2026-11-15.md): Regional source data and the first real-detour replay.
 - [routing snapshot 2026 11 15](research/routing-snapshot-2026-11-15.md): Original routing-source snapshot and its limits.
 - [route association investigation](research/route-association-investigation.md): How route points are matched to map roads.
