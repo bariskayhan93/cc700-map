@@ -4,6 +4,14 @@ Status: offline only. No device contact, no flash write, no storage write. Dumps
 files stay in `.local/` and `cc700-backup`, which are not committed. Scripts used here are in
 `.local/mining/` and are not committed (gap: rerun needs them restored).
 
+## Later results and corrections (supersede the sections below)
+
+- **Layout.** The shared-piece layout is dropped. It needs per-leg guard variants (508 cases) and both directions (597 pieces). The per-window guard table keeps the v1 legs and measures 1.06 MB for 22.56 km (3.1 times smaller). It is committed as format v2 (`1a1a4d3`).
+- **Core.** 5,598 B before, 5,438 B after v2 and the trims. The usable room is 4,376 B. The core alone does not fit. Removing the copy and marker checks would save 120 B more, and was not done.
+- **Storage, live read (16 Nov, read only, esptool 4.7.0, storage partition only, 891 s, esptool reset the device afterwards).** 588 of 1,950 blocks used, 5.58 MB free, 56 files. `/NAVIGATION` holds two route files: 811,008 B for 22.56 km (36 KB/km) and 598,016 B for 4.19 km (143 KB/km). Dense city routes are much larger per km. The growth between 14 and 15 Nov came from one new route file. Growth is not a daily rate. The 0.5 MB a day figure is wrong.
+- **Device crash record.** The device stored its own core on 15 Nov (`/ABNORMAL/CoredumpInfo.bin`, log: "Found core dump 43396 bytes"). It matches the 22:05 files in `.local` record for record. The owner states that a GLM session may have made those files. The stored core is still device-written evidence. EXCCAUSE is 0 and EPC1 is `0x42008575`, in stock code, not the patch. The instruction there is `retw.n`. Causes are not established.
+- **Analysis error.** The dead-code list marks `0x4204DABC` as dead. A crash return address, `0x4204DAF2`, lies inside it. The reachability analysis misses at least one reference. Treat the 8,764 B figure as unreliable.
+
 ## Answer
 
 - **Code is the binding limit for the detour.** The core needs 5,546 B. The room after the
