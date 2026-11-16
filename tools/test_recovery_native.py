@@ -64,3 +64,33 @@ fs.writeFileSync(process.argv[1]+'/plain.bin',encodeRecoveryPackage([portal],met
         e=self.engine();self.tick(e,2000,30)
         for n in range(5):r=self.tick(e,3000+n*1000,110,flags=1|4,progress_cm=30000,heading_deg=0,speed_kmh=2)
         self.assertEqual(r['state'],0);self.assertEqual(r['suppress_native_cues'],0)
+
+class SharedStreetBothDirections(unittest.TestCase):
+    """Two legs run over the same street in opposite directions and share one guard table entry."""
+    @classmethod
+    def setUpClass(cls):
+        cls.tmp=tempfile.TemporaryDirectory();dest=Path(cls.tmp.name)
+        code="""import fs from 'node:fs';import {encodeRecoveryPackage} from './tools/recovery_package.mjs';
+const p=(x,y=0)=>[51+y/111320,7+x/(111320*Math.cos(51*Math.PI/180))];
+const meta={routeSha256:'11'.repeat(32),sourceSha256:'22'.repeat(32),policySha256:'33'.repeat(32),entryMin:0,entryMax:25000,center:p(0)};
+const guard={a:p(0,50),b:p(100,50)};
+const east={geometry:[p(0),p(100),p(200)],distanceMeters:200,targetVisit:100000,targetBearing:90,segmentGuards:[[guard],[]]};
+const west={geometry:[p(200),p(100),p(0)],distanceMeters:200,targetVisit:100000,targetBearing:270,segmentGuards:[[],[guard]]};
+fs.writeFileSync(process.argv[1]+'/shared.bin',encodeRecoveryPackage([east,west],meta));"""
+        subprocess.run(['node','--input-type=module','-e',code,str(dest)],cwd=ROOT,check=True,capture_output=True)
+        cls.shared=(dest/'shared.bin').read_bytes()
+    @classmethod
+    def tearDownClass(cls):cls.tmp.cleanup()
+    def engine_at_entry(self):
+        e=Engine(IDENT,experimental=True);self.assertTrue(e.mount(self.shared))
+        lat,lon=pos(0);e.tick(now_ms=1000,fix_ms=1000,epoch=7,progress_cm=10000,lat_e7=lat,lon_e7=lon,speed_kmh=60,accuracy_m=5,heading_deg=90,flags=1|4|8,overlay_points=512)
+        return e
+    def off(self,e,x,heading,now=2000):
+        lat,lon=pos(x);return e.tick(now_ms=now,fix_ms=now,epoch=7,progress_cm=10000,lat_e7=lat,lon_e7=lon,speed_kmh=60,accuracy_m=5,heading_deg=heading,flags=1|2|8,overlay_points=512)
+    def test_rider_heading_east_recovers_on_the_east_leg_only(self):
+        r=self.off(self.engine_at_entry(),30,90);self.assertEqual(r['state'],2);self.assertEqual(r['portal'],1);self.assertEqual(r['suppress_native_cues'],1)
+    def test_rider_heading_west_recovers_on_the_west_leg_only(self):
+        r=self.off(self.engine_at_entry(),110,270);self.assertEqual(r['state'],2);self.assertEqual(r['portal'],2)
+    def test_rider_on_the_street_without_heading_is_unavailable(self):
+        r=self.off(self.engine_at_entry(),60,0,now=2000)
+        self.assertNotEqual(r['state'],2)
