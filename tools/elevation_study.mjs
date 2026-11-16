@@ -4,57 +4,8 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createHash } from 'node:crypto';
 import { parse, unzz } from '../js/pb.js';
-
-// The production helper is permissive on truncated varints; validate this
-// study's section/point boundaries before using it on imported bytes.
-function checkedFields(bytes) {
-  let offset = 0;
-  const varint = () => {
-    let value = 0, multiplier = 1;
-    for (let n = 0; n < 8; n++) {
-      if (offset >= bytes.length) throw Error('Truncated varint');
-      const byte = bytes[offset++]; value += (byte & 127) * multiplier;
-      if (!Number.isSafeInteger(value)) throw Error('Oversized varint');
-      if (!(byte & 128)) return value;
-      multiplier *= 128;
-    }
-    throw Error('Oversized varint');
-  };
-  while (offset < bytes.length) {
-    const key = varint(), type = key % 8;
-    if (key < 8) throw Error('Invalid field number');
-    if (type === 0) varint();
-    else if (type === 2) { const length = varint(); offset += length; }
-    else if (type === 5) offset += 4;
-    else if (type === 1) offset += 8;
-    else throw Error('Invalid wire type');
-    if (offset > bytes.length) throw Error('Truncated field');
-  }
-  return parse(bytes);
-}
-
-export function readRouteElevations(bytes) {
-  if (bytes.length < 128 || bytes.length > 16 * 1024 * 1024) throw Error('Route size outside study bounds');
-  const view = new DataView(bytes.buffer, bytes.byteOffset, bytes.byteLength);
-  const sections = view.getUint16(0x46, true), points = [];
-  if (!sections) throw Error('No route sections');
-  let offset = 128;
-  for (let section = 0; section < sections; section++) {
-    if (offset + 4 > bytes.length) throw Error('Truncated section header');
-    const length = view.getUint32(offset, true);
-    if (!length || length > 65536 || offset + 4 + length > bytes.length) throw Error('Invalid section size');
-    for (const [field, type, value] of checkedFields(bytes.subarray(offset + 4, offset + 4 + length))) {
-      if (field !== 3) continue;
-      if (type !== 2) throw Error('Invalid point wire type');
-      const fields = Object.fromEntries(checkedFields(value).map(([key, type, value]) => [key, [type, value]]));
-      if (fields[5]?.[0] !== 0 || (fields[3] && fields[3][0] !== 0)) throw Error('Invalid point fields');
-      points.push({ distance: fields[5][1] / 100, elevation: fields[3] ? unzz(fields[3][1]) / 100 : null });
-      if (points.length > 100000) throw Error('Too many study points');
-    }
-    offset += 4 + length;
-  }
-  return points;
-}
+import {readRouteElevations} from '../js/native_route.js';
+export {readRouteElevations};
 
 export function elevationStrip(points, options = {}) {
   const { progress, onRoute, progressValid, width = 224, height = 16,

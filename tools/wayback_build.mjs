@@ -7,10 +7,9 @@ import path from 'node:path';
 import {createHash} from 'node:crypto';
 import {pathToFileURL} from 'node:url';
 import {readNativeRoute} from './recovery_planner.mjs';
-import {buildTransitionGraph} from './recovery_transitions.mjs';
-import {conservativeWayPolicy} from './recovery_study.mjs';
-import {buildWaybackModel, forwardChainsOpen} from './wayback_tree.mjs';
-import {encodeWayback, decodeWayback} from './wayback_format.mjs';
+import {forwardChainsOpen} from './wayback_tree.mjs';
+import {decodeWayback} from './wayback_format.mjs';
+import {waybackFromSnapshot} from '../js/wayback.js';
 
 const MB = 1048576, FREE_MB = 5.58;
 
@@ -38,22 +37,12 @@ function main() {
   const routeBytes = fs.readFileSync(cfg.route);
   const route = readNativeRoute(routeBytes);
   const routeId = createHash('sha256').update(routeBytes).digest().subarray(0, 16);
-  const graph = buildTransitionGraph(snapshot, {
-    wayPolicy: t => t.motorroad && t.motorroad !== 'no' ? {reason: 'motorroad-not-admitted'} : conservativeWayPolicy(t),
-  });
-
-  let reach = args.reach;
-  let model = buildWaybackModel(graph, route, {reach, exceptions: args.exceptions});
-  let bytes = encodeWayback(model, routeId);
-  if (args.maxBytes && bytes.length > args.maxBytes && reach === 'line2k') {
-    reach = 'ride1500';
-    model = buildWaybackModel(graph, route, {reach, exceptions: args.exceptions});
-    bytes = encodeWayback(model, routeId);
-  }
-  if (args.maxBytes && bytes.length > args.maxBytes) {
-    console.error(`file is ${bytes.length} bytes, above --max-bytes ${args.maxBytes}; no file written`);
+  const made = waybackFromSnapshot(snapshot, route, routeId, args);
+  if (!made) {
+    console.error(`file is above --max-bytes ${args.maxBytes}; no file written`);
     return 3;
   }
+  const {bytes, reach, model} = made;
   fs.mkdirSync(path.dirname(outPath), {recursive: true});
   fs.writeFileSync(outPath, bytes);
 
