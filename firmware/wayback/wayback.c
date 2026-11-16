@@ -1,6 +1,6 @@
 /* Way-back core: finds the street piece near the rider and follows the stored next values.
  * Integer code only: no float, no heap, no 64-bit division. The only library-free helper that
- * touches memory is the reader callback. Layout and rules: docs/current/way-back-tree-plan-2026-11-16.md. */
+ * touches memory is the reader callback. File layout: firmware/wayback/README.md. */
 #include "wayback.h"
 
 #define WB_HEADER_BYTES 64u
