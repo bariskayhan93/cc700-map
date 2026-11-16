@@ -116,7 +116,7 @@ A deterministic build covers every 250 m window of the 22.56 km route. Each wind
 | Portals, source edges | 394, 728 |
 | Rejections | direction-not-admitted 288; source-edge-too-short 306; unreachable 120; package-admission 290; guard-count-limit 35; work-limit 7; no-associated-admitted-forward-visit 10; no-forward-window 6 |
 
-- Simplest rule for the open decision: a route gets packages only if their total size fits the free space the device reports. Otherwise the route gets none, and the detour is unavailable on it. Free space is not measured yet.
+- Simplest rule for the open decision: a route gets packages only if their total size fits the free space the device reports. Otherwise the route gets none, and the detour is unavailable on it. Saved images show 5.6 MB free on 15 Nov, falling about 0.5 MB a day (`firmware-mining-2026-11-16.md`).
 - A 22.56 km route needs about 3.3 MB. A 70 km route needs about 10.3 MB.
 - Scaled to 70 km (280 windows), this rule needs about 10.3 MB. The device storage partition is 7,987,200 B (`docs/current/device-storage-access.md`).
 - A shared guard pool would bring that to about 3.1 to 4.2 MB. The ratio comes from one package, r0079. It is an estimate.
