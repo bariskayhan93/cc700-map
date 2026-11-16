@@ -1,7 +1,7 @@
 # Combined navigation, measurement and calibration phase
 
 Current installation: **cc23**, verified on ota_1, with loop-departure preference
-and stale off-route cue suppression. See [the latest fix report](loop-and-turn-fixes-2026-11-15.md).
+and stale off-route cue suppression. See [the latest fix report](../releases/loop-and-turn-fixes-2026-11-15.md).
 Visible departure/return/resume acceptance remains separate. The chronological
 measurement and cc22 sections below describe earlier stages.
 
@@ -28,7 +28,7 @@ metadata and Pages warning do not change those route files. The experimental
 ## Navigation work
 
 The native card consumers skip setters for unavailable callbacks; old pixels
-remain. The new [guidance patch](guidance-validity-2026-11-15.md) hides only cue
+remain. The new [guidance patch](../research/guidance-validity-2026-11-15.md) hides only cue
 children while committed off-route is nonzero. On rejoin it restores stable cue
 children and delegates caption/bitmap selection to the native consumer. It never
 changes root visibility, the matcher, progress, recording, the basemap gate or
@@ -64,7 +64,7 @@ its missing evidence is now reported to the user.
 The test builds use bounded caller-owned stack records, no writable capture
 globals, no capture allocation, checked clock initialization, stack bounds and
 margin gates. Export occurs after the final timing timestamp. The [collector
-notes](../firmware/measurement/README.md) describe exact interfaces and limits.
+notes](../../firmware/measurement/README.md) describe exact interfaces and limits.
 
 Actual startup output was essential. Static analysis initially misidentified
 `0x403829dc` as a current-task getter. The runtime guard rejected its stack:
@@ -180,7 +180,7 @@ and increased map budgets remain gated on their missing evidence.
 Private logs, route coordinates, binaries and raw receipts remain under ignored
 `.local/navigation-phase/`. No firmware binary or private ride data is published.
 
-Checkpoint deployment status: source and report are on `feat/navigation-measurement-calibration`; Pages has not been updated by this phase. The device runs ordinary v21, not a measurement build or cc22. [Sanitized checkpoint evidence](mining/combined-phase-2026-11-15.json).
+Checkpoint deployment status: source and report are on `feat/navigation-measurement-calibration`; Pages has not been updated by this phase. The device runs ordinary v21, not a measurement build or cc22. [Sanitized checkpoint evidence](../mining/combined-phase-2026-11-15.json).
 
 ## Successful long-window observation and restoration
 

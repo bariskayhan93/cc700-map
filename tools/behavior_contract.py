@@ -2,7 +2,7 @@
 
 This does not execute firmware instructions, generate geometry, schedule tasks,
 operate buffers, or establish equivalence with a device. See
-``docs/behavior-contract-harness.md`` for evidence and excluded behavior.
+``docs/current/behavior-contract-harness.md`` for evidence and excluded behavior.
 """
 from dataclasses import dataclass, replace
 import math

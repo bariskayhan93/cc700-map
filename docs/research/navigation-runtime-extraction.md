@@ -5,7 +5,7 @@ and saved v16. This follows the [planning report](rejoin-planning-extraction.md)
 and resolves the previously missing producer/consumer chains. No device was
 accessed; instruction traces are not runtime tests.
 
-![Position publication and asynchronous route replacement](mining/11-navigation-runtime.png)
+![Position publication and asynchronous route replacement](../mining/11-navigation-runtime.png)
 
 ## GPS reaches navigation through a queue and a calculation snapshot
 
@@ -115,7 +115,7 @@ The previously unresolved continuation chain is now traced:
 | Forward | GUI loop sends event code and pointer payload to its current target | `0x4208df70`, final event send `0x4208e05b` |
 | Register ride handler | Register callback `0x4205cb54` on ride root object | `0x4205d174..17f` |
 | Handle 91 | Match event 91, read event parameter, call `ExecuteNavigation` | `0x4205ccaa..ce6` |
-| Invoke | Require nonnull descriptor and callback; call `descriptor[0](descriptor[1])` | `0x42054b1c`, indirect call `0x42054bab` |
+| Invoke | Require nonnull descriptor and callback; call `descriptor[0](../descriptor[1])` | `0x42054b1c`, indirect call `0x42054bab` |
 | Complete | Planning descriptor calls `NavigationYawPlan` with address `0x3c389200` | `0x4205095c` |
 
 The current-target forwarding is conditional on GUI state. When neither target
@@ -196,7 +196,7 @@ as understood by the chains above. The next companion report traces
 
 ## Verification
 
-The [machine-readable evidence manifest](mining/navigation-runtime-evidence.json)
+The [machine-readable evidence manifest](../mining/navigation-runtime-evidence.json)
 records source hashes and 22 half-open code ranges. Every listed stock range
 matches saved v16. Disassembly was checked with GNU Xtensa objdump, splitting
 instruction runs around padding; private traces remain outside the repository.

@@ -24,11 +24,11 @@ of `ValueError`, rather than receiving an invented firmware interpretation.
 
 | API | Executable boundary | Evidence |
 |---|---|---|
-| `offroute_candidate(P, Q, A, S)` | Final distance selection, uint32 multiplication wrap and strict substitution comparison, ordered angle/speed decision, and whether output uses projected, center or input coordinates | [Route extraction](route-state-extraction.md), `0x4204bd9f..0x4204be06`, `0x4204bf49..0x4204bfa3` |
-| `persist_offroute(state, candidate, ...)` | Normal-completion candidate change/reset, uint16 increment before saturation, commit, proximity flag, mode-1 reset | [Route extraction](route-state-extraction.md), `0x4204bf68..0x4204bff5` |
-| `select_heading(...)` | Speed/course/cache/magnetic branch, context heading and direct mode-1 map-heading update | [Navigation extraction](navigation-behavior-extraction.md), `0x4204dfe0..0x4204e049` |
-| `set_heading(...)` | One subtraction above 360; mode-zero truncation/rejection counter and unusual unchanged previous-heading state on small differences | [Navigation extraction](navigation-behavior-extraction.md), `0x4204a504..0x4204a55b` |
-| `gui_elapsed`, `timer_expired`, `advance_gui_clock` | Modular uint32 subtraction, unsigned elapsed threshold and the identified +2 GUI clock writer | [Lifecycle audit](lifecycle-audit.md), `0x42021420..29`, `0x42022557..60`, `0x42037e04..0c` |
+| `offroute_candidate(P, Q, A, S)` | Final distance selection, uint32 multiplication wrap and strict substitution comparison, ordered angle/speed decision, and whether output uses projected, center or input coordinates | [Route extraction](../research/route-state-extraction.md), `0x4204bd9f..0x4204be06`, `0x4204bf49..0x4204bfa3` |
+| `persist_offroute(state, candidate, ...)` | Normal-completion candidate change/reset, uint16 increment before saturation, commit, proximity flag, mode-1 reset | [Route extraction](../research/route-state-extraction.md), `0x4204bf68..0x4204bff5` |
+| `select_heading(...)` | Speed/course/cache/magnetic branch, context heading and direct mode-1 map-heading update | [Navigation extraction](../research/navigation-behavior-extraction.md), `0x4204dfe0..0x4204e049` |
+| `set_heading(...)` | One subtraction above 360; mode-zero truncation/rejection counter and unusual unchanged previous-heading state on small differences | [Navigation extraction](../research/navigation-behavior-extraction.md), `0x4204a504..0x4204a55b` |
+| `gui_elapsed`, `timer_expired`, `advance_gui_clock` | Modular uint32 subtraction, unsigned elapsed threshold and the identified +2 GUI clock writer | [Lifecycle audit](../research/lifecycle-audit.md), `0x42021420..29`, `0x42022557..60`, `0x42037e04..0c` |
 | `replay_transition(...)` | Three core-pointer/config-0 guards before either request direction, unchanged-request guard, selected scalar state writes and source/cleanup intent | [Native replay contract](native-replay-contract.md), `0x420b5764..0x420b5852` |
 | `ride_replay_request(...)` | Observed STARTING, LOADING, ENDING and ENDWITHOUTFIT calls to the wrapper; failed LOADING produces no call | [Native replay contract](native-replay-contract.md), `0x42042605..0a`, `0x420426f1..0x42042705`, `0x42043900`, `0x42041baf` |
 

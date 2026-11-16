@@ -19,7 +19,7 @@ Actual native C runs under AddressSanitizer and UndefinedBehaviorSanitizer. Froz
 
 Direct cross-language tests compare **106 polygon masks** and **2,500 label candidates** between actual C and preview rules, including winding, clipping, negative slopes, holes, Unicode character counts, HUD, halo margins, collisions and the twelve-label cap. A matrix generates **108 native-size Canvas frames** across six scene types, three scales and three headings. Representative sheets were inspected; these are synthetic map views, not device screenshots or whole-device emulation.
 
-![v18 and v19 synthetic native-size acceptance views](comparison/preview-v18-v19-2026-11-14.png)
+![v18 and v19 synthetic native-size acceptance views](../comparison/preview-v18-v19-2026-11-14.png)
 
 The v19 executable uses 6,480 bytes text and 296 bytes rodata, leaving 8,120 bytes in the mapped code page. `cc_iter` static compiler frame is 512 bytes (v18: 80); no full-frame cache or new heap allocation is added. Static frames do not establish target stack high-water. Runtime heap/stack headroom and frame-time distributions remain unmeasured.
 
@@ -35,4 +35,4 @@ Firmware v19 was installed to ota_1, verified against flash and automatically bo
 
 Final local validation: **114 Python tests passed; 81 Node tests passed with one executed known TODO; seven offline probes passed; historical fixtures remain 10/12; the real-ride full-loader coverage proxy remains 0/576 absent samples.** The known historical failures are GPS 3 m noise (25 turns versus 15) and every-eighth-point export (3 versus 15). Neither boot success nor that coverage proxy proves target map throughput or complete navigation behavior.
 
-Pages application commit `c23ad8df17b77837294ceeafcbd2bf2fae3cfb53` built successfully. All 59 served files matched the committed release byte-for-byte; the downloaded app repeated 81 Node passes +1 known TODO and seven offline probes. See the sanitized [device installation observation](mining/v19-install-observation.json).
+Pages application commit `c23ad8df17b77837294ceeafcbd2bf2fae3cfb53` built successfully. All 59 served files matched the committed release byte-for-byte; the downloaded app repeated 81 Node passes +1 known TODO and seven offline probes. See the sanitized [device installation observation](../mining/v19-install-observation.json).

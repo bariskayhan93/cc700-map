@@ -71,13 +71,13 @@ ordinary navigation. This is an engineering constraint for development, not
 another open-ended prerequisite project.
 
 References: [capability ledger](feature-capability-ledger.md),
-[map evaluation](map-evaluation-report-2026-11-15.md),
-[adaptive budgets](adaptive-map-budget-2026-11-14.md),
-[cc24 rejected target check](loop-and-turn-fixes-2026-11-15.md#cc24-target-check-rejected-cc23-restored).
+[map evaluation](../reports/map-evaluation-report-2026-11-15.md),
+[adaptive budgets](../research/adaptive-map-budget-2026-11-14.md),
+[cc24 rejected target check](../releases/loop-and-turn-fixes-2026-11-15.md#cc24-target-check-rejected-cc23-restored).
 
 ## First implementation delivered
 
-The [PC recovery evaluator](recovery-study-2026-11-15.md) now implements original
+The [PC recovery evaluator](../research/recovery-study-2026-11-15.md) now implements original
 node topology, conservative candidate direction/access filtering, bounded search,
 explicit forward-visit windows, per-origin unavailable results, cumulative radius
 samples and actual JSON representation comparisons. Synthetic city/village/forest
@@ -87,11 +87,11 @@ The saved real ride cache audit found four legacy display cells and zero origina
 source cells. Next collect a separate routing-source snapshot including barrier
 nodes and restrictions; do not reconstruct junctions from display lines or change
 stationary native matching to compensate. Persistent rules are in
-[AGENTS.md](../AGENTS.md).
+[AGENTS.md](../../AGENTS.md).
 
 ## Original-source capture increment
 
-The [separate routing snapshot pipeline](routing-snapshot-2026-11-15.md) now
+The [separate routing snapshot pipeline](../research/routing-snapshot-2026-11-15.md) now
 preserves tagged nodes and restriction members, audits reference integrity, and
 feeds conservative exclusions into the structural evaluator. Three real-area
 acquisition attempts returned HTTP 406/403/429; no usable snapshot was obtained.
@@ -101,7 +101,7 @@ The saved query/receipts make acquisition resumable without another device cycle
 ## Elevation spike delivered while source acquisition is blocked
 
 One resumed POST and one GET returned HTTP 406 again; no routing-source snapshot
-was obtained. The independent [elevation spike](elevation-study-2026-11-15.md)
+was obtained. The independent [elevation spike](../research/elevation-study-2026-11-15.md)
 now reads the actual route, preserves gaps, enforces explicit progress admission,
 and produces 448-byte upcoming-profile buffers and a 240 × 320 layout study.
 On this flat route its limited benefit does not justify always covering 12.1%
@@ -112,7 +112,7 @@ Recovery acquisition/real-detour validation remains the first research priority.
 ## Regional-source obstacle resolved
 
 A checksum-verified regional PBF now supplies the original topology, tagged
-barriers and restrictions. The [real-detour study](regional-recovery-replay-2026-11-15.md)
+barriers and restrictions. The [real-detour study](../research/regional-recovery-replay-2026-11-15.md)
 passes source reference integrity and exposes a different limitation: most
 sampled origins/rejoins are removed by conservative whole-way quarantine or the
 unvalidated access profile. Only one of 30 retrospective scenarios produced a
@@ -124,7 +124,7 @@ destinations. The full graph's 15.7 MB JSON is not a target codec proposal.
 
 ## Transition handling measured: access and association now dominate
 
-The [transition-aware study](recovery-transitions-2026-11-15.md) implements local
+The [transition-aware study](../research/recovery-transitions-2026-11-15.md) implements local
 barrier cuts and incoming-edge via-node restrictions, preserving more topology
 without widening cycling defaults. Replay remains one candidate in 30 scenarios.
 Every remaining graph-absent association touches an access-excluded road class;
@@ -137,7 +137,7 @@ firmware, generator, route or deployment changed.
 
 ## Complete PC feasibility pass: choose generation-time recovery
 
-The [completed study](recovery-feasibility-2026-11-15.md) implements original-
+The [completed study](../research/recovery-feasibility-2026-11-15.md) implements original-
 segment association, ordered directed visits, regional inference comparison,
 real detours, 72 spatial origins in 1/2/3 km bands, actual graph/association/visit
 packets, sampled leg lookup and codec controls. Conservative replay now yields
@@ -156,7 +156,7 @@ map budgets, generator, app, route and firmware are unchanged.
 
 ## Package/native-core implementation delivered; not live integration
 
-The [sidecar generator and portable C runtime](recovery-package-2026-11-15.md) now
+The [sidecar generator and portable C runtime](../research/recovery-package-2026-11-15.md) now
 implement whole-leg source-guarded lookup, road distance, suffix geometry and
 activation/pause/stable-rejoin intents.274Node+12native tests pass; Xtensa object
 builds. Real replay exposes inadequate selective availability:12of809off-route

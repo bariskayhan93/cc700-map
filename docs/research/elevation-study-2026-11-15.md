@@ -1,11 +1,11 @@
 # Elevation strip: bounded PC prototype
 
-The [prototype](../tools/elevation_study.mjs) reads native route point field 3
+The [prototype](../../tools/elevation_study.mjs) reads native route point field 3
 as signed centimetres and field 5 as route distance in centimetres. It builds
 an upcoming 1 km elevation envelope, clipped at the route end. This is a PC
 spike: no route bytes, production app code or firmware were changed.
 
-![Actual elevation windows in a schematic 240 × 320 display](comparison/elevation-study-20261115.png)
+![Actual elevation windows in a schematic 240 × 320 display](../comparison/elevation-study-20261115.png)
 
 The elevation is from the existing ridden route. Map geometry, instruction and
 metrics in this image are schematic, not a simulation or device screenshot.
@@ -17,7 +17,7 @@ The 22,561.29 m route contains 2,197 encoded samples, including repeated section
 endpoints. Elevation fields are present throughout, none are zero, and their
 overall range is 31.25–46.50 m. These are file contents, not validated terrain
 measurements or barometer comparisons. Results and input identity are in the
-[sanitized measurements](mining/elevation-study-20261115.json).
+[sanitized measurements](../mining/elevation-study-20261115.json).
 
 | Route progress | Upcoming distance | Elevation range | Intersecting segments | Column visits | Profile raster pixels |
 |---|---:|---:|---:|---:|---:|
@@ -108,6 +108,6 @@ One resumed POST and one GET against the saved main endpoint both returned
 HTTP 406. The identical query identity and private receipts/error responses were
 retained. No usable source snapshot exists yet; this does not diagnose the
 provider or establish whether a different request would succeed. Acquisition
-stopped rather than repeatedly retrying. The [acquisition report](mining/routing-snapshot-acquisition.json)
+stopped rather than repeatedly retrying. The [acquisition report](../mining/routing-snapshot-acquisition.json)
 now includes this resumption. Real detour connectivity and 3 km recovery remain
 unvalidated; the PC elevation spike is independent progress, not their replacement.

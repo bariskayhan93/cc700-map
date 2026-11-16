@@ -3,8 +3,8 @@
 Evidence date: 2026-11-13. Offline, bounded inspection of stock V1.414 and
 comparison with saved v16. No device access, packet injection, firmware write,
 storage write or coredump read was performed. This follows the
-[stationary sensor observations](popup-and-sensor-followup.md) and
-[transport extraction](remaining-extraction-and-device.md).
+[stationary sensor observations](../reports/popup-and-sensor-followup.md) and
+[transport extraction](../reports/remaining-extraction-and-device.md).
 
 The ESP32 image supports magnetic and inertial packet inputs. It does not
 establish that this CC700 board populates those sensors or that its peer sends
@@ -161,11 +161,11 @@ Private script `/private/tmp/cc700-mining-20261113/verify_sensor_boundary.py`
 compares 13 inspected ranges with saved v16 and checks all recursively reached
 instruction boundaries and direct branch targets against GNU Xtensa objdump.
 All checks passed. The input, outputs and range hashes stay in private scratch;
-the sanitized [range manifest](mining/sensor-boundary-evidence.json) is also
+the sanitized [range manifest](../mining/sensor-boundary-evidence.json) is also
 available in the reports. No binary or private live records are included in
 publishable report files. The prior
 packet/input-wrapper verification is recorded in
-[mining/popup-sensor-evidence.json](mining/popup-sensor-evidence.json).
+[mining/popup-sensor-evidence.json](../mining/popup-sensor-evidence.json).
 
 Reproduce the new static checks with:
 

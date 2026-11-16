@@ -15,14 +15,14 @@ node tools/test_app_offline.mjs
 These cover preview/readback, synthetic turn decisions, original OSM source
 preservation, the complete offline module cache, and long-route generation.
 One executed TODO documents a remaining noisy-track false turn. No private ride
-files or device connection are required. See the [app release notes](docs/app-release-2026-11-14.md)
-for changes and remaining limitations. [Browser UI checks and artwork reproduction](docs/current-preview-artwork-2026-11-14.md) are documented separately.
+files or device connection are required. See the [app release notes](docs/releases/app-release-2026-11-14.md)
+for changes and remaining limitations. [Browser UI checks and artwork reproduction](docs/releases/current-preview-artwork-2026-11-14.md) are documented separately.
 
-[Project status: findings, shipped changes and next priorities](docs/project-status-2026-11-14.md).
+[Project status: findings, shipped changes and next priorities](docs/reports/project-status-2026-11-14.md).
 
-[Connected recovery study: implementation, costs and source gaps](docs/recovery-study-2026-11-15.md).
+[Connected recovery study: implementation, costs and source gaps](docs/research/recovery-study-2026-11-15.md).
 Development follows the [persistent implementation rules](AGENTS.md).
-[Original routing-source capture and acquisition status](docs/routing-snapshot-2026-11-15.md).
+[Original routing-source capture and acquisition status](docs/research/routing-snapshot-2026-11-15.md).
 
 ## Current preview
 
@@ -80,10 +80,10 @@ The earlier Tour D3 animation and all six comparison panels are retained in the
 [historical artwork appendix](docs/comparison/historical-tour-d3.md). They use an
 older UI and palette and are not current device captures.
 
-See the [ride review](docs/ride-review-2026-11-14.md),
-[display geometry checks](docs/preview-display-geometry-2026-11-14.md),
-[guidance behavior and limits](docs/preview-guidance-2026-11-14.md), and
-[cycling turn/rejoin assessment](docs/cycling-turn-practices-2026-11-14.md).
+See the [ride review](docs/reports/ride-review-2026-11-14.md),
+[display geometry checks](docs/releases/preview-display-geometry-2026-11-14.md),
+[guidance behavior and limits](docs/releases/preview-guidance-2026-11-14.md), and
+[cycling turn/rejoin assessment](docs/research/cycling-turn-practices-2026-11-14.md).
 
 ## What the page does
 
@@ -162,9 +162,9 @@ Route files for the patched firmware do not show a usable map on the original fi
   A route file from this page contains OpenStreetMap data. Keep the attribution "© OpenStreetMap contributors"
   when you share it. The pictures in `docs/` also contain OpenStreetMap data.
 
-See [the rendering release](docs/rendering-release-2026-11-14.md) for v19 fill, label, geometry and style improvements, compatibility, tests and remaining measurement limits. Select the preview profile matching the firmware actually installed on your device.
+See [the rendering release](docs/releases/rendering-release-2026-11-14.md) for v19 fill, label, geometry and style improvements, compatibility, tests and remaining measurement limits. Select the preview profile matching the firmware actually installed on your device.
 
-The [v21 release](docs/v21-caption-opacity-2026-11-14.md) adds an opaque red route to the [v20 water/cycleway styling](docs/water-cycleway-v20-2026-11-14.md): light-blue waterways and 2 px violet cycleways. Earlier profiles remain selectable.
+The [v21 release](docs/releases/v21-caption-opacity-2026-11-14.md) adds an opaque red route to the [v20 water/cycleway styling](docs/releases/water-cycleway-v20-2026-11-14.md): light-blue waterways and 2 px violet cycleways. Earlier profiles remain selectable.
 
 ### Adaptive map coverage
 
@@ -173,22 +173,22 @@ geometry keeps its resolution; sparse blocks can include context up to 1 km,
 while dense sections explicitly limit distant lines toward a 300 m minimum.
 Area windows retain at least 600 m to preserve boundary styling. Regenerate a
 route to use this; existing device files stay unchanged. See the
-[implementation, costs and validation](docs/adaptive-map-budget-2026-11-14.md).
+[implementation, costs and validation](docs/research/adaptive-map-budget-2026-11-14.md).
 
-The [reliability evaluation and feature-capability report](docs/map-evaluation-report-2026-11-15.md)
+The [reliability evaluation and feature-capability report](docs/reports/map-evaluation-report-2026-11-15.md)
 contains the test matrix, layer-selection experiments, 3 km recovery requirements
 and explicit release gates. Experimental policies run offline and do not change
 the deployed generator default.
 
-[Combined implementation phase](docs/implementation-phase-2026-11-15.md): native
-stale-guidance fix installed as [cc22](docs/cc22-release-2026-11-15.md), guarded stationary collectors, source-junction study,
+[Combined implementation phase](docs/reports/implementation-phase-2026-11-15.md): native
+stale-guidance fix installed as [cc22](docs/releases/cc22-release-2026-11-15.md), guarded stationary collectors, source-junction study,
 resource analysis and explicit remaining bench gates. Experimental turn changes
 are gated; startup measurements do not authorize increased map budgets.
 
-[Loop and turn fixes](docs/loop-and-turn-fixes-2026-11-15.md): cc23 departure
+[Loop and turn fixes](docs/releases/loop-and-turn-fixes-2026-11-15.md): cc23 departure
 preference and tested production noise/U-turn corrections. The cc24 diagnostic
 was rejected after a map-view crash; ordinary cc23 was restored and verified.
 Broader historical noisy/sparse acceptance and native visible departure
-confirmation remain open. The [research focus](docs/research-focus-2026-11-15.md)
+confirmation remain open. The [research focus](docs/current/research-focus-2026-11-15.md)
 connects the next coverage study to useful 3 km recovery rather than isolated
 radius expansion.

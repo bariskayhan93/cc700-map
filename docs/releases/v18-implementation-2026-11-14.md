@@ -5,7 +5,7 @@
 **Installed and readback verified.** The owner approved the firmware write on
 2026-11-14. v18 booted from `ota_1` after RTS reset, with no captured panic or
 repeated reset in the eight-second boot window. See the
-[installation observation](mining/v18-install-observation.json).
+[installation observation](../mining/v18-install-observation.json).
 
 ## Implemented
 
@@ -97,7 +97,7 @@ The connected serial node is `/dev/cu.usbmodem1101`. Before programming:
    A bad boot requires restoring the fresh `ota_1` backup and RTS reset.
 
 The owner explicitly approved this write under the established
-[device workflow](../../cc700-backup/HANDOFF_ADDENDUM.md), and the sequence above
+[device workflow](../../../cc700-backup/HANDOFF_ADDENDUM.md), and the sequence above
 completed successfully. The fresh complete `ota_1` backup matched preserved v16
 exactly, including the erased partition tail; current OTA selection matched the
 expected `ota_1` metadata. esptool write verification and explicit `verify_flash`
@@ -123,9 +123,9 @@ measurements, physical compass capability or the exact older restart cause.
 
 ## Separate generator investigation
 
-**Later continuation:** [bounded generator correction](generator-closure-2026-11-14.md)
+**Later continuation:** [bounded generator correction](../research/generator-closure-2026-11-14.md)
 retains a smaller tested change while preserving the reference turn vector.
-[Repeatable validation](repeatable-validation.md) is the current test entry point.
+[Repeatable validation](../current/repeatable-validation.md) is the current test entry point.
 The rejected broad candidate described below remains unshipped.
 
 An isolated candidate addressed jitter/self-arm classification and sparse corner

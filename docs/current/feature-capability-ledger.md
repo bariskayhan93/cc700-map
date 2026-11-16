@@ -54,8 +54,8 @@ is not an API contract.
 - **Firmware:** mapped executable page, ABI/hooks, lifecycle ownership and rollback.
 - **UI:** limited 240×320 screen, separate 240×256 map, competing cues and ambiguity.
 
-Sources: [format/assets/resource mining](firmware-mining-2026-11-13.md),
-[behavior extraction](navigation-behavior-extraction.md),
-[runtime ownership](navigation-runtime-extraction.md),
-[ride findings](ride-review-2026-11-14.md), and
+Sources: [format/assets/resource mining](../reports/firmware-mining-2026-11-13.md),
+[behavior extraction](../research/navigation-behavior-extraction.md),
+[runtime ownership](../research/navigation-runtime-extraction.md),
+[ride findings](../reports/ride-review-2026-11-14.md), and
 [the current reliability contract](map-reliability-contract.md).

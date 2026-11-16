@@ -50,4 +50,4 @@ Without `CC700_CANVAS`, the renderer uses
 All six static frames and representative animation frames were visually checked.
 `webpmux -info` confirms a 840 × 426, 13-frame lossless animated WebP.
 The older Tour D3 assets are preserved only in the
-[historical appendix](comparison/historical-tour-d3.md).
+[historical appendix](../comparison/historical-tour-d3.md).

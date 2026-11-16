@@ -7,13 +7,13 @@ passes, 32 Node passes plus the same executed noise TODO, seven offline app
 probes, historical 10/12 and the unchanged ride proxy. No device was accessed.
 The previous observation totals below retain their earlier run date.
 Latest private logs: `.local/validation/20261114T101817898754Z/`;
-the sanitized [observation record](mining/repeatable-validation-observation.json)
+the sanitized [observation record](../mining/repeatable-validation-observation.json)
 contains the aggregate results. The runner also fingerprints the service worker
 and marks skipped private-input checks incomplete.
 
-[Source preservation and the recovered short-turn topology](route-association-investigation.md),
-[native collector design](native-replay-capture-design.md), and
-[bounded full-firmware emulator experiment](local-firmware-emulation.md)
+[Source preservation and the recovered short-turn topology](../research/route-association-investigation.md),
+[native collector design](../research/native-replay-capture-design.md), and
+[bounded full-firmware emulator experiment](../research/local-firmware-emulation.md)
 record the new findings. The emulator boots real firmware but stalls before GUI
 initialization at an LCD completion wait; it is not a ready board simulator.
 Native collector code and allocator hooks are being prepared privately and are
@@ -62,9 +62,9 @@ still fail. Changes to the known 25/15 and 3/15 metrics also require review;
 they cannot be silently hidden under the old failure labels. A synthetic TODO
 executes its unchanged assertion and stays visible.
 
-![Where tests execute and where observations are still required](mining/17-repeatable-validation.png)
+![Where tests execute and where observations are still required](../mining/17-repeatable-validation.png)
 
-[Vector diagram](mining/17-repeatable-validation.svg).
+[Vector diagram](../mining/17-repeatable-validation.svg).
 
 Final observed run: **88 Python tests pass; 18 public Node tests pass and one
 executes as a known failing TODO; six offline app probes pass; historical
@@ -78,7 +78,7 @@ before this run. No target acceptance is implied by these totals.
 
 | Layer | Tests execute | Practical limit |
 | --- | --- | --- |
-| Route generation | Actual JavaScript; independent synthetic turn directions and locations, preview round-trip, offline failure paths and historical variants | General noisy and sparse inputs still fail; [bounded generator changes](generator-closure-2026-11-14.md) disclose the results |
+| Route generation | Actual JavaScript; independent synthetic turn directions and locations, preview round-trip, offline failure paths and historical variants | General noisy and sparse inputs still fail; [bounded generator changes](../research/generator-closure-2026-11-14.md) disclose the results |
 | Map block and arrow | Actual `blk.c`/`arrow.c` compiled for host, including file-local resolution fixtures, teardown/replacement, busy navigation lock and dense scanning | Stock resolver implementation, task scheduling and display are adapters, not firmware instruction execution |
 | Firmware state branches | [27 extracted-contract tests](behavior-contract-harness.md) for off-route decision/persistence, heading, timer arithmetic and replay wrapper/ride calls | Manually transcribed from checked disassembly; geometry, callbacks and concurrency are excluded |
 | Styled map | Actual unchanged `map.c` under AddressSanitizer and UndefinedBehaviorSanitizer | Projection and line rasterizer are fixtures; HOST street text is a no-op |
@@ -122,7 +122,7 @@ every restored field are not proven here.
 This pass checked 1,030 reached instructions across the three functions against
 GNU Xtensa instruction boundaries/direct branch targets, with zero discrepancies;
 the ranges match stock and the installed v18 image byte for byte. The sanitized
-[evidence manifest](mining/replay-resume-side-effects.json) records hashes and
+[evidence manifest](../mining/replay-resume-side-effects.json) records hashes and
 ranges. Private extraction script and traces are under
 `.local/native-replay-analysis/`. These are static findings, not observed file
 changes. No device operation occurred in this continuation.

@@ -1,15 +1,15 @@
 # CC700 startup warning and stationary sensor observations
 
-Subsequent [lifecycle audit](lifecycle-audit.md) resolves the nominal timer unit,
+Subsequent [lifecycle audit](../research/lifecycle-audit.md) resolves the nominal timer unit,
 max-period modular comparison and several dismissal/reset paths. The
-[sensor boundary audit](sensor-boundary-audit.md) adds UART startup, the downstream
+[sensor boundary audit](../research/sensor-boundary-audit.md) adds UART startup, the downstream
 IMU file gate and confirms all three sampled arrival latches were zero.
 
 Evidence date: 2026-11-13. Stock V1.414 and saved v16 extraction, followed by
 sparse USB JTAG observations with the user-selected “hin” route active.
 This follows the [connected baseline](remaining-extraction-and-device.md).
 
-![Startup warning and ongoing off-route state have different lifetimes](mining/14-start-warning.png)
+![Startup warning and ongoing off-route state have different lifetimes](../mining/14-start-warning.png)
 
 ## The warning is notice 8 inside popup 4
 
@@ -43,7 +43,7 @@ The start helper itself performs **no direct distance comparison**. It consumes
 the previously computed off-route state. Its name and displayed message must
 not be interpreted as a separate, newly established “distance from route start”
 threshold. The general matcher's distance/angle decisions remain documented in
-the [route-state extraction](route-state-extraction.md).
+the [route-state extraction](../research/route-state-extraction.md).
 
 The timer constructor stores the supplied 32-bit period. This report preserves
 the literal `0xffffffff`; it does not claim a measured infinite lifetime or a
@@ -132,7 +132,7 @@ in a simulation. No firmware or storage changes were made.
 
 ## Verification
 
-The [binary evidence manifest](mining/popup-sensor-evidence.json) records 14
+The [binary evidence manifest](../mining/popup-sensor-evidence.json) records 14
 half-open ranges with stock/v16 byte equality. Every reached instruction's
 boundary and direct branch target was checked against GNU Xtensa objdump using
 the corrected recursive extractor. The translation slot was checked independently

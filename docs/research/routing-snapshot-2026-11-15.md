@@ -5,7 +5,7 @@ resolved the source-download obstacle. The failed Overpass attempts below remain
 historical evidence; reference integrity now passes using the independent source.
 
 The next recovery increment is implemented in
-[tools/routing_snapshot.mjs](../tools/routing_snapshot.mjs). It is a separate PC
+[tools/routing_snapshot.mjs](../../tools/routing_snapshot.mjs). It is a separate PC
 pipeline; it never changes Pages, production OSM caches, route files or firmware.
 
 ## What it adds
@@ -61,7 +61,7 @@ in both axes, approximately 121.01 km². The three configured public endpoint
 attempts returned HTTP 406, 403 and 429. **No usable real snapshot was acquired.**
 No repeated retry loop was started. The request, region, source-track identity
 and failure receipts remain in private `.local/routing-snapshot-ride-20261115*`
-directories. The [sanitized acquisition report](mining/routing-snapshot-acquisition.json)
+directories. The [sanitized acquisition report](../mining/routing-snapshot-acquisition.json)
 contains endpoints, statuses and query identity, with no ride coordinates.
 
 The saved query can be retried after endpoint access recovers, or a saved Overpass

@@ -6,10 +6,10 @@ for current results and the subsequently approved, verified installation.
 Replay activation has not been performed. The operation below records the
 executed read and its original approval scope.
 
-The [replay contract](native-replay-contract.md) now establishes nominal 1000 Hz
+The [replay contract](../current/native-replay-contract.md) now establishes nominal 1000 Hz
 RTOS timing and the specific loading/resume activation guard. The
 [FIT candidates](native-fit-fixture.md) are CRC-checked, plain FIT files. The
-[storage access audit](device-storage-access.md) found no proven normal-app
+[storage access audit](../current/device-storage-access.md) found no proven normal-app
 arbitrary-file reader. Current storage is the next prerequisite; the historical
 snapshot cannot establish it.
 

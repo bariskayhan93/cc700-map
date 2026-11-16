@@ -1,7 +1,7 @@
 # Cycling turn guidance: comparison for the CC700
 
 Research date: 14 November 2026. This is a design assessment grounded in primary
-implementation sources and the [new ride evidence](ride-review-2026-11-14.md),
+implementation sources and the [new ride evidence](../reports/ride-review-2026-11-14.md),
 not a claim that an unimplemented matcher is complete.
 
 **Assessment:** keep the lightweight device renderer and file compatibility.

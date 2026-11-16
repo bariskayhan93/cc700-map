@@ -59,7 +59,7 @@ Replay assumes5m GPS accuracy because the ride lacks that field. Near-route and
 ordered progress come from the previous research timeline; speed and course are
 reconstructed from past fixes. This provider is not the firmware's live adapter.
 Earlier failed/fix-pass runs remain private; the final evidence is in the
-[sanitized report](mining/recovery-package-20261115.json).
+[sanitized report](../mining/recovery-package-20261115.json).
 
 ## What is still required
 
@@ -74,7 +74,7 @@ Earlier failed/fix-pass runs remain private; the final evidence is in the
    target check with exact restoration. No firmware candidate was flashed here.
 
 The C API and ownership contract are in
-[firmware/recovery/README.md](../firmware/recovery/README.md). The implementation
+[firmware/recovery/README.md](../../firmware/recovery/README.md). The implementation
 is useful, testable groundwork; it must not be presented as a completed live
 recovery feature or enabled in the production app.
 

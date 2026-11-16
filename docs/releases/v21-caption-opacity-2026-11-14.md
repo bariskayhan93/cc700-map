@@ -62,7 +62,7 @@ map resolution change or navigation/rejoin logic change.
   with no captured crash in the eight-second observation.
 - Fresh full v20 partition rollback is saved privately with the installation.
 - Stock ota_0, OTA selection and route/ride storage were not programmed.
-- [Sanitized installation receipt](mining/v21-install-observation.json).
+- [Sanitized installation receipt](../mining/v21-install-observation.json).
 
 ## UI and examples
 
@@ -79,8 +79,8 @@ Browser fonts/rasterization, route-chevron spacing and some native widget detail
 remain approximations, and the preview is still on-route playback, not live
 firmware/GPS emulation. See [the artwork reference note](current-preview-artwork-2026-11-14.md).
 
-[Ride analysis](ride-review-2026-11-14.md) and
-[detour proposal](cycling-turn-practices-2026-11-14.md) remain separate work.
+[Ride analysis](../reports/ride-review-2026-11-14.md) and
+[detour proposal](../research/cycling-turn-practices-2026-11-14.md) remain separate work.
 The known noisy/sparse GPX failures and rejoin issues are not fixed by this release.
 
 

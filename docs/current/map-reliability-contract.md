@@ -2,8 +2,8 @@
 
 This is the acceptance contract for selecting map content and future features.
 It complements the existing [native behavior harness](behavior-contract-harness.md),
-[budget model](adaptive-map-budget-2026-11-14.md) and
-[project status](project-status-2026-11-14.md). A checked map is not a checked
+[budget model](../research/adaptive-map-budget-2026-11-14.md) and
+[project status](../reports/project-status-2026-11-14.md). A checked map is not a checked
 route planner, sensor system, or complete device simulator.
 
 ## Invariants

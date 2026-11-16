@@ -5,7 +5,7 @@ causes. It does not declare detour guidance fixed or the preview a firmware emul
 Private device bytes, positions, ride files, recovered logs and plots remain under
 `.local/ride-20261114/`, outside Git. The ride snapshot was acquired with v20. This investigation performed a storage
 read and an RTS restart, with no device programming or GPS injection during acquisition.
-The later [v21 update](v21-caption-opacity-2026-11-14.md) changes route opacity only;
+The later [v21 update](../releases/v21-caption-opacity-2026-11-14.md) changes route opacity only;
 it does not fix the navigation-state findings in this report.
 
 ## Evidence preserved
@@ -174,7 +174,7 @@ as a capture of these live windows or native stock navigation.
 The full display is **240 × 320**, confirmed by the
 [manufacturer specification](https://geoid.com/products/geoid-cc700-bike-computer).
 The extracted map buffer is **240 × 256**. The page now scales the complete
-screen and overlays together; see [geometry verification](preview-display-geometry-2026-11-14.md).
+screen and overlays together; see [geometry verification](../releases/preview-display-geometry-2026-11-14.md).
 Water/cycleway RGB565 values were not changed by this review. Exposure, display
 transfer characteristics, viewing angle and browser rasterization mean a device
 photo is not a calibrated colour reference. README's older comparison artwork

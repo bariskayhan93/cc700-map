@@ -1,7 +1,7 @@
 # Map behavior, tuning controls and calculated budgets
 
 This document preserves the earlier v18 audit snapshot below. Current firmware
-is v21; the generator now uses [adaptive resource budgets](adaptive-map-budget-2026-11-14.md).
+is v21; the generator now uses [adaptive resource budgets](../research/adaptive-map-budget-2026-11-14.md).
 The old styled 1,150-entry/approximate-byte checks in this snapshot have been
 replaced. The formulas and measurement caveats still apply.
 
@@ -13,7 +13,7 @@ no device connection.
 Verification: the combined run at
 `.local/validation/20261114T103306511971Z/` passed 109 Python tests and the
 existing Node/offline checks, retaining the documented noise/sparse failures.
-[Aggregate calculated costs](mining/map-budget-observation.json) contain no
+[Aggregate calculated costs](../mining/map-budget-observation.json) contain no
 private coordinates or route names. No generation settings or device state
 were changed for this audit.
 

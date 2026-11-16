@@ -170,7 +170,7 @@ hold of the map-state update, not merely a colour override. It does not establis
 that the independent matcher stops running.
 
 The stock ride-state table identifies 4 as **PAUSING**, as already extracted in
-[the replay contract](native-replay-contract.md). The getter reads raw word
+[the replay contract](../current/native-replay-contract.md). The getter reads raw word
 `0x3fc9fb44`, maps 8 to 0, then truncates to eight bits. This is separate from
 the navigation state at `0x3fc9fc34` and mode byte at `0x3fc9fb38`.
 
@@ -179,7 +179,7 @@ the grey display persists while stationary. It does not measure ride state,
 prove how the nonzero threshold arose, or establish behavior after resuming.
 
 Actual arrival has an existing closed-route guard in
-[the progress/arrival extraction](progress-arrival-extraction.md). With arrival
+[the progress/arrival extraction](../research/progress-arrival-extraction.md). With arrival
 state 0 and remaining distance at most 100, the guard holds state 0 when all
 four conditions hold: endpoint separation at most 200, current-position distance
 sum at most endpoint separation plus 200, total route length greater than that

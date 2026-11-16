@@ -20,7 +20,7 @@ flowchart LR
 
 ## Implemented behaviour
 
-The [compiler](../tools/recovery_transitions.mjs) retains primary original roads.
+The [compiler](../../tools/recovery_transitions.mjs) retains primary original roads.
 An uncertain barrier cuts its incident edges, preserving usable segments farther
 along the same road. A small set of conventional barriers can pass only with
 explicit bicycle admission. Denied and conditional node access also blocks
@@ -88,7 +88,7 @@ near them. Conditional or unsupported cases remain unavailable.
 
 ## Representation measurement, without a device claim
 
-A [proposed study packet](../tools/recovery_leg_packet.mjs) actually serializes
+A [proposed study packet](../../tools/recovery_leg_packet.mjs) actually serializes
 candidate geometry: 20-byte header plus eight bytes per absolute E7 lat/lon pair.
 The header identifies version, point count, target visit, path distance in cm,
 and an always-set unvalidated-candidate bit. This is **not** a native route-file
@@ -129,7 +129,7 @@ node --test tools/test_recovery_transitions.mjs tools/test_recovery_leg_packet.m
 
 Outputs include summary, private trial/graph evidence and `study-legs.bin`. Do not
 publish these private outputs: IDs and geometry can locate the ride. The
-[sanitized aggregate](mining/recovery-transitions-20261115.json) publishes counts,
+[sanitized aggregate](../mining/recovery-transitions-20261115.json) publishes counts,
 input/code hashes and explicit gaps. Default conservative mode is retained for
 comparison. Validation/review results are recorded below after the final check.
 

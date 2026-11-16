@@ -50,9 +50,9 @@ claimed. There is no new zoom feature.
   and route/ride storage were not written. No GPS injection.
 - Boot observation: expected ota_1 app loaded once, one reset, no captured crash
   during the eight-second observation. This is not an endurance test.
-- [Sanitized installation receipt](mining/v20-install-observation.json).
+- [Sanitized installation receipt](../mining/v20-install-observation.json).
 
-![v19 left and v20 right, synthetic native-sized map views](comparison/preview-v19-v20-2026-11-14.png)
+![v19 left and v20 right, synthetic native-sized map views](../comparison/preview-v19-v20-2026-11-14.png)
 
 Existing styled route files remain compatible: the change lives in rendering,
 so regenerating GPX files is not required to use these colours after installation.

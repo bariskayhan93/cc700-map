@@ -1,8 +1,8 @@
 # Geometry boundaries that a replay must preserve
 
 Evidence: stock V1.414 and saved v16, 2026-11-13. This extends the
-[matcher extraction](route-state-extraction.md), with five ranges independently
-checked against GNU Xtensa objdump in the [manifest](mining/geometry-evidence.json).
+[matcher extraction](../research/route-state-extraction.md), with five ranges independently
+checked against GNU Xtensa objdump in the [manifest](../mining/geometry-evidence.json).
 No device operations or firmware changes were needed.
 
 ## Point lookup has a zero-coordinate fallback

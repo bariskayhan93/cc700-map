@@ -1,19 +1,19 @@
 # CC700 exploration map
 
-Current entry point: [mining closure and validation order](mining-closure.md),
+Current entry point: [mining closure and validation order](../reports/mining-closure.md),
 including recovered edge-suite results, geometry/reset/replay follow-ups,
 sensor arrival latches and the preserved v16 baseline.
 
 Snapshot: 2026-11-13, app `24b8617`, saved patch v16. Based on local code,
 build artifacts, imported notes, and the later Claude session. Current device
-state has a sparse [USB JTAG baseline](remaining-extraction-and-device.md)
-and later active-navigation [popup/sensor observations](popup-and-sensor-followup.md).
+state has a sparse [USB JTAG baseline](../reports/remaining-extraction-and-device.md)
+and later active-navigation [popup/sensor observations](../reports/popup-and-sensor-followup.md).
 Replay was inactive in those samples. See [technical context](technical-context.md) for
 evidence, numeric limits, source locations, and corrections to older notes.
 
-Updated after [offline firmware mining](firmware-mining-2026-11-13.md). The map
+Updated after [offline firmware mining](../reports/firmware-mining-2026-11-13.md). The map
 now includes an uncovered off-route drawing gate and separate section-count CPU cost.
-The later [live popup/sensor investigation](popup-and-sensor-followup.md)
+The later [live popup/sensor investigation](../reports/popup-and-sensor-followup.md)
 establishes that a startup warning can remain while the current matcher is
 on-route; confirmed physical rotation did not demonstrate magnetic activity.
 
@@ -82,9 +82,9 @@ turn prompt is correct. A correct preview does not prove device performance.
 | Route format | Record schema, bearings, geohash requirement, offsets, name images | Exact count boundaries; climb/via-point fields not fully decoded | Targeted static tracing and boundary files; suitable reference samples |
 | Map content | Classes, style bits, draw order, detail options, bridges/tunnels | Complex areas, stacked crossings, omissions under density and range limits | Encoded fixtures for holes, crossings, dense parks, tunnels and long routes |
 | Transfer/storage | BLE commands, CRC, chunks, fresh-storage workflow | Route-slot discrepancy; interruptions; present free storage | Controlled list/transfer checks and current storage accounting |
-| Firmware navigation | [Matching/persistence](route-state-extraction.md), [planning](rejoin-planning-extraction.md), [position/restart](navigation-runtime-extraction.md), [progress/arrival](progress-arrival-extraction.md); [road arbitration, planner limits and replay grammar](remaining-extraction-and-device.md) | Complete geometry/transport contracts, malformed inputs and runtime interleavings | Extract remaining helpers; obtain awake-device timing, freshness and failure observations |
+| Firmware navigation | [Matching/persistence](../research/route-state-extraction.md), [planning](../research/rejoin-planning-extraction.md), [position/restart](../research/navigation-runtime-extraction.md), [progress/arrival](../research/progress-arrival-extraction.md); [road arbitration, planner limits and replay grammar](../reports/remaining-extraction-and-device.md) | Complete geometry/transport contracts, malformed inputs and runtime interleavings | Extract remaining helpers; obtain awake-device timing, freshness and failure observations |
 | Firmware map selection | Nearest-section chord, hysteresis, final-block clamp | Crossings, parallel routes and curved sections selecting the wrong block | Position replays with known expected blocks, followed by device confirmation |
-| Heading and sensors | Magnetic packet/processing path, GPS units and local heading-selector branches; replay reaches heading getter and queued position snapshot; raw fix differs from position qualification | Physical magnetometer activity, complete GNSS/inertial filtering, cache lifecycle and calibration | Continue [behavior extraction](navigation-behavior-extraction.md); validate actual sensor and publication activity |
+| Heading and sensors | Magnetic packet/processing path, GPS units and local heading-selector branches; replay reaches heading getter and queued position snapshot; raw fix differs from position qualification | Physical magnetometer activity, complete GNSS/inertial filtering, cache lifecycle and calibration | Continue [behavior extraction](../research/navigation-behavior-extraction.md); validate actual sensor and publication activity |
 | Drawing and screen | Palette, layer passes, allocation paths, font metrics, nominal ~1 s map cadence | Off-route draw gate still suppresses the map; actual redraw time and sunlight contrast | Isolated gate reproduction, timing/heap observations and device photos |
 | Patch integration | Current sources reproduced saved v16 byte-for-byte; hooks and code envelope known | Porting to another firmware; durable latest-source/artifact preservation | Preserve the proven build inputs and rollback materials |
 | Optional extensions | Smaller accented fonts, light accessor and zoom logic; ordinary restart explicitly frees current map allocations | Safe integration, light calibration, zoom transitions, independent map retention across reroute | Focused tracing and validation before implementation |
@@ -162,4 +162,4 @@ Current checks: five preview tests pass; the recovered edge suite passes 10/12
 with noisy/sparse input failures still present; actual nearest-section C policy
 passes nine host probes. Preserved v16 sources rebuild to matching ELF/image
 bytes. Moving-runtime budgets and a v16 ride remain unvalidated. See the
-[local audit](local-validation-audit.md) for precise test boundaries.
+[local audit](../reports/local-validation-audit.md) for precise test boundaries.

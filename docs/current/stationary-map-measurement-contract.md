@@ -53,7 +53,7 @@ unmeasured capacity based on a map-only radius result.
 ## Implementation follow-up, 2026-11-15
 
 A bounded collector, startup selftest and calibration tools now exist. The
-[combined-phase report](implementation-phase-2026-11-15.md) separates implemented
+[combined-phase report](../reports/implementation-phase-2026-11-15.md) separates implemented
 code, actual startup observations, corrected native bindings and outstanding
 active-workload acceptance. The earlier "missing collector" statements above
 refer to the pre-implementation baseline; they are not a workload validation.

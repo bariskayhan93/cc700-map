@@ -9,7 +9,7 @@ distance, recording or the v21 basemap gate.
 
 The reviewed cc22 image was subsequently installed and verified, then retained
 in cc23; see the
-[installation report](cc22-release-2026-11-15.md). The extraction and candidate
+[installation report](../releases/cc22-release-2026-11-15.md). The extraction and candidate
 checks below preceded that installation. Native screen/transition acceptance
 remains separate from flash verification and boot.
 

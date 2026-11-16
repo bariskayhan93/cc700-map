@@ -1,6 +1,6 @@
 # CC700 route matching and off-route state extraction
 
-The subsequent [geometry audit](geometry-boundary-audit.md) resolves local
+The subsequent [geometry audit](../current/geometry-boundary-audit.md) resolves local
 zero-coordinate, neighbor-endpoint and fit-division boundaries described as
 unextracted below. Exceptional arithmetic and runtime equivalence remain open.
 
@@ -10,7 +10,7 @@ This closes specific local branches; it does not close navigation as a whole.
 
 ## Where the displayed off-route flag comes from
 
-![Candidate decisions and persistent off-route state](mining/09-offroute-state.png)
+![Candidate decisions and persistent off-route state](../mining/09-offroute-state.png)
 
 The dispatcher at `0x42054684` calls `mg_road_yaw_calculate` at `0x420547dd`,
 then copies its entire 148-byte result to `0x3c3894f0` at
@@ -73,7 +73,7 @@ replace the selected point. The extracted mechanisms include:
 - Applying further angle comparisons against 135 and 225, a separate repeat
   counter, and `SearchLastPointIndex` at `0x4204a39c`.
 
-The [subsequent arbitration extraction](remaining-extraction-and-device.md)
+The [subsequent arbitration extraction](../reports/remaining-extraction-and-device.md)
 now resolves the helper's local return paths, separate counter and output-road
 behavior, plus normal road advancement. Upstream geometry degeneracies and
 runtime interleavings still prevent a crossing simulator from claiming equivalence.

@@ -3,7 +3,7 @@
 Evidence date: 2026-11-13. Offline stock/v16 extraction, continuing the
 [route-state report](route-state-extraction.md). No device accessed.
 
-![Matcher state, planning state and replay interactions](mining/10-rejoin-planning.png)
+![Matcher state, planning state and replay interactions](../mining/10-rejoin-planning.png)
 
 ## Separate state machines, separate inputs
 
@@ -54,7 +54,7 @@ coordinates and distinct raw-fix/qualification fields.
 Offsets below are relative to `0x3c38940c`. Names describe observed use;
 numeric state values remain authoritative.
 
-The later [startup-warning audit](popup-and-sensor-followup.md) traces notice 8
+The later [startup-warning audit](../reports/popup-and-sensor-followup.md) traces notice 8
 inside popup 4 and verifies live coexistence with an on-route matcher at index 0.
 That early-index case returns before the main planning state machine below.
 
@@ -165,7 +165,7 @@ results; these are not all the same “no route” failure.
 Once a target has been obtained, `0x42053458..45a` calls the native replay
 pause setter `0x420b51cc(1)`. The subsequent planner call at `0x420534aa` goes
 to `0x420e249c`, with literal limits `0x200000`, `0x100000` and double 15.0
-among its arguments. The [subsequent extraction](remaining-extraction-and-device.md)
+among its arguments. The [subsequent extraction](../reports/remaining-extraction-and-device.md)
 resolves them: 2 MiB is a free-heap cleanup trigger; 1 MiB is a free-heap
 search-abort floor; 15.0 is the elapsed-time limit in its seconds-format clock.
 They are not available-memory measurements or reserved buffers.
@@ -220,7 +220,7 @@ Stock and saved v16 bytes match over half-open ranges
 `0x42052b2c..0x42054684`, `0x42050330..0x420503b4`,
 `0x420b51cc..0x420b51d8`, and `0x4205095c..0x42050a48`.
 The initial notice/planning trace covered 2221 decoded instructions and 40 GNU
-runs. A [recursive control-flow audit](remaining-extraction-and-device.md)
+runs. A [recursive control-flow audit](../reports/remaining-extraction-and-device.md)
 corrected the imported decoder's sweep and signed BF/BT displacements, reaching
 2506 instructions across 42 GNU runs. These counts describe extracted code,
 not complete behavioral coverage.

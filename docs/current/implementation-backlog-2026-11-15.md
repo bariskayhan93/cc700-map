@@ -5,7 +5,7 @@ promise that undecoded native features are feasible. This list carries the user'
 reliability-first priorities into bounded releases. Detailed implementation plans
 belong to each work package once its interfaces are established.
 
-Evidence baseline: [evaluation report](map-evaluation-report-2026-11-15.md),
+Evidence baseline: [evaluation report](../reports/map-evaluation-report-2026-11-15.md),
 [reliability contract](map-reliability-contract.md),
 [measurement contract](stationary-map-measurement-contract.md), and
 [feature ledger](feature-capability-ledger.md).

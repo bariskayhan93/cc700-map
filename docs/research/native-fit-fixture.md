@@ -115,7 +115,7 @@ first entry at `0x420ccf6c`; adjacent accessor entries were inspected separately
 Wrapper, converter, CRC and profile-table byte ranges also match the saved,
 reproduced v16 image. These comparisons validate static extraction provenance;
 they do not execute the firmware instructions.
-The sanitized [decoder evidence manifest](mining/fit-decoder-evidence.json)
+The sanitized [decoder evidence manifest](../mining/fit-decoder-evidence.json)
 preserves the range hashes and GNU comparison results.
 
 The converter explicitly checks the `.FIT` signature and rejects protocol

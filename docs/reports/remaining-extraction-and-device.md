@@ -6,7 +6,7 @@ baseline. It does not establish full firmware coverage or simulated equivalence.
 
 ## Planner limits are policies, not available memory
 
-![Planner cleanup threshold, abort floor and independent time/cancellation checks](mining/13-planner-limits.png)
+![Planner cleanup threshold, abort floor and independent time/cancellation checks](../mining/13-planner-limits.png)
 
 The caller at `0x420534aa` supplies these values to `0x420e249c`:
 
@@ -93,7 +93,7 @@ path. It is not a universal eleven-sample road-switch delay, and neither it nor
 the off-route counter establishes a duration in seconds.
 
 The separate off-route repeat counter is at `+136`; it commits result byte
-`+145`. Its rules remain in the [route-state report](route-state-extraction.md).
+`+145`. Its rules remain in the [route-state report](../research/route-state-extraction.md).
 
 Normal road advancement at `0x4204fc30` additionally requires both input pointers,
 result byte `+146`, and the needed previous/current point lookups. It compares
@@ -118,7 +118,7 @@ $ExampleValue={1,Value,123}
 
 These names illustrate syntax; they are not recovered vendor defaults or an
 activation recipe. Entry 0's Boolean query gates test-task creation in the
-[replay chain](navigation-behavior-extraction.md).
+[replay chain](../research/navigation-behavior-extraction.md).
 
 The parser clears 40 slots of 16 bytes at `0x3c38eb14`:
 
@@ -272,7 +272,7 @@ representative inputs and comparison with the real device.
 
 ## Verification and decoder correction
 
-The [sanitized evidence manifest](mining/remaining-extraction-evidence.json)
+The [sanitized evidence manifest](../mining/remaining-extraction-evidence.json)
 records source hashes, 17 half-open code ranges, exact stock/v16 byte equality,
 reachable instruction counts and GNU verification runs. It contains no live RAM
 dump. Boundary lengths and decoded direct branch targets were checked against

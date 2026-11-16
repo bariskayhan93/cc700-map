@@ -69,7 +69,7 @@ esptool's requested RTS reset. No flash/storage programming or erasing was
 performed. Application restart has not been observed; the recorded long-press
 power procedure may still be needed.
 
-![Native replay installation incident and cleanup](mining/16-replay-readiness.png)
+![Native replay installation incident and cleanup](../mining/16-replay-readiness.png)
 
 ## Current-state findings
 
@@ -139,7 +139,7 @@ After an approved installation, first observe parser/configuration state,
 allocation pointers, filename count and selected source. Do not assume a
 successful boot demonstrates FIT decoding or replay activation.
 
-The [activation contract](native-replay-contract.md) requires successful
+The [activation contract](../current/native-replay-contract.md) requires successful
 resume/loading. A normal new ride deactivates replay. The files needed for a
 synthetic test are now removed. No recovery-file edit, injected function call
 or forced activation was included.

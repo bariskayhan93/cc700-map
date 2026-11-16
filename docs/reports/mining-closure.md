@@ -1,7 +1,7 @@
 # CC700 mining closure and validation order
 
 **Map-budget continuation, 2026-11-14:**
-[behavior and tuning budget](map-limits.md) provides current settings, actual
+[behavior and tuning budget](../current/map-limits.md) provides current settings, actual
 block costs and a reusable `tools/map_budget.py` calculator. The acquired route's
 largest decoded block payload is 56444 bytes; the conservative map load-overlap
 plus canvas component is 246744 bytes before allocator overhead and other
@@ -10,7 +10,7 @@ entry/point/span thresholds are generation policies, not proven device ceilings;
 frame/lock time and largest available allocation remain target measurements.
 
 **Development-loop continuation, 2026-11-14:**
-[current local-validation boundary](repeatable-validation.md).
+[current local-validation boundary](../current/repeatable-validation.md).
 Original OSM node identities and geometry are now preserved separately from
 visual generalization. Recovered raw input proves the disputed short right
 turn is real; suppressing it would be a regression. Fresh offline app startup
@@ -22,7 +22,7 @@ device access occurred in this continuation. Feature work can use the bounded
 local loop, with targeted device acceptance for physical/performance outcomes.
 
 **Repeatable-validation continuation, 2026-11-14:**
-[one-command local checks and the remaining target boundary](repeatable-validation.md).
+[one-command local checks and the remaining target boundary](../current/repeatable-validation.md).
 Actual renderer C now runs under memory sanitizers, extracted state contracts
 are executable, and native replay observations have explicit identity/latency/EOF
 checks. The combined command preserves known failures. Bounded generator changes
@@ -33,7 +33,7 @@ recoverable activity. No device access/write occurred in this continuation;
 installed firmware remains v18. This supersedes earlier generator-restored and
 local-test-count statements below.
 
-**Implemented continuation, 2026-11-14:** [v18 implementation and release state](v18-implementation-2026-11-14.md).
+**Implemented continuation, 2026-11-14:** [v18 implementation and release state](../releases/v18-implementation-2026-11-14.md).
 The two v17 loader failures and the related arrow-domain/lifetime defects are
 corrected in a reviewed cc18 candidate. All 31 Python and five preview checks
 pass. The acquired ride executes the full loader/gate through host adapters with
@@ -46,7 +46,7 @@ acceptance remain runtime checks.
 The generator investigation did not produce a reliable complete fix; its
 candidate remains unshipped and the original noisy/sparse failures remain open.
 
-**Prior review, 2026-11-14:** [v17 mining, review and offline corrections](v17-review-2026-11-14.md).
+**Prior review, 2026-11-14:** [v17 mining, review and offline corrections](../releases/v17-review-2026-11-14.md).
 The ride identifies a point/section mismatch and the off-route map gate, but v17
 still has two reproducible loader selection failures. Its build is reproducible;
 it is not ready for flashing. Replay callback/FIT parsing and missing-evidence
@@ -61,9 +61,9 @@ reported installed firmware.
 This is the current entry point. Earlier reports retain their evidence dates;
 the follow-ups linked here supersede their older “not yet extracted” statements.
 
-Previous continuation: [route incident, verified cleanup and current replay boundary](native-replay-current-storage.md),
-with [exact configuration/activation guards](native-replay-contract.md),
-[synthetic FIT candidates](native-fit-fixture.md), and [current-storage access limits](device-storage-access.md).
+Previous continuation: [route incident, verified cleanup and current replay boundary](../research/native-replay-current-storage.md),
+with [exact configuration/activation guards](../current/native-replay-contract.md),
+[synthetic FIT candidates](../research/native-fit-fixture.md), and [current-storage access limits](../current/device-storage-access.md).
 The nominal RTOS rate is established. The three-file replay fixture initialized,
 but the generated route was geographically remote: the owner reported a 5,138 km
 label and restart. All three test files were removed from a fresh storage sync;
@@ -76,20 +76,20 @@ popup/reset/replay lifecycle, and the ESP32 sensor transport boundary. This is
 **not full firmware or simulation coverage**. Known defects remain, and hardware
 population, concurrent execution and runtime budgets require different evidence.
 
-![Checked local evidence and its next validation boundary](mining/15-validation-boundary.png)
+![Checked local evidence and its next validation boundary](../mining/15-validation-boundary.png)
 
 ## Results that change development decisions
 
 | Finding | Evidence | Consequence |
 |---|---|---|
 | Stock off-route draw gate remains in v16 | [Firmware mining](firmware-mining-2026-11-13.md) | Position-based block loading alone cannot guarantee detour map visibility. |
-| Stationary heading selects GPS/magnetic/cache through separate validity rules; GPS threshold is 3 knots | [Heading extraction](navigation-behavior-extraction.md) | A single assumed “3 km/h pause” rule cannot represent this behavior. Automatic pause is a separate mechanism. |
-| All three sampled magnetic/inertial arrival latches were zero after rotation | [Sensor boundary](sensor-boundary-audit.md) | No functioning compass has been demonstrated. Compiled algorithms and allocated IMU context do not prove hardware population. |
-| `ImuDisable.txt` affects downstream cycling processing | [Sensor boundary](sensor-boundary-audit.md) | It is not a justified sampling-enable switch. No sensor activation write is prepared or recommended from that evidence. |
-| Startup warning has separate notice, popup, matcher and timer lifetimes | [Popup observations](popup-and-sensor-followup.md), [lifecycle](lifecycle-audit.md) | Current on-route state does not automatically remove the earlier warning. The ordinary +2 GUI clock path never reaches the max-period expiry value. |
-| Arrival notice 9 can end navigation on timer expiry | [Lifecycle](lifecycle-audit.md) | The immediate course-record event and the later navigation-end action must both be represented. Neither proves ride recording stops. |
-| Geometry includes zero-component rejection, endpoint omissions and an unguarded fit division | [Geometry audit](geometry-boundary-audit.md) | A conventional robust nearest-segment model changes behavior and cannot serve as a firmware oracle. |
-| Replay's 1000 delay is RTOS ticks; EOF can retain active GPS redirection | [Lifecycle](lifecycle-audit.md) | File playback needs explicit timing, EOF and freshness assertions. It is not proven one-record-per-second motion. |
+| Stationary heading selects GPS/magnetic/cache through separate validity rules; GPS threshold is 3 knots | [Heading extraction](../research/navigation-behavior-extraction.md) | A single assumed “3 km/h pause” rule cannot represent this behavior. Automatic pause is a separate mechanism. |
+| All three sampled magnetic/inertial arrival latches were zero after rotation | [Sensor boundary](../research/sensor-boundary-audit.md) | No functioning compass has been demonstrated. Compiled algorithms and allocated IMU context do not prove hardware population. |
+| `ImuDisable.txt` affects downstream cycling processing | [Sensor boundary](../research/sensor-boundary-audit.md) | It is not a justified sampling-enable switch. No sensor activation write is prepared or recommended from that evidence. |
+| Startup warning has separate notice, popup, matcher and timer lifetimes | [Popup observations](popup-and-sensor-followup.md), [lifecycle](../research/lifecycle-audit.md) | Current on-route state does not automatically remove the earlier warning. The ordinary +2 GUI clock path never reaches the max-period expiry value. |
+| Arrival notice 9 can end navigation on timer expiry | [Lifecycle](../research/lifecycle-audit.md) | The immediate course-record event and the later navigation-end action must both be represented. Neither proves ride recording stops. |
+| Geometry includes zero-component rejection, endpoint omissions and an unguarded fit division | [Geometry audit](../current/geometry-boundary-audit.md) | A conventional robust nearest-segment model changes behavior and cannot serve as a firmware oracle. |
+| Replay's 1000 delay is RTOS ticks; EOF can retain active GPS redirection | [Lifecycle](../research/lifecycle-audit.md) | File playback needs explicit timing, EOF and freshness assertions. It is not proven one-record-per-second motion. |
 | Existing app edge suite still fails two cases | [Local validation](local-validation-audit.md) | Noisy GPX yields 46 prompts versus baseline 15; sparse GPX yields 5. These need generator work rather than more firmware speculation. |
 | Current patch sources reproduce saved v16 exactly | [Preservation below](#preservation) | There is now a preserved, reproducible baseline for a controlled change. |
 

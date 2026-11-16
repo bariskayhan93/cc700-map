@@ -1,6 +1,6 @@
 # CC700 constraints and development context
 
-Latest consolidated status: [mining closure](mining-closure.md). The historical
+Latest consolidated status: [mining closure](../reports/mining-closure.md). The historical
 edge suite has now been recovered and rerun (10/12 pass, the same two failures),
 and latest patch inputs/artifacts are preserved locally outside temporary storage.
 Geometry, sensor transport and lifecycle follow-ups supersede older open-item
@@ -10,9 +10,9 @@ Reviewed 2026-11-13 against repository HEAD `24b8617`, the imported November 12
 handoff, the subsequent local Claude session, current patch sources, and saved
 v16 artifacts. This is a record of known constraints, not a claim that every
 device limit has been discovered. The initial review was offline; a subsequent
-[connected baseline](remaining-extraction-and-device.md) sampled inactive device state.
+[connected baseline](../reports/remaining-extraction-and-device.md) sampled inactive device state.
 
-The subsequent [firmware mining report](firmware-mining-2026-11-13.md) adds binary
+The subsequent [firmware mining report](../reports/firmware-mining-2026-11-13.md) adds binary
 evidence, corrections, and a reproducible v16 build. Its main correction is that
 off-route loading works but a separate stock drawing gate still suppresses the map.
 
@@ -71,7 +71,7 @@ Evidence labels:
 | Turn icon within ~300 m; optional map arrow within 150 m | Historical firmware tracing/current patch. Arrows are off by default and use encoded route geometry. |
 | Backward riding and off-route visibility are separate from forward prompts | Patch selects blocks by position; firmware heading rejection over ~90 degrees remains. A stock draw gate still suppresses the map when the off-route flag is set, even with a loaded block. |
 | Off-route thresholds reported as 150 m out, below 60 m back, then 60 m out | Historical log analysis. Older ~220 m statements are not a universal current rule. Behavior also depends on valid indexing. |
-| App reroute replaces the active route/map context | [Runtime extraction](navigation-runtime-extraction.md) now traces restart → route/file teardown → map allocation cleanup before reload. Historical `reroute_use.bin` observations agree with that path. Independent retention of the original map is not implemented. |
+| App reroute replaces the active route/map context | [Runtime extraction](../research/navigation-runtime-extraction.md) now traces restart → route/file teardown → map allocation cleanup before reload. Historical `reroute_use.bin` observations agree with that path. Independent retention of the original map is not implemented. |
 | Route header/menu names limited to 31 encoded bytes and transliterated to ASCII | Code policy. Earlier claims that an umlaut alone caused failure were not established. |
 | Normal new-route transfer guard is five counted files; internal list can reach seven | Binary tracing separates admission from list capacity and special-name/existing-file paths. Historical six-route observations are not a universal slot limit. |
 

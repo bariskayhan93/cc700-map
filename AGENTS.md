@@ -1,8 +1,8 @@
 # CC700 implementation rules
 
 The owner's priority is useful, reliable cycling navigation and feature progress.
-Use `docs/research-focus-2026-11-15.md` and
-`docs/map-reliability-contract.md` as implementation constraints.
+Use `docs/current/research-focus-2026-11-15.md` and
+`docs/current/map-reliability-contract.md` as implementation constraints.
 
 - Keep firmware safety/release fixes separate from independent PC research and
   feature work. A rejected experimental image does not block offline work.

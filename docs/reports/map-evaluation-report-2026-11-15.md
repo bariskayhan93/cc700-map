@@ -10,7 +10,7 @@ claim that all target/feature gaps have been closed.
 
 ## What was built
 
-- [Reliability contract and matrix](map-reliability-contract.md): protected
+- [Reliability contract and matrix](../current/map-reliability-contract.md): protected
   semantics, native-record isolation, independent resource checks, offline
   fallback, actual block-boundary probes and honest failure/evidence accounting.
 - `tools/map_benchmark_cases.mjs`: twelve reproducible synthetic cases covering
@@ -23,10 +23,10 @@ claim that all target/feature gaps have been closed.
   existing generator, comparing shared-radius and independent-layer admission at
   1/2/3 km. It never writes production JS or device files. Its reference output
   is tested byte-identical except the generation timestamp.
-- [Feature capability ledger](feature-capability-ledger.md): the complete supplied
+- [Feature capability ledger](../current/feature-capability-ledger.md): the complete supplied
   idea list, separating implemented primitives, traced mechanisms and hypotheses.
-- [Targeted primary-source research](map-selection-research-2026-11-14.md) and
-  [stationary measurement contract](stationary-map-measurement-contract.md).
+- [Targeted primary-source research](../research/map-selection-research-2026-11-14.md) and
+  [stationary measurement contract](../current/stationary-map-measurement-contract.md).
 
 The standard local validator now runs the new checks. Production `js/`, map
 palette, resolutions, service worker and firmware are unchanged in this release.
@@ -181,10 +181,10 @@ to begin; physical acceptance remains a later, narrower check.
 
 ## Artifacts
 
-- [Deterministic synthetic baseline](mining/map-reliability-baseline.json)
-- [Per-case strategy comparisons](mining/map-policy-study-summary.json)
-- [Sanitized cached-real-source summary](mining/map-policy-real-source-summary.json)
-- [Device observation and explicit missing channels](mining/map-evaluation-device-observation.json)
+- [Deterministic synthetic baseline](../mining/map-reliability-baseline.json)
+- [Per-case strategy comparisons](../mining/map-policy-study-summary.json)
+- [Sanitized cached-real-source summary](../mining/map-policy-real-source-summary.json)
+- [Device observation and explicit missing channels](../mining/map-evaluation-device-observation.json)
 
 Private inputs, logs, binaries and detailed run reports remain under ignored
 `.local/map-reliability/`. The production and candidate source identities are

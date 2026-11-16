@@ -1,12 +1,12 @@
 # CC700 popup, timer and navigation reset audit
 
-The subsequent [native replay contract](native-replay-contract.md) resolves the
+The subsequent [native replay contract](../current/native-replay-contract.md) resolves the
 RTOS tick-frequency gap below from actual alarm/ISR setup and sparse clock
 observations. Nominal 1000 ticks is one second; publication freshness is separate.
 
 Evidence date: 2026-11-13. Bounded offline extraction of stock V1.414 and the
 private rebuilt saved v16 image. No device was accessed; no firmware or device storage was
-changed. This follows [popup and sensor observations](popup-and-sensor-followup.md),
+changed. This follows [popup and sensor observations](../reports/popup-and-sensor-followup.md),
 [runtime publication](navigation-runtime-extraction.md), [route matching](route-state-extraction.md)
 and [arrival](progress-arrival-extraction.md).
 
@@ -180,7 +180,7 @@ The comparison image is a private rebuilt v16 artifact; its SHA-256 is
 matching the saved v16 image.
 
 All intervals below are half-open. Raw binaries, scripts and GNU traces remain
-private; the sanitized [range manifest](mining/lifecycle-evidence.json) accompanies
+private; the sanitized [range manifest](../mining/lifecycle-evidence.json) accompanies
 this report.
 
 | Range | Start | End excluded | Instructions |

@@ -1,13 +1,13 @@
 # Local application and simulation audit
 
-2026-11-14 update: the [v17 review](v17-review-2026-11-14.md) supersedes the
+2026-11-14 update: the [v17 review](../releases/v17-review-2026-11-14.md) supersedes the
 point-list domain assumption in the helper probes below. The real firmware list
 contains detailed points, while those toy cases use one segment per section.
 Passing them does not establish section-domain hysteresis in the actual loader.
 
 2026-11-13, application HEAD `24b8617`. This pass used Node `24.22.1`,
 Python `3.15.0`, and Apple clang `21.0.0` on the host. It read the
-[technical context](technical-context.md) and [exploration map](exploration-map.md),
+[technical context](../current/technical-context.md) and [exploration map](../current/exploration-map.md),
 then executed existing application and patch code locally. There was no device
 access, network request, firmware/storage write, source feature change, or commit.
 Private input files stayed outside the repository. This report records aggregate

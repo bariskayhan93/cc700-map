@@ -5,8 +5,8 @@ observation. The installed v18 image is unchanged. Private GNU disassembly and
 range hashes are under `.local/native-capture-analysis/`. The replay, submit,
 adapter, and publication ranges inspected here match stock and v18 byte for
 byte. See [runtime ownership](navigation-runtime-extraction.md),
-[lifecycle](lifecycle-audit.md), [activation](native-replay-contract.md), and
-[acceptance schema](repeatable-validation.md).
+[lifecycle](lifecycle-audit.md), [activation](../current/native-replay-contract.md), and
+[acceptance schema](../current/repeatable-validation.md).
 
 The practical next step is a separate, explicitly named test firmware with
 bounded RAM telemetry. Neither serial printf nor repeated debugger halts can

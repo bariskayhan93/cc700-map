@@ -5,7 +5,7 @@ local control-flow pass after [runtime publication and route replacement](naviga
 “Extracted” here means instructions and branches inspected, not executed on a
 device or proven correct for all malformed inputs.
 
-![Arrival arming and completion](mining/12-arrival-state.png)
+![Arrival arming and completion](../mining/12-arrival-state.png)
 
 ## Progress depends on route slots and connector state
 
@@ -214,7 +214,7 @@ recording event and reset lifecycle are distinct effects.
 
 ## Verification and scope
 
-The [evidence manifest](mining/navigation-runtime-evidence.json) includes the
+The [evidence manifest](../mining/navigation-runtime-evidence.json) includes the
 progress, record-building, type-resolution, remaining-distance and arrival code
 ranges. Stock and saved v16 match. The progress kernel's 500 instructions and
 arrival function's 370 instructions were checked against GNU Xtensa objdump.

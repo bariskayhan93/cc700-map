@@ -75,7 +75,7 @@ crossings. This removes the false diagonal seam that can appear along the double
 join into a polygon hole. The installed-v18 profile intentionally retains the
 existing fill arithmetic so the comparison remains honest.
 
-![Four synthetic native-resolution scenes: installed v18 rules on the left, cycling study on the right.](comparison/preview-v18-cycling-2026-11-14.png)
+![Four synthetic native-resolution scenes: installed v18 rules on the left, cycling study on the right.](../comparison/preview-v18-cycling-2026-11-14.png)
 
 These are generated map-canvas fixtures, not device photographs or whole-device
 emulation. They exercise river/cycleway separation, polygon holes and clipping,

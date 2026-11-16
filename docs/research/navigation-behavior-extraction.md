@@ -1,12 +1,12 @@
 # CC700 navigation behavior extraction
 
-Follow-ups: [geometry](geometry-boundary-audit.md), [timer/reset/replay lifecycle](lifecycle-audit.md),
-[sensor/peer boundary](sensor-boundary-audit.md), and [consolidated status](mining-closure.md).
+Follow-ups: [geometry](../current/geometry-boundary-audit.md), [timer/reset/replay lifecycle](lifecycle-audit.md),
+[sensor/peer boundary](sensor-boundary-audit.md), and [consolidated status](../reports/mining-closure.md).
 These supersede the corresponding earlier unresolved local branches below.
 
 Evidence date: 2026-11-13. This is an extraction ledger, not a claim that the
 whole firmware has been understood. It supplements the
-[firmware mining report](firmware-mining-2026-11-13.md). No device was accessed.
+[firmware mining report](../reports/firmware-mining-2026-11-13.md). No device was accessed.
 
 The immediate correction to the earlier simulation discussion is methodological:
 extract producers, consumers, branches and persistent state before replacing them
@@ -37,7 +37,7 @@ GNU Xtensa objdump was used alongside the local cross-reference decoder. A
 missing direct caller does not establish dead code: the magnetic input wrapper,
 for example, is invoked indirectly through a literal-loaded function pointer.
 
-![Extracted GPS, replay and magnetic heading paths](mining/08-heading-inputs.png)
+![Extracted GPS, replay and magnetic heading paths](../mining/08-heading-inputs.png)
 
 ## GPS is already replaceable through a native getter
 
@@ -234,8 +234,8 @@ closed-route guard and conditional course-recording event.
 | Heading setter | Both modes and counter branches | Every state writer/caller and reset sequence |
 | Magnetic path | Packet branch → processing → getters → navigation | Transport, board binding, complete transforms and fit algorithm |
 | GNSS | RMC producer fields and replay-aware getter | Full fix/speed quality state machines, other sentence paths, timeouts |
-| Native replay | Task gate, allocation, opening, decoding, publication, getter redirect, queued position producer, local-planning pause/release and [positional config parser/queries](remaining-extraction-and-device.md) | Vendor defaults, controlled activation, file compatibility, measured timing/freshness and complete ride transitions |
-| Route matching/progress | Candidate thresholds/persistence; notice/planning branches; queued completion and route teardown/reload; local progress/arrival; [road arbitration and planner limits](remaining-extraction-and-device.md) | Geometry edge cases, reset/cadence audit, complete planner and transport contracts, malformed-input and concurrent behavior |
+| Native replay | Task gate, allocation, opening, decoding, publication, getter redirect, queued position producer, local-planning pause/release and [positional config parser/queries](../reports/remaining-extraction-and-device.md) | Vendor defaults, controlled activation, file compatibility, measured timing/freshness and complete ride transitions |
+| Route matching/progress | Candidate thresholds/persistence; notice/planning branches; queued completion and route teardown/reload; local progress/arrival; [road arbitration and planner limits](../reports/remaining-extraction-and-device.md) | Geometry edge cases, reset/cadence audit, complete planner and transport contracts, malformed-input and concurrent behavior |
 | Map/display | Draw gate, allocation lifetimes, font lookup and patch logic traced | Full page/zoom transitions, lock ordering, errors and invalidation |
 | Runtime/resources | Static costs; matcher allocation/null-copy path; raw/GUI queues and pointer ownership; map teardown; saved heap samples | Other allocation failures, failure-path reachability on device, task interleavings and measured execution times |
 
@@ -247,6 +247,6 @@ position publication, event 91 dispatch, route replacement, and progress/arrival
 Runtime validation remains distinct from that extraction. In particular,
 physical sensor population, task timing, replay activation/file compatibility,
 queue pressure and observed prompt/display behavior require device evidence.
-The [connected baseline](remaining-extraction-and-device.md) confirms USB JTAG
+The [connected baseline](../reports/remaining-extraction-and-device.md) confirms USB JTAG
 access, the cc16 version label and one matching hook; its inactive sensor fields
 do not close the physical-sensor question.

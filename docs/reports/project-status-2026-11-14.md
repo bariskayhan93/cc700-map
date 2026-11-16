@@ -2,8 +2,8 @@
 
 This ledger separates shipped code, evidence and proposed work. It consolidates
 [the ride review](ride-review-2026-11-14.md),
-[the v21 release](v21-caption-opacity-2026-11-14.md) and
-[the cycling-navigation research](cycling-turn-practices-2026-11-14.md).
+[the v21 release](../releases/v21-caption-opacity-2026-11-14.md) and
+[the cycling-navigation research](../research/cycling-turn-practices-2026-11-14.md).
 Raw firmware, device files, positions and recovery artifacts remain private.
 
 ## Current deployment
@@ -11,7 +11,7 @@ Raw firmware, device files, positions and recovery artifacts remain private.
 - **Device:** v21 on ota_1, flash-verified and automatically booted through RTS.
   A fresh full v20 rollback is retained; stock ota_0 was not programmed.
 - **App:** updated generator, current two-row reference UI and matching v21 preview.
-  [Adaptive map budgets](adaptive-map-budget-2026-11-14.md) now account for actual
+  [Adaptive map budgets](../research/adaptive-map-budget-2026-11-14.md) now account for actual
   payload/work, protect nearby geometry and use spare budget for outer context.
   Dense sections can reduce distant line coverage explicitly; target timing
   remains unmeasured.
@@ -109,7 +109,7 @@ a substitute for knowing which junction exit the route actually traverses.
 
 The [reliability evaluation](map-evaluation-report-2026-11-15.md) adds a reproducible
 matrix, negative controls, actual seam probes, transitive source fingerprints,
-primary-source research and the [feature capability ledger](feature-capability-ledger.md).
+primary-source research and the [feature capability ledger](../current/feature-capability-ledger.md).
 Six offline 1/2/3 km representation comparisons pass their scoped local gates.
 Independent layer admission can retain a cheap useful line when an optional
 polygon prevents shared-radius expansion. This is not validated recovery routing.

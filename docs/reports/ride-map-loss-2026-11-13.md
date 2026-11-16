@@ -1,7 +1,7 @@
 # Ride map loss: 2026-11-13 evening, root cause and v17
 
 **2026-11-14 review supersedes the acceptance claims below:**
-[v17 review and continuation](v17-review-2026-11-14.md) reproduces two remaining
+[v17 review and continuation](../releases/v17-review-2026-11-14.md) reproduces two remaining
 loader failures and corrects replay callback/FIT input bugs. The historical
 294/576 and 0/576 results are coverage proxies per sample, not measured blank
 seconds. Current v17 is not yet recommended for flashing. The original account

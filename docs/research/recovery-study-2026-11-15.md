@@ -1,13 +1,13 @@
 # Connected recovery: first implementation
 
-The implementation rules now live in [AGENTS.md](../AGENTS.md), so subsequent
+The implementation rules now live in [AGENTS.md](../../AGENTS.md), so subsequent
 work inherits the research priorities. Stationary shared-start/finish ambiguity
 is not a reason to extend the matcher without evidence of a riding failure.
 The rejected cc24 experiment remains a separate release concern.
 
 ## Implemented
 
-[The evaluator](../tools/recovery_study.mjs) builds a directed candidate graph
+[The evaluator](../../tools/recovery_study.mjs) builds a directed candidate graph
 from preserved original road nodes, finds shortest candidate paths to explicit
 future route visits, and compares full-graph versus prepared-leg JSON storage.
 It never joins roads merely because they cross on screen. Conflicting source
@@ -42,7 +42,7 @@ are not sampled areas along a whole 23 km route.
 
 Each finds all twelve connected samples and rejects the disconnected one. None
 establishes legal cycling validity. Exact inputs and per-origin reports can be
-regenerated; [the committed summary](mining/recovery-study-summary.json) includes
+regenerated; [the committed summary](../mining/recovery-study-summary.json) includes
 input fingerprints. Prepared legs are economical for this small fixed query
 set, especially in the grid. Their cost grows with origins and route-visit
 windows; a shared graph is reusable. This comparison does not yet select a
@@ -68,7 +68,7 @@ that nearest-node snapping solves GPS association, accessibility or travel direc
 
 ## Actual ride evidence and next gate
 
-The [private ride-cache audit](mining/recovery-source-audit.json) found four
+The [private ride-cache audit](../mining/recovery-source-audit.json) found four
 legacy display cells and **zero cells with original source**. Their current
 geometry cannot reconstruct original junction identities, access, barriers or
 turn restrictions. No recovery success rate for the ridden detours is claimed.

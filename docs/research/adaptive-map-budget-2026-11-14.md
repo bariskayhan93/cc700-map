@@ -72,8 +72,8 @@ per entry and 8 B per stored coordinate pair. It reports the largest projection
 and iterator scratch, fill-edge work bound and separate overlays. It excludes
 allocator headers, unrelated native allocations, pixel rasterization time,
 locks and scheduler behavior. The source is
-[`js/map_budget.js`](../js/map_budget.js); the independent existing Python
-calculator is [`tools/map_budget.py`](../tools/map_budget.py).
+[`js/map_budget.js`](../../js/map_budget.js); the independent existing Python
+calculator is [`tools/map_budget.py`](../../tools/map_budget.py).
 
 The initial implementation protected every old outer radius. A real cached
 section then required 69,389 serialized bytes and 1,408 projection callbacks,

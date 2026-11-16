@@ -28,7 +28,7 @@ flowchart TD
 
 ## What is now implemented
 
-[Association](../tools/recovery_association.mjs) projects onto original source
+[Association](../../tools/recovery_association.mjs) projects onto original source
 segments within 25 m rather than choosing the closest original node. It examines
 nearby geometry before access filtering, so a denied road does not silently turn
 into an allowed neighbour. Segments within 5 m of the best distance compete;
@@ -37,7 +37,7 @@ least 5 m displacement within 10 s; this is a study heuristic without GPS accura
 metadata. Crossings can be distinguished by that bearing, but uncertain heading,
 near endpoints within 2 m and competing geometry remain unavailable.
 
-[Planning](../tools/recovery_planner.mjs) splits only the same original segment at
+[Planning](../../tools/recovery_planner.mjs) splits only the same original segment at
 selected projections. Direction, original junction identity, local barrier cuts
 and turn rules survive. It checks the direction of arrival at the target against
 route continuation. A fix on an excluded segment is not moved to another road.
@@ -57,7 +57,7 @@ matching or prove live progress/heading correctness.
 
 ## Regional access research and explicit inference
 
-The [NRW firm-path profile](../tools/recovery_access.mjs) is a labelled sensitivity
+The [NRW firm-path profile](../../tools/recovery_access.mjs) is a labelled sensitivity
 study alongside the unchanged conservative comparator. It can infer admission
 for path/track with a listed firm surface, absent denial, conditional/directional
 access, and designated foot/horse-only meaning. Explicit bicycle access still
@@ -146,7 +146,7 @@ codec behaviour, not regional access or real environmental coverage.
 
 ## Actual storage and ownership accounting
 
-[Study codecs](../tools/recovery_graph_packet.mjs) produce binary bytes, not just
+[Study codecs](../../tools/recovery_graph_packet.mjs) produce binary bytes, not just
 JSON estimates. CSR graph arrays use dense identities and preserve supported
 turns; ordered visit indices include source-edge fractions and continuation
 bearing. A separate source-association packet includes **excluded road geometry**,
@@ -239,7 +239,7 @@ and source/packet hashes were independently checked against the actual files.
 Independent review found one Important near-finish
 exhausted-window case that aborted replay. A regression reproduced it, then the
 single fix pass restored unavailable fallback. The complete real ride/spatial/cost
-summary reproduced exactly afterward. The [sanitized aggregate](mining/recovery-feasibility-20261115.json)
+summary reproduced exactly afterward. The [sanitized aggregate](../mining/recovery-feasibility-20261115.json)
 records counts, code/input/packet hashes and codec controls without coordinates.
 
 Deferred review minors: comparator motorroad asymmetry and retrospective scope

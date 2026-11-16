@@ -124,9 +124,9 @@ Scripts and JSON results are under ignored `.local/map-representation/`:
 
 Representative matrices:
 
-- [Synthetic route types, 2.5 m/px, north-up](../.local/map-representation/synthetic-mpp2.5-h0.png)
-- [Real cached shapes, 2.5 m/px, 45°](../.local/map-representation/real-mpp2.5-h45.png)
-- [Real optimized hybrid comparison, 2.5 m/px, 45°](../.local/map-representation/optimized-real-mpp2.5-h45.png)
+- [Synthetic route types, 2.5 m/px, north-up](../../.local/map-representation/synthetic-mpp2.5-h0.png)
+- [Real cached shapes, 2.5 m/px, 45°](../../.local/map-representation/real-mpp2.5-h45.png)
+- [Real optimized hybrid comparison, 2.5 m/px, 45°](../../.local/map-representation/optimized-real-mpp2.5-h45.png)
 
 All other zoom/heading matrices and exact fixture/proxy limits are saved beside
 them. Nothing in this experiment reads, resets, programs or injects data into the

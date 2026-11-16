@@ -2,9 +2,9 @@
 
 Evidence date: 2026-11-13. Read-only local analysis of stock V1.414 and private
 rebuilt v16. No device access or device/configuration/storage changes. This
-extends [native replay extraction](navigation-behavior-extraction.md),
-[configuration parser findings](remaining-extraction-and-device.md), and
-[lifecycle scheduling findings](lifecycle-audit.md).
+extends [native replay extraction](../research/navigation-behavior-extraction.md),
+[configuration parser findings](../reports/remaining-extraction-and-device.md), and
+[lifecycle scheduling findings](../research/lifecycle-audit.md).
 
 ## Configuration is indexed by ID and row, not by name
 
@@ -131,7 +131,7 @@ the configured RTOS tick rate is nominally **1000 Hz**, or **1 ms per tick**.
 The replay task's `delay-until(...,1000)` is therefore a **one-second periodic
 target** and its 500-tick yield threshold is nominally half a second. This
 supersedes only the rate uncertainty, not the separate scheduling limitations
-in the [lifecycle report](lifecycle-audit.md): late targets can return without
+in the [lifecycle report](../research/lifecycle-audit.md): late targets can return without
 blocking, preskip can decode multiple records, timestamps can reuse records,
 queue submission is not consumption, and calculation publication is later.
 No real-device cadence, jitter or fresh-fix-per-second contract was measured.
@@ -148,7 +148,7 @@ was issued by that sampler.
 
 OpenOCD emitted “Halt timed out, wake up GDB” near the last resume, followed by
 the explicit running/running state check. That warning is retained in the
-[sanitized observation record](mining/clock-observation.json); these samples are
+[sanitized observation record](../mining/clock-observation.json); these samples are
 not a measurement of replay cadence, drawing time or scheduler jitter. No further
 halt was needed after the nominal rate was also resolved statically.
 
@@ -163,7 +163,7 @@ conversion tables and ride-state/event-name tables were independently read as
 binary data. Local script, traces and JSON stay private.
 
 This pass verified 715 reached instructions across 24 contiguous GNU runs, with zero boundary/direct-target discrepancies.
-The sanitized [range manifest](mining/replay-contract-evidence.json) records the hashes and checks.
+The sanitized [range manifest](../mining/replay-contract-evidence.json) records the hashes and checks.
 
 | Range | Start | End excluded |
 |---|---|---|

@@ -157,8 +157,8 @@ configuration are uninitialized.
 
 Once initialization works, use a disposable **simulation flash copy** containing
 the [native FIT fixture](native-fit-fixture.md) and a deliberately recoverable
-recording session. Follow the [resume activation contract](native-replay-contract.md)
-and account for the [recording/lap truncation effects](repeatable-validation.md).
+recording session. Follow the [resume activation contract](../current/native-replay-contract.md)
+and account for the [recording/lap truncation effects](../current/repeatable-validation.md).
 Then require actual decoded/published/consumed record evidence using the
 [replay observation checks](native-replay-capture-design.md). Boot success alone
 cannot establish that coverage. Emulator scheduling and peripheral shims remain

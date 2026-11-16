@@ -35,7 +35,7 @@ flowchart TD
 Source SHA-256:
 `a6359554bd2114e293241e82b2a14f569f5d584746f76ae64c8ef27443713d50`.
 
-The [offline extractor](../tools/routing_pbf.py) makes independent passes for
+The [offline extractor](../../tools/routing_pbf.py) makes independent passes for
 in-box nodes, primary highway ways, restrictions referencing those ways, member
 ways, and referenced nodes. This preserves identity and tags without building a
 location index for the whole regional file or relying on object ordering.
@@ -44,7 +44,7 @@ Pyosmium objects are copied while their callbacks are valid, following its
 The source timestamp comes from the file header, not the local clock; see the
 [header API](https://docs.osmcode.org/pyosmium/latest/reference/IO/).
 
-[Normalization](../tools/routing_pbf_snapshot.mjs) verifies selection bytes and
+[Normalization](../../tools/routing_pbf_snapshot.mjs) verifies selection bytes and
 receipt identity, feeds the existing snapshot validator, and explicitly records
 `queryExecuted: false`. The stored query hash is a reference selection identity,
 not evidence of an Overpass request. Raw PBF, bounded selection, regional bbox,
@@ -69,7 +69,7 @@ own measured representation comparison.
 
 ## What the real ride replay does
 
-The [replay study](../tools/recovery_ride_study.mjs) consumes the existing 4,035
+The [replay study](../../tools/recovery_ride_study.mjs) consumes the existing 4,035
 timestamped fixes and their matching timeline. It does not change native route
 matching. Two kinds of evidence remain separate:
 
@@ -161,7 +161,7 @@ python -m unittest discover -s tools -p test_routing_pbf.py
 The replay writes a sanitized aggregate summary plus private trial/graph files.
 Do not publish the latter: graph nodes and trial timestamps can locate a ride.
 Acquisition and graph measurements are in
-[the aggregate report](mining/regional-recovery-replay-20261115.json).
+[the aggregate report](../mining/regional-recovery-replay-20261115.json).
 
 ## Review and verification
 
