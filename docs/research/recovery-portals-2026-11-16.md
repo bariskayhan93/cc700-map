@@ -130,16 +130,17 @@ Estimates from a host script on the build. The script is not committed.
 | Cost | Size | Why | Lever | Saving (estimate) | Price |
 |---|---:|---|---|---:|---|
 | Guard lists | 2.9 MB (87%) | Each 50 m piece lists the streets within 35 m. Median 9 per piece, p90 25. 180,454 records, 4,217 distinct. | Route-wide guard table with a 2-byte index | about 2.5 MB | Format and firmware change |
-| Long legs | 3.7 km of legs per 250 m window | Median leg 484 m, p90 2.4 km | Cap leg length at 2 km | 1.1 MB (34%) | 43 of 394 legs (11%) dropped |
-| Long legs, tighter | as above | as above | Cap leg length at 1 km | 1.7 MB (51%) | 81 of 394 legs (21%) dropped |
+| Long legs | 3.7 km of legs per 250 m window | Median leg 484 m, p90 2.4 km, longest 5.2 km | Cap leg path at 3 km | 0.64 MB (19%) | Cuts the 3 km reach for 22 of 394 legs |
+| Long legs, 4 km cap | as above | as above | Cap leg path at 4 km | 0.23 MB (7%) | 6 of 394 legs |
+
+Correction: an earlier draft proposed a 2 km cap. It saves 34%, but it removes legs that reach the 3 km target along the route. A leg path can be 4 to 5 km long, even when its end lies within 3 km along the route. The 3 km target stays. The leg cap is not recommended.
 | Window spacing | 91 windows of 250 m | One package per window | 500 m windows | about half | Rejoins within 500 m of the entry cannot be targets |
 | Seeds | 8 per window | Fixed in the build | Fewer seeds | about proportional | Fewer legs to choose from |
 | Visit spacing 100 m | none | One target per leg, stored as 4 bytes | none | 0 | none |
 
 For 70 km (today's rule scaled, about 10.3 MB):
-- Leg cap 2 km alone: about 6.8 MB. Still too large for the 7.99 MB partition.
-- Route-wide guard table alone: about 2.7 MB.
-- Route-wide guard table and leg cap 2 km: about 1.8 MB.
+- Route-wide guard table: about 2.7 MB. Fits the 7.99 MB partition.
+- No leg cap: about 10.3 MB. Does not fit.
 
 The guard table is the only lever that makes 70 km fit. It needs a firmware change. Without it, detours fit only on short routes.
 
