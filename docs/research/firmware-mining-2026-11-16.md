@@ -6,7 +6,11 @@ files stay in `.local/` and `cc700-backup`, which are not committed. Scripts use
 
 ## Later results and corrections (supersede the sections below)
 
-- **Layout.** The shared-piece layout is dropped. It needs per-leg guard variants (508 cases) and both directions (597 pieces). The per-window guard table keeps the v1 legs and measures 1.06 MB for 22.56 km (3.1 times smaller). It is committed as format v2 (`1a1a4d3`).
+- **Budget, 16 Nov.** The v2 guard table saves 15.5% (2.80 MB against 3.31 MB for 22.75 km), not 3.1 times. The route file for 70 km is 2.52 MB at 36 KB/km and 10.0 MB at 143 KB/km. The 70 km total is 11.14 MB against 5.58 MB free. Details: `.local/eq/budget-70km.txt`.
+- **Seed radius (legs only).** Builds at 3 km, 2 km and 1 km give identical packages. The painted map reach is capped at 1000 m for main roads by the class range table in `js/mapsec.js`. The combined table is in `.local/eq/combined-table-70km.txt`.
+- **Coverage.** The full-route v2 build recovers 0 of 809 off-route frames in the replay. Details: `recovery-portals-2026-11-16.md`, "Coverage finding".
+
+- **Layout.** The shared-piece layout is dropped. It needs per-leg guard variants (508 cases) and both directions (597 pieces). The per-window guard table is committed as format v2 (`1a1a4d3`). Its real build measures 2.80 MB for 22.75 km (15.5% smaller than v1). The earlier 1.06 MB estimate is withdrawn.
 - **Core.** 5,598 B before, 5,438 B after v2 and the trims. The usable room is 4,376 B. The core alone does not fit. Removing the copy and marker checks would save 120 B more, and was not done.
 - **Storage, live read (16 Nov, read only, esptool 4.7.0, storage partition only, 891 s, esptool reset the device afterwards).** 588 of 1,950 blocks used, 5.58 MB free, 56 files. `/NAVIGATION` holds two route files: 811,008 B for 22.56 km (36 KB/km) and 598,016 B for 4.19 km (143 KB/km). Dense city routes are much larger per km. The growth between 14 and 15 Nov came from one new route file. Growth is not a daily rate. The 0.5 MB a day figure is wrong.
 - **Device crash record.** The device stored its own core on 15 Nov (`/ABNORMAL/CoredumpInfo.bin`, log: "Found core dump 43396 bytes"). It matches the 22:05 files in `.local` record for record. The owner states that a GLM session may have made those files. The stored core is still device-written evidence. EXCCAUSE is 0 and EPC1 is `0x42008575`, in stock code, not the patch. The instruction there is `retw.n`. Causes are not established.

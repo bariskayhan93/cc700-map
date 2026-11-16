@@ -2,6 +2,30 @@
 
 Status: host analysis. No firmware or device change. Private inputs stay in `.local/`.
 
+## Corrections, 16 Nov (supersede the sections below)
+
+- The 3.1 times saving of the guard table is withdrawn. The saved estimate (1.06 MB) kept the v1 legs. The real v2 build admits 620 portals (v1: 394) and totals 2.80 MB against 3.31 MB. The saving is 15.5%. Build: `.local/eq/new-detall`.
+- The leg seed radius does not change the bytes. Builds at 3, 2 and 1 km give the same 91 SHA-256 values, because the builder keeps the 8 nearest source segments per window. This covers legs only. The painted map reach was not costed, so this result does not decide reach.
+- 70 km budget (`.local/eq/budget-70km.txt`): packages 8.62 MB at 123 KB/km, route file 2.52 MB at 36 KB/km, total 11.14 MB. Free device storage is 5.58 MB. The largest route that fits is about 35 km.
+- The route-file upper bound of 5.2 MB for 70 km is wrong. At the city density of 143 KB/km, a 70 km route file is 10.0 MB.
+- Combined 1, 2 and 3 km table (`.local/eq/combined-table-70km.txt`): the three rows are identical. Legs are 8.62 MB for 70 km at every reach, because the builder ignores the reach. The painted map is 2.13 MB for 70 km at every reach, because the class range table `SR` in `js/mapsec.js` caps main roads at 1000 m. Measured on the TourD3 proxy route: 500 m gives 528,384 B, 1000 m gives 1,212,416 B, and 1500, 2000 and 3000 m give the same result as 1000 m.
+- Route base without map: 0.38 MB for 70 km. Total 11.14 MB against 5.58 MB free. The largest route that fits is 35.1 km.
+- Not measured: a seed count below 8, or a per-route package cap.
+
+## Coverage finding, 16 Nov (supersedes the size tables as the main result)
+
+- **The full-route build recovers nothing on the recorded ride.** Replay of `.local/eq/new-detall` (91 packages, 2.80 MB): 0 recovering frames of 809 off-route frames. The 12 recovering frames come only from the ride-seeded bundle (5 packages, 31,180 B). That bundle uses the detour samples of the ride itself. A build made before a ride cannot use them.
+- **Cause, measured** (`tools/recovery_outside_audit.mjs`, result in `.local/eq/outside-audit-detall.json`): of the 276 "outside legs" frames, 171 have no leg within 15 m, and 105 have a package with no legs. The other off-route frames are 432 "no trusted position" and 101 "paused". The eight seeds per window lie next to the route. The streets that the rider used are not stored.
+- **The trusted-position rule is not the cause.** With the recorded stops shortened (`.local/eq/nogap.json`, a what-if), "no trusted position" falls from 432 to 6, and recovering stays 0. "Outside legs" rises to 602: 457 have no leg within 15 m, and 145 have a package with no legs (`.local/eq/outside-audit-nogap-detall.json`).
+- **Distance from the route** in the 809 off-route frames: median 185 m, 90th percentile 740 m, maximum 912 m. There are six episodes. Their maxima are 29, 136, 65, 185, 912 and 240 m. This is one ride.
+- **No-leg pointer, aim check** (`.local/eq/pointer-check.mjs`, private, output in `.local/eq/pointer-check.txt`). Two aims were compared. Aim A is the nearest route point by position. Aim B is the nearest route point at or after the last on-route progress, up to 3 km ahead. Aim A lies behind the entry in 93 of 809 frames. Five episodes (697 frames) have a recorded rejoin. In those, aim A lies between the entry and the rejoin in 673 frames, behind the entry in 21, and past the rejoin in 3. Aim B cannot lie behind the entry, by construction. Aim B is not past the rejoin in 697 of 697 frames, and is at most 38 m farther than aim A. The last episode (112 frames) ends with the recording, so it has no rejoin, and the rejoin test is not possible there. The progress comes from the host provider, not from the device matcher. No code size, no device run.
+- **Street tree prototype** (host only, private scripts `.local/eq/tree-proto.mjs` and `.local/eq/tree-forward.mjs`; no format, no device code). Each street node stores the next node on the shortest way to the route. Bytes use an assumed layout of 10 B for each node and 4 B for each segment. Reach is ride distance, not straight distance.
+  - One tree for the full route, strict bicycle policy: 10.6 KB/km at 1,500 m (0.72 MB for 70 km), 23.6 KB/km at 3,000 m, 36.1 KB/km at 4,500 m. It matches a stored street within 15 m in 636 of 809 off-route frames. In 257 of those, the shortest way ends behind the entry.
+  - One forward tree for each route kilometre (goals from the chunk start to 4 km ahead), strict policy: 32.8 KB/km at 1,500 m (2.24 MB for 70 km), 132.7 KB/km at 3,000 m. It matches 636 of 809 frames, with 0 behind the entry and 0 past the rejoin in the testable frames.
+  - With `track` and `path` ways admitted without a bicycle tag, both variants match 809 of 809 frames, and the bytes are about 1.7 to 1.8 times larger. Their bicycle access is not proven.
+  - Not measured: core code size, device time for the street search, turn restrictions in the tree, parallel-street errors, a second ride.
+- **Route file rate.** The TourD3 proxy at today's generator is 1,212,416 B for 21.15 km (57 KB/km). At that rate a 70 km route file is about 4.0 MB, at the 4,000,000 B app guard. The device file is 36 KB/km. The rate of today's generator on the real route is not measured, because its GPX is not identified.
+
 ## Decision (simplest path)
 
 - Keep the current package format and the current bicycle policy. No format change now.
