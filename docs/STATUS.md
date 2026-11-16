@@ -57,6 +57,7 @@ stock V1.414 (ota_0, never written)
 - In the replay, 12 of 809 off-route frames get a recovery candidate.
 - The 512 "no trusted position" moments came from streets the loop uses twice (456), recording gaps (50) and the ride start (6).
 - A host rule now finds the trusted position (`research/recovery-ordered-input-2026-11-16.md`). The failures then move to their real causes: no package for the 19.9 km detour (456 moments with stops closed) and positions outside the stored legs (236). Recoveries stay at 12 until portals cover those places.
+- Portals (host): the 19.9 km window has three legs, and none covers the detour. The limits are the rejoin window, the road policy, the 64-guard limit and the 64 KB package. Guards take 87% of the bytes. Details: `research/recovery-portals-2026-11-16.md`.
 - Details: `research/recovery-*.md`.
 
 ## Navigation
