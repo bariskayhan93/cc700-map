@@ -9,7 +9,7 @@ and route epoch. Experimental package mount is refused by default.
 
 Input `RC_ORDERED_MATCH` requires independently verified near-route position AND
 ordered route visit, not a raw native on-route bit. GPS validity/accuracy/time,
-course and speed are explicit inputs. Off-route uses the retained prior entry;
+course (as a unit vector `heading_x`, `heading_y`) and speed are explicit inputs. Off-route uses the retained prior entry;
 current off-route native progress cannot select a finish. Five strictly advancing
 ordered fixes restore ordinary guidance at the prepared or a verified alternate
 rejoin. GPS/clock faults clear actionable state; epochs require reinitialization.
@@ -22,9 +22,10 @@ suffix vertices, first point replaced by the current projection. Caller must rea
 and validate the whole suffix before submitting a frame; callback failure can
 invalidate recovery. Never draw partial geometry from a failed read.
 
-Format:160B bound header;64B per prepared leg;16B per leg-segment table record;
-16B per source conflict segment;8B per E7 vertex. Guards include denied nearby
-roads; own prepared source pieces remain axial ambiguity competitors in the path
+Format v2: 160B bound header;64B per prepared leg (target vector at +56/+58);
+16B per leg-segment table record;2B guard reference per guard;16B per distinct
+guard in the package guard table (header +152 = count);8B per E7 vertex. Guards
+include denied nearby roads; own prepared source pieces remain axial ambiguity competitors in the path
 scan. Only adjacent same-path joins within3m along distance can collapse.
 Limits:64KiB/package,64legs,512points/leg,1024total leg segments,64guards/segment.
 Initial association<=1024 segment checks; selected-path ambiguity scan<=511 more.

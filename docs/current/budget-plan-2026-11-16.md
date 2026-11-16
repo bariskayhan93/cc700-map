@@ -57,7 +57,7 @@ so far, so that the next fix of that kind still fits.
 | Better street-name positions | Names per block, drawing time | Yes, if the generator chooses which 12 names and where. No new names, no rotated text. |
 | Landmark names | Names per block | Yes, but only by **replacing** a lower-value name in the same block. A rule must rank them. |
 | Elevation graph in the progress bar | Code space, screen, drawing time, a little route data (448 B per profile) | Likely within the 4,376 B, if the drawing code stays small. Waits for the cc24 cause and a mined hook for the stock bar. |
-| Detour | Device storage, code space, stack, drawing time | **Not yet.** The core alone needs 5,546 B, more than the 4,376 B room. A 70 km route at today's rate needs about 4 MB of packages. Needs a smaller core or a second code area, a per-window reach and a storage budget per route. |
+| Detour | Device storage, code space, stack, drawing time | **Not yet.** The core needs 5,438 B after the v2 format and the trims (5,598 B before). The usable room is 4,376 B, so the core alone does not fit, and the reader, provider and overlay need more. Packages with the guard table (v2) take about 3.3 MB for 70 km (estimate). Needs a decision on the reserve or a second code area, and a storage budget per route. |
 
 ## Measurements that close the unknowns
 

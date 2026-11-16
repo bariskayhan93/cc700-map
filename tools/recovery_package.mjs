@@ -2,42 +2,66 @@
 import {hav,brg} from '../js/geo.js';
 import {planRecovery} from './recovery_planner.mjs';
 import {projectSegment} from './recovery_association.mjs';
-export const RCP={header:160,row:64,maxBytes:65536,maxPortals:64,maxPoints:512,maxGuards:64};
+export const RCP={header:160,row:64,maxBytes:65536,maxPortals:64,maxPoints:512,maxGuards:64,maxTable:4096,version:2};
 export function crc32(bytes){let c=0xffffffff;for(let i=0;i<bytes.length;i++){c^=i>=12&&i<16?0:bytes[i];for(let n=0;n<8;n++)c=(c>>>1)^((c&1)?0xedb88320:0);}return (c^0xffffffff)>>>0;}
 const pointOK=p=>Array.isArray(p)&&p.length===2&&p.every(Number.isFinite)&&Math.abs(p[0])<=85&&Math.abs(p[1])<=180;
 const e7=p=>p.map(v=>Math.round(v*1e7));
 const u32=v=>Number.isSafeInteger(v)&&v>=0&&v<=0xffffffff;
+const guardKey=g=>{const A=e7(g.a).join(','),B=e7(g.b).join(',');return A<B?A+'|'+B:B+'|'+A;};
 export function encodeRecoveryPackage(portals,meta){
  if(!Array.isArray(portals)||portals.length>RCP.maxPortals||!pointOK(meta.center)||!u32(meta.entryMin)||!u32(meta.entryMax)||meta.entryMax<=meta.entryMin)throw Error('Package bounds');
  for(const field of ['routeSha256','sourceSha256','policySha256'])if(!/^[a-f0-9]{64}$/.test(meta[field]??''))throw Error('Package identity');
- let guards=0,points=0;
- for(const p of portals){if(!Array.isArray(p.geometry)||p.geometry.length<2||p.geometry.length>RCP.maxPoints||!p.geometry.every(pointOK)||(p.segmentGuards??p.geometry.slice(1).map(()=>p.guards??[])).some(gs=>gs.length>64||!gs.every(g=>pointOK(g.a)&&pointOK(g.b)))||!Number.isFinite(p.distanceMeters)||p.distanceMeters<=0||p.distanceMeters>15000||!u32(p.targetVisit)||p.targetVisit<=meta.entryMax+2500||p.targetVisit>meta.entryMin+300000||!Number.isFinite(p.targetBearing)||p.targetBearing<0||p.targetBearing>=360||hav(p.geometry[0],p.geometry[1])<5)throw Error('Portal limit or semantics');guards+=(p.segmentGuards??p.geometry.slice(1).map(()=>p.guards??[])).reduce((n,gs)=>n+gs.length,0);points+=p.geometry.length;}
+ const table=[],slot=new Map();
+ const ref=g=>{if(!pointOK(g.a)||!pointOK(g.b))throw Error('Portal limit or semantics');const k=guardKey(g);if(!slot.has(k)){slot.set(k,table.length);table.push(g);}return slot.get(k);};
+ let points=0,refs=0;
+ const segRefs=portals.map(p=>{
+  if(!Array.isArray(p.geometry)||p.geometry.length<2||p.geometry.length>RCP.maxPoints||!p.geometry.every(pointOK)||!Number.isFinite(p.distanceMeters)||p.distanceMeters<=0||p.distanceMeters>15000||!u32(p.targetVisit)||p.targetVisit<=meta.entryMax+2500||p.targetVisit>meta.entryMin+300000||!Number.isFinite(p.targetBearing)||p.targetBearing<0||p.targetBearing>=360||hav(p.geometry[0],p.geometry[1])<5)throw Error('Portal limit or semantics');
+  const gs=p.segmentGuards??p.geometry.slice(1).map(()=>p.guards??[]);
+  if(gs.some(g=>g.length>RCP.maxGuards))throw Error('Portal limit or semantics');
+  points+=p.geometry.length;refs+=gs.reduce((n,g)=>n+g.length,0);
+  return gs.map(g=>g.map(ref));
+ });
  if(points-portals.length>1024)throw Error('Package segment-work limit');
- const guardAt=160+64*portals.length,legAt=guardAt+16*guards,size=legAt+8*points+16*(points-portals.length);if(size>RCP.maxBytes)throw Error('Package byte limit');
- const b=Buffer.alloc(size);b.write('CCRP',0,'ascii');b.writeUInt16LE(1,4);b.writeUInt16LE(1,6);b.writeUInt32LE(size,8);
+ if(table.length>RCP.maxTable)throw Error('Guard table limit');
+ const guardAt=160+64*portals.length,refsAt=guardAt+16*table.length,legAt=refsAt+2*refs,size=legAt+8*points+16*(points-portals.length);
+ if(size>RCP.maxBytes)throw Error('Package byte limit');
+ const b=Buffer.alloc(size);b.write('CCRP',0,'ascii');b.writeUInt16LE(RCP.version,4);b.writeUInt16LE(1,6);b.writeUInt32LE(size,8);
  ['routeSha256','sourceSha256','policySha256'].forEach((k,i)=>Buffer.from(meta[k],'hex').copy(b,16+32*i));
  b.writeUInt32LE(meta.entryMin,112);b.writeUInt32LE(meta.entryMax,116);b.writeUInt16LE(portals.length,120);b.writeUInt16LE(512,122);b.writeUInt32LE(160,124);b.writeUInt32LE(guardAt,128);b.writeUInt32LE(legAt,132);
  e7(meta.center).forEach((v,i)=>b.writeInt32LE(v,136+4*i));b.writeFloatLE(1.1132*Math.cos(meta.center[0]*Math.PI/180),144);b.writeFloatLE(1.1132,148);
- let g=guardAt,l=legAt;
+ b.writeUInt32LE(table.length,152);b.writeUInt32LE(0,156);
+ table.forEach((g,i)=>{[...e7(g.a),...e7(g.b)].forEach((v,j)=>b.writeInt32LE(v,guardAt+16*i+4*j));});
+ let r=refsAt,l=legAt;
  portals.forEach((p,i)=>{const at=160+64*i;[...e7(p.geometry[0]),...e7(p.geometry[1])].forEach((v,j)=>b.writeInt32LE(v,at+4*j));
-  const gs=p.segmentGuards??p.geometry.slice(1).map(()=>p.guards??[]),segAt=l,pointAt=l+16*(p.geometry.length-1),lengths=p.geometry.slice(1).map((q,j)=>Math.round(hav(p.geometry[j],q)*100));
-  b.writeUInt32LE(pointAt,at+16);b.writeUInt16LE(p.geometry.length,at+20);b.writeUInt16LE(gs.reduce((n,a)=>n+a.length,0),at+22);b.writeUInt32LE(g,at+24);b.writeUInt32LE(p.targetVisit,at+28);b.writeUInt32LE(lengths.reduce((n,v)=>n+v,0),at+32);b.writeUInt32LE(segAt,at+52);
-  e7(p.geometry.at(-1)).forEach((v,j)=>b.writeInt32LE(v,at+36+4*j));b.writeUInt16LE(Math.round(p.targetBearing*100)%36000,at+44);b.writeUInt16LE(1,at+46);b.writeUInt32LE(i+1,at+48);
-  let cumulative=0;gs.forEach((guards,j)=>{const sat=segAt+16*j;b.writeUInt32LE(g,sat);b.writeUInt16LE(guards.length,sat+4);b.writeUInt32LE(cumulative,sat+8);b.writeUInt32LE(lengths[j],sat+12);cumulative+=lengths[j];for(const guard of guards){[...e7(guard.a),...e7(guard.b)].forEach((v,k)=>b.writeInt32LE(v,g+4*k));g+=16;}});l=pointAt;
+  const gs=segRefs[i],segAt=l,pointAt=l+16*(p.geometry.length-1),lengths=p.geometry.slice(1).map((q,j)=>Math.round(hav(p.geometry[j],q)*100));
+  const portalRefs=gs.reduce((n,a)=>n+a.length,0);
+  b.writeUInt32LE(pointAt,at+16);b.writeUInt16LE(p.geometry.length,at+20);b.writeUInt16LE(portalRefs,at+22);b.writeUInt32LE(r,at+24);b.writeUInt32LE(p.targetVisit,at+28);b.writeUInt32LE(lengths.reduce((n,v)=>n+v,0),at+32);b.writeUInt32LE(segAt,at+52);
+  e7(p.geometry.at(-1)).forEach((v,j)=>b.writeInt32LE(v,at+36+4*j));b.writeUInt16LE(Math.round(p.targetBearing*100)%36000,at+44);b.writeInt16LE(Math.round(Math.sin(p.targetBearing*Math.PI/180)*1e4),at+56);b.writeInt16LE(Math.round(Math.cos(p.targetBearing*Math.PI/180)*1e4),at+58);b.writeUInt16LE(1,at+46);b.writeUInt32LE(i+1,at+48);
+  let cumulative=0;gs.forEach((refsOfSegment,j)=>{const sat=segAt+16*j;b.writeUInt32LE(r,sat);b.writeUInt16LE(refsOfSegment.length,sat+4);b.writeUInt32LE(cumulative,sat+8);b.writeUInt32LE(lengths[j],sat+12);cumulative+=lengths[j];for(const k of refsOfSegment){b.writeUInt16LE(k,r);r+=2;}});
+  l=pointAt;
   for(const point of p.geometry){e7(point).forEach((v,j)=>b.writeInt32LE(v,l+4*j));l+=8;}
- });b.writeUInt32LE(crc32(b),12);return b;
+ });
+ b.writeUInt32LE(crc32(b),12);return b;
 }
 export function decodeRecoveryPackage(input,expected={}){
- const b=Buffer.from(input);if(b.length<160||b.length>65536||b.toString('ascii',0,4)!=='CCRP'||b.readUInt16LE(4)!==1||b.readUInt16LE(6)!==1||b.readUInt32LE(8)!==b.length)throw Error('Package header');
+ const b=Buffer.from(input);if(b.length<160||b.length>65536||b.toString('ascii',0,4)!=='CCRP'||b.readUInt16LE(4)!==RCP.version||b.readUInt16LE(6)!==1||b.readUInt32LE(8)!==b.length)throw Error('Package header');
  if(crc32(b)!==b.readUInt32LE(12))throw Error('Package CRC');
  for(const [i,k] of ['routeSha256','sourceSha256','policySha256'].entries())if(expected[k]&&b.subarray(16+32*i,48+32*i).toString('hex')!==expected[k])throw Error('Package identity');
- const entryMin=b.readUInt32LE(112),entryMax=b.readUInt32LE(116),n=b.readUInt16LE(120),guardAt=b.readUInt32LE(128),legAt=b.readUInt32LE(132),portals=[];
- if(entryMax<=entryMin||n>64||b.readUInt16LE(122)!==512||b.readUInt32LE(124)!==160||guardAt!==160+64*n||legAt<guardAt||legAt>b.length)throw Error('Package offsets');
- let g=guardAt,l=legAt;
- for(let i=0;i<n;i++){const at=160+64*i,points=b.readUInt16LE(at+20),guardCount=b.readUInt16LE(at+22);
-  if(points<2||points>512||guardCount>32704||b.readUInt32LE(at+52)!==l||b.readUInt32LE(at+16)!==l+16*(points-1)||b.readUInt32LE(at+24)!==g||l+points*8+16*(points-1)>b.length||g+guardCount*16>legAt)throw Error('Portal bounds');
-  portals.push({points,guardCount,targetVisit:b.readUInt32LE(at+28),distanceCm:b.readUInt32LE(at+32),legOffset:l+16*(points-1),guardOffset:g});g+=guardCount*16;l+=points*8+16*(points-1);
- }if(g!==legAt||l!==b.length)throw Error('Package layout');return {entryMin,entryMax,portals,experimental:true};
+ const entryMin=b.readUInt32LE(112),entryMax=b.readUInt32LE(116),n=b.readUInt16LE(120),guardAt=b.readUInt32LE(128),legAt=b.readUInt32LE(132),G=b.readUInt32LE(152),portals=[];
+ if(entryMax<=entryMin||n>64||b.readUInt16LE(122)!==512||b.readUInt32LE(124)!==160||guardAt!==160+64*n||G>RCP.maxTable||b.readUInt32LE(156)!==0)throw Error('Package offsets');
+ const refsAt=guardAt+16*G;if(refsAt>legAt||legAt>b.length)throw Error('Package offsets');
+ let l=legAt,r=refsAt;
+ for(let i=0;i<n;i++){const at=160+64*i,points=b.readUInt16LE(at+20),refCount=b.readUInt16LE(at+22),segAt=b.readUInt32LE(at+52);
+  if(points<2||points>512||b.readUInt32LE(at+16)!==l+16*(points-1)||segAt!==l||l+points*8+16*(points-1)>b.length||b.readUInt32LE(at+24)!==r)throw Error('Portal bounds');
+  const start=r;
+  for(let j=0;j<points-1;j++){const s=segAt+16*j,cnt=b.readUInt16LE(s+4);if(b.readUInt32LE(s)!==r||b.readUInt16LE(s+6)||cnt>RCP.maxGuards||r+2*cnt>legAt)throw Error('Portal bounds');
+   for(let k=0;k<cnt;k++){if(b.readUInt16LE(r)>=G)throw Error('Guard reference');r+=2;}}
+  if(r-start!==2*refCount)throw Error('Portal bounds');
+  portals.push({points,guardCount:refCount,targetVisit:b.readUInt32LE(at+28),distanceCm:b.readUInt32LE(at+32),legOffset:l+16*(points-1),guardOffset:start});
+  l+=points*8+16*(points-1);
+ }
+ if(r!==legAt||l!==b.length)throw Error('Package layout');
+ return {entryMin,entryMax,portals,experimental:true,guardTable:G};
 }
 function intersects(a,b,c,d){const cross=(a,b,c)=>(b[1]-a[1])*(c[0]-a[0])-(b[0]-a[0])*(c[1]-a[1]);return cross(a,b,c)*cross(a,b,d)<=0&&cross(c,d,a)*cross(c,d,b)<=0&&Math.max(Math.min(a[0],b[0]),Math.min(c[0],d[0]))<=Math.min(Math.max(a[0],b[0]),Math.max(c[0],d[0]))&&Math.max(Math.min(a[1],b[1]),Math.min(c[1],d[1]))<=Math.min(Math.max(a[1],b[1]),Math.max(c[1],d[1]));}
 export function portalGuards(index,segment){

@@ -2,11 +2,13 @@
 #define UNKNOWN 0xffffffffu
 #define MAX_SEGMENTS 1024u
 #define MAX_GUARDS 256u
+#define MAX_TABLE 4096u
 struct rc_engine {
     rc_reader reader;void *ctx;uint32_t size,epoch;uint8_t identities[96],row[64];
     uint32_t entry_min,entry_max,entry_cm,entry_at,last_now,last_join_fix,joined,active_row,active_seg,last_along;
     uint32_t reads,guard_checks,state,reason;int32_t center[2],projected[2];
     float scale[2];uint16_t portals;uint8_t experimental,mounted,entry_valid,active,have_time,invalid_session,overlay,episode,have_target;
+    uint32_t guard_at,guards;
 };
 _Static_assert(sizeof(rc_engine)<=512,"bounded caller-owned recovery state");
 static uint32_t u32(const void *p){const uint8_t *b=p;return b[0]|((uint32_t)b[1]<<8)|((uint32_t)b[2]<<16)|((uint32_t)b[3]<<24);}
@@ -16,8 +18,17 @@ static float f32(const void *p){union {uint32_t u;float f;} v={.u=u32(p)};return
 static float absf(float x){return x<0?-x:x;}
 static int validf(float x){union {float f;uint32_t u;} v={.f=x};return (v.u&0x7f800000u)!=0x7f800000u;}
 static float root(float x){if(x<=0)return 0;union {float f;uint32_t u;}v={.f=x};v.u=0x1fbd1df5+(v.u>>1);float r=v.f;for(unsigned i=0;i<5;i++)r=.5f*(r+x/r);return r;}
-static float sine(float x){while(x>3.14159266f)x-=6.28318531f;while(x< -3.14159266f)x+=6.28318531f;float s=x*x;return x*(1-s*(1.0f/6-s*(1.0f/120-s*(1.0f/5040-s*(1.0f/362880-s/39916800)))));}
-static int read_at(rc_engine *e,uint32_t off,void *dst,uint32_t n){e->reads++;return e->reader&&off<=e->size&&n<=e->size-off&&e->reader(e->ctx,off,dst,n);}
+#ifdef RC_HOST_STATS
+#define RC_COUNT_READ(e) ((e)->reads++)
+#define RC_RESET_READS(e) ((e)->reads=0)
+#define RC_REPORT_READS(e,o) ((o)->reads=(e)->reads)
+#else
+#define RC_COUNT_READ(e) ((void)0)
+#define RC_RESET_READS(e) ((void)0)
+#define RC_REPORT_READS(e,o) ((void)0)
+#endif
+static int16_t i16(const void *p){return (int16_t)u16(p);}
+static int read_at(rc_engine *e,uint32_t off,void *dst,uint32_t n){RC_COUNT_READ(e);return e->reader&&off<=e->size&&n<=e->size-off&&e->reader(e->ctx,off,dst,n);}
 static int coord(rc_engine *e,const uint8_t *p){int32_t lat=i32(p),lon=i32(p+4);return lat>=-850000000&&lat<=850000000&&lon>=-1800000000&&lon<=1800000000&&absf((float)((int64_t)lat-e->center[0])*e->scale[1])<=5000000&&absf((float)((int64_t)lon-e->center[1])*e->scale[0])<=5000000;}
 static void xy(rc_engine *e,const uint8_t *p,float *x,float *y){*x=(float)((int64_t)i32(p+4)-e->center[1])*e->scale[0];*y=(float)((int64_t)i32(p)-e->center[0])*e->scale[1];}
 static void clear_active(rc_engine *e){e->active=0;e->overlay=0;e->joined=0;}
@@ -25,55 +36,59 @@ size_t rc_size(void){return sizeof(rc_engine);}
 void rc_init(rc_engine *e,const uint8_t ids[96],uint32_t epoch,int experimental){uint8_t *b=(uint8_t *)e;for(size_t i=0;i<sizeof(*e);i++)b[i]=0;for(unsigned i=0;i<96;i++)e->identities[i]=ids[i];e->epoch=epoch;e->experimental=experimental!=0;}
 void rc_unmount(rc_engine *e){clear_active(e);e->mounted=0;e->reader=0;e->ctx=0;e->size=0;}
 int rc_mount(rc_engine *e,rc_reader reader,void *ctx,uint32_t size){
-    uint8_t h[160],row[64],s[16],p[16],chunk[32];clear_active(e);e->mounted=0;e->reader=reader;e->ctx=ctx;e->size=size;e->reason=RC_BYTES;
+    uint8_t h[160],row[64],s[16],p[16],chunk[32],q[2];clear_active(e);e->mounted=0;e->reader=reader;e->ctx=ctx;e->size=size;e->reason=RC_BYTES;
     if(size<160||size>65536||!read_at(e,0,h,160))return 0;
-    if(h[0]!='C'||h[1]!='C'||h[2]!='R'||h[3]!='P'||u16(h+4)!=1||u16(h+6)!=1||u32(h+8)!=size)return 0;
+    if(h[0]!='C'||h[1]!='C'||h[2]!='R'||h[3]!='P'||u16(h+4)!=2||u16(h+6)!=1||u32(h+8)!=size)return 0;
     if(!e->experimental){e->reason=RC_DISABLED;return 0;}
     for(unsigned i=0;i<96;i++)if(h[i+16]!=e->identities[i])return 0;
     uint32_t crc=0xffffffffu;for(uint32_t at=0;at<size;at+=32){uint32_t n=size-at;if(n>32)n=32;if(!read_at(e,at,chunk,n))return 0;for(uint32_t j=0;j<n;j++){uint32_t off=at+j;crc^=off>=12&&off<16?0:chunk[j];for(unsigned k=0;k<8;k++)crc=(crc>>1)^((crc&1)?0xedb88320u:0);}}
     if((crc^0xffffffffu)!=u32(h+12))return 0;
     e->entry_min=u32(h+112);e->entry_max=u32(h+116);e->portals=u16(h+120);e->center[0]=i32(h+136);e->center[1]=i32(h+140);e->scale[0]=f32(h+144);e->scale[1]=f32(h+148);
-    if(e->entry_max<=e->entry_min||e->portals>64||u16(h+122)!=512||u32(h+124)!=160||u32(h+128)!=160+64u*e->portals||u32(h+152)||u32(h+156))return 0;
+    if(e->entry_max<=e->entry_min||e->portals>64||u16(h+122)!=512||u32(h+124)!=160||u32(h+156))return 0;
     if(e->center[0]<-850000000||e->center[0]>850000000||e->center[1]<-1800000000||e->center[1]>1800000000||!validf(e->scale[0])||e->scale[0]<.09f||e->scale[0]>1.114f||!validf(e->scale[1])||absf(e->scale[1]-1.1132f)>.0001f)return 0;
-    uint32_t guard=u32(h+128),leg=u32(h+132),segments=0;if(leg<guard||leg>size)return 0;
-    for(unsigned r=0;r<e->portals;r++){
-        if(!read_at(e,160+64*r,row,64))return 0;
-        uint32_t n=u16(row+20),ng=u16(row+22),table=u32(row+52),point=u32(row+16),g0=guard,cum=0;
-        if(n<2||n>512||table!=leg||point!=table+16*(n-1)||point>size||8*n>size-point||u32(row+24)!=guard||u16(row+46)!=1||u32(row+48)!=r+1||u32(row+56)||u32(row+60)||u16(row+44)>=36000)return 0;
+    uint32_t guard=u32(h+128),leg=u32(h+132),table=u32(h+152),segments=0;
+    if(guard!=160+64u*e->portals||table>MAX_TABLE||leg<guard+16*table||leg>size)return 0;
+    e->guard_at=guard;e->guards=table;
+    for(uint32_t g=0;g<table;g++){if(!read_at(e,guard+16*g,p,16)||!coord(e,p)||!coord(e,p+8))return 0;}
+    uint32_t leg0=leg,r=guard+16*table;
+    for(unsigned rw=0;rw<e->portals;rw++){
+        if(!read_at(e,160+64*rw,row,64))return 0;
+        uint32_t n=u16(row+20),nrefs=u16(row+22),table_at=u32(row+52),point=u32(row+16),g0=r,cum=0;
+        if(n<2||n>512||table_at!=leg||point!=table_at+16*(n-1)||point>size||8*n>size-point||u32(row+24)!=r||u16(row+46)!=1||u32(row+48)!=rw+1||i16(row+56)>10000||i16(row+56)<-10000||i16(row+58)>10000||i16(row+58)<-10000||u32(row+60)||u16(row+44)>=36000)return 0;
         if((uint64_t)u32(row+28)<=(uint64_t)e->entry_max+2500||(uint64_t)u32(row+28)>(uint64_t)e->entry_min+300000)return 0;
         segments+=n-1;if(segments>MAX_SEGMENTS)return 0;
         for(uint32_t i=0;i<n-1;i++){
-            if(!read_at(e,table+16*i,s,16)||u32(s)!=guard||u16(s+4)>64||u16(s+6)||u32(s+8)!=cum||!u32(s+12)||u32(s+12)>1500000)return 0;
+            if(!read_at(e,table_at+16*i,s,16)||u32(s)!=r||u16(s+4)>64||u16(s+6)||u32(s+8)!=cum||!u32(s+12)||u32(s+12)>1500000)return 0;
             cum+=u32(s+12);if(cum>1500000)return 0;
-            uint32_t count=u16(s+4);if(guard>u32(h+132)||16*count>u32(h+132)-guard)return 0;
-            for(uint32_t j=0;j<count;j++)if(!read_at(e,guard+16*j,p,16)||!coord(e,p)||!coord(e,p+8))return 0;
-            guard+=16*count;
+            uint32_t count=u16(s+4);if((uint64_t)2*count>(uint64_t)leg0-r)return 0;
+            for(uint32_t j=0;j<count;j++)if(!read_at(e,r+2*j,q,2)||u16(q)>=table)return 0;
+            r+=2*count;
         }
-        if((guard-g0)/16!=ng||cum!=u32(row+32))return 0;
+        if(r-g0!=2*nrefs||cum!=u32(row+32))return 0;
         for(uint32_t i=0;i<n;i++){if(!read_at(e,point+8*i,p,8)||!coord(e,p))return 0;if(i<2)for(unsigned j=0;j<8;j++)if(p[j]!=row[8*i+j])return 0;if(i==n-1)for(unsigned j=0;j<8;j++)if(p[j]!=row[36+j])return 0;}
         leg=point+8*n;
     }
-    if(guard!=u32(h+132)||leg!=size)return 0;
+    if(r!=leg0||leg!=size)return 0;
     e->mounted=1;e->reason=RC_OK;return 1;
 }
 static float projection(rc_engine *e,const uint8_t p[16],float x,float y,float *t,float *dx,float *dy){float ax,ay,bx,by;xy(e,p,&ax,&ay);xy(e,p+8,&bx,&by);*dx=bx-ax;*dy=by-ay;float l=*dx**dx+*dy**dy;*t=l?((x-ax)**dx+(y-ay)**dy)/l:0;if(*t<0)*t=0;if(*t>1)*t=1;return root((x-ax-*t**dx)*(x-ax-*t**dx)+(y-ay-*t**dy)*(y-ay-*t**dy));}
-static void emit(rc_engine *e,rc_output *o){o->state=e->state;o->reason=e->reason;o->suppress_native_cues=e->state!=RC_NORMAL;o->overlay=e->overlay;o->reads=e->reads;o->guard_checks=e->guard_checks;}
+static void emit(rc_engine *e,rc_output *o){o->state=e->state;o->reason=e->reason;o->suppress_native_cues=e->state!=RC_NORMAL;o->overlay=e->overlay;RC_REPORT_READS(e,o);o->guard_checks=e->guard_checks;}
 static void unavailable(rc_engine *e,rc_output *o,uint32_t reason){e->state=RC_UNAVAILABLE;e->reason=reason;e->overlay=0;emit(e,o);}
 void rc_tick(rc_engine *e,const rc_input *in,rc_output *o){
-    uint8_t *ob=(uint8_t *)o;for(size_t i=0;i<sizeof(*o);i++)ob[i]=0;o->distance_cm=UNKNOWN;e->reads=0;e->guard_checks=0;e->overlay=0;
+    uint8_t *ob=(uint8_t *)o;for(size_t i=0;i<sizeof(*o);i++)ob[i]=0;o->distance_cm=UNKNOWN;RC_RESET_READS(e);e->guard_checks=0;e->overlay=0;
     uint32_t elapsed=e->have_time?in->now_ms-e->last_now:0;
     if(e->have_time&&(in->now_ms<=e->last_now||elapsed>5000)){clear_active(e);e->entry_valid=0;}
     e->last_now=in->now_ms;e->have_time=1;
     if(in->epoch!=e->epoch||e->invalid_session){e->invalid_session=1;clear_active(e);e->entry_valid=0;unavailable(e,o,RC_EPOCH);return;}
     if(!(in->flags&RC_GPS_VALID)||!validf(in->accuracy_m)||in->accuracy_m<=0||in->accuracy_m>15||in->lat_e7<-850000000||in->lat_e7>850000000||in->lon_e7<-1800000000||in->lon_e7>1800000000){clear_active(e);e->entry_valid=0;unavailable(e,o,RC_GPS);return;}
     if(in->fix_ms>in->now_ms||in->now_ms-in->fix_ms>3000){clear_active(e);e->entry_valid=0;unavailable(e,o,RC_STALE);return;}
-    int heading=(in->flags&RC_HEADING_VALID)&&validf(in->heading_deg)&&in->heading_deg>=0&&in->heading_deg<360;float hx=0,hy=0;
-    if(heading){float rad=in->heading_deg*.01745329252f;hx=sine(rad);hy=sine(1.57079633f-rad);}
+    int heading=(in->flags&RC_HEADING_VALID)&&validf(in->heading_x)&&validf(in->heading_y);float hx=0,hy=0;
+    if(heading){hx=in->heading_x;hy=in->heading_y;}
     float x=(float)((int64_t)in->lon_e7-e->center[1])*e->scale[0],y=(float)((int64_t)in->lat_e7-e->center[0])*e->scale[1];
     if(!(in->flags&RC_OFF_ROUTE)){
         if(e->active||e->episode){
             float tx,ty;xy(e,e->row+36,&tx,&ty);uint32_t target=u32(e->row+28),delta=in->progress_cm>target?in->progress_cm-target:target-in->progress_cm;
-            float target_rad=u16(e->row+44)*.0001745329252f,dot=hx*sine(target_rad)+hy*sine(1.57079633f-target_rad);
+            float dot=hx*i16(e->row+56)*1e-4f+hy*i16(e->row+58)*1e-4f;
             int target_ok=e->have_target&&heading&&delta<=2000&&root((x-tx)*(x-tx)+(y-ty)*(y-ty))<=2000&&dot>=.7071f;
             /* ORDERED_MATCH is independent near-route/visit proof, not a raw
              * native off-route flag. Permit a verified alternate rejoin. */
@@ -122,7 +137,7 @@ void rc_tick(rc_engine *e,const rc_input *in,rc_output *o){
     }
     for(unsigned j=0;j<u16(seg+4);j++){
         if(e->guard_checks>=MAX_GUARDS){unavailable(e,o,RC_WORK);return;}e->guard_checks++;
-        if(!read_at(e,u32(seg)+16*j,pair,16)){clear_active(e);unavailable(e,o,RC_BYTES);return;}
+        uint8_t q[2];if(!read_at(e,u32(seg)+2*j,q,2)||u16(q)>=e->guards||!read_at(e,e->guard_at+16*u16(q),pair,16)){clear_active(e);unavailable(e,o,RC_BYTES);return;}
         float t,dx,dy,d=projection(e,pair,x,y,&t,&dx,&dy),len=root(dx*dx+dy*dy);
         if(d<=best+500&&(len<1||absf((dx*hx+dy*hy)/len)>=.7071f)){unavailable(e,o,RC_AMBIGUOUS);return;}
     }

@@ -49,7 +49,7 @@ stock V1.414 (ota_0, never written)
 
 ## Unexplained device files
 
-`core.elf` and `coredump-partition.bin` in `.local/navigation-phase/loop-diagnostic-24/session-02/` were written at 22:05 local on 15 Nov. No record explains the write. Find the source before you rely on these files.
+`core.elf` and `coredump-partition.bin` in `.local/navigation-phase/loop-diagnostic-24/session-02/` were written at 22:05 local on 15 Nov. The owner states that a GLM session may have made these changes. They are not device evidence. Do not use them to explain the cc24 crash.
 
 ## Recovery (research)
 
@@ -85,6 +85,6 @@ Command: `python3 -I tools/validate_local.py`. Exit 2 means known gaps remain.
 
 These need the owner's approval before any device action.
 
-1. Find the source of the 22:05 device files.
+1. Confirm with the owner that the 22:05 files came from a GLM session, or find their source.
 2. Choose the next device test. Name its hypothesis first (`AGENTS.md`).
 3. Decide whether to keep the cc22 and cc23 base images under version control (privately). The build tools are already in git.
