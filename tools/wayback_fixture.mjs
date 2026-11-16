@@ -34,3 +34,25 @@ export function gridFixture() {
   const route = [{point: p(-300, 0), progress: 0}, {point: p(300, 0), progress: 60000}];
   return {graph, route, p};
 }
+
+// Route west to east along y = 0, north 420 m, back west along y = 420. The street x = 0 joins the passes.
+export function loopFixture() {
+  const list = [[-300, 0], [0, 0], [2000, 0], [2000, 420], [0, 420], [-300, 420]];   // 0-5 route nodes
+  const links = [[0, 1], [1, 2], [2, 3], [3, 4], [4, 5]];
+  let prev = 1;   // (0,0)
+  for (let y = 50; y <= 400; y += 50) {
+    list.push([0, y]);
+    const id = list.length - 1;
+    links.push([prev, id]);
+    prev = id;
+  }
+  links.push([prev, 4]);   // (0,400) to (0,420)
+  const graph = makeGraph(list, links);
+  const route = [
+    {point: p(-300, 0), progress: 0},
+    {point: p(2000, 0), progress: 230000},
+    {point: p(2000, 420), progress: 272000},
+    {point: p(-300, 420), progress: 502000},
+  ];
+  return {graph, route, p};
+}
