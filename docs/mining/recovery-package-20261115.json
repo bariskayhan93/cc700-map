@@ -1,0 +1,158 @@
+{
+  "scope": "implemented experimental sidecar + portable native C core; no native adapter or device release",
+  "identities": {
+    "routeSha256": "87a8ac2ea0a4a7d599cb1407b1020fddb5c8506367ea712e919a8b6d35032a75",
+    "sourceSha256": "aa99bf500275c99ec801089fddf839507645fedcc49dd90c64b4b37ab046038a",
+    "policySha256": "a903bc28984d846967d11b3c1f22cca7f3abd2bb38f15ac877ea89d264f17b8a"
+  },
+  "packages": [
+    {
+      "entryMin": 75000,
+      "entryMax": 100000,
+      "sourceEdges": 0,
+      "portals": 0,
+      "rejected": {},
+      "bytes": 160,
+      "experimental": true,
+      "coverage": "directed prepared leg segments; original-source guards; selective seeds; ambiguity unavailable",
+      "nativeRouteModified": false,
+      "name": "r0003.rcp",
+      "sha256": "4979a58c0dc180595b4134401bf04e45c73fe39e8478000e81e68d78279ae4f9"
+    },
+    {
+      "entryMin": 825000,
+      "entryMax": 850000,
+      "sourceEdges": 1,
+      "portals": 2,
+      "rejected": {},
+      "bytes": 6120,
+      "experimental": true,
+      "coverage": "directed prepared leg segments; original-source guards; selective seeds; ambiguity unavailable",
+      "nativeRouteModified": false,
+      "name": "r0033.rcp",
+      "sha256": "0d2a951bb3ee86eec3b6aece9e293f4cb4db0fef0ac191fcbcf38a9e998ca3e4"
+    },
+    {
+      "entryMin": 1000000,
+      "entryMax": 1025000,
+      "sourceEdges": 2,
+      "portals": 0,
+      "rejected": {
+        "direction-not-admitted": 4
+      },
+      "bytes": 160,
+      "experimental": true,
+      "coverage": "directed prepared leg segments; original-source guards; selective seeds; ambiguity unavailable",
+      "nativeRouteModified": false,
+      "name": "r0040.rcp",
+      "sha256": "6563ce1f4183d064f9abba907f57da9f7f94c0b93ae916d45d570179e5f22430"
+    },
+    {
+      "entryMin": 1725000,
+      "entryMax": 1750000,
+      "sourceEdges": 8,
+      "portals": 8,
+      "rejected": {
+        "guard-count-limit": 7,
+        "package-admission": 1
+      },
+      "bytes": 64152,
+      "experimental": true,
+      "coverage": "directed prepared leg segments; original-source guards; selective seeds; ambiguity unavailable",
+      "nativeRouteModified": false,
+      "name": "r0069.rcp",
+      "sha256": "fc3f869863c45d94a8e096c0adf1296c500becb7dd0ec93fd0ad6efa0c065734"
+    },
+    {
+      "entryMin": 2175000,
+      "entryMax": 2200000,
+      "sourceEdges": 4,
+      "portals": 0,
+      "rejected": {
+        "guard-count-limit": 8
+      },
+      "bytes": 160,
+      "experimental": true,
+      "coverage": "directed prepared leg segments; original-source guards; selective seeds; ambiguity unavailable",
+      "nativeRouteModified": false,
+      "name": "r0087.rcp",
+      "sha256": "40961c6bf91983886bad8c13c1a619407558882f33a6a7806b7ece6c4d96008f"
+    }
+  ],
+  "totalPackageBytes": 70752,
+  "preparedLegs": 10,
+  "replay": {
+    "scope": "actual C core, historical reconstructed provider, experimental packages",
+    "frames": 4035,
+    "stateCounts": {
+      "1": 710,
+      "3": 521,
+      "0": 2705,
+      "4": 87,
+      "2": 12
+    },
+    "offRouteStateCounts": {
+      "1": 710,
+      "4": 87,
+      "2": 12
+    },
+    "reasonCounts": {
+      "4": 512,
+      "0": 3238,
+      "6": 196,
+      "10": 87,
+      "7": 2
+    },
+    "overlayFrames": 12,
+    "maxOverlayPoints": 12,
+    "packageMounts": 5,
+    "maxReadsPerTick": 108,
+    "maxGuardsPerTick": 10,
+    "engineHostBytes": 280,
+    "assumptions": [
+      "5m GPS accuracy assumed; not present in FIT",
+      "on/off-route and ordered progress reconstructed from prior timeline",
+      "heading/speed reconstructed from previous fixes; no sensor/device emulation",
+      "selective retrospective source seeds; not full coverage"
+    ],
+    "deviceAcceptance": false,
+    "nativeAdapterBound": false
+  },
+  "build": {
+    "kind": "unlinked Xtensa object; not a firmware image",
+    "objectBytes": 5598,
+    "dataBytes": 0,
+    "bssBytes": 0,
+    "mountOwnFrameBytes": 384,
+    "tickOwnFrameBytes": 288,
+    "callerAndCallbackStackUnmeasured": true,
+    "callerOwnedStateCompileTimeCeiling": 512,
+    "hostEngineBytes": 280
+  },
+  "verification": {
+    "nativeTests": 12,
+    "nodeTests": 274,
+    "reviewImportantFixed": 2,
+    "additionalLifecycleRegressions": "clock-gap and verified alternate rejoin",
+    "nativeAdapterBound": false,
+    "deviceWritten": false
+  },
+  "sourceCodeSha256": {
+    "tools/recovery_package.mjs": "7f72e889c6c55bbd7830b01843cce705670aa927922357cd19f33c8bfe8f86b9",
+    "tools/recovery_package_build.mjs": "f1997aeeba0f823f5dbf446193ee18cfcbb5ab107a59bd380675bb921e6db1a1",
+    "tools/recovery_package_replay.py": "23fb37f4509ceaf6d45c9853518bac9061b44aa6562f2ba2ce77d25bfa0d70eb",
+    "tools/recovery_native.py": "718293d81448474e5f68b34e5b07e5515c8daec2ab7b93b7cd4136bbe3c8d6fc",
+    "tools/recovery_host.c": "13bbaed0cb09e3d5f8c402bbca6e5a23c715970883bffb65e0c2e06cb77fe738",
+    "firmware/recovery/recovery.c": "a97f823b7001f5a856408a153404e6420cc99633eb40003044ac8f6c9b8ab6f8",
+    "firmware/recovery/recovery.h": "24143d6bd234e733d01c29185b984d3eb5e2b442f91b141bae183f4cf141076b"
+  },
+  "nativeObjectSha256": "bfde71116e7482ec91f24464996ed129df0f66d482d59b00876e32caff7a41d5",
+  "limitations": [
+    "selective retrospective segment seeds and five historical entry windows",
+    "three windows admit zero legs; guard/byte/source admission remains restrictive",
+    "only12 of809 reconstructed off-route frames show recovery",
+    "GPS accuracy assumed5m; ordered position/speed/course reconstructed",
+    "native provider, file/index/task and UI hooks unbound; cc24 crash gate remains",
+    "no legal cycling, whole-device simulation, target timing or general3km coverage acceptance"
+  ]
+}

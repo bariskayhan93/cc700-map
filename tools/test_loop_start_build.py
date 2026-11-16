@@ -20,12 +20,19 @@ class LoopBuildTests(unittest.TestCase):
             p=subprocess.run([sys.executable,str(ROOT/'tools/loop_start_build.py'),
                               '--output',str(out)],capture_output=True,text=True)
             self.assertEqual(p.returncode,0,p.stderr)
+            # Observed worker budget before the wrapper/retry frames: 3280 B.
+            # Catch stack growth that makes the unchanged 3072 B gate skip there.
+            frames={}
+            for line in (out/'loop-start.elf-loop_start.su').read_text().splitlines():
+                label,size,_=line.split('\t');frames[label.rsplit(':',1)[1]]=int(size)
+            self.assertGreaterEqual(3280-frames['cc_loop_match']-frames['retry_start'],3072,
+                                    'observed worker cannot enter departure retry')
             import loop_start_build as b
             m=json.loads((out/'manifest.json').read_text());base=BASE.read_bytes()
             read=lambda name:(out/name).read_bytes()
             image,receipt=b.build_candidate(base,m['sections'],read)
-            self.assertEqual(image,(out/'ota_1_v23.bin').read_bytes())
-            self.assertEqual(receipt['version'],'CC700_V1.414-cc23')
+            self.assertEqual(image,(out/'ota_1_v24.bin').read_bytes())
+            self.assertEqual(receipt['version'],'CC700_V1.414-cc24')
             self.assertTrue(receipt['structural_roundtrip'])
             self.assertGreater(receipt['page_free_bytes'],4000)
             with self.assertRaisesRegex(ValueError,'exact cc22'):

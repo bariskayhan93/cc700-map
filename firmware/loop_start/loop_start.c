@@ -5,9 +5,13 @@ extern int ls_read_context(void *,ls_context *);
 extern const void *ls_point(void *,unsigned);
 extern uint32_t ls_stack_remaining(void);
 extern uint32_t ls_largest_heap(void);
+extern void *ls_alloc(uint32_t,uint32_t);
+extern void ls_free(void *);
 #else
 #define ls_native ((ls_result *(*)(ls_result *,void *,uint16_t,int,int,const float *,const ls_result *))0x4204b1e0)
 #define ls_point ((const void *(*)(void *,unsigned))0x4204922c)
+#define ls_alloc ((void *(*)(uint32_t,uint32_t))0x403763e0)
+#define ls_free ((void (*)(void *))0x40376398)
 static uint32_t ls_stack_remaining(void) {
     uint32_t sp;__asm__ volatile("mov %0,a1":"=a"(sp));
     uint32_t task=((uint32_t (*)(void))0x403832e0)();
@@ -17,7 +21,7 @@ static uint32_t ls_stack_remaining(void) {
        top-base>65536 || sp<base || sp>top) return 0;
     return sp-base;
 }
-static uint32_t ls_largest_heap(void) {
+static __attribute__((noinline)) uint32_t ls_largest_heap(void) {
     uint32_t h[7];((void (*)(uint32_t *,uint32_t))0x42003b50)(h,0x404);
     return h[2];
 }
@@ -95,16 +99,21 @@ static __attribute__((noinline)) void retry_start(ls_result *out,void *list,cons
     /* A retry uses the same total-sized native allocation even in mode one.
      * Conservative admission only: this is not a measured heap-peak bound. */
     if(ls_largest_heap()<144*s.count+65536) return;
-    ls_result candidate;
-    if(ls_native(&candidate,list,0,(int)begin,1,pos,prev)!=&candidate) return;
-    unsigned selected=word16(&candidate,108),end=begin+10;
+    /* Keep the full native result intact. A short-lived PSRAM candidate avoids
+     * consuming the smaller worker stack; all rejection paths release it. */
+    ls_result *candidate=ls_alloc(sizeof(*candidate),0x404);
+    if(!candidate) return;
+    if(ls_native(candidate,list,0,(int)begin,1,pos,prev)!=candidate) goto release;
+    unsigned selected=word16(candidate,108),end=begin+10;
     if(end>s.count)end=s.count;
-    if(!normal(&candidate) || ((const uint8_t *)&candidate)[144] || selected<begin || selected>=end ||
-       word16(&candidate,134)!=0 || word16(&candidate,40)!=0 || candidate.words[28]>100) return;
+    if(!normal(candidate) || ((const uint8_t *)candidate)[144] || selected<begin || selected>=end ||
+       word16(candidate,134)!=0 || word16(candidate,40)!=0 || candidate->words[28]>100) goto release;
     const void *point=ls_point(list,selected);
     if(!point || word16(point,40)!=0 || word32(point,48)>=2 ||
-       !coordinate(point) || distance(pos,point)>100) return;
-    for(unsigned i=0;i<37;i++)out->words[i]=candidate.words[i];
+       !coordinate(point) || distance(pos,point)>100) goto release;
+    for(unsigned i=0;i<37;i++)out->words[i]=candidate->words[i];
+release:
+    ls_free(candidate);
 }
 ls_result *cc_loop_match(ls_result *out,void *list,uint16_t road,int start,int mode,const float *pos,const ls_result *prev) {
     ls_result *result=ls_native(out,list,road,start,mode,pos,prev);

@@ -1,0 +1,155 @@
+{
+  "scope": "retrospective observed-rejoin structural study",
+  "sourceIntegrity": "pass",
+  "sourceEvidence": {
+    "integrity": "pass",
+    "nodes": 169901,
+    "restrictions": 799,
+    "barrierNodes": 6257,
+    "restrictionHandling": "entire member ways and via nodes quarantined; not a turn-aware planner"
+  },
+  "sourceExclusions": {
+    "reference-only-way": 13,
+    "restriction-member-way-quarantined": 1207,
+    "barrier-or-restriction-node-quarantined": 7207
+  },
+  "graph": {
+    "nodes": 74019,
+    "directedEdges": 137531,
+    "policyExcludedWays": 19921,
+    "issues": 0,
+    "jsonBytes": 15704430
+  },
+  "episodes": [
+    {
+      "index": 0,
+      "status": "recording-gap",
+      "offRouteSamples": 72,
+      "maxOffRouteMeters": 135.71
+    },
+    {
+      "index": 1,
+      "status": "observed-forward-rejoin",
+      "offRouteSamples": 6,
+      "maxOffRouteMeters": 64.44
+    },
+    {
+      "index": 2,
+      "status": "recording-gap",
+      "offRouteSamples": 38,
+      "maxOffRouteMeters": 184.78
+    },
+    {
+      "index": 3,
+      "status": "recording-gap",
+      "offRouteSamples": 94,
+      "maxOffRouteMeters": 239.97
+    }
+  ],
+  "sampledTrials": 30,
+  "results": {
+    "unknown-origin": 8,
+    "candidate": 1,
+    "origin-node-unassociated": 1,
+    "no-forward-target": 15,
+    "observed-forward-rejoin-unavailable": 5
+  },
+  "candidateLegsJsonBytes": 731,
+  "sampling": "off-route >=50 m, one fix per 30 seconds plus maximum deviation; retrospective stable forward rejoin within 30 minutes",
+  "trialsWithRecordingGap": 25,
+  "excludedUniqueAssociationsByCause": {
+    "originAssociation:barrier-or-restriction-node-quarantined": 5,
+    "originAssociation:highway-needs-explicit-bicycle-access": 4,
+    "targetAssociation:barrier-or-restriction-node-quarantined": 1,
+    "targetAssociation:highway-needs-explicit-bicycle-access": 1
+  },
+  "rings": [
+    {
+      "radiusMeters": 1000,
+      "sampledTrials": 30,
+      "results": {
+        "unknown-origin": 8,
+        "candidate": 1,
+        "origin-node-unassociated": 1,
+        "no-forward-target": 15,
+        "observed-forward-rejoin-unavailable": 5
+      }
+    },
+    {
+      "radiusMeters": 2000,
+      "sampledTrials": 30,
+      "results": {
+        "unknown-origin": 8,
+        "candidate": 1,
+        "origin-node-unassociated": 1,
+        "no-forward-target": 15,
+        "observed-forward-rejoin-unavailable": 5
+      }
+    },
+    {
+      "radiusMeters": 3000,
+      "sampledTrials": 30,
+      "results": {
+        "unknown-origin": 8,
+        "candidate": 1,
+        "origin-node-unassociated": 1,
+        "no-forward-target": 15,
+        "observed-forward-rejoin-unavailable": 5
+      }
+    }
+  ],
+  "work": {
+    "maxSettledNodes": 6,
+    "maxRelaxedEdges": 9,
+    "maxQueueEntries": 2
+  },
+  "gaps": [
+    "GPS-to-road connectors and target-to-route connectors unvalidated",
+    "retrospective target uses future ride evidence",
+    "conservative whole-way restriction/barrier quarantine can remove rideable links",
+    "regional cycling access profile unvalidated",
+    "only sampled actual detours; no continuous 1/2/3 km coverage proof",
+    "target memory, codec, draw cost and timing unmeasured"
+  ],
+  "validatedCyclingPaths": 0,
+  "deviceAcceptance": "unvalidated",
+  "inputSha256": {
+    "snapshot": "aa99bf500275c99ec801089fddf839507645fedcc49dd90c64b4b37ab046038a",
+    "track": "8e7fbf3ac22e43f2bd1123781dc568c8d205f9676b22c6bff223661b855062df",
+    "timeline": "73b0c7708328f2ab1361b48eae71fa5f3a6962490a257ef681edc1a0856c9328"
+  },
+  "acquisition": {
+    "origin": "regional-osm-file",
+    "sourceSha256": "a6359554bd2114e293241e82b2a14f569f5d584746f76ae64c8ef27443713d50",
+    "sourceBytes": 217413366,
+    "sourceTimestamp": "2026-11-14T21:20:41Z",
+    "primaryWays": 45470,
+    "ways": 45483,
+    "nodes": 169901,
+    "restrictions": 799,
+    "missingNodes": [],
+    "missingWays": [],
+    "selector": "original-node bbox highway ways; backreferencing restrictions; member ways; referenced nodes",
+    "scope": "regional extract only; reference integrity is not completeness or cycling validation",
+    "status": "selected",
+    "responseBytes": 25283863,
+    "responseSha256": "387a26fe45cf2f5949c257fd39532a23a64be54d2ba0ecaddb8be7b9551a2d4e",
+    "sourceUrl": "https://download.geofabrik.de/europe/germany/nordrhein-westfalen/duesseldorf-regbez-261114.osm.pbf",
+    "upstreamMd5Verified": "4f9b77a05ffd303c47941b6a046da386",
+    "pyosmiumVersion": "4.3.2"
+  },
+  "verification": {
+    "nodeTests": 36,
+    "pythonTests": 5,
+    "review": "two important findings reproduced and fixed; exact selected response reproduced after reviewed re-extraction",
+    "productionChanged": false,
+    "deviceTested": false
+  },
+  "sourceCodeSha256": {
+    "tools/routing_pbf.py": "b38d4de9f05327c2bb6bc0c107ac971133c660fc3d1fed5bd9ec4956b97ee709",
+    "tools/routing_pbf_snapshot.mjs": "ecaa3c4c1b8216958412f1902646ebd6bb63b3b904184014d1c753e2c89a6b3f",
+    "tools/recovery_ride_study.mjs": "45889d78292669762e5d7f392c4da1501acccaae5cd6690a68eebdd7c6ae1c51",
+    "tools/test_routing_pbf.py": "3e93fad22c143067d01b7987342829c464eccc301f4053f4f579a80feda30f43",
+    "tools/test_recovery_ride_study.mjs": "fd9cd4957ba3e87ab018ca0c3ff4c2f50e4bd8c8c3f1c4c2c5f9f833435476c1"
+  }
+}

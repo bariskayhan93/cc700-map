@@ -89,7 +89,7 @@ def verify(image, objdump=None):
                 'matcher':'0x3c3894f0:148 bytes; reads +108:u16, +134:u16, +145..147:u8',
                 'display_point':'0x3fc9fc24:u16','retained_display_point':'0x3fc9fc26:u16',
                 'snapshot_threshold':'0x3c38939c+68:u32',
-                'evidence':'docs/grey-route-state-notes-2026-11-15.md; companion extraction reports',
+                'evidence':'docs/reports/grey-route-state-notes-2026-11-15.md; companion extraction reports',
                 'coherence':'unsynchronized scalar reads; never treat equal repeats as atomic'},
             'clock':{'address':'0x403779f4','abi':'uint64_t (void), windowed Xtensa',
                      'counter':'coherent 52-bit hardware counter shifted right 4; no wall offset',

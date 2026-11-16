@@ -2,11 +2,20 @@
 #include <assert.h>
 #include <math.h>
 #include <string.h>
+#include <stdlib.h>
 typedef struct {float pos[2];uint8_t gap[32];uint16_t road,pad;uint32_t unused,type,tail[2];} point;
 static point points[16];
 static ls_context context;
 static unsigned calls,retry_bad,margin=4096,heap=1000000;
 static int list;
+static unsigned fail_alloc,live_alloc;
+void *ls_alloc(uint32_t size,uint32_t caps) {
+    assert(size==sizeof(ls_result) && caps==0x404 && live_alloc==0);
+    if(fail_alloc)return 0;
+    void *p=malloc(size);assert(p);memset(p,0xa5,size);live_alloc++;return p;
+}
+void ls_free(void *p){assert(p && live_alloc==1);live_alloc--;free(p);}
+
 static uint16_t u16(const ls_result *p,unsigned at){uint16_t v;memcpy(&v,(const uint8_t*)p+at,2);return v;}
 static void set16(ls_result *p,unsigned at,uint16_t v){memcpy((uint8_t*)p+at,&v,2);}
 ls_result *ls_native(ls_result *out,void *l,uint16_t road,int start,int mode,const float *pos,const ls_result *prev) {
@@ -29,6 +38,7 @@ ls_result *ls_native(ls_result *out,void *l,uint16_t road,int start,int mode,con
         if(retry_bad==6)((uint8_t*)out)[144]=1;
         if(retry_bad==7)set16(out,40,112);
         if(retry_bad==8)out->words[28]=101;
+        if(retry_bad==11)return 0;
         if(retry_bad==9 || retry_bad==10){set16(out,108,1);out->words[28]=0;}
     }
     return out;
@@ -38,6 +48,7 @@ const void *ls_point(void *l,unsigned i){assert(l==&list);return i<16?&points[i]
 uint32_t ls_stack_remaining(void){return margin;}
 uint32_t ls_largest_heap(void){return heap;}
 static void setup(void) {
+    assert(live_alloc==0);fail_alloc=0;
     memset(points,0,sizeof(points));memset(&context,0,sizeof(context));
     for(unsigned i=0;i<15;i++) {points[i].pos[0]=51;points[i].pos[1]=7+(float)i*10/70000;}
     points[15].pos[0]=51+55.0f/111195;points[15].pos[1]=7;points[15].road=112;
@@ -47,10 +58,16 @@ static void setup(void) {
 }
 static void run(unsigned expected,unsigned count,uint16_t road,ls_result *previous) {
     ls_result out;assert(cc_loop_match(&out,&list,road,0,0,points[15].pos,previous)==&out);
-    assert(u16(&out,108)==expected);assert(calls==count);
+    assert(u16(&out,108)==expected);assert(calls==count);assert(live_alloc==0);
+    if(expected==15) {
+        ls_result want={0};memcpy(&want,&points[15],60);
+        set16(&want,108,15);set16(&want,134,112);((uint8_t*)&want)[146]=1;
+        assert(memcmp(&out,&want,sizeof(out))==0); /* full normal result survives */
+    }
 }
 int main(void) {
     ls_result previous={0};setup();run(0,2,0,&previous); /* ordinary implementation fails here */
+    setup();fail_alloc=1;run(15,1,0,&previous); /* allocation failure must preserve normal output */
     setup();context.ridden=23000;run(15,1,0,&previous); /* actual return */
     setup();context.ridden=154;run(0,2,0,&previous);
     setup();context.ridden=157;run(15,1,0,&previous);
@@ -69,8 +86,11 @@ int main(void) {
     setup();points[0].type=2;run(15,1,0,&previous);
     setup();points[0].pos[0]+=0.001f;run(15,1,0,&previous);
     setup();margin=1024;run(15,1,0,&previous);
+    setup();margin=3071;run(15,1,0,&previous);
+    setup();margin=3072;run(0,2,0,&previous);
     setup();heap=1000;run(15,1,0,&previous);
     for(unsigned bad=1;bad<=8;bad++){setup();retry_bad=bad;run(15,2,0,&previous);}
+    setup();retry_bad=11;run(15,2,0,&previous); /* unexpected native return also releases candidate */
     setup();retry_bad=9;points[1].pos[0]=52;run(15,2,0,&previous);
     setup();retry_bad=10;points[1].pos[0]=NAN;run(15,2,0,&previous);
     setup();ls_result out;cc_loop_match(&out,&list,0,0,0,points[13].pos,&previous);
