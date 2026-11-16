@@ -110,7 +110,7 @@ def main():
     if 'j\t420496e4' not in tramp_head:raise ValueError('trampoline branch differs')
     tramp=tramp_head.split('420496db:')[0]+tramp_body
     (a.output/'loop-start.dis').write_text(dis+'\n'+tramp_body)
-    for ins in ('entry\ta1, 32','l32i.n\ta9, a1, 32','s32i.n\ta9, a1, 0',
+    for ins in ('entry\ta1, 48','l32i.n\ta9, a1, 48','s32i.n\ta9, a1, 0',
                 'mov.n\ta10, a2','mov.n\ta11, a3','mov.n\ta12, a4','mov.n\ta13, a5',
                 'mov.n\ta14, a6','mov.n\ta15, a7','callx8\ta8','mov.n\ta2, a10','retw.n'):
         if ins not in tramp:raise ValueError('trampoline ABI differs: '+ins)
