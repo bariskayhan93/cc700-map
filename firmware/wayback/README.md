@@ -2,9 +2,10 @@
 
 ## Status
 
-Host only. Nothing is on the device. No adapter to the map patch exists.
-The core is 2,782 B of Xtensa code, for every file. The room is 4,376 B. Before forward mode was added, the core was 2,294 B.
+Nothing is on the device. A test image exists on the host only: `cc23wb1` = installed cc23 plus the adapter `wb_device.c`.
+The core with the adapter is 4,140 B of Xtensa code (core 2,784 B, adapter 1,356 B). The usable room is 4,376 B. 2,004 B stay free in the code page (reserve: 1,768 B).
 The core has no heap, no float and no library call. Its only external call is the reader callback.
+The test image uses tree A values only. The device has no trusted exit km, so forward mode is off.
 
 ## Normal behaviour
 
@@ -48,16 +49,58 @@ When `state` is `WB_NONE`, the device must show the stock off-route display. The
 `wb_unmount` clears the engine. Removing the file restores the stock behaviour.
 The core writes nothing. It changes no stock state.
 
-## Drawing contract (not built)
+## Device adapter (test image, not installed)
 
-The adapter calls `wb_tick` one time for each position. When `changed` is 1, it reads at most 64 points
-with `wb_read_point` into its own buffer. It draws nothing if a read fails. It converts each point
-from E7 to float degrees and gives the list to the firmware projection callback (`0x4204c1bc`),
-which calls `cc_line`. This step is behind the owner gate: the cause of the cc24 map-view restart is not known.
+`wb_device.c` replaces one word: the literal of `tramp_rt` at `0x420496b8` (was `cc_rt`, `0x421dd920`). `wb_rt` calls `cc_rt` first.
+It then works only on the last route call of a frame (part 0) and only while the off-route byte (`0x3c3894f0 + 145`) is set.
+The adapter has no stored state. Each off-route frame does this:
+
+1. Checks the free stack of the task (3,072 B or more), as `loop_start.c` does.
+2. Takes the position through `cc_pos` with a zero-wait navigation lock, as `cc_rt` does.
+3. Finds the path of the first open route file in the open-file table of the firmware (zero-wait lock).
+4. Opens that file a second time for reading. It never moves the position of the firmware's own handle.
+5. Reads the trailer, mounts the data, runs one tick and reads at most 32 points. At most 1,000 file reads for each frame.
+6. Closes the file. Draws the line two times through the projection callback (`0x4204c1bc`): operation 17 (white, 7 px), then 14 (dark purple, 4 px).
+7. Writes the ride distance to the route in metres at the top left of the map, or a code when there is no line.
+
+| Text | Cause |
+|---|---|
+| `123 m` | A line is drawn. The number is the ride distance to the route. |
+| `wb 2` | No position, no route list, or the navigation lock is busy. |
+| `wb 4` | No stored street within 15 m. |
+| `wb 5` | A file read failed, or the 1,000-read limit was reached. |
+| `wb 6` | The open-file table lock is busy. |
+| `wb 7` | No open route file, no way-back data at its end, or the data is refused by `wb_mount`. |
+| `wb 8` | Less than 3,072 B of stack are free. No file call is made. |
+
+**Way-back data in the route file.** `tools/wayback_embed.mjs` appends the way-back file to the route file.
+The route bytes do not change. The last 12 bytes are the trailer: `CCWT`, `u32` offset, `u32` size.
+The identity check of `wb_mount` gets the identity from the data itself. The binding is that the data is inside its route file.
+
+**Firmware functions used** (stock V1.414; each confirmed at two call sites in the image):
+`fopen` `0x421b85b0`, `fclose` `0x421b7de0`, `fseek` `0x421b8848`, `fread` `0x421b8818`,
+open-file table `0x3c380124` (132 B records: handle, name) with count `0x3fc9f5fc` and lock `0x3fc9f600`,
+route file handles `0x3c388418` (6 types). The other addresses are those of the v21 patch (`fw.h`, `blk.c`, `arrow.c`, `map.c`).
+
+**Build.** `python3 -I tools/wayback_device_build.py --output .local/wayback/device`. The builder accepts only the exact cc23 image
+(SHA-256 `6146fb25…`), checks the hook bytes and the called entries, and allows changes only in the hook word, the new tail and the version text.
+It never writes to the device.
+
+**Gaps of the adapter.**
+
+- Not run on the device. File read time, stack use of the firmware file calls and drawing time are not measured.
+- The cause of the cc24 map-view restart is not known. The adapter draws on the same path.
+- The firmware reads the appended route file for the first time in the device test. The effect of the larger file is not known.
+- A fresh mount for each frame has no memory of the last street piece. The line can change between two near pieces.
+- With more than one open route file (after a reroute from the app), the adapter uses the first one.
+- The text position (6, 6) can be under a stock widget. Not checked on the screen.
+- The host tests were written after the adapter code.
 
 ## Files
 
 - `wayback.h`, `wayback.c`: the core.
+- `wb_device.c`, `wb_device.ld`, `wb_tramp.S`: the device adapter. `tools/wayback_device_build.py`: the test image. `tools/wayback_embed.mjs`: way-back data into a route file.
+- `tools/wayback_device_host.c`, `tools/test_wayback_device.mjs`, `tools/test_wayback_device_build.py`: adapter tests on the host.
 - `tools/wayback_host.c`: host command. `tools/wayback_core_host.mjs`: builds it and runs it.
 - `tools/wayback_tree.mjs`: model. `tools/wayback_format.mjs`: file format.
 - `tools/wayback_build.mjs`: private inputs to a file and a size report. `tools/wayback_replay.mjs`: replay on the recorded ride.
