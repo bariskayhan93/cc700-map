@@ -30,7 +30,9 @@ stock V1.414 (ota_0, never written)
 ```
 
 - v18 to v21 rebuild exactly from the private repository `cc700-patch`.
-- cc22 and cc23 start from binary bases in `.local/` (not in git). Their rebuild is not yet checked.
+- **cc22 rebuilds byte for byte** from the v21 image with `tools/guidance_build.py`.
+- **cc23 rebuilds byte for byte** from the cc22 image with `tools/loop_start_build.py` at commit `1c1fa45`. The current HEAD builds the withheld cc24 candidate instead. Use commit `1c1fa45` for cc23.
+- The base images stay in `.local/` and are not in git. Their pinned hashes are in `cc700-patch/builds/chain.json`.
 - The mechanism is explained in `cc700-patch/docs/PATCH_MECHANISM.md`.
 
 ## cc23: known gaps
@@ -83,4 +85,4 @@ These need the owner's approval before any device action.
 
 1. Find the source of the 22:05 device files.
 2. Choose the next device test. Name its hypothesis first (`AGENTS.md`).
-3. Rebuild cc22 and cc23 from their recorded bases.
+3. Decide whether to keep the cc22 and cc23 base images under version control (privately). The build tools are already in git.
