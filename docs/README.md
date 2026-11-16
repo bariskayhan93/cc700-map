@@ -75,6 +75,7 @@ Feasibility studies, firmware extraction notes and design work.
 - [recovery transitions 2026 11 15](research/recovery-transitions-2026-11-15.md): Turn-aware recovery: measured result and next decision.
 - [recovery ordered input 2026 11 16](research/recovery-ordered-input-2026-11-16.md): Why 512 off-route moments had no trusted position, and the host rule that resolves shared streets.
 - [recovery portals 2026 11 16](research/recovery-portals-2026-11-16.md): Why the 10.1 km and 19.9 km detours have few or no legs, the byte cost per guard, and the firmware proposals.
+- [firmware mining 2026 11 16](research/firmware-mining-2026-11-16.md): Code room, dead stock code, the MMU limit, storage trend from saved images, and the crash lead.
 - [regional recovery replay 2026 11 15](research/regional-recovery-replay-2026-11-15.md): Regional source data and the first real-detour replay.
 - [routing snapshot 2026 11 15](research/routing-snapshot-2026-11-15.md): Original routing-source snapshot and its limits.
 - [route association investigation](research/route-association-investigation.md): How route points are matched to map roads.

@@ -40,7 +40,7 @@ it is left out for that block or route, and the report says so.
 | Names per block | 12 names, 384 B packed | 12 of 12 in the measured blocks | The names in use today | **No new names; only better choice and placement** |
 | Turn caption | 63 B UTF-8 | per turn | Turn text | Shared with "gravel ahead" style hints |
 | Route file | 4,000,000 B app guard | 792 KB for 22.6 km (35 KB/km); 308 KB for the 4.2 km city commute (74 KB/km). Map data is 85 to 91% of each file | Navigation and map | 70 km: about 2.4 MB at 35 KB/km, about 5.2 MB at 74 KB/km (estimates). These files predate the adaptive budget, which made one dense file 1.75 times larger (about 125 KB/km). A realistic 70 km ride has city only at the start and end: about 2.8 to 3.4 MB by estimate, so 0.6 to 1.2 MB under the guard |
-| Device storage | 7,987,200 B partition | Free space **not measured** | Rides, logs, routes | Unknown until a read-only check |
+| Device storage | 7,987,200 B partition | 5.6 MB free in the 15 Nov saved image (7.2 MB on 12 Nov), falling about 0.5 MB a day | Rides, logs, routes | Live read-only check still needed |
 | Patch code space | 6,144 B free after cc23 | — | One future stability fix: keep at least **1,768 B**, the size of the largest fix so far (cc23) | **About 4,376 B** |
 | Worker stack | 4,096 B | 2,944 B free at the loop retry, against a 3,072 B guard | Loop start, guidance | **None**: the guard already fails there |
 | Screen | 240 × 320, map 240 × 256 | The progress bar is a thin strip under the map | Map, turn card, data fields | The progress-bar strip only |
