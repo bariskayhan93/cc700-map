@@ -55,7 +55,8 @@ stock V1.414 (ota_0, never written)
 
 - Host only. The C core and the package format exist. Nothing is on the device.
 - In the replay, 12 of 809 off-route frames get a recovery candidate.
-- Most failures come from missing trusted entry points (512 frames). 196 frames lie outside the stored area.
+- The 512 "no trusted position" moments came from streets the loop uses twice (456), recording gaps (50) and the ride start (6).
+- A host rule now finds the trusted position (`research/recovery-ordered-input-2026-11-16.md`). The failures then move to their real causes: no package for the 19.9 km detour (456 moments with stops closed) and positions outside the stored legs (236). Recoveries stay at 12 until portals cover those places.
 - Details: `research/recovery-*.md`.
 
 ## Navigation
