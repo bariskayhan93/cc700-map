@@ -45,7 +45,7 @@ stock V1.414 (ota_0, never written)
 - A diagnostic cc24 build was installed for a short test. Opening the map view restarted the device. The runner restored cc23 and verified it.
 - The backtrace runs `cc_gate`, `cc_iter`, `draw_entry`, `cc_line`, then the native canvas-line routine. This shows where the code was running. It does not show the cause.
 - Open: a bad pointer, a stack overflow, or the candidate's memory use. None is established.
-- An untracked summary from 15 Nov (`docs/progress-and-roadmap-2026-11-15.html`, not in git) says the cause is known and that a cc25 build exists. The records do not support either claim. Do not use that file for decisions.
+- An earlier summary from 15 Nov said the cause is known and that a cc25 build exists. It was removed from this repository because the records do not support either claim. Do not use any copy of it for decisions.
 
 ## Unexplained device files
 
