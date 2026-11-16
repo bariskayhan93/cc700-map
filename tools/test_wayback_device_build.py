@@ -33,10 +33,10 @@ class WaybackDeviceBuildTests(unittest.TestCase):
             self.assertEqual(sorted(delta),['0x3c1e0020','0x42000020'])
             self.assertEqual(delta['0x3c1e0020'],3)
             self.assertIn(delta['0x42000020']-receipt['code_bytes'],(1,2,3,4))
-            # Own stack below the 3,072 B gate, before any firmware file call.
+            # Own stack below the 3,360 B gate, before any firmware file call.
             frames=dict((l.rsplit(' ',1)[0].split('.')[0],int(l.rsplit(' ',1)[1])) for l in r['stack_usage'])
-            own=frames['wb_rt']+frames['wbd_frame']+frames['wbd_run']+frames['wb_tick']+frames['rec_find']+frames['rd']
-            self.assertLessEqual(own,1200)
+            own=frames['wb_rt']+frames['wbd_frame']+frames['wbd_run']+frames['wb_tick']+frames['load_node']+frames['rd']+frames['wbd_read']
+            self.assertLessEqual(own,1488)
             with self.assertRaisesRegex(ValueError,'exact cc23'):
                 b.build_candidate(base[:-1]+bytes([base[-1]^1]),r['sections'],read)
             sections=copy.deepcopy(r['sections']);sections['.text']['address']=hex(0x421de804)

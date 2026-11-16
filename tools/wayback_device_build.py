@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
-"""Build the way-back test image from the exact installed cc23 image; never flash."""
+"""Build the way-back test image from the exact installed cc23 image, or from cc23 with the
+2-byte loop-start trampoline fix (frame 48, see firmware/loop_start/tramp.S); never flash."""
 import argparse
 import hashlib
 import importlib.util
@@ -9,6 +10,7 @@ import subprocess
 
 ROOT=Path(__file__).resolve().parents[1]
 BASE_SHA='6146fb25de504e4aa9684fe519a7ce46a6ce332ae109c698259dc8f00d836b43'
+FIXED_BASE_SHA='d225e17970940be7b153c524aebcfc60f4ca7ae8cd74696ef2282396e461ce04'  # cc23 + trampoline frame 48
 VERSION=b'CC700_V1.414-cc23wb1'
 IROM=0x42000020
 TAIL=0x421de800
@@ -26,7 +28,8 @@ def run(*args):
     return subprocess.run([str(a) for a in args],capture_output=True,text=True,check=True).stdout
 
 def build_candidate(base,sections,fragment_read):
-    if hashlib.sha256(base).hexdigest()!=BASE_SHA:raise ValueError('expected exact cc23 baseline')
+    base_sha=hashlib.sha256(base).hexdigest()
+    if base_sha not in (BASE_SHA,FIXED_BASE_SHA):raise ValueError('expected exact cc23 baseline (or its trampoline fix)')
     if set(sections)!=set(SCOPES):raise ValueError('fragment inventory differs')
     esp=esp_module();header,segs,_=esp.read(base)
     if esp.build(header,segs)!=base:raise ValueError('baseline roundtrip failed')
@@ -37,6 +40,8 @@ def build_candidate(base,sections,fragment_read):
     if IROM+len(irom)!=TAIL:raise ValueError('cc23 tail differs')
     if read(0x420496b8,4).hex()!='20d91d42':raise ValueError('tramp_rt literal drift')
     if read(0x420496b0,3).hex()!='364100' or read(0x420496c7,5).hex()!='e008001df0':raise ValueError('tramp_rt drift')
+    # The loop-start trampoline: frame 32 in cc23, frame 48 in the fixed base. Nothing else may differ.
+    if read(0x420496d8,3).hex()!=('366100' if base_sha==FIXED_BASE_SHA else '364100'):raise ValueError('loop-start trampoline differs from its base')
     for address in CALLED:
         if read(address,1)!=b'\x36':raise ValueError('called function drift: '+hex(address))
     payloads={};spans=[]
@@ -72,7 +77,7 @@ def build_candidate(base,sections,fragment_read):
     image=esp.build(header,segs)
     h,s,_=esp.read(image)
     if len(image)>0x420000 or esp.build(h,s)!=image:raise ValueError('candidate roundtrip failed')
-    return image,{'version':VERSION.decode(),'base_sha256':BASE_SHA,
+    return image,{'version':VERSION.decode(),'base_sha256':base_sha,
         'image_sha256':hashlib.sha256(image).hexdigest(),'image_bytes':len(image),
         'code_bytes':len(payloads['.text']),'usable_bytes':USABLE,
         'page_free_bytes':PAGE_END-IROM-len(irom),'hook_target':hex(literal),
@@ -86,7 +91,7 @@ def main():
     a=p.parse_args();base=a.base.read_bytes()
     a.output.mkdir(parents=True,exist_ok=True);src=ROOT/'firmware/wayback';elf=a.output/'wb-device.elf'
     run(a.prefix+'gcc','-Os','-mlongcalls','-mtext-section-literals','-ffreestanding','-fno-builtin',
-        '-nostdlib','-Wall','-Wextra','-Werror','-fstack-usage','-Wl,-T,'+str(src/'wb_device.ld'),
+        '-nostdlib','-DWB_NO_FWD','-Wall','-Wextra','-Werror','-fstack-usage','-Wl,-T,'+str(src/'wb_device.ld'),
         '-Wl,--gc-sections','-Wl,-e,wb_rt','-o',elf,src/'wb_device.c',src/'wayback.c',src/'wb_tramp.S','-lgcc')
     if run(a.prefix+'nm','-u',elf).strip():raise ValueError('undefined symbols')
     sections={}
