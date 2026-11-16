@@ -1,6 +1,13 @@
 # Recovery portals: the 10.1 km and 19.9 km detours
 
-Status: host analysis and one host reach test. No firmware or device change. Private inputs stay in `.local/`.
+Status: host analysis. No firmware or device change. Private inputs stay in `.local/`.
+
+## Decision (simplest path)
+
+- Keep the current package format and the current bicycle policy. No format change now.
+- A leg never uses a way without bicycle access. If the rider goes onto such a way, the core reports unavailable and ordinary guidance continues. The replay ran 4035 fixes, including 262 such moments, with no error.
+- Not pursued now: shared guard pool, tree of legs, reach field, seed ordering, entry-relative targets. Each would add a format or firmware change for a detour that does not fit yet.
+- Open decision: how packages are limited per route. See "Sizing".
 
 ## Answer
 
@@ -11,7 +18,7 @@ Status: host analysis and one host reach test. No firmware or device change. Pri
 - Guard and byte limits block more legs in the 19.9 km window. Guards take 87% of the package. 223 distinct guards are stored 3,103 times.
 - A shared guard pool saves the most bytes. The estimate is 2.5 to 3.4 times smaller. A tree of legs saves about 7%. The guard pool comes first.
 - A reach of 1 km, 2 km or 3 km gives the same packages on this ride.
-- Full coverage of a 70 km route needs about 10 MB of packages at today's rule. The device storage partition is 7.99 MB. A selection rule or the guard pool is needed first (see "Sizing").
+- Full coverage of a 70 km route needs about 10 MB of packages at today's rule. The device storage partition is 7.99 MB. The open decision is a per-route size rule (see "Sizing").
 
 ## Replay of the window-79 package
 
@@ -80,20 +87,19 @@ The guard pool is the lever. The tree is second.
 ## Reach
 
 - Route metres from the window start to the rejoin, per detour on this ride: 0.92 km (0.85 km detour), 0.23 km (8.28 km), 0.18 km (10.1 km), 1.17 km (19.9 km).
-- Packages at 1 km, 2 km and 3 km reach have the same portals and the same sizes. The chosen targets lie at 20.4 km, within 1 km of the window start. The reach does not bind on this ride.
-- Reducing the reach saves no bytes here. Keep the 3 km limit until a second ride shows a need.
-- The reach is set by `config.reachM` (100 m to 3000 m, default 3000 m). The default output is unchanged.
+- A test at 1 km, 2 km and 3 km reach gave the same packages. The chosen targets lie within 1 km of the window start. The reach does not bind on this ride. The test option was removed. The 3 km limit stays.
 
 ## Blind zone of the target window
 
 A rejoin inside the entry window cannot be a target. The rule admits targets only after the window end. Two of the four detours on this ride rejoin within 250 m of their entry: the 8.28 km and 10.1 km detours. The 8.28 km detour still got 12 recovering frames, on portal 2 of r0033. The 10.1 km detour got none.
 
-## Proposals that need firmware work (none done)
+## Options not pursued (each needs a firmware or format change)
 
-1. **Shared guard pool (format version 2).** Change the guard reads and mount checks in `recovery.c` (lines 46 to 50 and 123 to 125), and the encoder in `recovery_package.mjs` (lines 22 to 28). Estimated saving 2.5 to 3.4 times per package.
-2. **Entry-relative targets.** The core checks the target visit against the window end (`recovery.c` line 43). The generator uses the same bound (`recovery_package.mjs` line 53). The core knows the exact trusted entry at run time. A check against that entry would remove the blind zone. Alternative: finer windows, at the cost of more packages.
-3. **Per-window reach field** in the reserved header bytes 152 and 156. The core rejects both bytes today (`recovery.c` line 36). Not needed on this ride, because reach does not bind. Defer.
-4. **Seed order.** `generateWindow` admits seeds in way-id order (`recovery_package.mjs` line 68). Under the byte limit, that order decides which legs fit. A distance-based order is a host change, but tuning it to one ride would overfit. Defer until the guard pool exists.
+1. **Shared guard pool.** Estimated 2.5 to 3.4 times smaller packages. Changes the guard reads in `recovery.c` (lines 46 to 50 and 123 to 125).
+2. **Entry-relative targets.** Removes the blind zone. Changes the target check in `recovery.c` line 43 and `recovery_package.mjs` line 53.
+3. **Seed order.** Under the byte limit, the way-id order decides which legs fit (`recovery_package.mjs` line 68). Tuning this to one ride would overfit.
+
+Revisit these only if the detour is pursued after the names and elevation work.
 
 ## Sizing for a 70 km ride
 
@@ -110,6 +116,8 @@ A deterministic build covers every 250 m window of the 22.56 km route. Each wind
 | Portals, source edges | 394, 728 |
 | Rejections | direction-not-admitted 288; source-edge-too-short 306; unreachable 120; package-admission 290; guard-count-limit 35; work-limit 7; no-associated-admitted-forward-visit 10; no-forward-window 6 |
 
+- Simplest rule for the open decision: a route gets packages only if their total size fits the free space the device reports. Otherwise the route gets none, and the detour is unavailable on it. Free space is not measured yet.
+- A 22.56 km route needs about 3.3 MB. A 70 km route needs about 10.3 MB.
 - Scaled to 70 km (280 windows), this rule needs about 10.3 MB. The device storage partition is 7,987,200 B (`docs/current/device-storage-access.md`).
 - A shared guard pool would bring that to about 3.1 to 4.2 MB. The ratio comes from one package, r0079. It is an estimate.
 - So packages cannot cover every window of a 70 km route with this rule. The detour feature needs a selection rule, a smaller cap, or the guard pool. This is a decision for the owner.
@@ -133,5 +141,4 @@ node tools/recovery_package_audit.mjs .local/recovery-package-v4-20261116
 node --test tools/test_recovery_package_audit.mjs tools/test_recovery_outside_audit.mjs
 ```
 
-- Reach test: add `"reachM": 1000` (or 2000, 3000) to the config before the build.
 - Deterministic seeds: remove `track` and `timeline` from the config, and set `"windows": [79]`. For every window, remove `windows` too.
