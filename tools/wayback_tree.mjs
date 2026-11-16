@@ -37,7 +37,7 @@ class MinHeap {
 }
 
 // Route samples every `stepM` metres. g = route distance in metres.
-function routeSamples(route, stepM) {
+export function routeSamples(route, stepM) {
   const out = [];
   for (let i = 1; i < route.length; i++) {
     const a = route[i - 1], b = route[i];
