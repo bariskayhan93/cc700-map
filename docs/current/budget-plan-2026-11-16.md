@@ -40,7 +40,7 @@ it is left out for that block or route, and the report says so.
 | Names per block | 12 names, 384 B packed | 12 of 12 in the measured blocks | The names in use today | **No new names; only better choice and placement** |
 | Turn caption | 63 B UTF-8 | per turn | Turn text | Shared with "gravel ahead" style hints |
 | Route file | 4,000,000 B app guard | 792 KB for 22.6 km (35 KB/km); 308 KB for the 4.2 km city commute (74 KB/km). Map data is 85 to 91% of each file | Navigation and map | 70 km: about 2.4 MB at 35 KB/km, about 5.2 MB at 74 KB/km (estimates). These files predate the adaptive budget, which made one dense file 1.75 times larger (about 125 KB/km). A realistic 70 km ride has city only at the start and end: about 2.8 to 3.4 MB by estimate, so 0.6 to 1.2 MB under the guard |
-| Device storage | 7,987,200 B partition | 5.6 MB free in the 15 Nov saved image (7.2 MB on 12 Nov), falling about 0.5 MB a day | Rides, logs, routes | Live read-only check still needed |
+| Device storage | 7,987,200 B partition | 5.58 MB free on 16 Nov (588 of 1,950 blocks used). Growth comes from new route files, not a daily rate | Rides, logs, routes | Live read done 16 Nov |
 | Patch code space | 6,144 B free after cc23 | — | One future stability fix: keep at least **1,768 B**, the size of the largest fix so far (cc23) | **About 4,376 B** |
 | Worker stack | 4,096 B | 2,944 B free at the loop retry, against a 3,072 B guard | Loop start, guidance | **None**: the guard already fails there |
 | Screen | 240 × 320, map 240 × 256 | The progress bar is a thin strip under the map | Map, turn card, data fields | The progress-bar strip only |
@@ -53,11 +53,11 @@ so far, so that the next fix of that kind still fits.
 
 | Goal | Limits it touches | Fits? |
 |---|---|---|
-| 70 km routes | Route file, device storage | Yes for a realistic ride (city only at the start and end): about 2.8 to 3.4 MB by estimate. The offline 70 km probe is synthetic (about 100 KB) and does not show real map size. Measure one real 70 km route on the host, and check the free space on the device. |
+| 70 km routes | Route file, device storage | No. Route file 2.5 MB plus packages 8.6 MB (measured, 123 KB/km) exceed the 5.58 MB free. The largest route that fits is about 35 km. The offline 70 km probe is synthetic (about 100 KB) and does not show real map size. Measure one real 70 km route on the host, and check the free space on the device. |
 | Better street-name positions | Names per block, drawing time | Yes, if the generator chooses which 12 names and where. No new names, no rotated text. |
 | Landmark names | Names per block | Yes, but only by **replacing** a lower-value name in the same block. A rule must rank them. |
 | Elevation graph in the progress bar | Code space, screen, drawing time, a little route data (448 B per profile) | Likely within the 4,376 B, if the drawing code stays small. Waits for the cc24 cause and a mined hook for the stock bar. |
-| Detour | Device storage, code space, stack, drawing time | **Not yet.** The core needs 5,438 B after the v2 format and the trims (5,598 B before). The usable room is 4,376 B, so the core alone does not fit, and the reader, provider and overlay need more. Packages with the guard table (v2) take about 3.3 MB for 70 km (estimate). Needs a decision on the reserve or a second code area, and a storage budget per route. |
+| Detour | Device storage, code space, stack, drawing time | **Not yet.** The core needs 5,438 B after the v2 format and the trims (5,598 B before). The usable room is 4,376 B, so the core alone does not fit, and the reader, provider and overlay need more. Measured full-route v2 packages: 2.80 MB for 22.75 km (123 KB/km), so 70 km is about 8.6 MB. Needs a decision on the reserve or a second code area, and a storage budget per route. |
 
 ## Measurements that close the unknowns
 

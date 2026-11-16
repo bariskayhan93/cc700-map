@@ -14,10 +14,11 @@ export function buildBundle(config){
   const track=JSON.parse(fs.readFileSync(config.track)),timeline=JSON.parse(fs.readFileSync(config.timeline));if(track.length!==timeline.length||track.some((p,i)=>p[0]!==timeline[i].timestamp))throw Error('Track/timeline mismatch');const byTime=new Map(track.map((p,i)=>[p[0],i]));
   for(const c of retrospectiveCases(timeline)){if(!c.entry)continue;const window=Math.floor(c.entry.original_progress_m/250);if(!seeds.has(window))seeds.set(window,new Map());const i=byTime.get(c.sample.timestamp),p=track[i].slice(1),prev=i?track[i-1]:null,heading=prev&&track[i][0]-prev[0]<=10&&hav(prev.slice(1),p)>=5?brg(prev.slice(1),p):null,a=associateSegment(index,p,{heading});if(a.status==='associated')seeds.get(window).set(a.segment.key,a.segment);}
  }else{
+  const seedRadiusM=config.seedRadiusM??3000;if(!(seedRadiusM>0&&seedRadiusM<=3000))throw Error('Seed radius');
   const windows=config.windows??Array.from({length:Math.ceil(route.at(-1).progress/25000)},(_,i)=>i);
   if(windows.length>512||windows.some(w=>!Number.isInteger(w)||w<0||w*25000>=route.at(-1).progress))throw Error('Window admission');
   for(const window of windows){const anchor=route.reduce((a,b)=>Math.abs(a.progress-window*25000)<Math.abs(b.progress-window*25000)?a:b).point;
-   const selected=index.segments.filter(s=>['cycleway','residential','tertiary','secondary','service','unclassified'].includes(s.tags.highway)&&hav(s.a,anchor)<=3000).sort((a,b)=>hav(a.a,anchor)-hav(b.a,anchor)||a.way-b.way||a.index-b.index).slice(0,8);seeds.set(window,new Map(selected.map(s=>[s.key,s])));}
+   const selected=index.segments.filter(s=>['cycleway','residential','tertiary','secondary','service','unclassified'].includes(s.tags.highway)&&hav(s.a,anchor)<=seedRadiusM).sort((a,b)=>hav(a.a,anchor)-hav(b.a,anchor)||a.way-b.way||a.index-b.index).slice(0,8);seeds.set(window,new Map(selected.map(s=>[s.key,s])));}
  }
  const packages=[],receipts=[];
  for(const [window,selected] of [...seeds].sort(([a],[b])=>a-b)){
