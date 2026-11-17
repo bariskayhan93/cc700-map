@@ -68,9 +68,25 @@ test('content within the minimum context is protected even when pruning would fi
  const near=Array.from({length:60},(_,i)=>({kind:1,pts:[p(i,0),p(i,200)]}));
  assert.throws(()=>buildStyledSection(sections(1),{lines:near,opt:options({mapBudget:{projectionCalls:100}})},F),/protected.*projectionCalls/);
 });
-test('dense context reduction preserves near polygon outlines and existing fill geometry',()=>{
+const styleOfEntry=e=>parse(Uint8Array.from(e)).find(f=>f[0]===2)[2];
+const greenOf=r=>decode(r)[0].find(e=>(styleOfEntry(e)&15)===2);
+test('reduced context keeps a fill that is inside the cap unchanged',()=>{
+ const data={green:[[[p(100,0),p(250,0),p(250,200),p(100,200)]]],lines:[{kind:1,pts:[p(340,0),p(340,200)]}],opt:options()};
+ const a=buildStyledSection(sections(1),data,F),b=buildStyledSection(sections(1),{...data,opt:options({mapBudget:{projectionCalls:2}})},F);
+ assert.equal(b.stat.blocks[0].contextRadiusCap,300);
+ assert.deepEqual(greenOf(b),greenOf(a));
+});
+test('reduced context cuts a fill at the cap and the cut fill has no outline',()=>{
  const data={green:[[[p(100,0),p(400,0),p(400,200),p(100,200)]]],lines:[{kind:1,pts:[p(340,0),p(340,200)]}],opt:options()};
  const a=buildStyledSection(sections(1),data,F),b=buildStyledSection(sections(1),{...data,opt:options({mapBudget:{projectionCalls:2}})},F);
- const area=r=>decode(r)[0].find(e=>(parse(Uint8Array.from(e)).find(f=>f[0]===2)[2]&15)===2);
- assert.equal(b.stat.blocks[0].contextRadiusCap,300);assert.deepEqual(area(b),area(a));
+ assert.equal(b.stat.blocks[0].contextRadiusCap,300);
+ assert.equal(styleOfEntry(greenOf(a))&0x400,0);
+ assert.equal(styleOfEntry(greenOf(b))&0x400,0x400);
+ assert.notDeepEqual(greenOf(b),greenOf(a));
+});
+test('a cap of 600 m or more keeps the fill window of today',()=>{
+ const data={green:[[[p(100,0),p(550,0),p(550,200),p(100,200)]]],opt:options()};
+ const r=buildStyledSection(sections(1),data,F);
+ assert(r.stat.blocks[0].contextRadiusCap>=600);
+ assert.equal(styleOfEntry(greenOf(r))&0x400,0);
 });

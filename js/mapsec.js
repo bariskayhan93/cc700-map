@@ -347,9 +347,8 @@ function styledEntries(data, cor, o = {}, coverageFloor = 0, contextRadiusCap = 
   const F = cor.F, out = [], [bx0, by0, bx1, by1] = cor.box;
   const nearBox = (b, m) => !(b[2] < bx0 - m || b[0] > bx1 + m || b[3] < by0 - m || b[1] > by1 + m);
   // areas: built-up, green, water; each [outer, holes...] clipped to the window, holes joined by a doubled edge (even-odd fill)
-  // Keep the baseline area window: tighter clipping suppresses an entire
-  // polygon's outline, including real shoreline edges inside protected context.
-  const areaR = Math.max(AREA_R, Math.min(contextRadiusCap, coverageFloor));
+  // Fills use the 600 m window. A block with a context cap below 600 m cuts its fills at the cap (D1, 18 Nov). A cut ring has no outline (bit 10).
+  const areaR = contextRadiusCap < AREA_R ? contextRadiusCap : Math.max(AREA_R, Math.min(contextRadiusCap, coverageFloor));
   const win = [bx0 - areaR, by0 - areaR, bx1 + areaR, by1 + areaR];
   for (const [cls, list] of [[S.BUILT, data.areas], [S.GREEN, data.green], [S.WATER, data.water]]) for (const A of list || []) {
     if (!nearBox(A.box, areaR)) continue;
