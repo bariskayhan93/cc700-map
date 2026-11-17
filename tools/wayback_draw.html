@@ -1,4 +1,4 @@
-<!doctype html><meta charset="utf-8"><title>Way-back line</title>
+<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Way-back line</title>
 <style>
 body{font:15px/1.45 -apple-system,Helvetica,sans-serif;margin:16px;background:#f4f4f1;color:#222;max-width:1250px}
 h1{font-size:20px;margin:0 0 6px} .row{display:flex;gap:18px;align-items:flex-start;flex-wrap:wrap}
@@ -28,6 +28,7 @@ svg{background:#fff;border:1px solid #bbb;cursor:crosshair;flex:1 1 760px;max-wi
 <li>So the line can start behind the rider. It always goes to the nearest route point by street, not to the route point ahead.</li>
 <li>The arrows on the grey streets are not one-way signs. They show only the stored direction to the route.</li></ul></div>
 <div class="box"><b>No line (white area)</b><ul><li>No stored street within 15 m: yard, field, park, building, bad GPS.</li><li>A street that has no permitted way to the route.</li><li>On the route itself the stock navigation is active and no way-back line is necessary.</li></ul></div>
+<div style="font-size:12px;color:#666">Street data © OpenStreetMap contributors (ODbL).</div>
 </div></div>
 <script>
 /*DATA*/
@@ -52,8 +53,9 @@ const circ=el('circle',{r:240,fill:'none',stroke:'#e8590c','stroke-width':18,'st
 const l1=el('polyline',{fill:'none',stroke:'#fff','stroke-width':150,'stroke-linejoin':'round','stroke-linecap':'round'}),l2=el('polyline',{fill:'none',stroke:'#5b1a8c','stroke-width':90,'stroke-linejoin':'round','stroke-linecap':'round'});
 const rider=el('circle',{r:110,fill:'#e8590c',stroke:'#fff','stroke-width':30,visibility:'hidden'});
 const st=document.getElementById('st'),de=document.getElementById('de');let hold=false;
-function show(ev){const r=m.getBoundingClientRect(),x=(ev.clientX-r.left)/r.width*D.W,y=D.H-(ev.clientY-r.top)/r.height*D.H;
- if(x<0||y<0||x>=D.W||y>=D.H)return;const c=D.grid[Math.floor(y/D.G)*D.cols+Math.floor(x/D.G)];
+function show(ev){const r=m.getBoundingClientRect();at((ev.clientX-r.left)/r.width*D.W,D.H-(ev.clientY-r.top)/r.height*D.H)}
+function at(x,y){
+ if(!(x>=0&&y>=0&&x<D.W&&y<D.H))return;const c=D.grid[Math.floor(y/D.G)*D.cols+Math.floor(x/D.G)];
  rider.setAttribute('cx',x);rider.setAttribute('cy',Y(y));rider.setAttribute('visibility','visible');
  circ.setAttribute('cx',x);circ.setAttribute('cy',Y(y));circ.setAttribute('visibility','visible');
  if(!c){l1.setAttribute('points','');l2.setAttribute('points','');st.className='no';st.textContent='No line';de.textContent='No stored street with a way to the route within 15 m. The unit shows a wb code and the stock arrow.';return}
@@ -61,4 +63,7 @@ function show(ev){const r=m.getBoundingClientRect(),x=(ev.clientX-r.left)/r.widt
  const s=pts.map(p=>p[0]+','+Y(p[1])).join(' ');l1.setAttribute('points',s);l2.setAttribute('points',s);
  st.className='ok';st.textContent='Line: '+c[3]+' m to the route';de.textContent=(k>=0?'The line stops after 32 points. It continues when the rider moves along it.':'The line reaches the route.')+' Points drawn: '+pts.length+'.'}
 m.addEventListener('mousemove',e=>{if(!hold)show(e)});m.addEventListener('click',e=>{hold=!hold;show(e)});
+m.addEventListener('touchmove',e=>{e.preventDefault();hold=true;show(e.touches[0])},{passive:false});
+// #0.4,0.6 in the address holds the rider at that part of the width and height (from the top left).
+if(location.hash){const [fx,fy]=location.hash.slice(1).split(',').map(Number);hold=true;at(fx*D.W,(1-fy)*D.H)}
 </script>

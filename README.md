@@ -1,104 +1,78 @@
 # CC700 Map
 
 This web page makes navigation routes for the GEOID / Magene **CC700** bike computer and sends them over Bluetooth.
-Use it in Chrome on Android. Select a GPX file. The page makes the route file and sends it to the device.
+The CC700 has no map of its own. The page puts OpenStreetMap data into the route file.
 
-## Local development checks
+| | |
+|---|---|
+| **Use the page** | https://bariskayhan93.github.io/cc700-map/ (Chrome on Android) |
+| **Visual guide** | [readme.html](https://bariskayhan93.github.io/cc700-map/readme.html): this README with all diagrams on one page |
+| **Current state** | [docs/STATUS.md](docs/STATUS.md): what is installed, what is verified, what is open |
 
-Run the public app checks with Node.js 22 or newer:
+**Contents:** [1. What you get](#1-what-you-get) · [2. How to use](#2-how-to-use) · [3. Settings](#3-settings) · [4. How it works](#4-how-it-works) · [5. Way-back line (test)](#5-way-back-line-test) · [6. Status and limits](#6-status-and-limits) · [7. Documents](#7-documents) · [8. Development checks](#8-development-checks) · [9. Legal and license](#9-legal-and-license)
 
-```sh
-node --test tools/test_preview.mjs tools/test_preview_guidance.mjs tools/test_route_decisions.mjs tools/test_route_captions.mjs tools/test_navsource.mjs tools/test_service_worker.mjs tools/test_map_style.mjs tools/test_surface.mjs tools/test_map_geometry.mjs tools/test_map_labels.mjs tools/test_map_order.mjs tools/test_map_contract.mjs
-node tools/test_app_offline.mjs
-```
-
-These cover preview/readback, synthetic turn decisions, original OSM source
-preservation, the complete offline module cache, and long-route generation.
-One executed TODO documents a remaining noisy-track false turn. No private ride
-files or device connection are required. See the [app release notes](docs/releases/app-release-2026-11-14.md)
-for changes and remaining limitations. [Browser UI checks and artwork reproduction](docs/releases/current-preview-artwork-2026-11-14.md) are documented separately.
-
-[Project status: findings, shipped changes and next priorities](docs/reports/project-status-2026-11-14.md).
-
-[Connected recovery study: implementation, costs and source gaps](docs/research/recovery-study-2026-11-15.md).
-Development follows the [persistent implementation rules](AGENTS.md).
-[Original routing-source capture and acquisition status](docs/research/routing-snapshot-2026-11-15.md).
-
-## Current preview
-
-The preview follows the supplied CC700 references: a **240 × 320** portrait display,
-a two-row turn card (distance and one caption), circular rider marker, compass,
-100 m scale, distance-to-finish flag, progress strip, Speed and GPS Heading.
-The map retains its **240 × 256** buffer. Fonts, rasterization, route-chevron
-spacing and the lower-panel split remain approximations.
+## 1. What you get
 
 ![Current two-row CC700 preview in three modes plus an OpenStreetMap reference, on the public Düsseldorf Tour D3 river section.](docs/comparison/tourd3-near-turn-current-ui.png)
 
-These are browser-rendered examples from the current page UI on the real public
-[Düsseldorf Tour D3](https://www.duesseldorf.de/radverkehr/fahrradtouren/tour-d)
-(river section). The second to fourth maps are read back from generated route
-files. The three CC700 modes are: the **OnelapFit original** (a reconstruction:
-the thick blue route with small chevrons and uniform ~200 m stubs of every road
-that crosses the route — one size for every road class, no other map; not
-produced by OnelapFit), the **software original junction map** with grey
-built-up rows, striped water and dashed rail (works on unpatched firmware), and
-the **full Sunlight v21 map** (v20 colors with an opaque red route). The fourth
-panel shows the same cached OpenStreetMap data in simplified standard colours
-as a reference. Route line widths follow the device: the red route is an 8 px
-core over a near-black edge; the stock routes are the same thickness class,
-a solid ~6 px blue core with a light casing and small chevrons.
-No private ride coordinates or ride photos are used.
-[Open the interactive app](https://bariskayhan93.github.io/cc700-map/).
+The picture shows the same position on four maps, from left to right:
+
+| Panel | Map | Firmware | Source of the picture |
+|---|---|---|---|
+| 1 | **OnelapFit original**: thick blue route, small chevrons, about 200 m of each road that crosses the route | original | A reconstruction. OnelapFit did not make it. |
+| 2 | **Junction map**: grey built-up rows, striped water, dashed rail | original | Read back from a route file of this page |
+| 3 | **Sunlight v21 map**: coloured map, opaque red route | patched | Read back from a route file of this page |
+| 4 | **OpenStreetMap reference**: the same data in simplified standard colours | none | Reference only |
+
+- The route is the public [Düsseldorf Tour D3](https://www.duesseldorf.de/radverkehr/fahrradtouren/tour-d), river section. No private ride coordinates or ride photos are used.
+- The pictures come from the page preview in a browser. They are not device captures.
+- The preview shows a **240 × 320** display with a **240 × 256** map. Fonts, rasterization, chevron spacing and the lower panel are approximations.
+- Route widths follow the device. The red route is an 8 px core on a near-black edge. The blue route is a 6 px core with a light casing.
+
+### The same four maps along the route
 
 ![Animated Tour D3 river replay with the current two-row card in the schematic, Junction+areas, Sunlight v21 and OpenStreetMap reference views.](docs/comparison/tourd3-current-ui-replay.webp)
 
-The animation advances all four panels through the same on-route positions of
-the public tour. It is an illustration of progress, not a GPS or firmware
-timing simulation. The dense Altstadt part of the tour currently exceeds the
-generator's protected per-block budget and is not shown; the river section
-passes all checks.
+The animation moves all four panels through the same route positions. It shows progress. It is not a GPS or firmware timing simulation.
+The dense Altstadt part of the tour exceeds the protected block budget of the generator and is not shown. The river section passes all checks.
 
-| Current UI example | View |
+| Moment | Picture |
 |---|---|
-| Far from the maneuver: Go straight | [Four panels](docs/comparison/tourd3-far-straight-current-ui.png) |
-| Approaching the 300 m threshold | [Four panels](docs/comparison/tourd3-approaching-turn-current-ui.png) |
+| Far from the turn: go straight | [Four panels](docs/comparison/tourd3-far-straight-current-ui.png) |
+| Near the 300 m threshold | [Four panels](docs/comparison/tourd3-approaching-turn-current-ui.png) |
 | Near the turn | [Four panels](docs/comparison/tourd3-near-turn-current-ui.png) |
 | At the turn | [Four panels](docs/comparison/tourd3-at-turn-current-ui.png) |
-| After the maneuver | [Four panels](docs/comparison/tourd3-after-turn-current-ui.png) |
-| Following street | [Four panels](docs/comparison/tourd3-following-current-ui.png) |
+| After the turn | [Four panels](docs/comparison/tourd3-after-turn-current-ui.png) |
+| On the next street | [Four panels](docs/comparison/tourd3-following-current-ui.png) |
 
 ### Original OnelapFit reference
 
 ![Original user-supplied OnelapFit reference: 150 m, Merrimans Ln, a blue route, circular rider and small pale-grey junction marks.](docs/comparison/onelapfit-user-reference.png)
 
-This supplied image is preserved unchanged and shows **a different route**.
-It includes the turn card and map; its bottom metric panel is outside the
-supplied image. It is a visual reference, separate from the synthetic
-reconstructions above.
+This supplied picture is unchanged and shows **a different route**. It has the turn card and the map, but not the bottom panel.
+It is a visual reference only. The older Tour D3 animation and panels are in the [historical artwork appendix](docs/comparison/historical-tour-d3.md). They use an older UI and palette.
 
-The earlier Tour D3 animation and all six comparison panels are retained in the
-[historical artwork appendix](docs/comparison/historical-tour-d3.md). They use an
-older UI and palette and are not current device captures.
+### What the page adds to a GPX track
 
-See the [ride review](docs/reports/ride-review-2026-11-14.md),
-[display geometry checks](docs/releases/preview-display-geometry-2026-11-14.md),
-[guidance behavior and limits](docs/releases/preview-guidance-2026-11-14.md), and
-[cycling turn/rejoin assessment](docs/research/cycling-turn-practices-2026-11-14.md).
-
-## What the page does
-
-- **Maneuver inference** uses track shape and nearby OpenStreetMap junctions. Noisy or sparse tracks can still produce missed or false prompts.
-- **Geohash-indexed route points** support progress tracking. Native route arbitration and rejoin behavior still have gaps; an index does not guarantee that a prompt advances in every situation.
+- **Turn prompts.** The page finds turns from the track shape and from OpenStreetMap junctions near the track. A noisy or sparse track can still give a missed or false prompt.
 - **One caption row** in the top widget, with a `then left · Street` hint when a second turn comes within 50 m.
-- **A map around the route.** The CC700 has no map of its own. The page puts OpenStreetMap data into the route file.
+- **Geohash-indexed route points** for progress tracking. The native rejoin behaviour still has gaps. The index does not make sure that a prompt advances in every situation.
+- **A map around the route**, stored in the route file.
 
-## CC700 Map settings
+## 2. How to use
 
-The app starts in **Original (Kreuzungskarte)**. Select **Patch v18 / v19 / v20 / v21 (farbige Sunlight-Karte)** only if
-your CC700 has the v18, v19, v20 or v21 patch for firmware V1.414. The preview updates from the generated route file.
-Choose **Abspielen** to replay the route at 1×, 4×, or 8× the speed set in **Einstellungen**.
-The slider lets you move to any point during playback. The ride preview shows the next instruction,
-distance, heading and route progress using the generated route.
+1. Open https://bariskayhan93.github.io/cc700-map/ in Chrome on Android.
+2. Select the firmware that is on your CC700. Open **Einstellungen** to change the optional map layers.
+3. Select a GPX file, or share it to the page from a different app. The page makes the route immediately. For a new region, the page needs internet.
+4. Close OnelapFit, because it holds the Bluetooth connection. Stop the navigation on the CC700.
+5. Push **An CC700 senden**. The route menu of the CC700 shows the GPX name.
+
+Push **Abspielen** to replay the route at 1×, 4× or 8× the speed set in **Einstellungen**. The slider moves to any point of the route.
+
+## 3. Settings
+
+The page starts in **Original (Kreuzungskarte)**. Select **Patch v18 / v19 / v20 / v21 (farbige Sunlight-Karte)** only if your CC700 has that patch for firmware V1.414.
+Select the profile of the firmware that is on your device.
 
 | | Junction map (Original) | Full Sunlight map (Patch) |
 |---|---|---|
@@ -113,82 +87,107 @@ distance, heading and route progress using the generated route.
 | Turn arrow on the map | no | option (off by default), 150 m before the turn |
 | Map when off route or riding backwards | can disappear | can stay visible within the area stored in the route file |
 
-For the patched firmware, these layers are options: street names, traffic signals, tram stops, tram lines, rough
-tracks, footways and paths, park paths and cycle tracks next to streets, separate carriageways, turn arrow.
+Optional layers for the patched firmware: street names, traffic signals, tram stops, tram lines, rough tracks, footways and paths, park paths and cycle tracks next to streets, separate carriageways, turn arrow.
 
-## How to use
+**Map coverage.** The styled map uses separate byte, allocation and drawing-work budgets. Geometry near the route keeps its resolution. A sparse block can hold context up to 1 km. A dense block limits distant lines, down to a minimum of 300 m. Area windows keep at least 600 m. Make the route again to use this. Files that are on the device do not change. Details: [adaptive map budget](docs/research/adaptive-map-budget-2026-11-14.md).
 
-1. Open https://bariskayhan93.github.io/cc700-map/ in Chrome on Android.
-2. Select the firmware installed on your CC700. Open **Einstellungen** to change the optional map layers.
-3. Select a GPX file, or share it to the page from another app. The page makes the route immediately.
-   For a new region, the page needs internet.
-4. Close OnelapFit, because it holds the Bluetooth connection. Stop the navigation on the CC700.
-5. Push "An CC700 senden". The route menu of the CC700 shows the GPX name.
+## 4. How it works
 
-## How it works
+```mermaid
+flowchart LR
+  G[GPX file] --> R[js/route.js<br>sections, turns, names]
+  O[(OpenStreetMap<br>Overpass)] --> M[js/osm.js<br>grid cells, kept 30 days]
+  M --> R
+  M --> S[js/mapsec.js<br>map layer]
+  S --> R
+  R --> F[[Route file<br>nanopb protobuf]]
+  F --> P[js/preview.js<br>preview from the file]
+  F --> B[js/ble.js<br>Bluetooth, CRC-16]
+  B --> D([CC700])
+```
 
 | File | Function |
 |---|---|
 | `js/route.js` | GPX to route file: sections, turns, name images, geohash index, header |
 | `js/osm.js` | OpenStreetMap data from Overpass, one query for each grid cell (about 5.5 km). The phone keeps the cells for 30 days. |
-| `js/mapsec.js` | map layer: connected junction segments (stock) or styled entries (patch) |
+| `js/mapsec.js` | Map layer: connected junction segments (original) or styled entries (patch) |
 | `js/ble.js` | Bluetooth file transfer, CRC-16/XMODEM |
-| `js/preview.js` | preview from the finished file |
-| `tools/test_route.mjs` | makes a route file in Node with the page code |
+| `js/preview.js` | Preview from the finished file |
+| `js/wayback.js` | Optional way-back data (test), see section 5 |
+| `tools/test_route.mjs` | Makes a route file in Node with the page code |
 
-The GPX stays on the phone. The Overpass server sees only the grid cells, not the route.
+- **Privacy.** The GPX stays on the phone. The Overpass server sees only the grid cells, not the route. With the way-back option on, the server also sees one box around the full route.
+- **Format.** The route file is nanopb 0.3 protobuf (firmware 1.414). Name images are LVGL `INDEXED_2BIT`.
+- **Patched firmware.** The v18 to v21 patch changes the map drawing of firmware V1.414. It is not part of this repository. Route files for the patched firmware do not show a usable map on the original firmware.
 
-The route file is nanopb 0.3 protobuf (firmware 1.414). Name images are LVGL `INDEXED_2BIT`.
+## 5. Way-back line (test)
 
-## Patched firmware
+When the rider leaves the route, the original firmware shows only a direct arrow. The way-back test shows a line along the streets to the route.
 
-The v18/v19/v20/v21 patch changes the map drawing of firmware V1.414. It is not part of this repository.
-Route files for the patched firmware do not show a usable map on the original firmware.
+![A part of the public Tour D3 with the stored street points, the rider and the way-back line.](docs/comparison/way-back-demo.svg)
 
-## Legal
+**[Open the interactive drawing](https://bariskayhan93.github.io/cc700-map/docs/way-back-demo.html)**: move the pointer, and the page shows the line for that position. The answers come from the real device code, run on a PC for each 4 m square.
 
-- This is an unofficial and independent project, for interoperability with a device that you own. Magene, GEOID
-  and Onelap do not support or approve it. Product names only identify the device.
-- The page contains no firmware, app code, icons, fonts or map data from the manufacturer. The file format and the
-  Bluetooth protocol come from the owner's own device and its traffic. The only copied bytes are format constants
-  in the route header template (`js/route.js`).
+| Step | Where | What occurs |
+|---|---|---|
+| 1 | Page or PC | For each street point within 2 km of the route, calculate the shortest permitted street way to the route. Each point stores only its next point and its distance. |
+| 2 | Device | Find the stored street piece nearest to the rider. It must be within 15 m. |
+| 3 | Device | Start the line at the nearest point on that piece. Go from point to next point until the route. |
+
+- The heading and the speed of the rider have no effect. The line goes to the nearest route point by street. This point can be behind the rider.
+- No stored street within 15 m (yard, field, building, bad GPS): no line. The original arrow stays.
+- The page option is **Rückweg-Linie (Test)**. The default is off, and the route file is then unchanged. Only the way-back test firmware reads the data.
+- **This is a test.** The test image is on one device. No ride result exists. A long route is not measured.
+
+Details: [firmware/wayback/README.md](firmware/wayback/README.md) (behaviour, admission, fallback, restoration) and the [design study](docs/research/way-back-tree-2026-11-16.md).
+
+## 6. Status and limits
+
+The full record is [docs/STATUS.md](docs/STATUS.md). Summary of 17 Nov 2026:
+
+| Item | State |
+|---|---|
+| Page with junction map and Sunlight map | Deployed |
+| Map patch v18 to v21 | Each version rebuilds exactly. The sources are in a private repository. |
+| cc22 and cc23 guidance firmware | Rebuild byte for byte. cc23 has an open gap: after a restart, a stationary route still shows grey. |
+| cc24 diagnostic | Not installed. It was rejected after a restart in the map view. The cause is not established. |
+| Way-back line | Test image on the test device. No ride result. |
+| Recovery packages (routing from up to 3 km) | Host research only. Not on the device. |
+| Turns on noisy or sparse tracks | Some cases still fail. |
+
+## 7. Documents
+
+Start with [docs/README.md](docs/README.md). It lists each document with one line.
+
+| Topic | Read this |
+|---|---|
+| **Rules** | [Implementation rules](AGENTS.md) · [research focus](docs/current/research-focus-2026-11-15.md) · [map reliability contract](docs/current/map-reliability-contract.md) |
+| **Page releases** | [App release](docs/releases/app-release-2026-11-14.md) · [rendering release (v19)](docs/releases/rendering-release-2026-11-14.md) · [v20 water and cycleway](docs/releases/water-cycleway-v20-2026-11-14.md) · [v21 captions and opaque route](docs/releases/v21-caption-opacity-2026-11-14.md) |
+| **Preview** | [Artwork and browser checks](docs/releases/current-preview-artwork-2026-11-14.md) · [display geometry](docs/releases/preview-display-geometry-2026-11-14.md) · [guidance behaviour and limits](docs/releases/preview-guidance-2026-11-14.md) |
+| **Firmware releases** | [cc22](docs/releases/cc22-release-2026-11-15.md) · [cc23 loop and turn fixes, rejected cc24](docs/releases/loop-and-turn-fixes-2026-11-15.md) |
+| **Reports** | [Project status 14 Nov](docs/reports/project-status-2026-11-14.md) · [ride review](docs/reports/ride-review-2026-11-14.md) · [map evaluation](docs/reports/map-evaluation-report-2026-11-15.md) · [implementation phase](docs/reports/implementation-phase-2026-11-15.md) · [firmware study](docs/reports/firmware-mining-2026-11-13.md) |
+| **Map research** | [Adaptive map budget](docs/research/adaptive-map-budget-2026-11-14.md) · [map limits](docs/current/map-limits.md) · [budget plan](docs/current/budget-plan-2026-11-16.md) |
+| **Turn research** | [Cycling turn and rejoin practices](docs/research/cycling-turn-practices-2026-11-14.md) |
+| **Recovery research** | [Recovery study](docs/research/recovery-study-2026-11-15.md) · [routing source capture](docs/research/routing-snapshot-2026-11-15.md) · [way-back tree](docs/research/way-back-tree-2026-11-16.md) · [way-back plan](docs/current/way-back-tree-plan-2026-11-16.md) |
+
+## 8. Development checks
+
+Run the public page checks with Node.js 22 or newer:
+
+```sh
+node --test tools/test_preview.mjs tools/test_preview_guidance.mjs tools/test_route_decisions.mjs tools/test_route_captions.mjs tools/test_navsource.mjs tools/test_service_worker.mjs tools/test_map_style.mjs tools/test_surface.mjs tools/test_map_geometry.mjs tools/test_map_labels.mjs tools/test_map_order.mjs tools/test_map_contract.mjs tools/test_wayback_page.mjs
+node tools/test_app_offline.mjs
+```
+
+- The checks cover the preview and readback, synthetic turn decisions, the OSM source, the offline module cache, long-route generation and the way-back page path.
+- One executed TODO records a false turn on a noisy track that is still open.
+- No private ride file and no device connection are necessary.
 - Add `?debug` to the page address to see the Bluetooth log.
+
+## 9. Legal and license
+
+- This is an unofficial and independent project, for interoperability with a device that you own. Magene, GEOID and Onelap do not support or approve it. Product names only identify the device.
+- The page contains no firmware, app code, icons, fonts or map data from the manufacturer. The file format and the Bluetooth protocol come from the owner's own device and its traffic. The only copied bytes are format constants in the route header template (`js/route.js`).
 - Use it at your own risk. A bad route file can stop the navigation. Then delete the route or send a new one.
-
-## License
-
-- Code: MIT, see `LICENSE`.
-- Map data: © OpenStreetMap contributors, Open Database License 1.0 (https://www.openstreetmap.org/copyright).
-  A route file from this page contains OpenStreetMap data. Keep the attribution "© OpenStreetMap contributors"
-  when you share it. The pictures in `docs/` also contain OpenStreetMap data.
-
-See [the rendering release](docs/releases/rendering-release-2026-11-14.md) for v19 fill, label, geometry and style improvements, compatibility, tests and remaining measurement limits. Select the preview profile matching the firmware actually installed on your device.
-
-The [v21 release](docs/releases/v21-caption-opacity-2026-11-14.md) adds an opaque red route to the [v20 water/cycleway styling](docs/releases/water-cycleway-v20-2026-11-14.md): light-blue waterways and 2 px violet cycleways. Earlier profiles remain selectable.
-
-### Adaptive map coverage
-
-Styled maps now use separate byte, allocation and drawing-work budgets. Nearby
-geometry keeps its resolution; sparse blocks can include context up to 1 km,
-while dense sections explicitly limit distant lines toward a 300 m minimum.
-Area windows retain at least 600 m to preserve boundary styling. Regenerate a
-route to use this; existing device files stay unchanged. See the
-[implementation, costs and validation](docs/research/adaptive-map-budget-2026-11-14.md).
-
-The [reliability evaluation and feature-capability report](docs/reports/map-evaluation-report-2026-11-15.md)
-contains the test matrix, layer-selection experiments, 3 km recovery requirements
-and explicit release gates. Experimental policies run offline and do not change
-the deployed generator default.
-
-[Combined implementation phase](docs/reports/implementation-phase-2026-11-15.md): native
-stale-guidance fix installed as [cc22](docs/releases/cc22-release-2026-11-15.md), guarded stationary collectors, source-junction study,
-resource analysis and explicit remaining bench gates. Experimental turn changes
-are gated; startup measurements do not authorize increased map budgets.
-
-[Loop and turn fixes](docs/releases/loop-and-turn-fixes-2026-11-15.md): cc23 departure
-preference and tested production noise/U-turn corrections. The cc24 diagnostic
-was rejected after a map-view crash; ordinary cc23 was restored and verified.
-Broader historical noisy/sparse acceptance and native visible departure
-confirmation remain open. The [research focus](docs/current/research-focus-2026-11-15.md)
-connects the next coverage study to useful 3 km recovery rather than isolated
-radius expansion.
+- **Code:** MIT, see `LICENSE`.
+- **Map data:** © OpenStreetMap contributors, Open Database License 1.0 (https://www.openstreetmap.org/copyright). A route file from this page contains OpenStreetMap data. Keep the attribution "© OpenStreetMap contributors" when you share it. The pictures in `docs/` also contain OpenStreetMap data.

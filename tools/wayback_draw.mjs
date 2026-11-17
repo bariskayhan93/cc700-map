@@ -2,7 +2,8 @@
 // Draws an 800 m x 600 m part of a route with its stored way-back streets as one interactive page.
 // The pointer is the rider; the line for each 4 m square comes from the real core (tools/wayback_core_host.mjs).
 // Usage: node tools/wayback_draw.mjs <route.bin> <file.ccwb> <out.html> [place 0..1 along the route, default 0.5]
-// The page holds real street geometry. Keep it in .local/ (git ignores it).
+// The page holds real street geometry. Keep a page of a private route in .local/ (git ignores it).
+// docs/way-back-demo.html is this page for a part of the public Duesseldorf Tour D3.
 import fs from 'node:fs';
 import {fileURLToPath} from 'node:url';
 import {decodeWayback} from './wayback_format.mjs';
