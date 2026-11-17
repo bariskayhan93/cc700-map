@@ -26,7 +26,7 @@ The test image is built with `-DWB_NO_FWD`: forward mode is compiled out to stay
 
 - The heading and the speed of the rider have no effect. The line goes by street to the nearest route point, which can be behind the rider. Only forward mode aims at the route ahead, and it is off in the test image.
 - No stored street within 15 m (yard, field, building, bad GPS), or a street with no permitted way to the route: no line. The stock off-route arrow stays.
-- `node tools/wayback_draw.mjs <route.bin> <file.ccwb> <out.html>` makes an interactive page of an 800 m x 600 m part of a route. The pointer is the rider, and the line for each 4 m square comes from the real core. The page holds real street geometry, so keep it in `.local/`.
+- `node tools/wayback_draw.mjs <route.bin> <file.ccwb> <out.html>` makes an interactive page of an 800 m x 600 m part of a route. The pointer is the rider, and the line for each 4 m square comes from the real core. A page of a private route holds real street geometry, so keep it in `.local/`. `docs/way-back-demo.html` is this page for a part of the public Düsseldorf Tour D3, and `tools/wayback_draw_svg.mjs` makes the static picture `docs/comparison/way-back-demo.svg` from it.
 
 ## Page option (test)
 

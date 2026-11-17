@@ -1,0 +1,382 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>CC700 Map: visual guide</title>
+<style>
+:root{--bg:#f6f5f1;--card:#fff;--ink:#1d2329;--mute:#5d6873;--line:#d9d6cd;--blue:#1f6fe0;--red:#c8372d;--green:#2e7d4f;--amber:#b26a00;--purple:#5b1a8c;--soft:#eef3fb;--okbg:#e4f3e9;--openbg:#fdf0d9;--nobg:#fbe6e4}
+@media (prefers-color-scheme:dark){:root{--bg:#15181c;--card:#1e2328;--ink:#e8eaed;--mute:#a0a9b3;--line:#363d45;--blue:#6aa7ff;--red:#ff8076;--green:#6fcf97;--amber:#f0b24a;--purple:#c79bf0;--soft:#232b36;--okbg:#1d3327;--openbg:#3a2f18;--nobg:#3d2523}}
+*{box-sizing:border-box}
+html{scroll-behavior:smooth}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.55 -apple-system,BlinkMacSystemFont,"Segoe UI",Helvetica,Arial,sans-serif}
+a{color:var(--blue)}
+img{max-width:100%;height:auto;display:block;border-radius:8px}
+code{font:13px/1.4 ui-monospace,Menlo,Consolas,monospace;background:var(--soft);padding:1px 5px;border-radius:4px}
+header{padding:28px 16px 8px;max-width:1040px;margin:0 auto}
+h1{font-size:30px;line-height:1.2;margin:0 0 8px}
+.lead{font-size:18px;color:var(--mute);margin:0 0 16px;max-width:60ch}
+.btn{display:inline-block;background:var(--blue);color:#fff;text-decoration:none;font-weight:600;padding:10px 16px;border-radius:8px;margin:0 8px 8px 0}
+.btn.alt{background:none;color:var(--blue);border:1.5px solid var(--blue)}
+nav{position:sticky;top:0;z-index:5;background:var(--bg);border-bottom:1px solid var(--line)}
+nav div{max-width:1040px;margin:0 auto;padding:8px 16px;display:flex;gap:6px;overflow-x:auto;white-space:nowrap}
+nav a{font-size:14px;text-decoration:none;color:var(--ink);background:var(--card);border:1px solid var(--line);border-radius:999px;padding:4px 12px}
+main{max-width:1040px;margin:0 auto;padding:0 16px 48px}
+section{padding-top:36px}
+h2{font-size:23px;margin:0 0 4px;display:flex;align-items:center;gap:10px}
+h2 b{flex:none;width:32px;height:32px;border-radius:50%;background:var(--blue);color:#fff;font-size:16px;display:grid;place-items:center}
+h3{font-size:17px;margin:22px 0 8px}
+.sub{color:var(--mute);margin:0 0 14px}
+.card{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:16px;margin:12px 0}
+.grid{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(220px,1fr))}
+.grid .card{margin:0}
+.card h4{margin:0 0 6px;font-size:16px}
+.card p{margin:0;color:var(--mute);font-size:15px}
+figure{margin:12px 0}
+figcaption{font-size:14px;color:var(--mute);margin-top:6px}
+ul{padding-left:20px;margin:8px 0}
+li{margin:4px 0}
+.tw{overflow-x:auto}
+table{border-collapse:collapse;width:100%;font-size:15px;background:var(--card);border-radius:12px}
+th,td{text-align:left;padding:8px 10px;border-bottom:1px solid var(--line);vertical-align:top}
+th{font-size:13px;text-transform:uppercase;letter-spacing:.04em;color:var(--mute)}
+tr:last-child td{border-bottom:0}
+.sw{display:inline-block;width:26px;height:8px;border-radius:4px;vertical-align:middle;margin-right:6px}
+/* flow */
+.flow{display:flex;flex-wrap:wrap;gap:8px;align-items:stretch}
+.flow>div{flex:1 1 150px;background:var(--card);border:1.5px solid var(--line);border-radius:10px;padding:10px 12px;position:relative}
+.flow>div b{display:block;font-size:15px}
+.flow>div span{font-size:13px;color:var(--mute)}
+.flow>div.in{border-color:var(--amber)}
+.flow>div.out{border-color:var(--green)}
+.flow>div.key{border-color:var(--blue);background:var(--soft)}
+.flow>i{flex:none;align-self:center;font-style:normal;color:var(--mute);font-size:20px}
+/* steps */
+.steps{counter-reset:s;list-style:none;padding:0;margin:12px 0;display:grid;gap:10px}
+.steps li{counter-increment:s;background:var(--card);border:1px solid var(--line);border-radius:10px;padding:12px 14px 12px 54px;position:relative;margin:0}
+.steps li:before{content:counter(s);position:absolute;left:14px;top:12px;width:28px;height:28px;border-radius:50%;background:var(--soft);color:var(--blue);font-weight:700;display:grid;place-items:center}
+/* bars */
+.bar{margin:10px 0}
+.bar label{display:flex;justify-content:space-between;font-size:14px;gap:8px}
+.bar label span{color:var(--mute)}
+.bar div{height:14px;border-radius:7px;background:var(--soft);overflow:hidden;margin-top:4px}
+.bar div i{display:block;height:100%;border-radius:7px;background:var(--blue)}
+.bar.r i{background:var(--red)}.bar.g i{background:var(--green)}.bar.p i{background:var(--purple)}
+/* layout strip */
+.strip{display:flex;border-radius:8px;overflow:hidden;border:1.5px solid var(--line);font-size:13px;text-align:center;margin:8px 0}
+.strip div{padding:10px 6px;border-right:1.5px solid var(--line);background:var(--card);min-width:0}
+.strip div:last-child{border-right:0}
+.strip b{display:block;font-size:14px}
+.strip .w{background:var(--soft)}
+/* chain */
+.chain{display:flex;flex-wrap:wrap;gap:6px;align-items:center;margin:10px 0}
+.chain span{background:var(--card);border:1.5px solid var(--line);border-radius:8px;padding:8px 12px;font-size:14px}
+.chain span small{display:block;color:var(--mute)}
+.chain span.now{border-color:var(--purple);box-shadow:0 0 0 3px color-mix(in srgb,var(--purple) 20%,transparent)}
+.chain span.no{border-style:dashed;opacity:.75}
+.chain i{font-style:normal;color:var(--mute)}
+.tag{display:inline-block;font-size:12px;font-weight:700;border-radius:999px;padding:2px 10px;white-space:nowrap}
+.ok{background:var(--okbg);color:var(--green)}.open{background:var(--openbg);color:var(--amber)}.no{background:var(--nobg);color:var(--red)}
+.note{border-left:4px solid var(--amber);background:var(--openbg);padding:10px 14px;border-radius:0 8px 8px 0;margin:12px 0;font-size:15px}
+.rings{max-width:420px;margin:0 auto}
+footer{max-width:1040px;margin:0 auto;padding:16px;color:var(--mute);font-size:14px;border-top:1px solid var(--line)}
+@media (max-width:560px){h1{font-size:25px}.flow>i{display:none}.strip{flex-direction:column}.strip div{border-right:0;border-bottom:1.5px solid var(--line)}}
+</style>
+</head>
+<body>
+<header>
+  <h1>CC700 Map</h1>
+  <p class="lead">This web page makes navigation routes for the GEOID / Magene CC700 bike computer and sends them over Bluetooth. The CC700 has no map of its own. The page puts OpenStreetMap data into the route file.</p>
+  <a class="btn" href="./">Open the page</a>
+  <a class="btn alt" href="https://github.com/bariskayhan93/cc700-map">Source on GitHub</a>
+</header>
+<nav><div>
+  <a href="#get">1 What you get</a><a href="#use">2 How to use</a><a href="#set">3 Settings</a><a href="#work">4 How it works</a><a href="#wayback">5 Way-back line</a><a href="#status">6 Status</a><a href="#study">7 Firmware study</a><a href="#docs">8 Documents</a><a href="#legal">9 Legal</a>
+</div></nav>
+<main>
+
+<section id="get">
+  <h2><b>1</b>What you get</h2>
+  <p class="sub">The same position on four maps. The route is the public Düsseldorf Tour D3, river section.</p>
+  <figure>
+    <img src="docs/comparison/tourd3-near-turn-current-ui.png" alt="Four map panels at the same position near a turn" width="1116" height="426">
+    <figcaption>Browser pictures from the page preview. They are not device captures. No private ride data is used.</figcaption>
+  </figure>
+  <div class="grid">
+    <div class="card"><h4>1 · OnelapFit original</h4><p>Thick blue route, small chevrons, about 200 m of each road that crosses the route. A reconstruction. OnelapFit did not make it.</p></div>
+    <div class="card"><h4>2 · Junction map</h4><p>Grey built-up rows, striped water, dashed rail. For the original firmware. Read back from a route file.</p></div>
+    <div class="card"><h4>3 · Sunlight v21 map</h4><p>Coloured map with an opaque red route. For the patched firmware. Read back from a route file.</p></div>
+    <div class="card"><h4>4 · OpenStreetMap reference</h4><p>The same map data in simplified standard colours. Reference only.</p></div>
+  </div>
+
+  <h3>The four maps along the route</h3>
+  <figure>
+    <img src="docs/comparison/tourd3-current-ui-replay.webp" alt="Animated replay of the four panels along the river section" loading="lazy">
+    <figcaption>The animation shows progress. It is not a GPS or firmware timing simulation. The dense Altstadt part exceeds the block budget of the generator and is not shown.</figcaption>
+  </figure>
+  <div class="tw"><table>
+    <tr><th>Moment</th><th>Picture</th></tr>
+    <tr><td>Far from the turn: go straight</td><td><a href="docs/comparison/tourd3-far-straight-current-ui.png">Four panels</a></td></tr>
+    <tr><td>Near the 300 m threshold</td><td><a href="docs/comparison/tourd3-approaching-turn-current-ui.png">Four panels</a></td></tr>
+    <tr><td>Near the turn</td><td><a href="docs/comparison/tourd3-near-turn-current-ui.png">Four panels</a></td></tr>
+    <tr><td>At the turn</td><td><a href="docs/comparison/tourd3-at-turn-current-ui.png">Four panels</a></td></tr>
+    <tr><td>After the turn</td><td><a href="docs/comparison/tourd3-after-turn-current-ui.png">Four panels</a></td></tr>
+    <tr><td>On the next street</td><td><a href="docs/comparison/tourd3-following-current-ui.png">Four panels</a></td></tr>
+  </table></div>
+
+  <h3>The display</h3>
+  <div class="grid" style="align-items:center">
+    <svg viewBox="0 0 300 380" role="img" aria-label="Display layout: 240 by 320 pixels with a 240 by 256 map" style="max-width:280px;margin:0 auto;display:block">
+      <rect x="30" y="20" width="240" height="320" rx="10" fill="var(--card)" stroke="var(--ink)" stroke-width="2"/>
+      <rect x="30" y="20" width="240" height="256" rx="10" fill="var(--soft)"/>
+      <rect x="38" y="28" width="224" height="46" rx="6" fill="var(--card)" stroke="var(--line)"/>
+      <text x="48" y="48" font-size="14" font-weight="700" fill="var(--ink)">↰ 150 m</text><text x="48" y="66" font-size="11" fill="var(--mute)">Street name (one caption row)</text>
+      <path d="M150 276V190l40-50V90" fill="none" stroke="var(--red)" stroke-width="7" stroke-linejoin="round"/>
+      <circle cx="150" cy="215" r="9" fill="var(--blue)" stroke="#fff" stroke-width="3"/>
+      <text x="150" y="130" font-size="12" text-anchor="middle" fill="var(--mute)">map 240 × 256</text>
+      <line x1="30" y1="276" x2="270" y2="276" stroke="var(--line)"/>
+      <text x="90" y="304" font-size="11" text-anchor="middle" fill="var(--mute)">Speed</text><text x="210" y="304" font-size="11" text-anchor="middle" fill="var(--mute)">GPS Heading</text>
+      <rect x="38" y="322" width="224" height="6" rx="3" fill="var(--line)"/><rect x="38" y="322" width="90" height="6" rx="3" fill="var(--blue)"/>
+      <text x="150" y="366" font-size="12" text-anchor="middle" fill="var(--mute)">display 240 × 320</text>
+    </svg>
+    <div>
+      <ul>
+        <li>Two-row turn card: the distance and one caption.</li>
+        <li>Circular rider marker, compass, 100 m scale, distance-to-finish flag.</li>
+        <li>Progress strip, Speed and GPS Heading.</li>
+        <li>Fonts, rasterization, chevron spacing and the lower panel are approximations.</li>
+        <li>The red route is an 8 px core on a near-black edge. The blue route is a 6 px core with a light casing.</li>
+      </ul>
+    </div>
+    <figure style="margin:0"><img src="docs/comparison/onelapfit-user-reference.png" alt="Original OnelapFit reference picture" width="234" height="240" style="margin:0 auto">
+      <figcaption>Original OnelapFit reference, unchanged. It shows a different route.</figcaption></figure>
+  </div>
+
+  <h3>What the page adds to a GPX track</h3>
+  <div class="grid">
+    <div class="card"><h4>Turn prompts</h4><p>From the track shape and from OpenStreetMap junctions near the track. A noisy or sparse track can still give a missed or false prompt.</p></div>
+    <div class="card"><h4>One caption row</h4><p>With a <code>then left · Street</code> hint when a second turn comes within 50 m.</p></div>
+    <div class="card"><h4>Indexed route points</h4><p>A geohash index for progress tracking. The native rejoin behaviour still has gaps.</p></div>
+    <div class="card"><h4>A map around the route</h4><p>Stored in the route file.</p></div>
+  </div>
+</section>
+
+<section id="use">
+  <h2><b>2</b>How to use</h2>
+  <ol class="steps">
+    <li>Open <a href="./">the page</a> in Chrome on Android.</li>
+    <li>Select the firmware that is on your CC700. Open <b>Einstellungen</b> to change the optional map layers.</li>
+    <li>Select a GPX file, or share it to the page from a different app. The page makes the route immediately. For a new region, the page needs internet.</li>
+    <li>Close OnelapFit, because it holds the Bluetooth connection. Stop the navigation on the CC700.</li>
+    <li>Push <b>An CC700 senden</b>. The route menu of the CC700 shows the GPX name.</li>
+  </ol>
+  <p class="sub">Push <b>Abspielen</b> to replay the route at 1×, 4× or 8× speed. The slider moves to any point of the route.</p>
+</section>
+
+<section id="set">
+  <h2><b>3</b>Settings</h2>
+  <p class="sub">The page starts in <b>Original (Kreuzungskarte)</b>. Select a <b>Patch</b> profile only if your CC700 has that patch for firmware V1.414.</p>
+  <div class="tw"><table>
+    <tr><th></th><th>Junction map (Original)</th><th>Full Sunlight map (Patch)</th></tr>
+    <tr><td>Map drawing</td><td>connected grey lines with a white core</td><td>coloured map</td></tr>
+    <tr><td>Roads</td><td>widths vary by road class</td><td>main, minor, service, path, cycleway, track</td></tr>
+    <tr><td>Areas</td><td>optional grey built-up areas and striped water</td><td>built-up, green, water, with outlines</td></tr>
+    <tr><td>Rail and tram</td><td>option: long dash</td><td>rail, tram lines, tram stops</td></tr>
+    <tr><td>Bridges, tunnels</td><td>no</td><td>black edge for bridges, dashed edge for tunnels</td></tr>
+    <tr><td>Street names on the map</td><td>no</td><td>yes</td></tr>
+    <tr><td>Traffic signals</td><td>no</td><td>yes</td></tr>
+    <tr><td>Route line</td><td><span class="sw" style="background:var(--blue)"></span>blue</td><td><span class="sw" style="background:var(--red)"></span>red</td></tr>
+    <tr><td>Turn arrow on the map</td><td>no</td><td>option (off by default), 150 m before the turn</td></tr>
+    <tr><td>Map when off route or riding backwards</td><td>can disappear</td><td>can stay visible within the area stored in the route file</td></tr>
+  </table></div>
+  <p class="sub" style="margin-top:10px">Optional layers for the patched firmware: street names, traffic signals, tram stops, tram lines, rough tracks, footways and paths, park paths and cycle tracks next to streets, separate carriageways, turn arrow.</p>
+
+  <h3>How far the stored map reaches</h3>
+  <div class="grid" style="align-items:center">
+    <svg class="rings" viewBox="0 0 420 250" role="img" aria-label="Map reach around the route: 300 metres minimum, 600 metres for areas, 1 kilometre maximum">
+      <rect x="10" y="10" width="400" height="230" rx="14" fill="var(--soft)" stroke="var(--line)"/>
+      <rect x="10" y="56" width="400" height="138" fill="var(--blue)" opacity=".12"/>
+      <rect x="10" y="90" width="400" height="70" fill="var(--blue)" opacity=".2"/>
+      <line x1="10" y1="125" x2="410" y2="125" stroke="var(--red)" stroke-width="6"/>
+      <text x="24" y="118" font-size="13" font-weight="700" fill="var(--ink)">route</text>
+      <text x="396" y="106" font-size="12" text-anchor="end" fill="var(--ink)">300 m: minimum for lines in a dense block</text>
+      <text x="396" y="74" font-size="12" text-anchor="end" fill="var(--ink)">600 m: minimum for area windows</text>
+      <text x="396" y="34" font-size="12" text-anchor="end" fill="var(--ink)">1 km: maximum context in a sparse block</text>
+    </svg>
+    <ul>
+      <li>The styled map has separate budgets for bytes, allocations and drawing work.</li>
+      <li>Geometry near the route keeps its resolution.</li>
+      <li>Make the route again to use this. Files that are on the device do not change.</li>
+      <li>Details: <a href="docs/research/adaptive-map-budget-2026-11-14.md">adaptive map budget</a>, <a href="docs/current/map-limits.md">map limits</a>.</li>
+    </ul>
+  </div>
+</section>
+
+<section id="work">
+  <h2><b>4</b>How it works</h2>
+  <p class="sub">All steps run in the browser on the phone.</p>
+  <div class="flow">
+    <div class="in"><b>GPX file</b><span>stays on the phone</span></div><i>→</i>
+    <div><b>js/route.js</b><span>sections, turns, name images, geohash index</span></div><i>→</i>
+    <div class="key"><b>Route file</b><span>nanopb 0.3 protobuf, firmware 1.414</span></div><i>→</i>
+    <div><b>js/ble.js</b><span>Bluetooth transfer, CRC-16/XMODEM</span></div><i>→</i>
+    <div class="out"><b>CC700</b><span>route menu shows the GPX name</span></div>
+  </div>
+  <div class="flow" style="margin-top:8px">
+    <div class="in"><b>OpenStreetMap</b><span>Overpass server</span></div><i>→</i>
+    <div><b>js/osm.js</b><span>one query for each grid cell (about 5.5 km), kept 30 days</span></div><i>→</i>
+    <div><b>js/mapsec.js</b><span>map layer: junction segments or styled entries</span></div><i>→</i>
+    <div class="key"><b>Route file</b><span>the map is inside the file</span></div><i>→</i>
+    <div><b>js/preview.js</b><span>preview from the finished file</span></div>
+  </div>
+  <div class="grid" style="margin-top:12px">
+    <div class="card"><h4>Privacy</h4><p>The GPX stays on the phone. The Overpass server sees only the grid cells, not the route. With the way-back option on, the server also sees one box around the full route.</p></div>
+    <div class="card"><h4>Patched firmware</h4><p>The v18 to v21 patch changes the map drawing of firmware V1.414. It is not part of this repository. A route file for the patched firmware does not show a usable map on the original firmware.</p></div>
+    <div class="card"><h4>Test in Node</h4><p><code>tools/test_route.mjs</code> makes a route file with the page code. Add <code>?debug</code> to the page address to see the Bluetooth log.</p></div>
+  </div>
+</section>
+
+<section id="wayback">
+  <h2><b>5</b>Way-back line <span class="tag open">test</span></h2>
+  <p class="sub">When the rider leaves the route, the original firmware shows only a direct arrow. The way-back test shows a line along the streets to the route.</p>
+  <figure>
+    <img src="docs/comparison/way-back-demo.svg" alt="A part of the public Tour D3 with stored street points, the rider and the way-back line" loading="lazy">
+    <figcaption>A part of the public Tour D3 (800 m × 600 m). The white area on the left is the river. The line comes from the real device code, run on a PC.</figcaption>
+  </figure>
+  <a class="btn" href="docs/way-back-demo.html">Open the interactive drawing</a>
+  <p class="sub">Move the pointer or your finger. The page shows the line for that position.</p>
+
+  <h3>Three steps</h3>
+  <ol class="steps">
+    <li><b>Page or PC.</b> For each street point within 2 km of the route, calculate the shortest permitted street way to the route. Each point stores only its <i>next point</i> and its distance.</li>
+    <li><b>Device.</b> Find the stored street piece nearest to the rider. It must be within 15 m. The search reads the 3 × 3 cells of 128 m around the rider.</li>
+    <li><b>Device.</b> Start the line at the nearest point on that piece. Go from point to next point until the route. The test image draws the first 32 points and makes the line again on each map frame.</li>
+  </ol>
+
+  <div class="grid">
+    <div class="card"><h4>Does the direction of the rider matter?</h4><p>No. The heading and the speed have no effect. The line goes to the nearest route point by street. This point can be behind the rider.</p></div>
+    <div class="card"><h4>When is there no line?</h4><p>No stored street within 15 m (yard, field, building, bad GPS), or a street with no permitted way to the route. The original arrow stays.</p></div>
+    <div class="card"><h4>How to get the data</h4><p>Page option <b>Rückweg-Linie (Test)</b>. The default is off, and the route file is then unchanged. Only the way-back test firmware reads the data.</p></div>
+  </div>
+
+  <h3>Where the data is</h3>
+  <div class="strip">
+    <div style="flex:3"><b>Route file</b>unchanged bytes</div>
+    <div style="flex:1"><b>Padding</b>to 4,096 B</div>
+    <div class="w" style="flex:3"><b>Way-back data</b>format <code>CCWB</code> v1</div>
+    <div class="w" style="flex:1.4"><b>Trailer</b>12 B: <code>CCWT</code>, offset, size</div>
+  </div>
+  <div class="strip">
+    <div class="w" style="flex:1"><b>Header</b>64 B</div>
+    <div class="w" style="flex:1.5"><b>Cells</b>128 m grid</div>
+    <div class="w" style="flex:3"><b>Street points</b>12 B each: X, Y, next, distance</div>
+    <div class="w" style="flex:1.5"><b>Extra pieces</b></div>
+    <div class="w" style="flex:1.5"><b>Chunk table</b></div>
+  </div>
+  <p class="sub">The original firmware reads only the route file part. The way-back data is after it.</p>
+
+  <h3>Cost on the device</h3>
+  <div class="grid">
+    <div class="card">
+      <h4>File reads for each map frame (PC measurement, median)</h4>
+      <div class="bar r"><label>First test image <span>about 500</span></label><div><i style="width:100%"></i></div></div>
+      <div class="bar g"><label>Block reads (now) <span>about 100 to 130</span></label><div><i style="width:24%"></i></div></div>
+      <p>The first image drew no line: each off-route frame reached the 300 ms limit. The time of one read on the device is not measured.</p>
+    </div>
+    <div class="card">
+      <h4>Code room</h4>
+      <div class="bar p"><label>Used <span>4,284 B of 4,376 B</span></label><div><i style="width:97.9%"></i></div></div>
+      <p>The core has no heap, no float and no library call. The adapter checks for 3,360 B of free stack before it runs. Forward mode is compiled out to stay in the code room.</p>
+    </div>
+  </div>
+  <div class="note"><b>This is a test.</b> The test image is on one device. No ride result exists. A long route is not measured: a 70 km loop can exceed the 600 km² limit of the street request, and the page then writes no way-back data.</div>
+  <p>Details: <a href="firmware/wayback/README.md">firmware/wayback/README.md</a> (behaviour, admission, fallback, restoration) · <a href="docs/research/way-back-tree-2026-11-16.md">design study</a> · <a href="docs/current/way-back-tree-plan-2026-11-16.md">plan</a></p>
+</section>
+
+<section id="status">
+  <h2><b>6</b>Status and limits</h2>
+  <p class="sub">Summary of 17 Nov 2026. The full record is <a href="docs/STATUS.md">docs/STATUS.md</a>.</p>
+  <h3>Firmware chain</h3>
+  <div class="chain">
+    <span>stock V1.414<small>never written</small></span><i>→</i>
+    <span>v21 map patch<small>private repository</small></span><i>→</i>
+    <span>cc22<small>guidance changes</small></span><i>→</i>
+    <span>cc23<small>loop departure fix</small></span><i>→</i>
+    <span class="now">way-back test image<small>on the test device</small></span>
+    <span class="no">cc24 diagnostic<small>rejected, not installed</small></span>
+  </div>
+  <div class="tw"><table>
+    <tr><th>Item</th><th>State</th><th></th></tr>
+    <tr><td>Page with junction map and Sunlight map</td><td>Deployed</td><td><span class="tag ok">done</span></td></tr>
+    <tr><td>Map patch v18 to v21</td><td>Each version rebuilds exactly. The sources are in a private repository.</td><td><span class="tag ok">done</span></td></tr>
+    <tr><td>cc22 and cc23 guidance firmware</td><td>Rebuild byte for byte. cc23 has an open gap: after a restart, a stationary route still shows grey.</td><td><span class="tag open">open gap</span></td></tr>
+    <tr><td>Way-back line</td><td>Test image on the test device. No ride result.</td><td><span class="tag open">test</span></td></tr>
+    <tr><td>Turns on noisy or sparse tracks</td><td>Some cases still fail.</td><td><span class="tag open">open gap</span></td></tr>
+    <tr><td>Recovery packages (routing from up to 3 km)</td><td>Host research only. Not on the device.</td><td><span class="tag no">not on device</span></td></tr>
+    <tr><td>cc24 diagnostic</td><td>Rejected after a restart in the map view. The cause is not established.</td><td><span class="tag no">not installed</span></td></tr>
+  </table></div>
+</section>
+
+<section id="study">
+  <h2><b>7</b>Firmware study</h2>
+  <p class="sub">Diagrams of the original firmware, drawn on 13 and 14 Nov 2026. Later changes are in <a href="docs/STATUS.md">docs/STATUS.md</a>. All 17 diagrams are in <a href="docs/reports/firmware-mining-2026-11-13.md">the firmware study report</a>.</p>
+  <div class="grid" style="grid-template-columns:repeat(auto-fit,minmax(300px,1fr))">
+    <figure class="card"><a href="docs/mining/02-format-schema.svg"><img src="docs/mining/02-format-schema.svg" alt="File schema to decoded map entry" loading="lazy" style="background:#fff"></a><figcaption>Route file schema and the decoded map entry</figcaption></figure>
+    <figure class="card"><a href="docs/mining/01-offroute-flow.svg"><img src="docs/mining/01-offroute-flow.svg" alt="Loaded map data can still be hidden" loading="lazy" style="background:#fff"></a><figcaption>Why loaded map data can still be hidden when off route</figcaption></figure>
+    <figure class="card"><a href="docs/mining/09-offroute-state.svg"><img src="docs/mining/09-offroute-state.svg" alt="Off-route decision and state" loading="lazy" style="background:#fff"></a><figcaption>Off-route is a decision, then a state that stays</figcaption></figure>
+    <figure class="card"><a href="docs/mining/10-rejoin-planning.svg"><img src="docs/mining/10-rejoin-planning.svg" alt="Off-route detection and rejoin planning" loading="lazy" style="background:#fff"></a><figcaption>Off-route detection and rejoin planning are separate</figcaption></figure>
+  </div>
+</section>
+
+<section id="docs">
+  <h2><b>8</b>Documents</h2>
+  <p class="sub"><a href="docs/README.md">docs/README.md</a> lists each document with one line. These are the main ones.</p>
+  <div class="grid">
+    <div class="card"><h4>Rules</h4><ul>
+      <li><a href="AGENTS.md">Implementation rules</a></li>
+      <li><a href="docs/current/research-focus-2026-11-15.md">Research focus</a></li>
+      <li><a href="docs/current/map-reliability-contract.md">Map reliability contract</a></li></ul></div>
+    <div class="card"><h4>Page releases</h4><ul>
+      <li><a href="docs/releases/app-release-2026-11-14.md">App release</a></li>
+      <li><a href="docs/releases/rendering-release-2026-11-14.md">Rendering release (v19)</a></li>
+      <li><a href="docs/releases/water-cycleway-v20-2026-11-14.md">v20 water and cycleway</a></li>
+      <li><a href="docs/releases/v21-caption-opacity-2026-11-14.md">v21 captions and opaque route</a></li></ul></div>
+    <div class="card"><h4>Preview</h4><ul>
+      <li><a href="docs/releases/current-preview-artwork-2026-11-14.md">Artwork and browser checks</a></li>
+      <li><a href="docs/releases/preview-display-geometry-2026-11-14.md">Display geometry</a></li>
+      <li><a href="docs/releases/preview-guidance-2026-11-14.md">Guidance behaviour and limits</a></li>
+      <li><a href="docs/comparison/historical-tour-d3.md">Historical artwork</a></li></ul></div>
+    <div class="card"><h4>Firmware releases</h4><ul>
+      <li><a href="docs/releases/cc22-release-2026-11-15.md">cc22</a></li>
+      <li><a href="docs/releases/loop-and-turn-fixes-2026-11-15.md">cc23 loop and turn fixes, rejected cc24</a></li></ul></div>
+    <div class="card"><h4>Reports</h4><ul>
+      <li><a href="docs/reports/project-status-2026-11-14.md">Project status 14 Nov</a></li>
+      <li><a href="docs/reports/ride-review-2026-11-14.md">Ride review</a></li>
+      <li><a href="docs/reports/map-evaluation-report-2026-11-15.md">Map evaluation</a></li>
+      <li><a href="docs/reports/implementation-phase-2026-11-15.md">Implementation phase</a></li>
+      <li><a href="docs/reports/firmware-mining-2026-11-13.md">Firmware study</a></li></ul></div>
+    <div class="card"><h4>Research</h4><ul>
+      <li><a href="docs/research/adaptive-map-budget-2026-11-14.md">Adaptive map budget</a></li>
+      <li><a href="docs/current/budget-plan-2026-11-16.md">Budget plan</a></li>
+      <li><a href="docs/research/cycling-turn-practices-2026-11-14.md">Cycling turn and rejoin practices</a></li>
+      <li><a href="docs/research/recovery-study-2026-11-15.md">Recovery study</a></li>
+      <li><a href="docs/research/routing-snapshot-2026-11-15.md">Routing source capture</a></li>
+      <li><a href="docs/research/way-back-tree-2026-11-16.md">Way-back tree</a></li></ul></div>
+  </div>
+  <p class="sub" style="margin-top:10px">The documents are Markdown files. On this site they open as plain text. <a href="https://github.com/bariskayhan93/cc700-map/tree/main/docs">GitHub shows them with formatting.</a></p>
+</section>
+
+<section id="legal">
+  <h2><b>9</b>Legal and license</h2>
+  <ul>
+    <li>This is an unofficial and independent project, for interoperability with a device that you own. Magene, GEOID and Onelap do not support or approve it. Product names only identify the device.</li>
+    <li>The page contains no firmware, app code, icons, fonts or map data from the manufacturer. The file format and the Bluetooth protocol come from the owner's own device and its traffic. The only copied bytes are format constants in the route header template (<code>js/route.js</code>).</li>
+    <li>Use it at your own risk. A bad route file can stop the navigation. Then delete the route or send a new one.</li>
+    <li><b>Code:</b> MIT, see <a href="LICENSE">LICENSE</a>.</li>
+    <li><b>Map data:</b> © OpenStreetMap contributors, <a href="https://www.openstreetmap.org/copyright">Open Database License 1.0</a>. A route file from this page contains OpenStreetMap data. Keep the attribution "© OpenStreetMap contributors" when you share it. The pictures in <code>docs/</code> also contain OpenStreetMap data.</li>
+  </ul>
+</section>
+</main>
+<footer>CC700 Map · unofficial project · map data © OpenStreetMap contributors</footer>
+</body>
+</html>
