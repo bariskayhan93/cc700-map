@@ -1,10 +1,11 @@
 # CC700 status
 
-Updated 16 Nov 2026. Times are local (UTC+1) unless marked UTC. The Codex records use UTC.
+Updated 17 Nov 2026. Times are local (UTC+1) unless marked UTC. The Codex records use UTC.
 
 ## Summary
 
-- The device runs **cc23**. A read-only check today matched the install record exactly.
+- The device runs a **way-back test image** since 17 Nov, 00:30: cc23 with the loop-start trampoline fix (2 bytes) and the way-back adapter (`firmware/wayback/README.md`). It shows test codes on the map. No ride result exists yet. The restore step writes cc23 with the trampoline fix.
+- Before that, the device ran **cc23**. A read-only check on 16 Nov matched the install record exactly.
 - cc23 has a known gap. After a restart, a stationary route still shows grey. The fix is not verified.
 - **cc24 is not installed.** A diagnostic build was rejected after a map-view restart. Its cause is not established.
 - Recovery (routing back to the route from up to 3 km away) is host research only. It is not on the device.
