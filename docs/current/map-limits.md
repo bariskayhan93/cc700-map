@@ -43,7 +43,8 @@ files. Exact whole-device frame duration and concurrency remain measurements.
 | Simplification tolerance | 1.5 m for styled line runs | Changes geometric detail and point counts, not just entry counts |
 | Minor/service/paths coverage | 550 / 350 / 300 m | Per-class corridor distance; cycleways 350 m |
 | Major-road coverage | 1,000 m | Can preserve orientation farther away while small paths disappear sooner |
-| Area/rail/tram/waterway coverage | 600 / 450 / 450 / 450 m | Areas also add scanline/pixel work |
+| Area/rail/tram/waterway coverage | 600 / 450 / 450 / 450 m | Areas also add scanline/pixel work. Since 18 Nov a block with a context cap below 600 m cuts its fills at the cap (a cut ring has no outline) |
+| Line chaining (18 Nov) | same style, exact shared end point, at most 60 points | Fewer entries and projection calls; the dash phase runs on across a joint. Results: `docs/research/map-economy-step1-2026-11-18.md` |
 | Labels | 12 per block, at most 23 encoded name bytes | Font rendering has a different cost from road projection |
 | Route file guard | 4,000,000 bytes | Application guard, not a demonstrated reliable device capacity |
 
