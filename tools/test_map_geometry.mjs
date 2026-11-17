@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { frame } from '../js/geo.js';
-import { prepareDisplayLines, clipDisplayLine } from '../js/map_geometry.js';
+import { prepareDisplayLines, clipDisplayLine, chainRuns } from '../js/map_geometry.js';
 const F = frame(0), p = (x, y) => F.g(x, y);
 const line = (xy, extra = {}) => ({kind: 3, name: 'Road', fl: 8, pts: xy.map(([x,y]) => p(x,y)), ...extra});
 const has = (pts, q) => pts.some(v => v[0] === q[0] && v[1] === q[1]);
@@ -77,4 +77,32 @@ test('invalid and degenerate source geometry is rejected without joining over ga
   }
   assert.throws(()=>prepareDisplayLines(null,F),TypeError);
   assert.throws(()=>prepareDisplayLines([],F,{tolerance:-1}),RangeError);
+});
+const K=p=>p.join(',');
+const run=(...xs)=>xs.map(x=>[x,0]);
+test('chainRuns joins two runs that share an end point',()=>{
+ assert.deepEqual(chainRuns([run(0,1),run(1,2)],K,60),[run(0,1,2)]);
+});
+test('chainRuns turns a run around to join it',()=>{
+ assert.deepEqual(chainRuns([run(0,1),run(2,1)],K,60),[run(0,1,2)]);
+});
+test('chainRuns joins at the start of the line',()=>{
+ assert.deepEqual(chainRuns([run(1,2),run(0,1)],K,60),[run(0,1,2)]);
+});
+test('chainRuns never makes a joined run longer than maxPts',()=>{
+ const a=Array.from({length:40},(_,i)=>[i,0]),b=Array.from({length:30},(_,i)=>[39+i,0]);
+ const out=chainRuns([a,b],K,60);
+ assert.equal(out.length,2);assert(out.every(r=>r.length<=60));
+});
+test('chainRuns joins at most two of three runs that meet at one point',()=>{
+ const out=chainRuns([run(0,1),run(1,2),[[1,0],[1,5]]],K,60);
+ assert.equal(out.length,2);assert.deepEqual(out[0],run(0,1,2));
+});
+test('chainRuns stops on a closed loop and keeps every run once',()=>{
+ const out=chainRuns([run(0,1),run(1,2),[[2,0],[0,0]]],K,60);
+ assert.equal(out.length,1);assert.equal(out[0].length,4);
+});
+test('chainRuns does not change its input',()=>{
+ const a=run(0,1),b=run(2,1),copy=structuredClone([a,b]);
+ chainRuns([a,b],K,60);assert.deepEqual([a,b],copy);
 });

@@ -25,3 +25,25 @@ test('a straight road crossing the route stays near even when its endpoints are 
  const lines=model.blocks[0].filter(e=>(e.style&15)===6);
  assert(lines.length>0);assert(lines.every(e=>!(e.style&0x800)));
 });
+test('two minor roads that meet end to end become one entry',()=>{
+ // The block window can mark one side "far" (bit 11); a far and a near piece never join. So the contract is:
+ // in no block do two class-6 entries of the same style share an end point, and some entry runs through the meeting point.
+ const a={kind:3,name:'North',pts:[at(50,-100),at(50,1500)]},b={kind:3,name:'South',pts:[at(50,1500),at(50,3200)]};
+ const key=q=>[Math.round((q[0]-origin[0])*111320),Math.round((q[1]-origin[1])*70000)].join(','),meet=key(at(50,1500));   // whole metres: decoded semicircles are not exact floats
+ let through=0;
+ for(const blk of new Set(make([a,b]).blocks)) {
+  const ends=new Map();
+  for(const e of blk.filter(e=>(e.style&15)===6)) {
+   const pts=[e.center,...e.points];
+   for(const k of [key(pts[0]),key(pts.at(-1))].map(k=>e.style+'|'+k)) {assert(!ends.has(k),'two same-style entries share an end point');ends.set(k,1);}
+   if(pts.slice(1,-1).some(q=>key(q)===meet)) through++;
+  }
+ }
+ assert(through>0,'no entry runs through the meeting point');
+});
+test('a bridge never joins the road before it',()=>{
+ const a={kind:3,name:'Road',pts:[at(50,-100),at(50,1500)]},b={kind:3,name:'Bridge',fl:1,pts:[at(50,1500),at(50,1600)]};
+ const blk=make([a,b]).blocks.find(x=>x.some(e=>(e.style&15)===6 && (e.style&0x80)));
+ const ls=blk.filter(e=>(e.style&15)===6);
+ assert(ls.some(e=>e.style&0x80) && ls.some(e=>!(e.style&0x80)));
+});
