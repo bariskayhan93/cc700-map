@@ -110,6 +110,7 @@ async function build() {
       try {
         const w = await addWayback(r.file);
         if (needsBuild) return;
+        if (w.file.length > 4_000_000) throw new Error('Datei mit Rückweg-Daten zu groß');
         r.file = w.file;
         wayback = ` · Rückweg-Daten ${(w.bytes / 1024).toFixed(0)} KB (${w.reach === 'line2k' ? '2 km' : '1,5 km'})`;
         log(JSON.stringify({wayback: {bytes: w.bytes, reach: w.reach, stats: w.stats}}));

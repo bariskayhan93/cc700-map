@@ -3,7 +3,7 @@
 ## Status
 
 A first test image (`cc23wb1`) was on the device on 16 November 2026. It drew no line: each off-route frame reached the 300 ms limit (`wb5`), because the cell search made about 500 small file reads at the median.
-The core now reads node records in blocks of 16 and filters by distance before it loads a second node. On the host this gives about 100 to 130 reads at the median with identical output. The time of one read on the device is not measured. The new image is not installed.
+The core now reads node records in blocks of 16 and filters by distance before it loads a second node. On the host this gives about 100 to 130 reads at the median with identical output. The time of one read on the device is not measured. This image (`cc23wb1` text, SHA-256 `25877b1b…`, on the cc23 with the trampoline fix) is on the test unit since 17 November 2026, 00:30 local time. No ride result exists yet.
 The core with the adapter is 4,284 B of Xtensa code. The usable room is 4,376 B. 1,860 B stay free in the code page (reserve: 1,768 B).
 The core has no heap, no float and no library call. Its only external call is the reader callback.
 The test image is built with `-DWB_NO_FWD`: forward mode is compiled out to stay inside the code room. The device has no trusted exit km, so it uses tree A values only.
@@ -33,7 +33,7 @@ The test image is built with `-DWB_NO_FWD`: forward mode is compiled out to stay
 The page has the option "Rückweg-Linie (Test)" in the patch settings. The default is off, and the route file is then unchanged.
 With the option on, the page loads the streets in the box of the route plus 2.2 km from Overpass (node ids, way tags, turn restrictions), builds the tree and appends the data after the checked route file.
 
-- The page writes no way-back data when the street data is not complete, when the box exceeds 600 km², or when the data exceeds 1,536 KB at both reaches (2 km, then 1.5 km). The plain route file stays, and the summary line gives the cause.
+- The page writes no way-back data when the street data is not complete, when the box exceeds 600 km², or when the data exceeds 1,536 KB at both reaches (2 km, then 1.5 km), or when the file with the data exceeds the 4,000,000 B limit of the page. The plain route file stays, and the summary line gives the cause.
 - One short route was compared: the page data from Overpass and the host data from the PBF snapshot are byte-identical (210,916 B, 15,982 stored nodes). This is one route on one day.
 - Not measured: a long route. A 70 km loop can exceed the 600 km² box. The load time and memory on a phone are not measured.
 - Only the way-back test firmware reads the data. The effect of the longer file on other firmware is not tested, except that the test unit opened and followed such a route.
@@ -80,7 +80,7 @@ When `state` is `WB_NONE`, the device must show the stock off-route display. The
 `wb_unmount` clears the engine. Removing the file restores the stock behaviour.
 The core writes nothing. It changes no stock state.
 
-## Device adapter (test image, not installed)
+## Device adapter (test image, on the test unit)
 
 `wb_device.c` replaces one word: the literal of `tramp_rt` at `0x420496b8` (was `cc_rt`, `0x421dd920`). `wb_rt` calls `cc_rt` first.
 The map frame (`0x4204da24`) makes one hooked route call for each frame, so the adapter runs one time for each frame.
