@@ -107,3 +107,44 @@ export function clipDisplayLine(line, inside) {
   flush(samples.length-1);
   return runs;
 }
+
+// Join runs that share an exact end point (keyOf equal). Input runs are not changed.
+// Each joined run has at most maxPts points; a longer input run passes unchanged.
+export function chainRuns(runs, keyOf, maxPts) {
+  const used = new Array(runs.length).fill(false), byEnd = new Map();
+  const add = (k, i) => { const list = byEnd.get(k); if (list) list.push(i); else byEnd.set(k, [i]); };
+  runs.forEach((r, i) => {
+    const a = keyOf(r[0]), b = keyOf(r[r.length - 1]);
+    add(a, i);
+    if (b !== a) add(b, i);
+  });
+  // first unused run, in input order, that touches key k and keeps the joined length within maxPts
+  const fit = (k, len) => {
+    for (const j of byEnd.get(k) || []) if (!used[j] && len + runs[j].length - 1 <= maxPts) return j;
+    return -1;
+  };
+  const out = [];
+  for (let i = 0; i < runs.length; i++) {
+    if (used[i]) continue;
+    used[i] = true;
+    let line = runs[i].slice();
+    let j = fit(keyOf(line[line.length - 1]), line.length);
+    while (j >= 0) {
+      used[j] = true;
+      const k = keyOf(line[line.length - 1]);
+      const r = keyOf(runs[j][0]) === k ? runs[j] : runs[j].slice().reverse();
+      for (let s = 1; s < r.length; s++) line.push(r[s]);
+      j = fit(keyOf(line[line.length - 1]), line.length);
+    }
+    j = fit(keyOf(line[0]), line.length);
+    while (j >= 0) {
+      used[j] = true;
+      const k = keyOf(line[0]);
+      const r = keyOf(runs[j][runs[j].length - 1]) === k ? runs[j] : runs[j].slice().reverse();
+      line = r.slice(0, r.length - 1).concat(line);
+      j = fit(keyOf(line[0]), line.length);
+    }
+    out.push(line);
+  }
+  return out;
+}

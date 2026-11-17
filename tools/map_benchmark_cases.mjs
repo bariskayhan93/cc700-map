@@ -12,8 +12,10 @@ export function benchmarkCases(){
  const village=[road('Village road',3,[[0,-100],[0,2000]]),road('Connection',2,[[-300,600],[300,600]]),road('Outer trunk',1,[[850,-100],[850,2000]])];
  const forest=[road('Trail',5,[[0,-100],[0,2000]],64),road('Cycle link',5,[[-250,600],[250,600]],32),road('Fork',5,[[0,600],[180,850]],64)];
  const bridge=[road('Approach',3,[[0,-100],[0,2000]]),road('Cycle bridge',5,[[-250,600],[250,600]],33),road('Tunnel',4,[[120,0],[120,1500]],2)];
- const urban=[];for(let x=-600;x<=600;x+=60)for(let y=-100;y<2000;y+=100)urban.push(road(`North ${x}/${y}`,3,[[x,y],[x,y+100]]));
- for(let y=-100;y<=2000;y+=60)for(let x=-600;x<600;x+=120)urban.push(road(`East ${x}/${y}`,3,[[x,y],[x+120,y]]));
+ // Street class changes at each junction (minor, service, minor ...), as in a real city grid. Same-style
+ // pieces then do not chain into one straight line, and the block keeps its resource pressure.
+ const urban=[];for(let x=-600;x<=600;x+=60)for(let y=-100;y<2000;y+=100)urban.push(road(`North ${x}/${y}`,((y+100)/100)%2?3:4,[[x,y],[x,y+100]]));
+ for(let y=-100;y<=2000;y+=60)for(let x=-600;x<600;x+=120)urban.push(road(`East ${x}/${y}`,((x+600)/120)%2?4:3,[[x,y],[x+120,y]]));
  const mixed=[];for(let x=-250;x<=250;x+=50)mixed.push(road('Urban '+x,3,[[x,-100],[x,1100]]));
  for(let y=0;y<=1000;y+=50)mixed.push(road('Cross '+y,3,[[-400,y],[400,y]]));
  mixed.push(road('Village connector',1,[[700,1000],[700,4000]]),road('Forest link',5,[[0,1000],[0,4000]],32));

@@ -2,7 +2,7 @@
 // Style V4: main roads 3 lines, tertiary and streets 2 lines, service 1 line, paths and tracks light dashes.
 import { fu, fs, fb, u32le, sc, Bytes } from './pb.js';
 import { hav, frame, rdp, sub, offset, lineLen } from './geo.js';
-import { prepareDisplayLines, clipDisplayLine } from './map_geometry.js';
+import { prepareDisplayLines, clipDisplayLine, chainRuns } from './map_geometry.js';
 import { labelName, prepareLabelCandidates, labelsForBlock } from './map_labels.js';
 import { canonicalEntries } from './map_order.js';
 import {estimateBlock,budgetFailures,transitionPeak,MAP_BUDGET,TRANSITION_BUDGET,BUDGET_VERSION} from './map_budget.js';
@@ -362,13 +362,18 @@ function styledEntries(data, cor, o = {}, coverageFloor = 0, contextRadiusCap = 
   // lines
   const lines = [...(data.lines || []).map(L => ({ L, cls: lineClass(L), fl: (L.fl || 0) & (o.rough === false ? ~64 : -1) })).filter(x => o.paths !== false || x.cls !== S.PTH), ...(data.displayRails || []).map(L => ({ L, cls: S.RAIL, fl: L.fl || 0 })),
     ...(data.displayTrams || []).map(L => ({ L, cls: S.TRAM, fl: L.fl || 0 })), ...(data.displayWlines || []).map(L => ({ L, cls: S.WLINE, fl: 0 }))];
+  const groups = new Map();
   for (const { L, cls, fl } of lines) {
     if (!cls) continue; const lim = Math.min(contextRadiusCap, Math.max(SR[cls], coverageFloor)), b = L.box || (L.box = box(L.pts, F)); if (!nearBox(b, lim)) continue;
     for (const run of clipDisplayLine(L, q => cor.near(...F.m(...q), lim)[0] <= lim)) {
-      const far = (cls === S.MIN || cls === S.SRV) && runIsFar(run, cor) ? 128 : 0;
-      for (let s = 0; s < run.length - 1; s += MAXPTS - 1) out.push(sentry(styleOf(cls, fl | far), run.slice(s, s + MAXPTS)));
+      const far = (cls === S.MIN || cls === S.SRV) && runIsFar(run, cor) ? 128 : 0, st = styleOf(cls, fl | far);
+      if (cls >= S.MAJ && cls <= S.TRAM) { if (!groups.has(st)) groups.set(st, []); groups.get(st).push(run); }   // joined below (A2)
+      else for (let s = 0; s < run.length - 1; s += MAXPTS - 1) out.push(sentry(st, run.slice(s, s + MAXPTS)));
     }
   }
+  // A2: same-style runs of classes 5 to 11 join at an exact shared end point, at most MAXPTS points per joined run
+  for (const [st, rs] of groups) for (const r of chainRuns(rs, q => sc(q[0]) + ',' + sc(q[1]), MAXPTS))
+    for (let s = 0; s < r.length - 1; s += MAXPTS - 1) out.push(sentry(st, r.slice(s, s + MAXPTS)));
   // The same source anchor and priority survive adjacent block windows.
   if (o.names !== false) for (const l of labelsForBlock(data.labelCandidates || [], (...q) => cor.near(...q))) out.push(lentry(l.q, l.name));
   // one dot per junction or stop: OSM has a signal node per approach and a stop node per platform
