@@ -22,6 +22,7 @@ VERSION=b'CC700_V1.414-cc23wb1'
 IROM=0x42000020
 TAIL=0x421de800
 PAGE_END=0x421e0000
+RESERVE=1768   # free room kept in the cc23 code page (budget-plan-2026-11-16.md); not changed (D0 item 8)
 USABLE=4376   # 6,144 B free after cc23, less the 1,768 B reserve (docs/current/budget-plan-2026-11-16.md)
 SCOPES={'.text':(TAIL,USABLE),'.lit_wb_rt':(0x420496b8,4)}
 # Frame of wb_rt, the hook target, as the compiler built it (entry a1, 48 on 18 Nov). A different frame means
@@ -87,6 +88,7 @@ def build_candidate(base,sections,fragment_read):
         if end-IROM>len(irom):irom.extend(bytes(end-IROM-len(irom)))
         irom[at:at+len(payloads[name])]=payloads[name]
     if IROM+len(irom)>PAGE_END:raise ValueError('code page overflow')
+    if PAGE_END-IROM-len(irom)<RESERVE:raise ValueError(f'free space below the {RESERVE} B reserve')
     drom[16:48]=VERSION+bytes(32-len(VERSION))
     deltas=[]
     for (oldaddr,old),(address,data) in zip(before,segs):
