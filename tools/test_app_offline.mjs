@@ -1,3 +1,4 @@
+import {readFileSync} from 'node:fs';
 import assert from 'node:assert/strict';
 import {buildRoute} from '../js/route.js';
 import {readFile} from '../js/preview.js';
@@ -33,4 +34,14 @@ for (const styled of [false,true]) {
  const fields=parse(r.file.subarray(offset+4,offset+4+n));const info=fields.find(([f])=>f===1)?.[2];assert(info);assert(parse(info).some(([f])=>f===8));geoRecords++;offset+=4+n;}
  assert.equal(geoRecords,r.sections.length);
  console.log('PASS synthetic 70km '+(styled?'styled':'stock')+': '+r.sections.length+' records; '+r.file.length+' bytes; max '+Math.max(...model.secs.map(s=>s.length))+' points; every record geohash-indexed');
+}
+// C3: the page offers patch25, saves the choice, and writes scheme D through map.codec (source check).
+{
+  const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8'), app = readFileSync(new URL('../js/app.js', import.meta.url), 'utf8');
+  assert.match(html, /<option value="patch25"/);
+  assert.match(app, /savedFw === 'patch25'/);
+  assert.match(app, /codec = fwChoice === 'patch25' \? 'd' : undefined/);
+  assert.match(app, /\.\.\.\(codec \? \{ ?codec ?\} : \{\}\)/);
+  assert.match(app, /localStorage\.setItem\('cc700-fw', \$\('fw'\)\.value\)/);
+  console.log('PASS page offers patch25 with the codec and saves the choice');
 }

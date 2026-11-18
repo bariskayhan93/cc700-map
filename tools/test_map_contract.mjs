@@ -2,6 +2,8 @@ import assert from 'node:assert/strict';
 import {test} from 'node:test';
 import {buildRoute} from '../js/route.js';
 import {readFile} from '../js/preview.js';
+import {auditMapSection} from '../js/map_budget.js';
+import {encodeBlockD} from '../js/map_codec.js';
 const origin=[51.2,6.8],at=(x,y)=>[origin[0]+y/111320,origin[1]+x/70000];
 const route={name:'Contract',pts:Array.from({length:61},(_,i)=>[...at(0,i*50),0])};
 const road=(name,x)=>({kind:3,name,pts:[at(x,-100),at(x,3200)]});
@@ -46,4 +48,20 @@ test('a bridge never joins the road before it',()=>{
  const blk=make([a,b]).blocks.find(x=>x.some(e=>(e.style&15)===6 && (e.style&0x80)));
  const ls=blk.filter(e=>(e.style&15)===6);
  assert(ls.some(e=>e.style&0x80) && ls.some(e=>!(e.style&0x80)));
+});
+// C3: scheme D (patch25 codec) against the protobuf route.
+const buildMap=(lines,map={})=>buildRoute(route,lines,{id:'11120000',nameImage:()=>new Uint8Array(42),map:{styled:true,names:true,...map},speedKmh:18}).file;
+const mapBytesOf=file=>file.subarray(new DataView(file.buffer,file.byteOffset,file.byteLength).getUint32(0x5c,true));
+test('scheme D route reads the same blocks and budget costs as the protobuf route, in a smaller file',()=>{
+ const rows=[...Array.from({length:40},(_,i)=>road('R'+i,30+i*12)),{...road('Bridge',90),fl:1}];
+ const P=buildMap(rows),D=buildMap(rows,{codec:'d'});
+ assert(D.length<P.length,`scheme D ${D.length} B, protobuf ${P.length} B`);
+ assert.deepEqual(readFile(D).blocks,readFile(P).blocks);
+ assert.deepEqual(auditMapSection(mapBytesOf(D)),auditMapSection(mapBytesOf(P)));
+});
+test('scheme D: an empty block is the E3 block',()=>{
+ const D=mapBytesOf(buildMap([],{codec:'d'})),e3=Uint8Array.from(encodeBlockD([]));
+ const at=Buffer.from(D).indexOf(Buffer.from(e3));
+ assert(at>=0,'the E3 block (N 1, one style 0 entry) is in the scheme D map section');
+ assert.deepEqual(auditMapSection(mapBytesOf(buildMap([],{codec:'d'}))),auditMapSection(mapBytesOf(buildMap([]))));
 });

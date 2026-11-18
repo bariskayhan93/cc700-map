@@ -58,3 +58,13 @@ test('encoded section audit recomputes costs independently of generator reports'
  const corrupt=r.bytes.slice();new DataView(corrupt.buffer).setUint32(0,corrupt.length+1,true);
  assert.throws(()=>auditMapSection(corrupt),/map section/i);
 });
+test('scheme D section: the budget audit gives the protobuf costs (budgets unchanged)',()=>{
+ const F=frame(0),p=(x,y,d=y)=>[...F.g(x,y),d*100];
+ const sections=Array.from({length:2},(_,i)=>Array.from({length:6},(_,j)=>p(0,i*500+j*100)));
+ const lines=[0,100,200].map(x=>({kind:5,fl:32,pts:[p(x,0),p(x,900)]}));
+ const data={lines,areas:[],green:[],water:[],opt:{names:false,arrows:false}};
+ const P=buildStyledSection(sections,data,F);
+ const D=buildStyledSection(sections,{...data,opt:{names:false,arrows:false,codec:'d'}},F);
+ assert(D.bytes.length<P.bytes.length,`scheme D ${D.bytes.length} B, protobuf ${P.bytes.length} B`);
+ assert.deepEqual(auditMapSection(D.bytes),auditMapSection(P.bytes));
+});

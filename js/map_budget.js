@@ -1,6 +1,7 @@
 // Extracted CC700 target allocation layout and iterator work, not frame timing.
 // Limits are a conservative engineering profile near the inspected 23 km ride.
 import {parse,fu,fb} from './pb.js';
+import {isBlockD,decodeBlockD,entryBody} from './map_codec.js';
 export const MAP_BUDGET = Object.freeze({
   serializedBytes:65536, decodedBytes:57344, renderBytes:65536,
   iteratorScratchBytes:4096, projectionCalls:1400, projectedPoints:7000,
@@ -74,6 +75,11 @@ export function auditMapSection(bytes) {
     if(!Number.isSafeInteger(offset)||offset<0||start+4>bytes.length)invalid();
     const end=start+4+view.getUint32(start,true);
     if(end>bytes.length||end<=start+4)invalid();
+    if(isBlockD(bytes.subarray(start+4,end))){   // scheme D: costed in the protobuf form (budgets unchanged, conservative)
+      const entries=decodeBlockD(bytes.subarray(start+4,end)).filter(e=>e.style||e.lat||e.lon||e.pts.length).map(entryBody);
+      costs.push(estimateBlock(entries));
+      continue;
+    }
     const fields=parse(bytes.subarray(start+4,end)),records=fields.filter(f=>f[0]===2);
     if(fields.find(f=>f[0]===1)?.[2]!==records.length)invalid();
     const entries=records.map((r,i)=>{

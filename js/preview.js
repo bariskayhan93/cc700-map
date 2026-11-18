@@ -6,6 +6,7 @@ import { MAP_CLASS as C } from './mapsec.js';
 import { dashSegments, scanlineSpans } from './device_draw.js';
 import { rgb565, mapColor } from './map_style.js';
 import { placeLabels } from './map_labels.js';
+import { isBlockD, decodeBlockD } from './map_codec.js';
 export { rgb565 } from './map_style.js';
 
 const W = 240, H = 256, MPP = 2.5, POSY = 0.85, PIXEL_RATIO = 1;
@@ -21,6 +22,13 @@ function labelText(words) {
   words.forEach((word, i) => view.setInt32(i * 4, word, true));
   const end = bytes.indexOf(0);
   return decoder.decode(end < 0 ? bytes : bytes.subarray(0, end));
+}
+
+// A scheme D entry in the form readEntry() gives for the protobuf entry.
+function entryOfD(e) {
+  const center = [e.lat * SC, e.lon * SC];
+  if ((e.style & 15) === C.LABEL) return { style: e.style, center, label: labelText(e.pts.flat()) };
+  return { style: e.style, center, points: e.pts.map(([lat, lon]) => [lat * SC, lon * SC]) };
 }
 
 function readEntry(bytes) {
@@ -60,9 +68,10 @@ export function readFile(f) {
       if (field !== 2) continue;
       const offset = start + (fields(value)[1] ?? 0);
       if (!byOffset.has(offset)) {
-        const length = view.getUint32(offset, true);
-        const entries = parse(f.subarray(offset + 4, offset + 4 + length));
-        byOffset.set(offset, entries.filter(([key]) => key === 2).map(([, , data]) => readEntry(data)));
+        const length = view.getUint32(offset, true), bytes = f.subarray(offset + 4, offset + 4 + length);
+        byOffset.set(offset, isBlockD(bytes)
+          ? decodeBlockD(bytes).filter(e => e.style || e.lat || e.lon || e.pts.length).map(entryOfD)   // E3 = empty
+          : parse(bytes).filter(([key]) => key === 2).map(([, , data]) => readEntry(data)));
       }
       blocks.push(byOffset.get(offset));
     }
