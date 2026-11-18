@@ -401,7 +401,7 @@ export function buildRoute(gpx, allLines, opt) {
         L.fl & 1024 ? mopt.lanes !== false : L.fl & 512 ? mopt.lanes === false : L.fl & 256 ? mopt.details !== false : true), areas: (opt.areas || []),
         green: (opt.green || []), water: (opt.water || []),
         rails: (opt.rails || []), trams: (opt.trams || []), wlines: (opt.wlines || []),
-        signals: (opt.signals || []), stops: (opt.stops || []), opt: mopt, turns: secs.map((s, k) => s.dir ? k : -1).filter(k => k >= 0),
+        signals: (opt.signals || []), stops: (opt.stops || []), opt: mopt,
         routeNames: new Set(secs.map(s => s.name)),                                   // A3: names of the route streets first
         rough: P.reduce((a, p, i) => { if (mopt.rough !== false && (road[i]?.fl & 64)) { const l = a.at(-1); if (l && l[1] >= D[i - 1] * 100) l[1] = D[i] * 100; else a.push([D[i] * 100, D[i] * 100]); } return a; }, []).filter(x => x[1] - x[0] >= 2000) }, F)
     : buildMapSection(sections, lines.filter(nearRoute), F, mopt);   // only roads near the route (600 m grid)

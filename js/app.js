@@ -24,7 +24,7 @@ const deviceKm = new Intl.NumberFormat('en-GB', { minimumFractionDigits: 2, maxi
 const decimal = new Intl.NumberFormat('en-GB', { minimumFractionDigits: 1, maximumFractionDigits: 1 });
 $('log').hidden = !DEBUG;
 if (self.caches) { caches.delete('cc700-roads-v2'); caches.delete('cc700-roads-v3'); caches.delete('cc700-osm-v1'); }   // road pack of earlier versions (90 MB)
-const LAYERS = ['ground', 'water', 'rails', 'names', 'signals', 'stops', 'trams', 'rough', 'paths', 'arrows', 'details', 'lanes'];   // optional map layers
+const LAYERS = ['ground', 'water', 'rails', 'names', 'signals', 'stops', 'trams', 'rough', 'paths', 'details', 'lanes'];   // optional map layers
 const ON = new Set(['names', 'signals', 'stops', 'trams', 'rough', 'paths', 'details', 'lanes']);    // default on (patch layers)
 function updateFirmware() {
   const patched = $('fw').value !== 'orig';
@@ -34,13 +34,14 @@ function updateFirmware() {
   $('fwOriginal').hidden = patched;
   $('fw').setAttribute('aria-describedby', patched ? 'fwWarning' : 'fwOriginal');
 }
+// Default: cc26 (patch25) with way-back. New keys (18 Nov), so a choice saved under the old defaults does not stay.
 try {
-  const savedFw = localStorage.getItem('cc700-fw');
-  if (savedFw === 'patch' || savedFw === 'patch25') $('fw').value = savedFw;
+  const savedFw = localStorage.getItem('cc700-fw2');
+  if (savedFw === 'orig' || savedFw === 'patch' || savedFw === 'patch25') $('fw').value = savedFw;
 } catch {}
 updateFirmware();
 $('fw').onchange = () => {
-  try { localStorage.setItem('cc700-fw', $('fw').value); } catch {}
+  try { localStorage.setItem('cc700-fw2', $('fw').value); } catch {}
   updateFirmware();
   requestBuild();
 };
@@ -52,9 +53,10 @@ $('gpx').onchange = () => {
   requestBuild();
 };
 $('speed').onchange = requestBuild;
-try { $('wayback').checked = localStorage.getItem('cc700-wayback') === '1'; } catch {}   // default off
+$('wayback').checked = true;   // default on
+try { if (localStorage.getItem('cc700-wb2') === '0') $('wayback').checked = false; } catch {}
 $('wayback').onchange = () => {
-  try { localStorage.setItem('cc700-wayback', $('wayback').checked ? '1' : '0'); } catch {}
+  try { localStorage.setItem('cc700-wb2', $('wayback').checked ? '1' : '0'); } catch {}
   requestBuild();
 };
 for (const k of LAYERS) {
@@ -79,6 +81,7 @@ async function build() {
   needsBuild = false;
   if (!gpxFile) return;
   building = true;
+  const t0 = performance.now();
   const file = gpxFile, fwChoice = $('fw').value, styled = fwChoice !== 'orig', codec = fwChoice === 'patch25' ? 'd' : undefined;
   const speedKmh = Math.max(8, Math.min(45, +$('speed').value || 18));
   const layers = Object.fromEntries(LAYERS.map(k => [k, $(k).checked]));
@@ -89,6 +92,7 @@ async function build() {
     const { lines, areas, water, rails, green, trams, wlines, signals, stops, coverage, navigationLines } =
       await loadOSM(gpx.pts, (i, n) => { if (!needsBuild) say('sum', `Kartendaten ${i + 1}/${n} …`); }, undefined, {coverageMeters:styled?1000:0});
     if (needsBuild) return;
+    const tOsm = performance.now();
     say('sum', 'Route wird berechnet …');
     await new Promise(resolve => setTimeout(resolve, 30));
     if (needsBuild) return;
@@ -101,15 +105,16 @@ async function build() {
       noF9: styled,   // patched firmware: field 9 off, as tested on the device
       map: { styled, ...layers, ...(codec ? { codec } : {}), ...(LIMIT > 1200 ? { cap: LIMIT, capMax: LIMIT } : {}) },
     });
+    const tRoute = performance.now();
     const model = readFile(r.file), check = verify(r, model, styled);
     if (check) throw new Error('Prüfung fehlgeschlagen: ' + check);
     // Way-back data (test): appended after the check, so the route part of the file is the verified one.
     // Any failure keeps the plain route file.
     let wayback = '';
-    if (styled && $('wayback').checked) {
+    if (fwChoice === 'patch25' && $('wayback').checked) {   // only cc26 reads way-back version 2
       say('sum', 'Rückweg-Daten werden geladen …');
       try {
-        const w = await addWayback(r.file, {format: $('fw').value === 'patch25' ? 2 : 1});
+        const w = await addWayback(r.file, {format: 2});
         if (needsBuild) return;
         if (w.file.length > 4_000_000) throw new Error('Datei mit Rückweg-Daten zu groß');
         r.file = w.file;
@@ -122,8 +127,11 @@ async function build() {
       }
     }
     built = { ...r, model, styled, speedKmh, name: `route_${id}.bin` };
+    const s = t => ((t) / 1000).toFixed(1).replace('.', ',');
+    const tEnd = performance.now(), timing = ` · Zeit ${s(tEnd - t0)} s (Karte laden ${s(tOsm - t0)}, Route ${s(tRoute - tOsm)}, Prüfung und Rückweg ${s(tEnd - tRoute)})`;
+    log(JSON.stringify({ms: {osm: Math.round(tOsm - t0), route: Math.round(tRoute - tOsm), wayback: Math.round(tEnd - tRoute)}}));
     say('sum', `${gpx.name} → CC700 Route ${id} · ${(r.distance / 1000).toFixed(1)} km · ${(r.file.length / 1024).toFixed(0)} KB` +
-      wayback +
+      wayback + timing +
       (lines.length ? '' : ' · keine Straßendaten: ohne Karte und Straßennamen') +
       (styled ? ` · erweitertes Kartenumfeld in ${r.mapStat.blocks.filter(b=>b.coverageFloor>0).length}/${r.mapBlocks} Blöcken` +
         (r.mapStat.reducedContextBlocks ? ` · dichter Bereich: fernes Umfeld in ${r.mapStat.reducedContextBlocks} Blöcken begrenzt (mind. 300 m)` : '') : '') +
@@ -248,9 +256,12 @@ $('sendBtn').onclick = async () => {             // one button: connect when nec
     if (checked.status === 'dropped') say('dev', 'Rückweg-Daten passen nicht zur Routendatei: gesendet ohne Rückweg-Daten.');
     const sent = checked.file;
     say('dev', 'sende …'); $('sendProg').hidden = false;
+    const t0 = performance.now();
     await dev.sendFile(name, sent, new DataView(sent.buffer, sent.byteOffset, sent.byteLength).getUint32(0, true), (i, n) => { $('sendProg').max = n; $('sendProg').value = i; });
+    const sec = (performance.now() - t0) / 1000, rate = ` (${(sent.length / 1024).toFixed(0)} KB in ${sec.toFixed(0)} s, ${(sent.length / 1024 / sec).toFixed(1).replace('.', ',')} KB/s)`;
+    log(JSON.stringify({send: {bytes: sent.length, ms: Math.round(sec * 1000)}}));
     const list = await dev.routeList();
-    say('dev', (list.includes(name) ? 'Gesendet als neue Route ' : 'Gesendet, aber nicht in der Routenliste: ') + name + '. Routen auf dem Gerät: ' + list.join(', '));
+    say('dev', (list.includes(name) ? 'Gesendet als neue Route ' : 'Gesendet, aber nicht in der Routenliste: ') + name + rate + '. Routen auf dem Gerät: ' + list.join(', '));
   } catch (e) { say('dev', 'Fehler: ' + e.message); log(e.stack || e.message); } finally {
     $('sendProg').hidden = true;
     sending = false;
@@ -266,6 +277,13 @@ async function sharedGPX() {
   history.replaceState(null, '', location.pathname + (DEBUG ? '?debug' : ''));
   requestBuild();
 }
+// GPX opened with the installed app (File Handling API, manifest file_handlers)
+if ('launchQueue' in window) launchQueue.setConsumer(async p => {
+  if (!p.files?.length) return;
+  gpxFile = await p.files[0].getFile();
+  $('pos').value = 0;
+  requestBuild();
+});
 if ('serviceWorker' in navigator) navigator.serviceWorker.register('sw.js');
 if (DEBUG) window.cc700 = { get built() { return built; }, get dev() { return dev; } };
 sharedGPX();

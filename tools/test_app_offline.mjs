@@ -35,15 +35,19 @@ for (const styled of [false,true]) {
  assert.equal(geoRecords,r.sections.length);
  console.log('PASS synthetic 70km '+(styled?'styled':'stock')+': '+r.sections.length+' records; '+r.file.length+' bytes; max '+Math.max(...model.secs.map(s=>s.length))+' points; every record geohash-indexed');
 }
-// C3: the page offers patch25, saves the choice, and writes scheme D through map.codec (source check).
+// C3: the page offers patch25 as the default with way-back on, saves the choice, and writes scheme D through map.codec (source check).
 {
   const html = readFileSync(new URL('../index.html', import.meta.url), 'utf8'), app = readFileSync(new URL('../js/app.js', import.meta.url), 'utf8');
-  assert.match(html, /<option value="patch25"/);
+  assert.match(html, /<option value="patch25" selected>/);
+  assert.doesNotMatch(html, /id="arrows"/);   // the turn-arrow layer is removed (18 Nov)
+  assert.match(app, /\$\('wayback'\)\.checked = true;/);
+  assert.match(app, /launchQueue\.setConsumer/);   // a .gpx opened with the installed app
   assert.match(app, /savedFw === 'patch25'/);
   assert.match(app, /codec = fwChoice === 'patch25' \? 'd' : undefined/);
   assert.match(app, /\.\.\.\(codec \? \{ ?codec ?\} : \{\}\)/);
-  assert.match(app, /localStorage\.setItem\('cc700-fw', \$\('fw'\)\.value\)/);
-  assert.match(app, /addWayback\(r\.file, \{format: \$\('fw'\)\.value === 'patch25' \? 2 : 1\}\)/);
+  assert.match(app, /localStorage\.setItem\('cc700-fw2', \$\('fw'\)\.value\)/);
+  assert.match(app, /fwChoice === 'patch25' && \$\('wayback'\)\.checked/);   // way-back version 2 only for cc26
+  assert.match(app, /addWayback\(r\.file, \{format: 2\}\)/);
   assert.match(app, /checkWayback\(file\)/);   // the identity is checked before the file is sent (owner ruling, 18 Nov)
-  console.log('PASS page offers patch25 with the codec and saves the choice');
+  console.log('PASS page defaults to patch25 with way-back, saves the choice, opens .gpx files');
 }

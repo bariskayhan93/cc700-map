@@ -17,6 +17,7 @@ export const STYLE = {                       // kind: [draw, param, max distance
   9: ['dash', [25, 15], R],                                // railways (extra layer): long dash
 };
 const CAP_STD = 800, CAP_HI = 1200, AHEAD = 300, BEHIND = 400;   // BEHIND: the map follows the position (patch v4), also backwards and at the finish   // CAP_MAX: only for one section that alone is over CAP (dense city)
+const CELL = 2097152, cell = (x, y) => (x + CELL / 2) * CELL + (y + CELL / 2);   // grid key of 100 m cells (|x|, |y| < 1,048,576 cells)
 class Corridor {                              // route window, densified, with headings; grid lookup
   constructor(pts, F, reach = 500) {
     this.F = F; this.G = new Map(); const P = pts.map(p => F.m(p[0], p[1]));
@@ -27,7 +28,7 @@ class Corridor {                              // route window, densified, with h
     if (P.length) this.add(P[P.length - 1][0], P[P.length - 1][1], 0);
     this.rings = Math.ceil(reach / 100) + 1;
     this.zone = new Set();                     // cells within ~500 m of the window: everything else is "far" at once
-    for (const k of this.G.keys()) { const [x, y] = k.split(',').map(Number); for (let dx = 1-this.rings; dx < this.rings; dx++) for (let dy = 1-this.rings; dy < this.rings; dy++) this.zone.add((x + dx) + ',' + (y + dy)); }
+    for (const k of this.G.keys()) { const x = Math.floor(k / CELL) - CELL / 2, y = k % CELL - CELL / 2; for (let dx = 1-this.rings; dx < this.rings; dx++) for (let dy = 1-this.rings; dy < this.rings; dy++) this.zone.add(cell(x + dx, y + dy)); }
     this.box = P.reduce((b, [x, y]) => [Math.min(b[0], x), Math.min(b[1], y), Math.max(b[2], x), Math.max(b[3], y)], [1e18, 1e18, -1e18, -1e18]);
   }
   within(R) {                                 // -> (x, y) => within R m of the route; 10 m raster, made once per R
@@ -39,14 +40,15 @@ class Corridor {                              // route window, densified, with h
     const f = (x, y) => { const cx = Math.floor((x - x0) / C), cy = Math.floor((y - y0) / C); return cx >= 0 && cy >= 0 && cx < w && cy < h && g[cy * w + cx] === 1; };
     this.wR = [R, f]; return f;
   }
-  add(x, y, h) { const k = Math.floor(x / 100) + ',' + Math.floor(y / 100); (this.G.get(k) || this.G.set(k, []).get(k)).push([x, y, h]); }
+  add(x, y, h) { const k = cell(Math.floor(x / 100), Math.floor(y / 100)); (this.G.get(k) || this.G.set(k, []).get(k)).push([x, y, h]); }
   near(x, y, maxd = 1e9) {                    // -> [distance m, route heading rad]; stops beyond maxd
     const gx = Math.floor(x / 100), gy = Math.floor(y / 100); let best = [1e9, 0];
-    if (!this.zone.has(gx + ',' + gy)) return best;
+    if (!this.zone.has(cell(gx, gy))) return best;
     for (let r = 0; r <= this.rings; r++) {
-      for (let dx = -r; dx <= r; dx++) for (let dy = -r; dy <= r; dy++) {
-        if (Math.max(Math.abs(dx), Math.abs(dy)) !== r) continue;
-        for (const [a, b, h] of this.G.get((gx + dx) + ',' + (gy + dy)) || []) { const d = Math.hypot(x - a, y - b); if (d < best[0]) best = [d, h]; }
+      // the cells of ring r only, in the order of the full square (same result on equal distances)
+      for (let dx = -r; dx <= r; dx++) for (let dy = -r; dy <= r; dy += (dx === -r || dx === r || r === 0) ? 1 : 2 * r) {
+        const v = this.G.get(cell(gx + dx, gy + dy)); if (!v) continue;
+        for (const [a, b, h] of v) { const d = Math.hypot(x - a, y - b); if (d < best[0]) best = [d, h]; }
       }
       if (best[0] < r * 100 || r * 100 > maxd + 100) break;
     }
@@ -400,17 +402,6 @@ export function buildStyledSection(sections, data, F) {
   const routeCor = new Corridor(all, F);
   D.labelCandidates = data.opt?.names === false ? [] : prepareLabelCandidates(D.lines.map(L => ({...L, cls: lineClass(L)})), F, (...q) => routeCor.near(...q), data.routeNames || new Set());
   const win = (i, j) => { const a = sections[i][0][2] - BEHIND * 100, b = sections[j].at(-1)[2] + AHEAD * 100; return all.filter(p => p[2] >= a && p[2] <= b); };
-  // turn arrows (class 15): the route shape from 22 m before a turn to 22 m after it (through a turn <= 50 m later),
-  // style bits 16+: index of the turn point in the inflection list (= section k + 1). The patch draws the next ones.
-  const turns = data.turns || [], arrow = k => {
-    const dT = sections[k].at(-1)[2], k2 = turns.find(t => t > k && sections[t].at(-1)[2] - dT <= 5000), a = dT - 2200, b = (k2 !== undefined ? sections[k2].at(-1)[2] : dT) + 2200;
-    const at = d => { for (let i = 1; i < all.length; i++) if (all[i][2] >= d) { const p = all[i - 1], q = all[i], t = (d - p[2]) / ((q[2] - p[2]) || 1); return [p[0] + (q[0] - p[0]) * t, p[1] + (q[1] - p[1]) * t]; } return all.at(-1); };
-    let ps = [at(Math.max(0, a)), ...all.filter(p => p[2] > a && p[2] < b).map(p => [p[0], p[1]]), at(b)];
-    while (ps.length > 20) ps = ps.filter((_, i) => i % 2 === 0 || i === ps.length - 1);
-    const T = sections[k].at(-1);
-    return [...fu(2, 15 | (2 << 4) | ((k + 1) << 16)), ...fs(3, sc(T[0])), ...fs(4, sc(T[1])), ...fu(5, ps.length), ...ps.flatMap(q => fb(6, [...fs(1, sc(q[0])), ...fs(2, sc(q[1]))]))];
-  };
-  const arrows = data.opt?.arrows ? turns.map(k => ({k, entry:arrow(k)})) : [];
   const rough = [];
   // A5: rough parts of the route (tracks): class 15 with bit 15, the route shape; the patch draws dots over the route
   for (const [a, b] of data.opt?.rough === false ? [] : data.rough || []) for (let s = a; s < b; s += 30000) {
@@ -428,7 +419,6 @@ export function buildStyledSection(sections, data, F) {
   const make = (i,j,floor=0,cap=1000) => {
     const cor = new Corridor(win(i,j),F,1000);
     const es = styledEntries(D,cor,data.opt || {},floor,cap);
-    for (const {k,entry} of arrows) if (k >= i-1 && k <= j+1) es.push(entry);
     const a=sections[i][0][2]-BEHIND*100,b=sections[j].at(-1)[2]+AHEAD*100;
     for (const r of rough) if(a<=r.b && b>=r.a) es.push(r.entry);
     const entries=canonicalEntries(es),cost=estimateBlock(entries);

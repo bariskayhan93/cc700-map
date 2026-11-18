@@ -34,11 +34,15 @@ export class CC700 {
     this.data = Object.keys(this.ch).find(u => u !== this.cmd && (this.ch[u].properties.writeWithoutResponse || this.ch[u].properties.write));
     this.log('connected: ' + this.dev.name + ' cmd=' + this.cmd.slice(4, 8) + ' data=' + (this.data || '?').slice(4, 8));
   }
-  onNote(u, v) { this.log('<- ' + u.slice(4, 8) + ' ' + hex(v).slice(0, 80)); this.q.push([u, v]); }
-  async wait(pred, ms) {
-    const t = Date.now();
-    while (Date.now() - t < ms) { const i = this.q.findIndex(([u, v]) => pred(v, u)); if (i >= 0) return this.q.splice(i, 1)[0][1]; await sleep(20); }
-    return null;
+  onNote(u, v) { this.log('<- ' + u.slice(4, 8) + ' ' + hex(v).slice(0, 80)); this.q.push([u, v]); this.wake?.(); }
+  async wait(pred, ms) {          // wakes on each notification (no 20 ms poll step: one ack per 10 packets)
+    const end = Date.now() + ms;
+    for (;;) {
+      const i = this.q.findIndex(([u, v]) => pred(v, u)); if (i >= 0) return this.q.splice(i, 1)[0][1];
+      const left = end - Date.now(); if (left <= 0) return null;
+      await new Promise(r => { this.wake = r; setTimeout(r, left); });
+      this.wake = null;
+    }
   }
   async write(u, b) {
     this.log('-> ' + u.slice(4, 8) + ' ' + hex(b).slice(0, 80)); const c = this.ch[u], v = new Uint8Array(b);

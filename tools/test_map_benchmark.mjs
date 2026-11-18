@@ -70,7 +70,7 @@ test('actual block transitions are probed on both sides and use preview boundary
  const c=fixture('mixed-transition'),r=assessCase(c);assert.equal(r.status,'pass');
  assert(r.boundaryProbes.length>=2);assert(r.boundaryProbes.every(p=>p.matched));
  for(let i=0;i<r.boundaryProbes.length;i+=2){assert.equal(r.boundaryProbes[i+1].section,r.boundaryProbes[i].section+1);}
- const opts={...c.data,id:'benchmark',nameImage:()=>new Uint8Array(42),navigationLines:c.navigationLines,noF9:true,map:{styled:true,names:true,arrows:true}};
+ const opts={...c.data,id:'benchmark',nameImage:()=>new Uint8Array(42),navigationLines:c.navigationLines,noF9:true,map:{styled:true,names:true}};
  const model=readFile(buildRoute(c.gpx,c.lines,opts).file),k=model.blocks.findIndex((b,i)=>i&&b!==model.blocks[i-1]);
  const atMeters=model.secs[k][0][2]/100;
  const withExact={...c,probes:[...c.probes,{id:'exact-boundary',cls:10,xy:[0,1200],atMeters,required:true,toleranceMeters:3}]};
