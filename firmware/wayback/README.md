@@ -6,7 +6,7 @@ A first test image (`cc23wb1`) was on the device on 16 November 2026. It drew no
 The core now reads node records in blocks of 16 and filters by distance before it loads a second node. On the host this gives about 100 to 130 reads at the median with identical output. The time of one read on the device is not measured. This image (`cc23wb1` text, SHA-256 `25877b1b…`, on the cc23 with the trampoline fix) is on the test unit since 17 November 2026, 00:30 local time. No ride result exists yet.
 The core with the adapter is 4,284 B of Xtensa code. The usable room is 4,376 B. 1,860 B stay free in the code page (reserve: 1,768 B).
 The core has no heap, no float and no library call. Its only external call is the reader callback.
-Forward mode is removed from the core (cc26, R-D2). The test image (cc23wb) is built from the core of commit `6091401` with `-DWB_NO_FWD`, which compiles its forward code out. The device has no trusted exit km, so it uses tree A values only. The version 2 core has no forward code.
+Forward mode is removed from the core (cc26, R-D2). The installed test image (cc23wb2fix) was built from the core of commit `6091401` with `-DWB_NO_FWD`; its builder is retired (sources at `d9aa2f8^`). The device has no trusted exit km, so it uses tree A values only. The version 2 core has no forward code.
 
 ## How the line is made
 
@@ -86,7 +86,7 @@ The map frame (`0x4204da24`) makes one hooked route call for each frame, so the 
 On the route, the test image writes `wb3` and does nothing else. This text shows that the hook runs. A release image must not have it.
 While the off-route byte (`0x3c3894f0 + 145`) is set, the adapter does the steps below. It has no stored state.
 
-1. Checks the free stack of the task (3,360 B or more), as `loop_start.c` does.
+1. Checks the free stack of the task (3,968 B or more on cc26), as `loop_start.c` does.
 2. Takes the position through `cc_pos` with a zero-wait navigation lock, as `cc_rt` does.
 3. Finds the path of the first open route file in the open-file table of the firmware (zero-wait lock).
 4. Opens that file a second time for reading. It never moves the position of the firmware's own handle.
@@ -103,7 +103,7 @@ While the off-route byte (`0x3c3894f0 + 145`) is set, the adapter does the steps
 | `wb5 45` | A file read failed, or the 300 ms limit was reached. |
 | `wb6 45` | The open-file table lock is busy. |
 | `wb7 45` | No open route file, no way-back data at its end, or the data is refused by `wb_mount`. |
-| `wb8 45` | Less than 3,360 B of stack are free. No file call is made. |
+| `wb8 45` | Less than 3,968 B of stack are free. No file call is made. |
 | `wb9 45` | The second open of the route file failed. |
 
 **Way-back data in the route file.** `tools/wayback_embed.mjs` appends the way-back file to the route file.
@@ -115,9 +115,8 @@ The identity check of `wb_mount` gets the identity from the data itself. The bin
 open-file table `0x3c380124` (132 B records: handle, name) with count `0x3fc9f5fc` and lock `0x3fc9f600`,
 route file handles `0x3c388418` (6 types). The other addresses are those of the v21 patch (`fw.h`, `blk.c`, `arrow.c`, `map.c`).
 
-**Build.** `python3 -I tools/wayback_device_build.py --output .local/wayback/device`. The builder accepts only the exact cc23 image
-(SHA-256 `6146fb25…`), checks the hook bytes and the called entries, and allows changes only in the hook word, the new tail and the version text.
-It never writes to the device.
+**Build.** `python3 -I tools/cc26_build.py --output <dir>` builds the cc26 image (see `docs/releases/cc26-2026-11-18.md`).
+It never writes to the device. `tools/wayback_device_build.py` keeps only the shared callee checks and the build mark.
 
 **Gaps of the adapter.**
 
@@ -133,7 +132,7 @@ It never writes to the device.
 ## Files
 
 - `wayback.h`, `wayback.c`: the core.
-- `wb_device.c`, `wb_device.ld`, `wb_tramp.S`: the device adapter. `tools/wayback_device_build.py`: the test image. `tools/wayback_embed.mjs`: way-back data into a route file.
+- `wb_device.c`, `wb_area2.ld`, `wb_tramp.S`: the device adapter. `tools/cc26_build.py`: the device image. `tools/wayback_embed.mjs`: way-back data into a route file.
 - `tools/wayback_device_host.c`, `tools/test_wayback_device.mjs`, `tools/test_wayback_device_build.py`: adapter tests on the host.
 - `tools/wayback_host.c`: host command. `tools/wayback_core_host.mjs`: builds it and runs it.
 - `js/wayback_tree.js`: model. `js/wayback_format.js`: file format. `js/wayback_embed.js`: trailer. `js/routing_snapshot.js`, `js/recovery_transitions.js`, `js/recovery_graph.js`: street graph. `js/native_route.js`: route points. The files of the same name in `tools/` export this code again.

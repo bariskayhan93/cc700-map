@@ -11,7 +11,7 @@
 #endif
 #define WBD_GREY_US 60000u          /* the grey draw stops this long after the frame start */
 #define WBD_TIME_US 300000u         /* file work for each frame; a later read fails */
-#define WBD_STACK 3360u             /* free stack needed before any file call */
+#define WBD_STACK 3968u             /* free stack needed before any file call */
 #define WBD_REC 132u                /* open-file table record: handle, then the name */
 enum { WBD_LOCK = 6, WBD_NODATA = 7, WBD_STACK_LOW = 8, WBD_OPEN = 9, WBD_LINE_CAP = 10 };   /* codes after the core reasons 1 to 5 */
 
@@ -188,9 +188,9 @@ static void wbd_grey_draw(wbd_ctx *c, wb_engine *e, int32_t lat, int32_t lon, fl
 }
 static uint32_t wbd_core(wbd_ctx *cp, uint32_t i, uint8_t *t, const float *pos, float *line, uint32_t *n, uint32_t *dm) {
   uint32_t store[32 + 2 * (sizeof(void *) - 4)]; wb_engine *e = (wb_engine *)store;   /* 128 B on the device */
-  wb_input in; wb_output out; int32_t p[2];
+  wb_input in; wb_output out; int32_t p[2]; uint32_t k;
   if (!wbd_read(cp, 8u, t, 16u)) return WB_READ;              /* identity: the data is inside its route file */
-  for (out.state = 0; out.state < sizeof store / 4u; out.state++) store[out.state] = 0;
+  for (k = 0; k < sizeof store / 4u; k++) store[k] = 0;
   if (!wb_mount(e, wbd_read, cp, i, t)) return cp->late ? WB_READ : WBD_NODATA;
   in.lat_e7 = (int32_t)(pos[0] * 1e7f); in.lon_e7 = (int32_t)(pos[1] * 1e7f);
   in.exit_progress_cm = 0; in.flags = WB_GPS_VALID | WB_OFF_ROUTE;   /* no trusted exit on the device: tree A values */
