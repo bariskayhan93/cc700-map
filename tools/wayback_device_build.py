@@ -24,6 +24,16 @@ TAIL=0x421de800
 PAGE_END=0x421e0000
 USABLE=4376   # 6,144 B free after cc23, less the 1,768 B reserve (docs/current/budget-plan-2026-11-16.md)
 SCOPES={'.text':(TAIL,USABLE),'.lit_wb_rt':(0x420496b8,4)}
+# Frame of wb_rt, the hook target, as the compiler built it (entry a1, 48 on 18 Nov). A different frame means
+# different compiled code, so the builder refuses it and the change needs its own review.
+HOOK_FRAME=48
+def function_block(dis,name):
+    start=dis.index(f'<{name}>:')
+    end=dis.find('\n\n',start)
+    return dis[start:end if end>0 else None]
+def check_hook_frame(block):
+    if f'entry\ta1, {HOOK_FRAME}' not in block:
+        raise ValueError(f'hook frame differs from {HOOK_FRAME}')
 # Stock and v21 functions that the adapter calls. Each must begin with an Xtensa `entry` instruction.
 CALLED=(0x421dd920,0x421dd218,0x421b85b0,0x421b7de0,0x421b8848,0x421b8818,0x4204c7a8,0x4204c1bc,0x420dbcd0)
 
@@ -106,6 +116,7 @@ def main():
             '-nostdlib','-DWB_NO_FWD','-Wall','-Wextra','-Werror','-fstack-usage','-Wl,-T,'+str(t/'wb_device.ld'),
             '-Wl,--gc-sections','-Wl,-e,wb_rt','-o',elf,t/'wb_device.c',t/'wayback.c',t/'wb_tramp.S','-lgcc')
     if run(a.prefix+'nm','-u',elf).strip():raise ValueError('undefined symbols')
+    check_hook_frame(function_block(run(a.prefix+'objdump','-d',elf),'wb_rt'))
     sections={}
     for line in run(a.prefix+'objdump','-h',elf).splitlines():
         f=line.split()

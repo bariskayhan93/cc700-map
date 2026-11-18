@@ -1,8 +1,10 @@
 """Own-device candidate image roundtrip and fail-closed fragment checks."""
 import copy
+import sys
 import importlib.util
 import json
 from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 import subprocess
 import sys
 import tempfile
@@ -96,3 +98,22 @@ class GuidanceCandidateBuildTests(unittest.TestCase):
             self.build(sections=sections)
 
 if __name__=='__main__': unittest.main()
+
+
+class TrampolineFrameTests(unittest.TestCase):
+    """D0 item 3: the frame of each trampoline is checked against a constant, and a stack argument is refused."""
+    GOOD='tramp_guidance_card:\n  entry\ta1, 32\n  mov.n\ta10, a2\n  callx8\ta8\n  retw.n\n'
+
+    def test_frame_32_without_a_stack_store_is_accepted(self):
+        import guidance_build as g
+        g.check_trampoline(self.GOOD,'card')
+
+    def test_a_frame_other_than_32_is_refused(self):
+        import guidance_build as g
+        with self.assertRaisesRegex(ValueError,'frame'):
+            g.check_trampoline(self.GOOD.replace('a1, 32','a1, 48'),'card')
+
+    def test_a_stack_store_is_refused(self):
+        import guidance_build as g
+        with self.assertRaisesRegex(ValueError,'stack argument'):
+            g.check_trampoline(self.GOOD.replace('callx8','s32i.n\ta9, a1, 0\n  callx8'),'card')

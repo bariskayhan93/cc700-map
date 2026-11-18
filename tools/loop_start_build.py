@@ -4,6 +4,7 @@ import argparse
 import hashlib
 import importlib.util
 import json
+import re
 from pathlib import Path
 import subprocess
 from guidance_build import assert_native_guards
@@ -11,6 +12,12 @@ from guidance_build import assert_native_guards
 ROOT=Path(__file__).resolve().parents[1]
 BASE_SHA='cc6613211b2796ae95ef19a6967759a53c6e48af4612906b22adcbddc088d50f'
 VERSION=b'CC700_V1.414-cc24'
+# Frame 48, not 32: the trampoline copies incoming argument 7 to its own SP+0 (l32i a9, a1, 48; s32i a9, a1, 0).
+# With frame 32, a window spill overwrites that copy (the 2026-11-16 crash; firmware/loop_start/tramp.S).
+TRAMP_FRAME=48
+def check_trampoline_frame(block):
+    if not re.search(r'entry\s+a1,\s*%d\b' % TRAMP_FRAME, block):
+        raise ValueError(f'loop-start trampoline frame differs from {TRAMP_FRAME}')
 SCOPES={'.text':(0x421de120,0x421e0000-0x421de120),
         '.tramp_loop_start':(0x420496d8,0x40),'.call_loop_start':(0x420547dd,3)}
 
@@ -110,7 +117,8 @@ def main():
     if 'j\t420496e4' not in tramp_head:raise ValueError('trampoline branch differs')
     tramp=tramp_head.split('420496db:')[0]+tramp_body
     (a.output/'loop-start.dis').write_text(dis+'\n'+tramp_body)
-    for ins in ('entry\ta1, 48','l32i.n\ta9, a1, 48','s32i.n\ta9, a1, 0',
+    check_trampoline_frame(tramp)
+    for ins in ('l32i.n\ta9, a1, 48','s32i.n\ta9, a1, 0',
                 'mov.n\ta10, a2','mov.n\ta11, a3','mov.n\ta12, a4','mov.n\ta13, a5',
                 'mov.n\ta14, a6','mov.n\ta15, a7','callx8\ta8','mov.n\ta2, a10','retw.n'):
         if ins not in tramp:raise ValueError('trampoline ABI differs: '+ins)
