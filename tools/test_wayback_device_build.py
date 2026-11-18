@@ -40,6 +40,20 @@ class WaybackDeviceBuildArgumentTests(unittest.TestCase):
 
 @unittest.skipUnless(BASE.exists() and Path(str(PREFIX)+'gcc').exists(),'private image/toolchain absent')
 class WaybackDeviceBuildTests(unittest.TestCase):
+    def test_free_space_below_the_reserve_is_refused(self):
+        # D0 item 8: the cc23 code page keeps the 1,768 B reserve. A build that leaves less is refused.
+        from unittest import mock
+        with tempfile.TemporaryDirectory() as tmp:
+            out=Path(tmp)
+            p=subprocess.run([sys.executable,str(ROOT/'tools/wayback_device_build.py'),'--base',str(BASE),'--output',str(out)],
+                             capture_output=True,text=True)
+            self.assertEqual(p.returncode,0,p.stderr)
+            import wayback_device_build as b
+            r=json.loads((out/'receipt.json').read_text())
+            with mock.patch.object(b,'PAGE_END',b.TAIL+r['code_bytes']+b.RESERVE-1):
+                with self.assertRaisesRegex(ValueError,'reserve'):
+                    b.build_candidate(BASE.read_bytes(),r['sections'],lambda n:(out/n).read_bytes())
+
     def test_real_build_scope_and_rejected_drift(self):
         with tempfile.TemporaryDirectory() as tmp:
             out=Path(tmp)

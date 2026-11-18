@@ -96,6 +96,14 @@ class Cc25Build(unittest.TestCase):
         self.assertGreater(receipt['code_bytes'], 0)
         self.assertLessEqual(receipt['code_bytes'], cb.CODE_MAX)
 
+    def test_free_space_below_the_reserve_is_refused(self):
+        # D0 item 8: the cc23 code page keeps the 1,768 B reserve. A build that leaves less is refused.
+        from unittest import mock
+        _, receipt = built()
+        with mock.patch.object(cb, 'PAGE_END', cb.TAIL + receipt['code_bytes'] + cb.RESERVE - 1):
+            with self.assertRaisesRegex(ValueError, 'reserve'):
+                cb.build_candidate(BASE.read_bytes(), receipt['sections'], lambda n: (OUT / n).read_bytes())
+
     def test_version_text_and_receipt(self):
         image, receipt = built()
         drom = segment_map(image)[cb.DROM]

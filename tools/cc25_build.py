@@ -17,6 +17,7 @@ VERSION = b'CC700_V1.414-cc25'
 IROM = 0x42000020
 TAIL = 0x421de800
 PAGE_END = 0x421e0000
+RESERVE = 1768           # free room kept in the cc23 code page (budget-plan-2026-11-16.md); not changed (D0 item 8)
 CODE_MAX = 1024            # plan E4: text and constants at most 1,024 B
 HOOK = 0x4203e3ec          # the entries callback literal of the block loader
 HOOK_BASE = 0x42049368     # the stock entries callback (the literal's value in the base)
@@ -90,6 +91,8 @@ def build_candidate(base, sections, fragment_read):
         irom[at:at + len(payloads[name])] = payloads[name]
     if IROM + len(irom) > PAGE_END:
         raise ValueError('code page overflow')
+    if PAGE_END - IROM - len(irom) < RESERVE:
+        raise ValueError(f'free space below the {RESERVE} B reserve')
     drom[DROM_VERSION_AT:DROM_VERSION_AT + 32] = VERSION + bytes(32 - len(VERSION))
     deltas = []
     for (oldaddr, old), (address, data) in zip(before, segs):
