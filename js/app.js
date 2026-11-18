@@ -109,7 +109,7 @@ async function build() {
     if (styled && $('wayback').checked) {
       say('sum', 'Rückweg-Daten werden geladen …');
       try {
-        const w = await addWayback(r.file);
+        const w = await addWayback(r.file, {format: $('fw').value === 'patch25' ? 2 : 1});
         if (needsBuild) return;
         if (w.file.length > 4_000_000) throw new Error('Datei mit Rückweg-Daten zu groß');
         r.file = w.file;
