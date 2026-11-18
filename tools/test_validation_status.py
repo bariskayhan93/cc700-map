@@ -51,4 +51,21 @@ class ValidationStatus(unittest.TestCase):
         self.assertIn("12 failed",result.stdout)
 
 
+class ZeroTestsAreNotPasses(unittest.TestCase):
+    """D0 item 7: a suite that runs zero tests fails the runner, and the four skipped Python files have a main."""
+
+    def test_node_suite_with_zero_tests_fails(self):
+        self.assertEqual(classify("node",0,"ℹ tests 0\nℹ pass 0\nℹ fail 0\n"),"fail")
+        self.assertEqual(classify("node",0,"ℹ tests 3\nℹ pass 3\nℹ fail 0\n"),"pass")
+
+    def test_python_suite_with_zero_tests_fails(self):
+        self.assertEqual(classify("python",0,"\nRan 0 tests in 0.001s\n\nOK\n"),"fail")
+        self.assertEqual(classify("python",0,"\nRan 2 tests in 0.001s\n\nOK\n"),"pass")
+
+    def test_the_four_python_files_without_a_main_now_have_one(self):
+        tools=Path(__file__).resolve().parent
+        for name in ("test_loop_start.py","test_loop_start_build.py","test_recovery_native.py","test_target_probe_session.py"):
+            self.assertIn('unittest.main()',(tools/name).read_text(),name)
+
+
 if __name__=="__main__":unittest.main()

@@ -1,5 +1,7 @@
 import json,math,subprocess,tempfile,unittest
 from pathlib import Path
+import sys
+sys.path.insert(0,str(Path(__file__).resolve().parent))
 from recovery_native import Engine,ROOT
 IDENT=bytes.fromhex('11'*32+'22'*32+'33'*32)
 def pos(x,y=0):return round((51+y/111320)*1e7),round((7+x/(111320*math.cos(math.radians(51))))*1e7)
@@ -94,3 +96,5 @@ fs.writeFileSync(process.argv[1]+'/shared.bin',encodeRecoveryPackage([east,west]
     def test_rider_on_the_street_without_heading_is_unavailable(self):
         r=self.off(self.engine_at_entry(),60,0,now=2000)
         self.assertNotEqual(r['state'],2)
+
+if __name__=="__main__":unittest.main()
