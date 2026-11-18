@@ -53,7 +53,7 @@ export function runGrey(fileBytes, routeId, frames) {
   const file = path.join(dir, 'file.ccwb');
   fs.writeFileSync(file, Buffer.from(fileBytes));
   const hex = Buffer.from(routeId).toString('hex');
-  const input = frames.map(f => [f.latE7, f.lonE7, f.cap ?? 1000000000, f.failAt ?? -1].join(' ')).join('\n') + '\n';
+  const input = frames.map(f => [f.latE7, f.lonE7, f.cap ?? 1000000000, f.failAt ?? -1, f.course ?? 0].join(' ')).join('\n') + '\n';
   let text;
   try {
     text = execFileSync(binary(), ['--grey', file, hex], {input, maxBuffer: 1 << 30, encoding: 'utf8'});

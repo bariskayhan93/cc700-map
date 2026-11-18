@@ -1,5 +1,6 @@
 /* Host command for the device adapter (firmware/wayback/wb_device.c, built with -DHOST).
- * Usage: wayback_device_host FILE LAT LON OFF_ROUTE STACK PART PATH_MODE GPS CLOCK_STEP_US OPEN_OK
+ * Usage: wayback_device_host FILE LAT LON OFF_ROUTE STACK PART PATH_MODE GPS CLOCK_STEP_US OPEN_OK FAIL_AT MAP_HEAD
+ * FAIL_AT: the k-th read fails (1-based), 0 = none. MAP_HEAD: the stock map heading, 450 - course (degrees).
  * PATH_MODE: 1 = the route file is the second open file, 0 = no route handle, -1 = table lock busy,
  * 2 = navigation lock busy. Prints one JSON object. The stubs stand for the firmware calls only. */
 #include <stdint.h>
@@ -14,6 +15,7 @@ int32_t host_file_cnt;
 uint8_t host_file_tab[20 * 132], host_label_opa;
 int16_t host_dash;
 uint16_t host_label_col = 0x1234;
+float host_map_head;
 
 static float g_pos[2];
 static uint32_t g_off, g_stack, g_gps, g_clock, g_step, g_open_ok;
@@ -69,8 +71,8 @@ void host_canvas_text(void *cv, int32_t x, int32_t y, int32_t w, void *dsc, cons
 int main(int argc, char **argv) {
   int i, mode;
   void *route = &route, *other = &other;
-  if (argc != 11 && argc != 12) return 2;
-  g_fail_at = argc == 12 ? (uint32_t)atoi(argv[11]) : 0u;
+  if (argc != 13) return 2;
+  g_fail_at = (uint32_t)atoi(argv[11]); host_map_head = strtof(argv[12], 0);
   g_pos[0] = strtof(argv[2], 0); g_pos[1] = strtof(argv[3], 0);
   g_off = (uint32_t)atoi(argv[4]); g_stack = (uint32_t)atoi(argv[5]);
   mode = atoi(argv[7]); g_gps = (uint32_t)atoi(argv[8]);

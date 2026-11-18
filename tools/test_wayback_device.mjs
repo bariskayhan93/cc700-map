@@ -33,7 +33,7 @@ fs.writeFileSync(plain, routeBytes);
 function run(o) {
   const q = p(o.x ?? 5, o.y ?? 120);
   const args = [o.file ?? withData, q[0], q[1], o.off ?? 1, o.stack ?? 4096, o.part ?? 0, o.pathMode ?? 1, o.gps ?? 1, o.step ?? 100, o.openOk ?? 1].map(String);
-  if (o.failAt) args.push(String(o.failAt));   // the failAt-th file read of the frame fails
+  args.push(String(o.failAt ?? 0), String(o.head ?? 90));   // the failAt-th read fails; map heading 90 = course 0
   if (o.exe) return JSON.parse(execFileSync(o.exe, args, {encoding: 'utf8'}));
   return JSON.parse(execFileSync(exe, args, {encoding: 'utf8'}));
 }
@@ -106,7 +106,7 @@ test('damaged way-back data shows code 7 and no line', () => {
   assert.deepEqual([r.lines.length, r.closes], [0, 1]); assert.match(r.text, /^wb7 /);
 });
 
-// ---- D5: the grey draw (north-up layer, before the line, at most 400 segments, 60 ms) ----
+// ---- D5: the grey draw (heading-up screen, before the line, at most 400 segments, 60 ms) ----
 const layerBytes = greyLayer(decodeWayback(wayback));
 const withLayer = path.join(work, 'route-layer.bin');
 fs.writeFileSync(withLayer, embedWayback(routeBytes, Buffer.concat([Buffer.from(wayback), Buffer.from(layerBytes)])));
@@ -180,4 +180,24 @@ test('a route change mid-ride: the grey and the line come from the file of that 
   assert(greyOps(changed).length >= 1);
   assert.deepEqual(changed.lines.slice(-2), plainOther.lines.slice(-2));
   assert.match(changed.text, /^1[12]\dm /);
+});
+// The course comes from the stock map heading (450 - course): 90 is course 0, also at the start of a new navigation.
+const greyOf = h => greyOps(run({...dense, head: h}));
+test('map heading 90 and 450 are course 0, 0 and 720 are course 90, 180 and -180 are course 270', () => {
+  assert.deepEqual(greyOf(450), greyOf(90));
+  assert.deepEqual(greyOf(720), greyOf(0));
+  assert.deepEqual(greyOf(-180), greyOf(180));
+  assert.notDeepEqual(greyOf(0), greyOf(90));
+});
+test('course 90 draws the grey east of the rider, course 270 west', () => {
+  const lon = ls => ls.reduce((s, l) => s + l.first[1], 0) / ls.length;
+  assert(lon(greyOf(0)) > lon(greyOf(180)));
+});
+test('a NaN or bad map heading draws no grey and the same line', () => {
+  const ref = run({...dense, file: densePlain});
+  for (const h of ['nan', 721, -361]) {
+    const r = run({...dense, head: h});
+    assert.equal(greyOps(r).length, 0, `head ${h}`);
+    assert.deepEqual(r.lines, ref.lines);
+  }
 });
