@@ -6,7 +6,7 @@ import {routingQuery, captureRoutingSnapshot} from './routing_snapshot.js';
 import {buildTransitionGraph} from './recovery_transitions.js';
 import {conservativeWayPolicy} from './recovery_graph.js';
 import {buildWaybackModel} from './wayback_tree.js';
-import {encodeWayback} from './wayback_format.js';
+import {encodeWayback, encodeWaybackV2} from './wayback_format.js';
 import {embedWayback} from './wayback_embed.js';
 import {readNativeRoute} from './native_route.js';
 
@@ -31,17 +31,20 @@ export function waybackBbox(route) {
 }
 
 // Pure step. Returns {bytes, reach, model}, or null when the bytes exceed maxBytes in both reaches.
-export function waybackFromSnapshot(snapshot, route, routeId, {reach = 'line2k', exceptions = false, maxBytes = 0} = {}) {
+// format 2 (cc26): version 2 file. A node that does not fit gives no version 2 file at 2 km; the 1.5 km reach is tried.
+export function waybackFromSnapshot(snapshot, route, routeId, {reach = 'line2k', exceptions = false, maxBytes = 0, format = 1} = {}) {
   const graph = buildTransitionGraph(snapshot, {wayPolicy});
-  let model = buildWaybackModel(graph, route, {reach, exceptions});
-  let bytes = encodeWayback(model, routeId);
-  if (maxBytes && bytes.length > maxBytes && reach === 'line2k') {
-    reach = 'ride1500';
-    model = buildWaybackModel(graph, route, {reach, exceptions});
-    bytes = encodeWayback(model, routeId);
-  }
-  if (maxBytes && bytes.length > maxBytes) return null;
-  return {bytes, reach, model};
+  const encode = model => format === 2 ? encodeWaybackV2(model, routeId) : encodeWayback(model, routeId);
+  const make = rch => {
+    const model = buildWaybackModel(graph, route, {reach: rch, exceptions});
+    try { return {bytes: encode(model), reach: rch, model}; }
+    catch (e) { if (format === 2 && /does not fit version 2/.test(e.message)) return null; throw e; }
+  };
+  let made = make(reach);
+  if (made && maxBytes && made.bytes.length > maxBytes && reach === 'line2k') made = make('ride1500');
+  if (!made && format === 2 && reach === 'line2k') made = make('ride1500');
+  if (!made || (maxBytes && made.bytes.length > maxBytes)) return null;
+  return made;
 }
 
 async function overpass(query, fetchImpl) {
@@ -68,10 +71,10 @@ export async function loadWaybackSnapshot(route, fetchImpl = fetch) {
 }
 
 // Route file bytes -> route file bytes with way-back data. Throws when no data can be made; the caller keeps the plain file.
-export async function addWayback(routeBytes, {fetchImpl = fetch, maxBytes = WAYBACK_MAX_BYTES} = {}) {
+export async function addWayback(routeBytes, {fetchImpl = fetch, maxBytes = WAYBACK_MAX_BYTES, format = 1} = {}) {
   const route = readNativeRoute(routeBytes);
   const snapshot = await loadWaybackSnapshot(route, fetchImpl);
-  const made = waybackFromSnapshot(snapshot, route, await routeIdentity(routeBytes), {maxBytes});
+  const made = waybackFromSnapshot(snapshot, route, await routeIdentity(routeBytes), {maxBytes, format});
   if (!made) throw new Error('way-back data exceeds ' + maxBytes + ' bytes');
   if (!made.model.stats.stored) throw new Error('no stored street');
   return {file: embedWayback(routeBytes, made.bytes), bytes: made.bytes.length, reach: made.reach, stats: made.model.stats};

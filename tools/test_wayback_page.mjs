@@ -87,3 +87,10 @@ test('the trailer points at the way-back bytes and the route bytes do not change
   assert.deepEqual(out.subarray(t.offset, t.offset + t.size), made.bytes);
   assert.throws(() => embedWayback(out, made.bytes), /already has/);
 });
+
+test('format 2 writes way-back version 2 and format 1 keeps version 1 (cc26, D1)', async () => {
+  const snapshot = await loadWaybackSnapshot(route, fetchOf([{body: response()}]));
+  const id = new Uint8Array(16);
+  assert.equal(decodeWayback(waybackFromSnapshot(snapshot, route, id, {format: 2}).bytes).header.version, 2);
+  assert.equal(decodeWayback(waybackFromSnapshot(snapshot, route, id).bytes).header.version, 1);
+});

@@ -36,8 +36,8 @@ export function makeFrame(points) {
 function putU24(b, off, v) { b[off] = v & 0xFF; b[off + 1] = (v >>> 8) & 0xFF; b[off + 2] = (v >>> 16) & 0xFF; }
 function getU24(b, off) { return b[off] | (b[off + 1] << 8) | (b[off + 2] << 16); }
 
-export function encodeWayback(model, routeId) {
-  if (!(routeId instanceof Uint8Array) || routeId.length !== 16) throw new Error('route id must be 16 bytes');
+// Layout shared by both versions: frame, node order by cell, distance and next fields, extras and cells.
+function layout(model) {
   const N = model.nodes.length;
   if (!N) throw new Error('model has no nodes');
   if (N >= NONE24) throw new Error('node count does not fit the file');
@@ -89,6 +89,12 @@ export function encodeWayback(model, routeId) {
     c.firstExtra = ex;
   }
   cells.push({key: SENTINEL_KEY, firstNode: N, firstExtra: extras.length});
+  return {N, frame, newOf, nUnits, nKey, dists, nNext, extras, cells};
+}
+
+export function encodeWayback(model, routeId) {
+  if (!(routeId instanceof Uint8Array) || routeId.length !== 16) throw new Error('route id must be 16 bytes');
+  const {N, frame, newOf, nUnits, dists, nNext, extras, cells} = layout(model);
 
   // Exception lists (chunks), each sorted by the new node index.
   const hasChunks = model.chunks.length > 0;
@@ -138,13 +144,58 @@ export function encodeWayback(model, routeId) {
   return out;
 }
 
+// Version 2 (cc26, E7): 8-byte node, one little-endian u64. Bits 0-18: x/2, bits 19-37: y/2 (1/16 m units,
+// halved), bits 38-50: next - index as a signed 13-bit delta (0 = no next), bits 51-63: distance in whole metres.
+// No exception lists. A value that does not fit gives an error that names the field.
+export function encodeWaybackV2(model, routeId) {
+  if (!(routeId instanceof Uint8Array) || routeId.length !== 16) throw new Error('route id must be 16 bytes');
+  const {N, frame, nUnits, nKey, dists, nNext, extras, cells} = layout(model);
+  const nodeBytes = new Uint8Array(8 * N), nv = new DataView(nodeBytes.buffer);
+  for (let i = 0; i < N; i++) {
+    const [X, Y] = nUnits[i];
+    if (X >= 0x100000) throw new Error('node does not fit version 2: x');
+    if (Y >= 0x100000) throw new Error('node does not fit version 2: y');
+    let delta = 0;
+    if (nNext[i] !== NONE24) {
+      delta = nNext[i] - i;
+      if (delta === 0 || delta < -4096 || delta > 4095) throw new Error('node does not fit version 2: next');
+    }
+    const metres = Math.round(dists[i] / 10);
+    if (metres > 8191) throw new Error('node does not fit version 2: dist');
+    const v = BigInt(X >>> 1) | (BigInt(Y >>> 1) << 19n) | (BigInt(delta & 0x1fff) << 38n) | (BigInt(metres) << 51n);
+    nv.setBigUint64(8 * i, v, true);
+  }
+  const cellCount = cells.length - 1;
+  const out = new Uint8Array(HEADER + cells.length * 12 + 8 * N + extras.length * 8), dv = new DataView(out.buffer);
+  out.set([0x43, 0x43, 0x57, 0x42], 0);
+  dv.setUint16(4, 2, true);
+  dv.setUint16(6, 0, true);                       // no exception lists
+  out.set(routeId, 8);
+  dv.setInt32(24, frame.lat0E7, true);
+  dv.setInt32(28, frame.lon0E7, true);
+  dv.setUint32(32, frame.latU, true);
+  dv.setUint32(36, frame.lonU, true);
+  dv.setUint32(40, frame.latE, true);
+  dv.setUint32(44, frame.lonE, true);
+  dv.setUint32(48, N, true);
+  dv.setUint32(52, cellCount, true);
+  dv.setUint32(56, extras.length, true);
+  dv.setUint32(60, 0, true);
+  let off = HEADER;
+  for (const c of cells) { dv.setUint32(off, c.key, true); dv.setUint32(off + 4, c.firstNode, true); dv.setUint32(off + 8, c.firstExtra, true); off += 12; }
+  out.set(nodeBytes, off);
+  off += 8 * N;
+  for (const e of extras) { putU24(out, off, e.a); putU24(out, off + 3, e.b); dv.setUint16(off + 6, e.lenflags, true); off += 8; }
+  return out;
+}
+
 export function decodeWayback(bytes) {
   const b = bytes instanceof Uint8Array ? bytes : Uint8Array.from(bytes);
   if (b.length < HEADER) throw new Error('file is shorter than the header');
   if (b[0] !== 0x43 || b[1] !== 0x43 || b[2] !== 0x57 || b[3] !== 0x42) throw new Error('bad magic');
   const dv = new DataView(b.buffer, b.byteOffset, b.byteLength);
   const version = dv.getUint16(4, true);
-  if (version !== 1) throw new Error(`unsupported version ${version}`);
+  if (version !== 1 && version !== 2) throw new Error(`unsupported version ${version}`);
   const flags = dv.getUint16(6, true);
   const nodeCount = dv.getUint32(48, true), cellCount = dv.getUint32(52, true);
   const extraCount = dv.getUint32(56, true), chunkCount = dv.getUint32(60, true);
@@ -155,7 +206,7 @@ export function decodeWayback(bytes) {
     nodeCount, cellCount, extraCount, chunkCount,
   };
   const cellsOff = HEADER, nodesOff = cellsOff + (cellCount + 1) * 12;
-  const extrasOff = nodesOff + nodeCount * 12, chunksOff = extrasOff + extraCount * 8;
+  const extrasOff = nodesOff + nodeCount * (version === 2 ? 8 : 12), chunksOff = extrasOff + extraCount * 8;
   const chunkBytes = chunkCount ? (chunkCount + 1) * 4 : 0, excOff = chunksOff + chunkBytes;
   if (b.length < excOff) throw new Error('file is shorter than its sections');
   let excCount = 0;
@@ -174,7 +225,15 @@ export function decodeWayback(bytes) {
     cells.push({key: dv.getUint32(o, true), firstNode: dv.getUint32(o + 4, true), firstExtra: dv.getUint32(o + 8, true)});
   }
   const nodes = [];
+  if (version === 2 && chunkCount) throw new Error('version 2 has no exception lists');
   for (let i = 0; i < nodeCount; i++) {
+    if (version === 2) {
+      const v = dv.getBigUint64(nodesOff + i * 8, true), d = Number((v >> 38n) & 0x1fffn);
+      const next = d === 0 ? -1 : i + (d >= 4096 ? d - 8192 : d);
+      if (d !== 0 && (next < 0 || next >= nodeCount)) throw new Error('node next index out of range');
+      nodes.push({x: 2 * Number(v & 0x7ffffn), y: 2 * Number((v >> 19n) & 0x7ffffn), next, distM: Number(v >> 51n)});
+      continue;
+    }
     const o = nodesOff + i * 12, nx = getU24(b, o + 6);
     if (nx !== NONE24 && nx >= nodeCount) throw new Error('node next index out of range');
     nodes.push({X: getU24(b, o), Y: getU24(b, o + 3), next: nx === NONE24 ? -1 : nx, distDm: getU24(b, o + 9)});

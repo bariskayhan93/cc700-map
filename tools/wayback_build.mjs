@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // Builds one way-back file from private ride inputs and prints one JSON size report.
-// Usage: node tools/wayback_build.mjs <config.json> <out.ccwb> [--reach line2k|ride1500] [--exceptions] [--max-bytes N]
+// Usage: node tools/wayback_build.mjs <config.json> <out.ccwb> [--reach line2k|ride1500] [--exceptions] [--max-bytes N] [--format 1|2]
 // Host only. The file and the report stay in .local/ (git ignores it). Exit 3: file too large.
 import fs from 'node:fs';
 import path from 'node:path';
@@ -19,6 +19,7 @@ function parseArgs(argv) {
     if (argv[i] === '--reach') out.reach = argv[++i];
     else if (argv[i] === '--exceptions') out.exceptions = true;
     else if (argv[i] === '--max-bytes') out.maxBytes = Number(argv[++i]);
+    else if (argv[i] === '--format') out.format = Number(argv[++i]);
     else throw new Error(`unknown argument ${argv[i]}`);
   }
   if (out.reach !== 'line2k' && out.reach !== 'ride1500') throw new Error(`unknown reach ${out.reach}`);
@@ -28,7 +29,7 @@ function parseArgs(argv) {
 function main() {
   const [configPath, outPath, ...rest] = process.argv.slice(2);
   if (!configPath || !outPath) {
-    console.error('usage: node tools/wayback_build.mjs <config.json> <out.ccwb> [--reach line2k|ride1500] [--exceptions] [--max-bytes N]');
+    console.error('usage: node tools/wayback_build.mjs <config.json> <out.ccwb> [--reach line2k|ride1500] [--exceptions] [--max-bytes N] [--format 1|2]');
     return 2;
   }
   const args = parseArgs(rest);

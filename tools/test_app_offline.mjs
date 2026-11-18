@@ -43,5 +43,6 @@ for (const styled of [false,true]) {
   assert.match(app, /codec = fwChoice === 'patch25' \? 'd' : undefined/);
   assert.match(app, /\.\.\.\(codec \? \{ ?codec ?\} : \{\}\)/);
   assert.match(app, /localStorage\.setItem\('cc700-fw', \$\('fw'\)\.value\)/);
+  assert.match(app, /addWayback\(r\.file, \{format: \$\('fw'\)\.value === 'patch25' \? 2 : 1\}\)/);
   console.log('PASS page offers patch25 with the codec and saves the choice');
 }

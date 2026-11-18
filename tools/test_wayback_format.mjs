@@ -3,7 +3,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {gridFixture, loopFixture} from './wayback_fixture.mjs';
 import {buildWaybackModel} from './wayback_tree.mjs';
-import {makeFrame, encodeWayback, decodeWayback} from './wayback_format.mjs';
+import {makeFrame, encodeWayback, decodeWayback, encodeWaybackV2} from './wayback_format.mjs';
 const {graph, route, p} = gridFixture();
 const model = buildWaybackModel(graph, route, {reach: 'line2k'});
 const id = Uint8Array.from({length: 16}, (_, i) => i + 1);
@@ -49,3 +49,40 @@ test('exception lists survive encode and decode, sorted by node', () => {
   const n = d.chunks.reduce((s, c) => s + c.length, 0);
   assert.equal(bytes.length, 64 + (d.header.cellCount + 1) * 12 + d.nodes.length * 12 + d.extras.length * 8 + 7 * 4 + n * 8);
 });
+
+// Version 2 (cc26, D1): 8-byte nodes, no exception lists.
+test('version 2 round trip: positions within 1 unit, distance within 0.5 m, next exact', () => {
+  const v2 = decodeWayback(encodeWaybackV2(model, id)), v1 = decodeWayback(encodeWayback(model, id));
+  assert.equal(v2.header.version, 2);
+  assert.equal(v2.nodes.length, v1.nodes.length);
+  v2.nodes.forEach((n, i) => {
+    assert(Math.abs(n.x - v1.nodes[i].X) <= 1, `x ${i}`);
+    assert(Math.abs(n.y - v1.nodes[i].Y) <= 1, `y ${i}`);
+    assert.equal(n.next, v1.nodes[i].next, `next ${i}`);
+    assert(Math.abs(n.distM - v1.nodes[i].distDm / 10) <= 0.5, `distance ${i}`);
+  });
+});
+
+test('version 2 size: header, cells, 8-byte nodes and 8-byte extras', () => {
+  const cells = decodeWayback(encodeWayback(model, id)).header.cellCount;
+  assert.equal(encodeWaybackV2(model, id).length, 64 + 12 * (cells + 1) + 8 * model.nodes.length + 8 * model.extras.length);
+});
+
+test('version 2 refuses a position outside 65.5 km, a distance over 8,191 m and a next delta over 4,095', () => {
+  const far = (lat, lon) => ({nodes: [{point: [51, 7], dist: 5, next: -1}, {point: [lat, lon], dist: 5, next: -1}], extras: [], chunks: []});
+  assert.throws(() => encodeWaybackV2(far(51, 8.0), id), /does not fit version 2: x$/);
+  assert.throws(() => encodeWaybackV2(far(51.7, 7), id), /does not fit version 2: y$/);
+  const dist = {nodes: [{point: [51, 7], dist: 8192, next: -1}], extras: [], chunks: []};
+  assert.throws(() => encodeWaybackV2(dist, id), /does not fit version 2: dist$/);
+  // 4,225 nodes on a 1 m grid. The first node in file order links to the node 4,096 places later (edge under 1,700 units).
+  const pts = [];
+  for (let i = 0; i < 65; i++) for (let j = 0; j < 65; j++) pts.push([51 + (i / 111320), 7 + (j / (111320 * Math.cos(51 * Math.PI / 180)))]);
+  const nodes = pts.map(point => ({point, dist: 5, next: -1}));
+  const f = makeFrame(pts), key = ([X, Y]) => ((Y >> 11) << 16) | (X >> 11);
+  const order = pts.map((q, i) => i).sort((a, b) => (key(f.toUnits(pts[a])) - key(f.toUnits(pts[b]))) || (a - b));
+  nodes[order[0]].next = order[4096];
+  const long = {nodes, extras: [], chunks: []};
+  assert.doesNotThrow(() => encodeWayback(long, id));
+  assert.throws(() => encodeWaybackV2(long, id), /does not fit version 2: next$/);
+});
+
