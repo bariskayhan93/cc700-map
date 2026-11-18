@@ -29,6 +29,7 @@ struct wb_engine {
   uint32_t lat_u, lon_u, lat_e, lon_e;
   uint32_t node_count, cell_count, extra_count;
   uint32_t off_nodes, off_extras;
+  uint32_t grey_at, grey_n, grey_body;   /* grey layer section (E15): offset 0 = none */
   uint8_t mounted, has_line, kind, end_first;
   uint32_t a, b, len, end, end_dm, cur_next, npts;
   int32_t p_lat, p_lon;
@@ -161,11 +162,33 @@ size_t wb_size(void) {
   return sizeof(struct wb_engine);
 }
 
+/* The grey layer section after the extras (E15, D3c): magic CCGL, shifts 12 and 3, and lengths that add up. Any
+ * other bytes after the extras refuse the file. */
+static int layer_mount(wb_engine *e, uint32_t at, uint32_t file_bytes) {
+  uint8_t h[16], s[8];
+  uint32_t n, body, rest;
+  if (file_bytes - at < 16u) return 0;
+  if (!rd(e, at, h, 16u)) return 0;
+  if (h[0] != 'C' || h[1] != 'C' || h[2] != 'G' || h[3] != 'L' || h[4] != 12u || h[5] != 3u) return 0;
+  n = rd_u32(h + 8);
+  body = rd_u32(h + 12);
+  rest = file_bytes - at - 16u;
+  if (n >= 0xFFFFFu || (n + 1u) * 8u > rest) return 0;
+  if (body != rest - (n + 1u) * 8u) return 0;
+  if (!rd(e, at + 16u + n * 8u, s, 8u)) return 0;
+  if (rd_u32(s) != 0xFFFFFFFFu || rd_u32(s + 4) != body) return 0;
+  e->grey_at = at;
+  e->grey_n = n;
+  e->grey_body = body;
+  return 1;
+}
+
 int wb_mount(wb_engine *e, wb_reader r, void *ctx, uint32_t file_bytes, const uint8_t route_id[16]) {
   uint8_t h[WB_HEADER_BYTES], s[WB_CELL_BYTES];
   uint32_t i, version, flags, node_count, cell_count, extra_count, chunk_count, off_cells, total;
   e->mounted = 0;
   e->has_line = 0;
+  e->grey_at = 0;
   e->reader = r;
   e->ctx = ctx;
   e->file_bytes = file_bytes;
@@ -190,7 +213,8 @@ int wb_mount(wb_engine *e, wb_reader r, void *ctx, uint32_t file_bytes, const ui
   e->off_extras = e->off_nodes + node_count * WB_NODE_BYTES;
   if (e->off_extras > file_bytes) return 0;
   total = e->off_extras + extra_count * WB_EXTRA_BYTES;
-  if (total != file_bytes) return 0;
+  if (total > file_bytes) return 0;
+  if (total != file_bytes && !layer_mount(e, total, file_bytes)) return 0;
 
   /* The sentinel cell record must follow the last cell: key, node count and extra count. */
   if (!rd(e, off_cells + cell_count * WB_CELL_BYTES, s, WB_CELL_BYTES)) return 0;
@@ -207,6 +231,20 @@ int wb_mount(wb_engine *e, wb_reader r, void *ctx, uint32_t file_bytes, const ui
   e->extra_count = extra_count;
   e->mounted = 1;
   return 1;
+}
+
+/* Grey layer section of the mounted file (D3c): 0 = none; else info = {section offset, cell count, body bytes}. */
+int wb_grey_section(const wb_engine *e, uint32_t info[3]) {
+  if (!e->mounted || !e->grey_at) return 0;
+  info[0] = e->grey_at;
+  info[1] = e->grey_n;
+  info[2] = e->grey_body;
+  return 1;
+}
+
+/* Reads n bytes of the file at off, through the reader of wb_mount. 1 = ok. */
+int wb_read_at(const wb_engine *e, uint32_t off, uint8_t *dst, uint32_t n) {
+  return rd(e, off, dst, n);
 }
 
 void wb_unmount(wb_engine *e) {
