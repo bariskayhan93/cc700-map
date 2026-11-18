@@ -5,6 +5,7 @@ import argparse
 import hashlib
 import importlib.util
 import json
+import re
 from pathlib import Path
 import subprocess
 import tempfile
@@ -18,7 +19,16 @@ CORE_FILES=('wayback.c','wayback.h')
 TREE_FILES=('wb_device.c','wb_tramp.S','wb_device.ld')
 BASE_SHA='6146fb25de504e4aa9684fe519a7ce46a6ce332ae109c698259dc8f00d836b43'
 FIXED_BASE_SHA='d225e17970940be7b153c524aebcfc60f4ca7ae8cd74696ef2282396e461ce04'  # cc23 + trampoline frame 48
-VERSION=b'CC700_V1.414-cc23wb1'
+# Build mark (D0 item 9): the version text ends with the first 7 hex digits of the source commit. The text stays
+# 20 bytes, as the old text was. Fixed and unfixed images then report different texts.
+VERSION_PREFIX=b'CC700_V1.414-'
+def source_mark():
+    head=subprocess.run(['git','-C',str(ROOT),'rev-parse','--short=7','HEAD'],capture_output=True,text=True,check=True).stdout.strip()
+    if not re.fullmatch(r'[0-9a-f]{7}',head): raise ValueError('source commit is not 7 hex digits')
+    return head
+def source_dirty():
+    """True when the way-back sources or this builder differ from HEAD (the mark does not describe them then)."""
+    return bool(subprocess.run(['git','-C',str(ROOT),'status','--porcelain','--','firmware/wayback','tools/wayback_device_build.py'],capture_output=True,text=True,check=True).stdout.strip())
 IROM=0x42000020
 TAIL=0x421de800
 PAGE_END=0x421e0000
@@ -89,7 +99,8 @@ def build_candidate(base,sections,fragment_read):
         irom[at:at+len(payloads[name])]=payloads[name]
     if IROM+len(irom)>PAGE_END:raise ValueError('code page overflow')
     if PAGE_END-IROM-len(irom)<RESERVE:raise ValueError(f'free space below the {RESERVE} B reserve')
-    drom[16:48]=VERSION+bytes(32-len(VERSION))
+    version=VERSION_PREFIX+source_mark().encode()
+    drom[16:48]=version+bytes(32-len(version))
     deltas=[]
     for (oldaddr,old),(address,data) in zip(before,segs):
         if oldaddr!=address or len(data)<len(old):raise ValueError('segment layout drift')
@@ -105,7 +116,7 @@ def build_candidate(base,sections,fragment_read):
     image=esp.build(header,segs)
     h,s,_=esp.read(image)
     if len(image)>0x420000 or esp.build(h,s)!=image:raise ValueError('candidate roundtrip failed')
-    return image,{'version':VERSION.decode(),'base_sha256':base_sha,
+    return image,{'version':version.decode(),'source_commit':version[-7:].decode(),'source_dirty':source_dirty(),'base_sha256':base_sha,
         'image_sha256':hashlib.sha256(image).hexdigest(),'image_bytes':len(image),
         'code_bytes':len(payloads['.text']),'usable_bytes':USABLE,
         'page_free_bytes':PAGE_END-IROM-len(irom),'hook_target':hex(literal),

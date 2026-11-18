@@ -65,13 +65,19 @@ class WaybackDeviceBuildTests(unittest.TestCase):
             read=lambda name:(out/name).read_bytes()
             image,receipt=b.build_candidate(base,r['sections'],read)
             self.assertEqual(image,(out/'ota_1_cc23wb1.bin').read_bytes())
-            self.assertEqual(receipt['version'],'CC700_V1.414-cc23wb1')
+            head=subprocess.run(['git','-C',str(ROOT),'rev-parse','--short=7','HEAD'],capture_output=True,text=True,check=True).stdout.strip()
+            self.assertEqual(receipt['version'],'CC700_V1.414-'+head)   # D0 item 9: the build mark is the source commit
+            self.assertEqual(len(receipt['version']),20)               # the same length as the old text
             self.assertLessEqual(receipt['code_bytes'],4376)
             self.assertGreaterEqual(receipt['page_free_bytes'],1768)   # the reserve for one stability fix
             # Only the hook literal, the new tail and the version text differ from cc23.
             delta={d['segment']:d['changed_or_added_bytes'] for d in receipt['segment_delta']}
             self.assertEqual(sorted(delta),['0x3c1e0020','0x42000020'])
-            self.assertEqual(delta['0x3c1e0020'],3)
+            # Only the version text changes in DROM: the bytes that differ from the base text, and nothing else.
+            _,base_segs,_=b.esp_module().read(base)
+            base_drom=next(d for a_,d in base_segs if a_==0x3c1e0020)
+            version_bytes=receipt['version'].encode()
+            self.assertEqual(delta['0x3c1e0020'],sum(x!=y for x,y in zip(bytes(base_drom[16:16+len(version_bytes)]),version_bytes)))
             self.assertIn(delta['0x42000020']-receipt['code_bytes'],(1,2,3,4))
             # Own stack below the 3,360 B gate, before any firmware file call.
             frames=dict((l.rsplit(' ',1)[0].split('.')[0],int(l.rsplit(' ',1)[1])) for l in r['stack_usage'])
