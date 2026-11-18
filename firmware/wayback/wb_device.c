@@ -9,11 +9,12 @@
 #ifndef WBD_GREY_SEGS
 #define WBD_GREY_SEGS 400u         /* grey segments of one frame (R-D3); the host build with 3 tests the cap */
 #endif
-#define WBD_GREY_US 60000u          /* the grey draw stops this long after the frame start */
+#define WBD_GREY_US 60000u          /* the grey draw stops this long after its own start (ride 18 Nov: mount and tick took >60 ms) */
+#define WBD_GREY_END_US 220000u     /* and this long after the frame start: the line points keep 80 ms of WBD_TIME_US */
 #define WBD_TIME_US 300000u         /* file work for each frame; a later read fails */
 #define WBD_STACK 3968u             /* free stack needed before any file call */
 #define WBD_REC 132u                /* open-file table record: handle, then the name */
-enum { WBD_LOCK = 6, WBD_NODATA = 7, WBD_STACK_LOW = 8, WBD_OPEN = 9, WBD_LINE_CAP = 10 };   /* codes after the core reasons 1 to 5 */
+enum { WBD_LOCK = 6, WBD_NODATA = 7, WBD_STACK_LOW = 8, WBD_OPEN = 9 };   /* codes after the core reasons 1 to 5 (10 retired: a long line is cut) */
 
 typedef struct { void *fp; uint32_t base, t0, late, reads; } wbd_ctx;
 
@@ -151,7 +152,7 @@ static int wbd_read(void *vctx, uint32_t off, void *dst, uint32_t n) {
 static uint32_t le32(const uint8_t *p) { return p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24); }
 
 /* Mounts the data at the file end, runs one tick and reads the line. Returns 0 with n points, or a code. */
-static uint32_t wbd_core(wbd_ctx *, uint32_t, uint8_t *, const float *, float *, uint32_t *, uint32_t *);
+static uint32_t wbd_core(wbd_ctx *, uint32_t, uint8_t *, const float *, float *, uint32_t *, uint32_t *);   /* *n bit 31: the line is cut */
 static __attribute__((noinline)) uint32_t wbd_run(void *fp, uint32_t t0, const float *pos, float *line, uint32_t *n, uint32_t *dm, uint32_t *reads) {
   uint8_t t[16]; wbd_ctx c; uint32_t i;
   if (wb_size() > 128u + 8u * (sizeof(void *) - 4)) return WBD_NODATA;
@@ -166,11 +167,11 @@ static __attribute__((noinline)) uint32_t wbd_run(void *fp, uint32_t t0, const f
 /* Grey streets of one frame (D3c, E15): the layer cells under the heading-up screen, nearest first, drawn
  * as operation 30 before the line. The buffer is the line buffer of the frame: the line points are read after this
  * draw. A read error or the cap ends the grey for this frame only. */
-typedef struct { uint32_t segs; wbd_ctx *c; float *buf; } wbd_grey;
+typedef struct { uint32_t segs, t0; wbd_ctx *c; float *buf; } wbd_grey;
 static int wbd_grey_visit(void *vctx, const int32_t *p, uint32_t n) {
   wbd_grey *g = (wbd_grey *)vctx;
-  uint32_t k;
-  if (g->segs >= WBD_GREY_SEGS || fw_clock() - g->c->t0 > WBD_GREY_US) return 0;
+  uint32_t k, now = fw_clock();
+  if (g->segs >= WBD_GREY_SEGS || now - g->t0 > WBD_GREY_US || now - g->c->t0 > WBD_GREY_END_US) return 0;
   if (g->segs + (n - 1u) > WBD_GREY_SEGS) n = WBD_GREY_SEGS - g->segs + 1u;   /* the last line is cut at the cap */
   for (k = 0; k < n; k++) { g->buf[2 * k] = (float)p[2 * k] * 1e-7f; g->buf[2 * k + 1] = (float)p[2 * k + 1] * 1e-7f; }
   wbd_line(g->buf, n, 30u);
@@ -182,7 +183,7 @@ static void wbd_grey_draw(wbd_ctx *c, wb_engine *e, int32_t lat, int32_t lon, fl
   float head = FW_MAP_HEAD;
   wbd_grey g;
   if (!(head >= -360.0f && head <= 720.0f)) return;            /* NaN or a bad heading: no grey in this frame */
-  g.segs = 0; g.c = c; g.buf = buf;
+  g.segs = 0; g.t0 = fw_clock(); g.c = c; g.buf = buf;
   n = wb_grey_cells(e, lat, lon, (uint32_t)(int32_t)(810.5f - head) % 360u, cells);   /* course + 360, rounded */
   (void)wb_grey_lines(e, cells, n, wbd_grey_visit, &g);
 }
@@ -199,8 +200,8 @@ static uint32_t wbd_core(wbd_ctx *cp, uint32_t i, uint8_t *t, const float *pos, 
   wbd_grey_draw(cp, e, in.lat_e7, in.lon_e7, line);           /* grey first: the line points are read after it */
   for (i = 0; i < WBD_POINTS && wb_read_point(e, i, p); i++) { line[2 * i] = (float)p[0] * 1e-7f; line[2 * i + 1] = (float)p[1] * 1e-7f; }
   if (i < 2u) return WB_READ;                                  /* a failed read: draw nothing */
-  if (i == WBD_POINTS && wb_read_point(e, WBD_POINTS, p)) return WBD_LINE_CAP;   /* more points: never cut silently */
   *n = i; *dm = out.distance_dm;
+  if (i == WBD_POINTS && wb_read_point(e, WBD_POINTS, p)) *n |= 0x80000000u;   /* more points: the first 32 from the rider, text '+' */
   return 0;
 }
 
@@ -215,10 +216,11 @@ static __attribute__((noinline)) void wbd_frame(void) {
   else { code = wbd_run(fp, t0, pos, line, &n, &dm, &rd); fw_fclose(fp); }
   if (code) { *o++ = 'w'; *o++ = 'b'; o = wbd_num(o, code); }
   else {
-    wbd_line(line, n, 17u);                                    /* white 7 px, then dark purple 4 px */
-    wbd_line(line, n, 14u);
+    wbd_line(line, n & 0xffu, 17u);                            /* white 7 px, then dark purple 4 px */
+    wbd_line(line, n & 0xffu, 14u);
     if (dm == WB_DIST_UNKNOWN) *o++ = '?'; else o = wbd_num(o, dm / 10u);   /* metres */
     *o++ = 'm';
+    if (n >> 31) *o++ = '+';                                   /* only the first 32 points are drawn */
   }
   *o++ = ' ';
   o = wbd_num(o, (fw_clock() - t0) / 1000u);                   /* file and core time of this frame, ms */

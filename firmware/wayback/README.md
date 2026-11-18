@@ -90,13 +90,14 @@ While the off-route byte (`0x3c3894f0 + 145`) is set, the adapter does the steps
 2. Takes the position through `cc_pos` with a zero-wait navigation lock, as `cc_rt` does.
 3. Finds the path of the first open route file in the open-file table of the firmware (zero-wait lock).
 4. Opens that file a second time for reading. It never moves the position of the firmware's own handle.
-5. Reads the trailer, mounts the data, runs one tick and reads at most 32 points. A read later than 300 ms after the frame start fails (raw timer `0x403779f4`).
+5. Reads the trailer, mounts the data, runs one tick, draws the grey streets and reads at most 32 points. A read later than 300 ms after the frame start fails (raw timer `0x403779f4`). The grey draw stops 60 ms after its own start, and never later than 220 ms after the frame start. A line of more than 32 points is cut: the first 32 points from the rider are drawn, and the text has `+` after the distance.
 6. Closes the file. Draws the line two times through the projection callback (`0x4204c1bc`): operation 17 (white, 7 px), then 14 (dark purple, 4 px).
 7. Writes a text at the top left of the map: the ride distance to the route in metres, or a code, then the time of this work in ms, then the number of file reads.
 
 | Text | Cause |
 |---|---|
 | `123m 45 130` | A line is drawn. 123 m is the ride distance to the route. The work took 45 ms and 130 file reads. |
+| `820m+ 150 120` | As above, but the line has more than 32 points: only its first 32 points (from the rider) are drawn. |
 | `wb3` | The rider is on the route (test image only). |
 | `wb2 45` | No position, no route list, or the navigation lock is busy. |
 | `wb4 45` | No stored street within 15 m. |
