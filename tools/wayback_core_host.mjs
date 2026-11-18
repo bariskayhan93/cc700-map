@@ -17,20 +17,19 @@ function binary() {
   execFileSync('cc', ['-std=c11', '-O1', '-g', '-Wall', '-Wextra', '-Werror',
     '-fsanitize=address,undefined', '-fno-sanitize-recover=all',
     '-I', path.join(root, 'firmware/wayback'),
-    path.join(root, 'tools/wayback_host.c'), path.join(root, 'firmware/wayback/wayback.c'),
-    '-o', out], {stdio: ['ignore', 'pipe', 'pipe']});
+    path.join(root, 'tools/wayback_host.c'), '-o', out], {stdio: ['ignore', 'pipe', 'pipe']});
   exe = out;
   return exe;
 }
 
 // lines: [{latE7, lonE7, exitCm = 0, flags, maxPoints = 64, failReadAfter = -1}]
-// Returns one object per line: {mounted, state, reason, distanceDm, forward, changed, reads, points}.
+// Returns one object per line: {mounted, state, reason, distanceDm, forward, changed, reads, points, piece, pieceAt}.
 export function runCore(fileBytes, routeId, lines) {
   const dir = fs.mkdtempSync(path.join(work, 'run-'));
   const file = path.join(dir, 'file.ccwb');
   fs.writeFileSync(file, Buffer.from(fileBytes));
   const hex = Buffer.from(routeId).toString('hex');
-  const input = lines.map(l => [l.latE7, l.lonE7, l.exitCm ?? 0, l.flags, l.maxPoints ?? 64, l.failReadAfter ?? -1].join(' ')).join('\n') + '\n';
+  const input = lines.map(l => [l.latE7, l.lonE7, l.exitCm ?? 0, l.flags, l.maxPoints ?? 64, l.failReadAfter ?? -1, l.pieceId ?? -1].join(' ')).join('\n') + '\n';
   let text;
   try {
     text = execFileSync(binary(), [file, hex], {input, maxBuffer: 1 << 30, encoding: 'utf8'});
@@ -42,6 +41,20 @@ export function runCore(fileBytes, routeId, lines) {
     return {
       mounted: r.mounted, state: r.state ?? 0, reason: r.reason ?? 0, distanceDm: r.distanceDm ?? 0,
       forward: r.forward ?? 0, changed: r.changed ?? 0, reads: r.reads ?? 0, points: r.points ?? [],
+      piece: r.piece ?? 0xFFFFFFFF, pieceAt: r.pieceAt,
     };
   });
+}
+
+// Self tests of the core (C, static helpers included) on one file: wb_out against the old far test, and the scan order.
+export function runSelfTest(fileBytes, routeId) {
+  const dir = fs.mkdtempSync(path.join(work, 'self-'));
+  const file = path.join(dir, 'file.ccwb');
+  fs.writeFileSync(file, Buffer.from(fileBytes));
+  try {
+    const out = execFileSync(binary(), ['--selftest', file, Buffer.from(routeId).toString('hex')], {maxBuffer: 1 << 20, encoding: 'utf8'});
+    return JSON.parse(out.trim());
+  } finally {
+    fs.rmSync(dir, {recursive: true, force: true});
+  }
 }

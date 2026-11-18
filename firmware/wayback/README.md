@@ -6,7 +6,7 @@ A first test image (`cc23wb1`) was on the device on 16 November 2026. It drew no
 The core now reads node records in blocks of 16 and filters by distance before it loads a second node. On the host this gives about 100 to 130 reads at the median with identical output. The time of one read on the device is not measured. This image (`cc23wb1` text, SHA-256 `25877b1b…`, on the cc23 with the trampoline fix) is on the test unit since 17 November 2026, 00:30 local time. No ride result exists yet.
 The core with the adapter is 4,284 B of Xtensa code. The usable room is 4,376 B. 1,860 B stay free in the code page (reserve: 1,768 B).
 The core has no heap, no float and no library call. Its only external call is the reader callback.
-The test image is built with `-DWB_NO_FWD`: forward mode is compiled out to stay inside the code room. The device has no trusted exit km, so it uses tree A values only.
+Forward mode is removed from the core (cc26, R-D2). The test image (cc23wb) is built from the core of commit `6091401` with `-DWB_NO_FWD`, which compiles its forward code out. The device has no trusted exit km, so it uses tree A values only. The version 2 core has no forward code.
 
 ## How the line is made
 
@@ -24,7 +24,7 @@ The test image is built with `-DWB_NO_FWD`: forward mode is compiled out to stay
 2. The device finds the stored street piece nearest to the rider. The piece must be within 15 m. The search reads the 3 x 3 cells of 128 m around the rider.
 3. The line starts at the nearest point on that piece. Then it goes from point to next point until the route. The test image draws the first 32 points and makes the line again on each map frame.
 
-- The heading and the speed of the rider have no effect. The line goes by street to the nearest route point, which can be behind the rider. Only forward mode aims at the route ahead, and it is off in the test image.
+- The heading and the speed of the rider have no effect. The line goes by street to the nearest route point, which can be behind the rider. There is no forward mode in version 2 (`forward` is always 0).
 - No stored street within 15 m (yard, field, building, bad GPS), or a street with no permitted way to the route: no line. The stock off-route arrow stays.
 - `node tools/wayback_draw.mjs <route.bin> <file.ccwb> <out.html>` makes an interactive page of an 800 m x 600 m part of a route. The pointer is the rider, and the line for each 4 m square comes from the real core. A page of a private route holds real street geometry, so keep it in `.local/`. `docs/way-back-demo.html` is this page for a part of the public Düsseldorf Tour D3, and `tools/wayback_draw_svg.mjs` makes the static picture `docs/comparison/way-back-demo.svg` from it.
 
@@ -48,14 +48,14 @@ The line has up to 4,096 points. Point 0 is the nearest point on the piece. Poin
 
 `wb_mount` accepts a file only when all of these hold:
 
-- The magic is `CCWB` and the version is 1.
+- The magic is `CCWB` and the version is 2. Version 1 files are refused (`WB_NO_FILE`).
 - The route identity (16 bytes) equals the route identity of the caller.
 - The scale fields are not 0.
 - The header and the section sizes add up to the file size.
-- Every chunk-table value is in order, the first is 0, and the last is the exception count.
+- The flags bit 0 is 0 and the chunk count is 0: version 2 has no exception lists.
 - The sentinel cell record matches the node count and the extra count.
 
-Forward mode needs a trusted exit (`WB_EXIT_TRUSTED` in the flags) and an exit km that is in the file.
+The trusted exit flag (`WB_EXIT_TRUSTED`) has no effect in version 2.
 
 ## Unavailable state
 
@@ -72,8 +72,7 @@ When `state` is `WB_NONE`, the device must show the stock off-route display. The
 
 ## Fallback
 
-- Tree A values are used when the exit is not trusted, when the file has no exception lists, or when the exit km is not in the file. `forward` is 0 in these cases.
-- In forward mode, the distance walk is limited to 64 nodes. When neither an exception record nor a route node is reached, `distance_dm` is `WB_DIST_UNKNOWN`.
+- Tree values only. `forward` is 0. The distance is the end node's distance plus the way along the piece, so `WB_DIST_UNKNOWN` does not occur.
 
 ## Restoration
 
@@ -164,8 +163,8 @@ All values are little-endian. `u24` is three bytes, low byte first. `NONE` is `0
 | Offset | Type | Field |
 |---:|---|---|
 | 0 | 4 bytes | magic `CCWB` |
-| 4 | u16 | version = 1 |
-| 6 | u16 | flags; bit 0 = the file has exception lists |
+| 4 | u16 | version = 2 |
+| 6 | u16 | flags; bit 0 = the file has exception lists (0 in version 2) |
 | 8 | 16 bytes | route identity: first 16 bytes of the SHA-256 of the route file |
 | 24 | i32 | `lat0_e7` |
 | 28 | i32 | `lon0_e7` |
@@ -176,14 +175,39 @@ All values are little-endian. `u24` is three bytes, low byte first. `NONE` is `0
 | 48 | u32 | `node_count` |
 | 52 | u32 | `cell_count` |
 | 56 | u32 | `extra_count` |
-| 60 | u32 | `chunk_count` (0 if there are no exception lists) |
+| 60 | u32 | `chunk_count` (0 in version 2) |
 
 **Sections, in this order, with no padding**
 
 1. **Cells:** `cell_count + 1` records of 12 bytes: `key u32`, `first_node u32`, `first_extra u32`. Sorted by key. The last record is a sentinel: key `0xFFFFFFFF`, `first_node = node_count`, `first_extra = extra_count`.
-2. **Nodes:** `node_count` records of 12 bytes: `X u24`, `Y u24`, `next u24` (node index or `NONE`), `dist u24` (ride distance to the route in 0.1 m). Sorted by cell key. A node with `next = NONE` is on the route.
-3. **Extra pieces:** `extra_count` records of 8 bytes: `a u24`, `b u24`, `lenflags u16` (bits 0 to 13: length in 0.1 m; bit 14: the rider can go to `a`; bit 15: the rider can go to `b`). A record is in the cell of node `a`. Sorted by that cell key.
-4. **Chunk table:** only if `chunk_count > 0`: `chunk_count + 1` values `u32`, the first exception index of each chunk. Chunk `c` is route km `c`.
-5. **Exceptions:** records of 8 bytes: `node u24`, `next u24`, `dist u16` (ride distance in metres). Sorted by `node` in each chunk.
+2. **Nodes:** `node_count` records of 8 bytes (version 2, see below). Sorted by cell key. A node with no next is on the route.
+3. **Extra pieces:** `extra_count` records of 8 bytes: `a u24`, `b u24`, `lenflags u16` (version 2: bits 0 to 12 length in 0.1 m, at most 8,191; bit 13 grey flag; bit 14: the rider can go to `a`; bit 15: the rider can go to `b`). A record is in the cell of node `a`. Sorted by that cell key.
+4. **Chunk table and exceptions:** version 1 only. Version 2 files have none.
+
+**Version 2 node (E7, D1b), one little-endian u64:**
+
+| Bits | Field |
+|---|---|
+| 0 to 18 | `X / 2` (stored halved, 1/8 m; the core reads `2 * value`) |
+| 19 to 37 | `Y / 2` |
+| 38 to 50 | next minus node index, signed 13 bits (0 = no next) |
+| 51 to 62 | ride distance to the route in whole metres (at most 4,095) |
+| 63 | grey flag of the piece from this node to its next |
+
+A version 2 file of a route with a 3 km way-back reach does not fit (the distance field is 12 bits). The page uses the 2 km or 1.5 km reach.
+
+**Shared scan and the piece line (cc26, D2).**
+
+- `wb_scan` visits the street pieces of a rectangle of cells (at most 7 across), rows up, then cells in x order, then the tree pieces and the extra pieces of each cell in index order. A piece is visited when its start node lies in the box `x0..x1`, `y0..y1` (`wb_out`, the same test as the old far test when the box is one point).
+- `wb_tick` is `wb_scan` of the 3 x 3 cells around the rider with the box of the rider point, then the commit of the best piece. Its output is unchanged from version 1 within the precision below.
+- `wb_tick_piece(id)` gives the line of one piece by its id. The id of `wb_output.piece` (E10): bits 0 to 22 node index of a tree piece or extra index, bit 23 extra piece. A piece farther than 15 m gives `WB_NO_STREET`.
+- `wb_units`, `wb_point` and `wb_grid_get` convert between E7 and units with the frame of the file. `wb_line_info` gives the end distance, the length and the end side of the line.
+
+**Precision of version 2 against version 1 (R-PREC).** The stored node positions are halved, so:
+
+- A node point differs from version 1 by at most 2 units.
+- The foot point (point 0) differs by at most one step of the piece plus 2 units, that is `ceil(piece length / 256) + 2` units on each axis. The step is 1/256 of the piece.
+- A state can differ only when the rider is 14.5 m to 15.5 m from the nearest street. The replay test prints the count (1 of 1,500 on the synthetic grid).
+
 
 The file size must be exactly the header plus the five sections.
