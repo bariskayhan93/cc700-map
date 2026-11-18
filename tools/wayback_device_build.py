@@ -92,7 +92,7 @@ def build_candidate(base,sections,fragment_read):
 
 def main():
     p=argparse.ArgumentParser(description=__doc__)
-    p.add_argument('--base',type=Path,default=ROOT/'.local/navigation-phase/loop-start/build/ota_1_v23.bin')
+    p.add_argument('--base',type=Path,required=True,help='the exact cc23 base image (no default: D0 item 1)')
     p.add_argument('--output',type=Path,required=True)
     p.add_argument('--prefix',default=str(Path.home()/'xtensa-esp-elf/bin/xtensa-esp32s3-elf-'))
     a=p.parse_args();base=a.base.read_bytes()
