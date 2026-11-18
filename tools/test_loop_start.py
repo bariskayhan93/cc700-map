@@ -17,3 +17,5 @@ class LoopStartTests(unittest.TestCase):
             self.assertEqual(p.returncode,0,p.stderr)
             p=subprocess.run([str(binary)],capture_output=True,text=True)
             self.assertEqual(p.returncode,0,p.stderr)
+
+if __name__=="__main__":unittest.main()

@@ -71,3 +71,5 @@ class NmGateTests(unittest.TestCase):
         l.check_undefined('')
         with self.assertRaisesRegex(ValueError,'undefined symbols'):
             l.check_undefined('         U missing_symbol\n')
+
+if __name__=="__main__":unittest.main()

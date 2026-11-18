@@ -3,6 +3,8 @@ import hashlib
 from pathlib import Path
 import tempfile
 import unittest
+import sys
+sys.path.insert(0,str(Path(__file__).resolve().parent))
 import target_probe_session as session
 
 class Backend:
@@ -58,3 +60,5 @@ class BootEvidence(unittest.TestCase):
         load=b'Loaded app from partition at offset 0x440000\n'
         self.assertFalse(session.classify_boot(load*2,explicit_reset=True)['boot_confirmed'])
         self.assertFalse(session.classify_boot(b'Loaded app from partition at offset 0x20000\n')['boot_confirmed'])
+
+if __name__=="__main__":unittest.main()
