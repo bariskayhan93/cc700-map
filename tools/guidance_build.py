@@ -7,6 +7,7 @@ import importlib.util
 import json
 from pathlib import Path
 import subprocess
+import incoming_refs as ir
 
 ROOT = Path(__file__).resolve().parents[1]
 V21_SHA = '7deb201d797bdd974bfc0460870288feed2632bb41c81b65338e3307f5d0a139'
@@ -38,6 +39,9 @@ def assert_native_guards(read):
 
 
 VERSION = b'CC700_V1.414-cc22'
+# Overwritten bytes of this candidate: the two trampoline ranges and the four call sites (D0 item 2, R-D02).
+GUIDANCE_RANGES = {'popup': (0x42049690, 0x20), 'card': (0x4205bdb0, 0x20),
+                   **{name: (address, 3) for name, (address, _) in CALLS.items()}}
 # Frame of the card and popup trampolines. A frame of 32 is safe only while the trampoline stores no stack argument:
 # a4..a7 go to registers, and no s32i to a1 may appear (checked below). Any other frame is refused.
 TRAMP_FRAME = 32
@@ -162,6 +166,7 @@ def main():
     for address in (0x42049670,0x4205bd90):
         assert read(address,3)==bytes.fromhex('364100')
         assert read(address+0x17,5)==bytes.fromhex('e008001df0')
+    incoming=ir.check(irom[1],0x42000020,GUIDANCE_RANGES,ir.DEAD_SPANS)
     args.output.mkdir(parents=True,exist_ok=True)
     elf=args.output/'guidance.elf'
     src=ROOT/'firmware/guidance'
@@ -203,7 +208,7 @@ def main():
     image_path=args.output/'ota_1_v22.bin'
     image_path.write_bytes(image)
     manifest={'base_sha256':V21_SHA,'device_access':False,
-              'native_guards':NATIVE_GUARDS,'sections':sections,**receipt}
+              'native_guards':NATIVE_GUARDS,'sections':sections,'incoming_refs':incoming,**receipt}
     (args.output/'manifest.json').write_text(json.dumps(manifest,indent=2)+'\n')
     print(json.dumps({'image':str(image_path),**receipt},indent=2))
 
