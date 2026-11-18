@@ -49,7 +49,10 @@
 - **E6 one codec module on the page:** `js/map_codec.js` has `encodeBlockD(entries)` and `decodeBlockD(bytes)`. The generator, `preview.js` `readFile` and `map_budget.js` `auditMapSection` use it. The budgets stay as today (the serialized-byte check uses today's protobuf size, which is larger, so it is conservative).
 - **E7 CCWB version 2 node (cc26), 8 B, one little-endian `u64`:** bits 0–18 `X/2`, bits 19–37 `Y/2` (1/16 m units, stored halved: 1/8 m, at most 65.5 km on each axis), bits 38–50 `next − index` as signed 13 bits (0 = on the route), bits 51–63 ride distance in whole metres (0 to 8,191). Header, cells (12 B) and extras (8 B) as version 1; no exception lists. Measured on the 70 km 3 km file: 0 `next` out of range, largest distance 6,000 m. A node that does not fit: no version 2 file (the page goes on with its reach fallback).
 - **E8 cc26 code place:** the second code area `0x4237b134..0x42380000` (20,172 B, constants through `0x3c37b134`). The image builder moves DRAM segment 1 to the file end, extends DROM segment 0 by the code, and adds one 16 B padding segment (load address 0). Hook: the existing way-back literal `0x420496b8`. Version text `CC700_V1.414-cc26`.
-- **E9 street window (cc26):** 128 m cells, 5 wide, 5 ahead, 1 behind, turned by the quadrant of the map heading (`float` degrees at `0x3c388d08`; NaN or outside 0 to 360 gives 0). Cache: RTC slow memory `0x50000000`, 8,192 B = 32 B header (magic, route identity 8 B, window key, count, origin) + at most 1,020 pieces of 8 B. A header that does not match means a refresh. Per frame, only off route: at most 400 nearest pieces with both node distances 250 m or more, one pass 3 px `0x7a7e83`, before the line; stop at 60 ms. Limits: stack 3,360 B, 300 ms way-back work per frame, 160 reads per refresh.
+- **E9 street window and line cache (cc26):** 128 m cells, 5 wide, 5 ahead, 1 behind, turned by the quadrant of the map heading (`float` degrees at `0x3c388d08`; NaN or outside 0 to 360 gives 0). Cache: RTC slow memory `0x50000000`, 8,192 B = 32 B header (magic, route identity 8 B, window key, count, origin) + a line store (piece id, point count, 32 points as `int32` E7 pairs: 264 B) + at most 640 pieces of 12 B (four `int16` positions in 1/16 m from the origin, `u32` piece id = node index of a tree piece, or extra index with bit 31). A header that does not match means a refresh.
+  Each off-route frame: (1) find the nearest cached piece within 15 m (no file read); (2) if its id equals the line store id, reuse the stored points 1 to n and compute only point 0; (3) else run the core from that piece (`wb_tick_piece`, no cell search) and store the new line; (4) if no cached piece is within 15 m, refresh the window, then go on as (1). The file is opened only in (3) and (4).
+  Drawing, only off route: at most 400 nearest pieces with both node distances 250 m or more, one pass 3 px `0x7a7e83`, before the line; stop at 60 ms. Limits: stack 3,360 B, 300 ms way-back work per frame, 160 reads per refresh.
+  Evidence (17 Nov ride, 509 fixes, 440 with a line): the line used the same nodes as at the fix before in 278 frames (63%). Today each of these frames reads 179 times (median).
 
 ## Global Constraints
 
@@ -192,14 +195,18 @@ Files: `firmware/wayback/wayback.c`, `wayback.h`, `README.md`, tests `tools/test
 Files: `firmware/wayback/wb_window.h`, `wb_window.c`, `tools/wb_window_host.c`, `tools/test_wb_window.mjs`.
 
 ```c
-typedef struct { int16_t ax, ay, bx, by; } wbw_piece;
-typedef struct { uint32_t magic, route8[2], key, count, origin_x, origin_y, reserved; wbw_piece p[1020]; } wbw_cache;  /* 8,192 B */
+typedef struct { int16_t ax, ay, bx, by; uint32_t id; } wbw_piece;                     /* 12 B */
+typedef struct { uint32_t id, n; int32_t pt[32][2]; } wbw_line;                        /* 264 B */
+typedef struct { uint32_t magic, route8[2], key, count, origin_x, origin_y, reserved;
+                 wbw_line line; wbw_piece p[640]; } wbw_cache;                          /* <= 8,192 B */
 int wbw_refresh(wb_engine *, wbw_cache *, int32_t lat_e7, int32_t lon_e7, float heading_deg, uint32_t max_reads);
+int wbw_nearest(const wbw_cache *, int32_t lat_e7, int32_t lon_e7, uint32_t *index);   /* 1 = a piece within 15 m */
 uint32_t wbw_select(const wbw_cache *, int32_t lat_e7, int32_t lon_e7, uint16_t *out, uint32_t max);
-int wbw_piece_e7(const wb_engine *, const wbw_cache *, uint32_t index, int32_t a[2], int32_t b[2]);
 ```
 
-Tests: another route's header refreshes; every piece of the 5 × 6 window on a synthetic grid; at most 400 selected, nearer buckets first; `max_reads` 5 fails with the header invalid; NaN and 720 degrees give quadrant 0; on the private 70 km file, refresh reads p90 ≤ 160.
+`wb_tick_piece(wb_engine *, const wb_input *, uint32_t piece_id, wb_output *)` is added to `wayback.c`: the same result as `wb_tick` for that piece, without the cell search.
+
+Tests: another route's header refreshes; every piece of the 5 × 6 window on a synthetic grid; at most 400 selected, nearer buckets first; `max_reads` 5 fails with the header invalid; NaN and 720 degrees give quadrant 0; `wb_tick_piece` gives the same line as `wb_tick` on every rider point of the fixture; on the private 70 km file, refresh reads p90 ≤ 160; on the 17 Nov ride (`.local/study/out/linechange.mjs` inputs), the frames that reuse the line store are at least 60%, and the mean reads per frame are written to `c-study.md`.
 
 ### Task D4: Second code area in the image
 Files: `tools/area2_image.py`, `tools/test_area2_image.py`. `add_area2(base, code) -> bytes` per E8. Tests: 6 segments; DROM, IROM, IRAM and both DRAM segments keep their addresses and data; IROM file offset ≡ 0x20 mod 65,536; code at `0x3c37b134`; 20,173 B refused; checksum and digest valid.
@@ -214,3 +221,5 @@ As Task C5. Hypothesis: cc26 boots, runs code from the second area, and draws th
 
 - The stock log writer for refusal codes (the cc24 diagnostic used `0x421434dc`; its contract is not mined).
 - Pool layout, the 0.25 m grid and zoom-out (tier 2).
+- **One allocation per block (cc25.1 option, only with device evidence):** the module puts the entry array and all points in one allocation and marks it in the 4 spare bytes per entry; a trampoline over the free routine `0x4204944c` (0x27 B body) skips the per-entry frees for a marked block. Allocations per block 411 median / 730 max → 1. Start it only if the cc25 test shows slow block loads or heap fragmentation.
+- Rejected: a compact decoded form (int16 points) with a new iterator (needs hooks in the iterator, `arrow.c` and the label code; decoded RAM is not the binding limit), and raw scheme D without the protobuf wrapper (saves 12 B per block, loses the old-firmware safety).
