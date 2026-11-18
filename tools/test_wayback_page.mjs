@@ -1,7 +1,8 @@
 // tools/test_wayback_page.mjs: the page path of the way-back build (js/wayback.js) on a synthetic street grid.
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {waybackBbox, waybackFromSnapshot, loadWaybackSnapshot, routeIdentity} from '../js/wayback.js';
+import {waybackBbox, waybackFromSnapshot, loadWaybackSnapshot, routeIdentity, addWayback, checkWayback} from '../js/wayback.js';
+import {buildRoute} from '../js/route.js';
 import {decodeWayback} from '../js/wayback_format.js';
 import {embedWayback, readTrailer} from '../js/wayback_embed.js';
 
@@ -99,3 +100,21 @@ test('format 2 without routeBytes throws: there is no default grey flag (D0 item
   const snapshot = await loadWaybackSnapshot(route, fetchOf([{body: response()}]));
   assert.throws(() => waybackFromSnapshot(snapshot, route, new Uint8Array(16), {format: 2}), /routeBytes/);
 });
+
+// Owner ruling (18 Nov, option a): before a file is sent, the way-back data stays only when its route identity equals the
+// identity of the route bytes in front of it. A changed route byte (a rename) removes the trailer.
+test('a route file whose bytes changed after addWayback loses its way-back trailer before it is sent', async () => {
+  const gpx = {name: 'Identity', pts: route.map(r => [...r.point, 0])};
+  const plain = buildRoute(gpx, [], {id: '11120000', nameImage: () => new Uint8Array(42), map: {styled: true}, speedKmh: 18}).file;
+  const w = await addWayback(plain, {fetchImpl: fetchOf([{body: response()}])});
+  const kept = await checkWayback(w.file);
+  assert.equal(kept.status, 'ok');
+  assert.notEqual(readTrailer(kept.file), null);
+  const renamed = w.file.slice();
+  renamed[1] ^= 0xff;                                  // one header byte of the route part
+  const dropped = await checkWayback(renamed);
+  assert.equal(dropped.status, 'dropped');
+  assert.equal(readTrailer(dropped.file), null);
+  assert.equal(dropped.file.length, plain.length);
+});
+

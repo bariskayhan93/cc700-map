@@ -8,7 +8,7 @@ import {conservativeWayPolicy} from './recovery_graph.js';
 import {buildWaybackModel} from './wayback_tree.js';
 import {encodeWayback, encodeWaybackV2, makeFrame} from './wayback_format.js';
 import {greyFlags} from './wayback_grey.js';
-import {embedWayback} from './wayback_embed.js';
+import {embedWayback, readTrailer} from './wayback_embed.js';
 import {readNativeRoute} from './native_route.js';
 
 export const WAYBACK_MAX_BYTES = 1536 * 1024;   // test limit for the way-back bytes of one route file
@@ -73,6 +73,15 @@ export async function loadWaybackSnapshot(route, fetchImpl = fetch) {
   const snapshot = captureRoutingSnapshot(await overpass(query, fetchImpl), {bbox, querySha256});
   if (snapshot.integrity !== 'pass') throw new Error('street data is not complete: ' + (snapshot.issues[0]?.code ?? 'unknown'));
   return snapshot;
+}
+
+// Owner ruling (18 Nov, option a): the way-back data stays only when its route identity equals the identity of the route
+// bytes in front of it. Otherwise the plain route bytes are returned, with status 'dropped'. Called before a file is sent.
+export async function checkWayback(file) {
+  const t = readTrailer(file);
+  if (!t) return {file, status: 'none'};
+  const plain = file.subarray(0, t.offset), wb = file.subarray(t.offset, t.offset + t.size);
+  return hex(await routeIdentity(plain)) === hex(wb.subarray(8, 24)) ? {file, status: 'ok'} : {file: plain, status: 'dropped'};
 }
 
 // Route file bytes -> route file bytes with way-back data. Throws when no data can be made; the caller keeps the plain file.
