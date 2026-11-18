@@ -61,3 +61,13 @@ class TrampolineFrameTests(unittest.TestCase):
         l.check_trampoline_frame('tramp_loop_start:\n entry a1,48\n')
         with self.assertRaisesRegex(ValueError,'frame'):
             l.check_trampoline_frame('tramp_loop_start:\n entry a1,32\n')
+
+
+class NmGateTests(unittest.TestCase):
+    """D0 item 6: a linked image with an undefined symbol is refused."""
+
+    def test_loop_start_refuses_undefined_symbols(self):
+        import loop_start_build as l
+        l.check_undefined('')
+        with self.assertRaisesRegex(ValueError,'undefined symbols'):
+            l.check_undefined('         U missing_symbol\n')

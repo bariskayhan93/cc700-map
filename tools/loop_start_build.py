@@ -21,6 +21,11 @@ def check_trampoline_frame(block):
 SCOPES={'.text':(0x421de120,0x421e0000-0x421de120),
         '.tramp_loop_start':(0x420496d8,0x40),'.call_loop_start':(0x420547dd,3)}
 
+def check_undefined(nm_output):
+    """nm -u output of the linked ELF: any line is an undefined symbol, and the build is refused (D0 item 6)."""
+    if nm_output.strip():
+        raise ValueError('undefined symbols: '+nm_output.strip().splitlines()[0].strip())
+
 def esp_module():
     spec=importlib.util.spec_from_file_location('loop_espimg',ROOT.parent/'cc700-backup/tools/espimg.py')
     m=importlib.util.module_from_spec(spec);spec.loader.exec_module(m);return m
@@ -98,6 +103,7 @@ def main():
     run(a.prefix+'gcc','-Os','-mlongcalls','-mtext-section-literals','-ffreestanding','-fno-builtin',
         '-nostdlib','-Wall','-Wextra','-Werror','-fstack-usage','-Wl,-T,'+str(src/'loop_start.ld'),
         '-Wl,--gc-sections','-Wl,-e,cc_loop_match','-o',elf,src/'loop_start.c',src/'tramp.S','-lgcc')
+    check_undefined(run(a.prefix+'nm','-u',elf))
     sections={}
     for line in run(a.prefix+'objdump','-h',elf).splitlines():
         f=line.split()

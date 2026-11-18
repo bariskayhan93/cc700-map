@@ -35,7 +35,12 @@ def check_hook_frame(block):
     if f'entry\ta1, {HOOK_FRAME}' not in block:
         raise ValueError(f'hook frame differs from {HOOK_FRAME}')
 # Stock and v21 functions that the adapter calls. Each must begin with an Xtensa `entry` instruction.
-CALLED=(0x421dd920,0x421dd218,0x421b85b0,0x421b7de0,0x421b8848,0x421b8818,0x4204c7a8,0x4204c1bc,0x420dbcd0)
+# The four adapter callees of wb_device.c (fw_take, fw_file_give, fw_clock, fw_task_stack) are listed too (D0 item 6).
+CALLED=(0x421dd920,0x421dd218,0x421b85b0,0x421b7de0,0x421b8848,0x421b8818,0x4204c7a8,0x4204c1bc,0x420dbcd0,
+        0x40381868,0x403813c0,0x403779f4,0x403832e0)
+def is_entry_a1(b3):
+    """The 3-byte Xtensa `entry a1, imm`: opcode byte 0x36, register field a1, and op2 (high nibble of byte 2) 0."""
+    return len(b3)==3 and b3[0]==0x36 and (b3[1]&0x0f)==1 and (b3[2]>>4)==0
 
 def esp_module():
     spec=importlib.util.spec_from_file_location('wb_espimg',ROOT.parent/'cc700-backup/tools/espimg.py')
@@ -59,8 +64,12 @@ def build_candidate(base,sections,fragment_read):
     if read(0x420496b0,3).hex()!='364100' or read(0x420496c7,5).hex()!='e008001df0':raise ValueError('tramp_rt drift')
     # The loop-start trampoline: frame 32 in cc23, frame 48 in the fixed base. Nothing else may differ.
     if read(0x420496d8,3).hex()!=('366100' if base_sha==FIXED_BASE_SHA else '364100'):raise ValueError('loop-start trampoline differs from its base')
+    def read_any(address,n):
+        for a,d in segs:
+            if a<=address and address+n<=a+len(d):return bytes(d[address-a:address-a+n])
+        raise ValueError('address outside the base image: '+hex(address))
     for address in CALLED:
-        if read(address,1)!=b'\x36':raise ValueError('called function drift: '+hex(address))
+        if not is_entry_a1(read_any(address,3)):raise ValueError('called function drift: '+hex(address))
     payloads={};spans=[]
     for name,item in sections.items():
         address=int(item['address'],16);size=item['bytes'];expected,capacity=SCOPES[name]
