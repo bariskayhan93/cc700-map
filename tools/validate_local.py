@@ -81,11 +81,11 @@ def main():
         started=time.monotonic()
         print(f"Running {name}...",flush=True)
         try:
-            run=subprocess.run(cmd,cwd=ROOT,capture_output=True,text=True,timeout=300)
+            run=subprocess.run(cmd,cwd=ROOT,capture_output=True,text=True,timeout=900)   # the Python suite takes about 430 s (18 Nov)
             output=run.stdout+run.stderr
             code=run.returncode
         except subprocess.TimeoutExpired as e:
-            output="timeout after 300 seconds\n"+(e.stdout or b"").decode(errors="replace")+(e.stderr or b"").decode(errors="replace")
+            output="timeout after 900 seconds\n"+(e.stdout or b"").decode(errors="replace")+(e.stderr or b"").decode(errors="replace")
             code=124
         except OSError as e:output=str(e);code=127
         (out/f"{name}.log").write_text(output)

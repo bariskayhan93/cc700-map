@@ -79,14 +79,14 @@
     <div class="firmware">
       <label for="fw">Firmware auf dem CC700</label>
       <select id="fw" aria-describedby="fwOriginal">
-        <option value="orig" selected>Original (Kreuzungskarte)</option>
+        <option value="orig">Original (Kreuzungskarte)</option>
         <option value="patch">Patch v18 / v19 / v20 / v21 (farbige Sunlight-Karte)</option>
-        <option value="patch25">Patch cc26 (kompakte Kartendaten, Format D)</option>
+        <option value="patch25" selected>Patch cc26 (kompakte Kartendaten, Format D, Rückweg)</option>
       </select>
       <p id="fwOriginal" class="mut">Für Geräte mit unveränderter Firmware.</p>
       <p id="fwWarning" class="warning" hidden>Nur für Geräte mit installiertem Patch v18, v19, v20, v21 oder cc26 für Firmware V1.414.</p>
     </div>
-    <label class="btn">GPX wählen<input id="gpx" type="file" accept=".gpx,application/gpx+xml" hidden></label>
+    <label class="btn">GPX wählen<input id="gpx" type="file" accept=".gpx,application/gpx+xml,application/xml,text/xml,application/octet-stream" hidden></label>
     <div id="sum" class="mut" role="status">Aus einem GPX wird eine CC700-Route mit Abbiegehinweisen, Straßennamen und Karte.</div>
     <div id="out" hidden>
       <h2 id="previewTitle">Kartenvorschau</h2>
@@ -147,8 +147,7 @@
         <label><input id="paths" type="checkbox"> Fußwege und Pfade</label>
         <label><input id="details" type="checkbox"> Parkwege und Radwege neben Straßen</label>
         <label><input id="lanes" type="checkbox"> Getrennte Fahrbahnen (Straßenbahn in der Mitte)</label>
-        <label><input id="arrows" type="checkbox"> Abbiegepfeil auf der Karte</label>
-        <label><input id="wayback" type="checkbox"> Rückweg-Linie (Test, nur mit Rückweg-Test-Firmware; lädt Straßen bis 2 km um die Route)</label>
+        <label><input id="wayback" type="checkbox"> Rückweg-Linie und graue Straßen (nur Patch cc26; lädt Straßen bis 2 km um die Route)</label>
       </fieldset>
       <fieldset id="optOrig"><legend>Kartenebenen (Original)</legend>
         <label><input id="ground" type="checkbox"> Bebauung grau</label>

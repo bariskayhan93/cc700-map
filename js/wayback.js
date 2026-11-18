@@ -78,10 +78,14 @@ async function overpass(query, fetchImpl) {
 }
 
 // Loads the streets around the route and returns the routing snapshot. Throws when the data is not complete.
+// The last answer is kept for the page session: a rebuild of the same route (other speed or layer) asks Overpass once.
+let lastAnswer = null;
 export async function loadWaybackSnapshot(route, fetchImpl = fetch) {
   const bbox = waybackBbox(route), query = routingQuery(bbox);   // throws when the area exceeds the bounded region
   const querySha256 = hex(await sha256(new TextEncoder().encode(query)));
-  const snapshot = captureRoutingSnapshot(await overpass(query, fetchImpl), {bbox, querySha256});
+  const answer = lastAnswer?.query === query && lastAnswer.fetchImpl === fetchImpl ? lastAnswer.json : await overpass(query, fetchImpl);
+  lastAnswer = {query, fetchImpl, json: answer};
+  const snapshot = captureRoutingSnapshot(answer, {bbox, querySha256});
   if (snapshot.integrity !== 'pass') throw new Error('street data is not complete: ' + (snapshot.issues[0]?.code ?? 'unknown'));
   return snapshot;
 }

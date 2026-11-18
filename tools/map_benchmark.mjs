@@ -34,7 +34,7 @@ export function assessCase(fixture,{build=buildRoute,policy='reference'}={}){
  const result={id:fixture.id,fixtureFingerprint:digest(JSON.stringify(fixture)),policy,status:'fail',failures:[],probes:[],boundaryProbes:[],blocks:[],costs:{},evidence:evidence()};
  result.evidence.featureRetention=fixture.probes.some(p=>p.required)?'synthetic-spatial-style-probes':'no-required-feature-oracle';
  const options={...fixture.data,id:'benchmark',nameImage:()=>new Uint8Array(42),noF9:true,
-  navigationLines:fixture.navigationLines,map:{styled:true,names:true,arrows:true}};
+  navigationLines:fixture.navigationLines,map:{styled:true,names:true}};
  let r;
  try{r=build(fixture.gpx,fixture.lines,options);}catch(error){
   if(fixture.expectedRejection && error.message.includes('protected') && error.message.includes(fixture.expectedRejection)){

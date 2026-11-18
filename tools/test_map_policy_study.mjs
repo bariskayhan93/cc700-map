@@ -7,7 +7,7 @@ import {studyBuilder} from './map_policy_study.mjs';
 const fixture=id=>extendedCases().find(c=>c.id===id);
 test('instrumented reference is byte-exact apart from timestamp and does not change source objects',async()=>{
  const build=await studyBuilder({mode:'reference',radius:1000}),c=fixture('forest'),before=structuredClone(c);
- const opts={...c.data,id:'study',nameImage:()=>new Uint8Array(42),navigationLines:c.navigationLines,map:{styled:true,names:true,arrows:true},noF9:true};
+ const opts={...c.data,id:'study',nameImage:()=>new Uint8Array(42),navigationLines:c.navigationLines,map:{styled:true,names:true},noF9:true};
  const a=buildRoute(c.gpx,c.lines,opts),b=build(c.gpx,c.lines,opts);
  assert.deepEqual(b.file.subarray(4),a.file.subarray(4));assert.deepEqual(c,before);
 });

@@ -13,7 +13,7 @@ function decode(result){
   o+=4+len;
  }return blocks;
 }
-const options=extra=>({names:false,arrows:false,...extra});
+const options=extra=>({names:false,...extra});
 test('cheap styled blocks can exceed the old 1150/1200 entry gates',()=>{
  const wlines=Array.from({length:1250},(_,i)=>[p(10,i*.08),p(30,i*.08)]);
  const r=buildStyledSection(sections(1),{wlines,opt:options()},F);
@@ -41,8 +41,7 @@ test('single protected section exceeding budget fails explicitly instead of shri
  const ring=Array.from({length:2400},(_,i)=>p(200*Math.cos(i*Math.PI/1200),200*Math.sin(i*Math.PI/1200)));
  assert.throws(()=>buildStyledSection(sections(1),{green:[[ring]],opt:options()},F),/section 1.*fillVertices/i);
 });
-test('arrow and rough-route entries cannot bypass the cost check',()=>{
- assert.throws(()=>buildStyledSection(sections(1),{turns:[0],opt:options({arrows:true,mapBudget:{projectionCalls:1}})},F),/projectionCalls/);
+test('rough-route entries cannot bypass the cost check',()=>{
  assert.throws(()=>buildStyledSection(sections(1),{rough:[[0,40000]],opt:options({mapBudget:{projectionCalls:1}})},F),/projectionCalls/);
 });
 test('all transitions are bounded and output is deterministic for identical source',()=>{
