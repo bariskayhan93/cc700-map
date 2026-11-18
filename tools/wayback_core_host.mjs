@@ -17,7 +17,7 @@ function binary() {
   execFileSync('cc', ['-std=c11', '-O1', '-g', '-Wall', '-Wextra', '-Werror',
     '-fsanitize=address,undefined', '-fno-sanitize-recover=all',
     '-I', path.join(root, 'firmware/wayback'),
-    path.join(root, 'tools/wayback_host.c'), '-o', out], {stdio: ['ignore', 'pipe', 'pipe']});
+    path.join(root, 'tools/wayback_host.c'), path.join(root, 'firmware/wayback/wb_grey.c'), '-o', out], {stdio: ['ignore', 'pipe', 'pipe']});
   exe = out;
   return exe;
 }
@@ -43,6 +43,27 @@ export function runCore(fileBytes, routeId, lines) {
       forward: r.forward ?? 0, changed: r.changed ?? 0, reads: r.reads ?? 0, points: r.points ?? [],
       piece: r.piece ?? 0xFFFFFFFF, pieceAt: r.pieceAt,
     };
+  });
+}
+
+// Grey layer reader (D3c): frames {latE7, lonE7, cap = 1e9, failAt = -1}. failAt k: the k-th read of the frame fails.
+// Returns one object per frame: {mounted, layer, ok, reads, cells: [key...], segs, lines: [[[latE7, lonE7], ...], ...]}.
+export function runGrey(fileBytes, routeId, frames) {
+  const dir = fs.mkdtempSync(path.join(work, 'grey-'));
+  const file = path.join(dir, 'file.ccwb');
+  fs.writeFileSync(file, Buffer.from(fileBytes));
+  const hex = Buffer.from(routeId).toString('hex');
+  const input = frames.map(f => [f.latE7, f.lonE7, f.cap ?? 1000000000, f.failAt ?? -1].join(' ')).join('\n') + '\n';
+  let text;
+  try {
+    text = execFileSync(binary(), ['--grey', file, hex], {input, maxBuffer: 1 << 30, encoding: 'utf8'});
+  } finally {
+    fs.rmSync(dir, {recursive: true, force: true});
+  }
+  return text.split('\n').filter(Boolean).map(line => {
+    const r = JSON.parse(line);
+    return {mounted: r.mounted, layer: r.layer ?? 0, ok: r.ok ?? 0, reads: r.reads ?? 0, cells: r.cells ?? [],
+      segs: r.segs ?? 0, lines: (r.lines ?? []).map(l => { const out = []; for (let i = 0; i < l.length; i += 2) out.push([l[i], l[i + 1]]); return out; })};
   });
 }
 

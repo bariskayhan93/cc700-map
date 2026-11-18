@@ -5,6 +5,7 @@
  * A second engine on the same file gives pieceAt: wb_tick_piece of piece_id, or of the tick's piece when piece_id
  * is absent. Used by tools/wayback_core_host.mjs. */
 #include "wayback.c"
+#include "wb_grey.h"
 #include <inttypes.h>
 #include <stdio.h>
 #include <stdlib.h>
@@ -16,11 +17,17 @@ typedef struct {
   int in_points;
   long point_reads;
   long fail_after;
+  int grey_mode;
+  long grey_reads, grey_fail;
 } host_ctx;
 
 static int host_reader(void *vctx, uint32_t offset, void *dst, uint32_t bytes) {
   host_ctx *c = (host_ctx *)vctx;
   c->reads++;
+  if (c->grey_mode) {
+    if (c->grey_fail >= 0 && c->grey_reads >= c->grey_fail) return 0;
+    c->grey_reads++;
+  }
   if (c->in_points) {
     if (c->fail_after >= 0 && c->point_reads >= c->fail_after) return 0;
     c->point_reads++;
@@ -166,6 +173,63 @@ static void run_selftest(wb_engine *e) {
          cases, mismatch, o.errors, o.visited, cover_cases, cover_errors, ncells);
 }
 
+/* --grey FILE ROUTE_ID_HEX32 < lines: each input line "lat_e7 lon_e7 cap fail_read" (cap: segments; fail_read: the
+ * k-th read of the frame fails, -1 = none). One JSON object per line: cells, lines (lat, lon E7 pairs), ok, reads, segs. */
+typedef struct {
+  long segs, cap;
+  int first;
+} grey_ctx;
+
+static int grey_visit(void *vctx, const int32_t *pts, uint32_t n) {
+  grey_ctx *g = (grey_ctx *)vctx;
+  uint32_t k;
+  printf("%s[", g->first ? "" : ",");
+  g->first = 0;
+  for (k = 0u; k < n; k++) printf("%s%" PRId32 ",%" PRId32, k ? "," : "", pts[2 * k], pts[2 * k + 1]);
+  printf("]");
+  g->segs += (long)n - 1;
+  return g->segs < g->cap;
+}
+
+static int grey_main(const char *file, const char *hex) {
+  FILE *f;
+  uint8_t route[16];
+  host_ctx c;
+  wb_engine *eng;
+  long size, lat, lon, cap, fail;
+  char line[256];
+  int mounted;
+  if (!parse_route_id(hex, route)) return 2;
+  f = fopen(file, "rb");
+  if (!f) return 2;
+  if (fseek(f, 0, SEEK_END) != 0) return 2;
+  size = ftell(f);
+  if (size < 0 || fseek(f, 0, SEEK_SET) != 0) return 2;
+  eng = malloc(wb_size());
+  if (!eng) return 2;
+  c.f = f; c.reads = 0; c.in_points = 0; c.point_reads = 0; c.fail_after = -1;
+  c.grey_mode = 0; c.grey_reads = 0; c.grey_fail = -1;
+  mounted = wb_mount(eng, host_reader, &c, (uint32_t)size, route);
+  while (fgets(line, sizeof line, stdin)) {
+    uint32_t cells[16], info[3], n, i;
+    grey_ctx g;
+    int layer, ok;
+    if (!mounted) { printf("{\"mounted\":0}\n"); continue; }
+    if (sscanf(line, "%ld %ld %ld %ld", &lat, &lon, &cap, &fail) != 4) return 2;
+    layer = wb_grey_section(eng, info);
+    n = wb_grey_cells(eng, (int32_t)lat, (int32_t)lon, cells);
+    printf("{\"mounted\":1,\"layer\":%d,\"cells\":[", layer);
+    for (i = 0u; i < n; i++) printf("%s%" PRIu32, i ? "," : "", cells[i]);
+    printf("],\"lines\":[");
+    g.segs = 0; g.cap = cap; g.first = 1;
+    c.grey_mode = 1; c.grey_reads = 0; c.grey_fail = fail;
+    ok = wb_grey_lines(eng, cells, n, grey_visit, &g);
+    c.grey_mode = 0;
+    printf("],\"ok\":%d,\"reads\":%ld,\"segs\":%ld}\n", ok, c.grey_reads, g.segs);
+  }
+  return 0;
+}
+
 int main(int argc, char **argv) {
   FILE *f;
   uint8_t route[16];
@@ -179,6 +243,7 @@ int main(int argc, char **argv) {
   wb_output out, out2;
   int linked;
 
+  if (argc == 4 && strcmp(argv[1], "--grey") == 0) return grey_main(argv[2], argv[3]);
   selftest = argc == 4 && strcmp(argv[1], "--selftest") == 0;
   if (!selftest && argc != 3) return 2;
   file = selftest ? argv[2] : argv[1];
@@ -197,6 +262,9 @@ int main(int argc, char **argv) {
   c.in_points = 0;
   c.point_reads = 0;
   c.fail_after = -1;
+  c.grey_mode = 0;
+  c.grey_reads = 0;
+  c.grey_fail = -1;
   mounted = wb_mount(eng, host_reader, &c, (uint32_t)size, route);
   mounted2 = wb_mount(eng2, host_reader, &c, (uint32_t)size, route);
   if (selftest) {
