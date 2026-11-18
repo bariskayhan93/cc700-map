@@ -26,6 +26,11 @@ NATIVE_GUARDS = {
     'legacy_consumer': (0x42086ec8, 439, 'dad87ac8096b4f3c8f8a9aace3828be1241dcd87da353f4da0a6f6181c870b44'),
 }
 
+def check_undefined(nm_output):
+    """nm -u output of the linked ELF: any line is an undefined symbol, and the build is refused (D0 item 6)."""
+    if nm_output.strip():
+        raise ValueError('undefined symbols: '+nm_output.strip().splitlines()[0].strip())
+
 def assert_native_guards(read):
     for name, (address, size, expected) in NATIVE_GUARDS.items():
         if hashlib.sha256(read(address, size)).hexdigest() != expected:
@@ -164,6 +169,7 @@ def main():
         '-fno-builtin','-nostdlib','-Wall','-Wextra','-Werror','-fstack-usage',
         '-Wl,-T,'+str(src/'guidance.ld'),'-Wl,--gc-sections','-Wl,-e,cc_guidance_card',
         '-o',elf,src/'guidance.c',src/'tramp.S','-lgcc')
+    check_undefined(run(args.prefix+'nm','-u',elf))
     allowed={'.text','.tramp_guidance_card','.tramp_guidance_popup',*CALLS}
     sections={}
     for line in run(args.prefix+'objdump','-h',elf).splitlines():

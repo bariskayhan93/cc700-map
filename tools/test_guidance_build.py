@@ -117,3 +117,13 @@ class TrampolineFrameTests(unittest.TestCase):
         import guidance_build as g
         with self.assertRaisesRegex(ValueError,'stack argument'):
             g.check_trampoline(self.GOOD.replace('callx8','s32i.n\ta9, a1, 0\n  callx8'),'card')
+
+
+class NmGateTests(unittest.TestCase):
+    """D0 item 6: a linked image with an undefined symbol is refused."""
+
+    def test_guidance_refuses_undefined_symbols(self):
+        import guidance_build as g
+        g.check_undefined('')
+        with self.assertRaisesRegex(ValueError,'undefined symbols'):
+            g.check_undefined('         U missing_symbol\n')
