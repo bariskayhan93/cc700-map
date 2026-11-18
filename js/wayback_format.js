@@ -1,4 +1,6 @@
 // CCWB version 1 file format for the way-back street tree. Little-endian, u24 is three bytes.
+// Version 2 may end with the grey layer section (js/wayback_grey_layer.js, E15): after the extras, found by the length.
+import {readGreyLayer} from './wayback_grey_layer.js';
 // Layout: 64-byte header; cells (cell_count + 1 records, last is the sentinel); nodes; extra
 // pieces; chunk table (only with exception lists); exception records. See the plan, "File format".
 // No graph search here: encode takes a model from wayback_tree.mjs.
@@ -231,7 +233,14 @@ export function decodeWayback(bytes) {
     for (let c = 1; c <= chunkCount; c++) if (table[c] < table[c - 1]) throw new Error('chunk table is not ordered');
     excCount = table[chunkCount];
   }
-  if (b.length !== excOff + excCount * 8) throw new Error('file size does not match the sections');
+  const tail = b.length - (excOff + excCount * 8);
+  let layer = null;
+  if (tail !== 0) {
+    // Only version 2 has a grey layer section, after its extras. readGreyLayer refuses a bad magic or bad lengths.
+    if (version !== 2 || excCount) throw new Error('file size does not match the sections');
+    layer = b.subarray(excOff);
+    readGreyLayer(layer);
+  }
 
   const cells = [];
   for (let i = 0; i <= cellCount; i++) {
@@ -270,5 +279,5 @@ export function decodeWayback(bytes) {
     }
     chunks.push(list);
   }
-  return {header, cells, nodes, extras, chunks};
+  return {header, cells, nodes, extras, chunks, layer};
 }
