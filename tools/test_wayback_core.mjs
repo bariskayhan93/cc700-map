@@ -158,7 +158,7 @@ test('the self test: wb_out equals the old near test for 100,000 random pairs an
   assert.equal(t.scanCoverErrors, 0, 'every piece that wb_tick chooses is visited by the 5 x 6 window');
 });
 
-// ---- D3c: the grey layer reader on the unit core (north-up box, 16 cells at most, rows read once) ----
+// ---- D3c: the grey layer reader on the unit core (heading-up screen, 20 cells at most, rows read once) ----
 import {greyLayer, readGreyLayer} from '../js/wayback_grey_layer.js';
 import {runGrey} from './wayback_core_host.mjs';
 const bare = file;   // every piece grey, version 2, no layer
@@ -188,18 +188,11 @@ function bodyLines(sec, at, len) {
 }
 // The read model of the unit (D3c): a binary search per new row (one 4 B read per step), one read of up to 8 records
 // per new row, and one read per 192 B of body consumed. The cap stops after the line that reaches it.
-function readModel(fileBytes, at, latE7, lonE7, cap = 1e9) {
+function readModel(fileBytes, at, keys, cap = 1e9) {
   const H = decodeWayback(fileBytes.subarray(0, at)).header, S = sectionOf(fileBytes, at);
-  const X = floorDiv((lonE7 - H.lon0E7) * H.lonU, 65536), Y = floorDiv((latE7 - H.lat0E7) * H.latU, 65536);
-  if (lonE7 < H.lon0E7 || latE7 < H.lat0E7 || X < 0 || Y < 0) return {reads: 0, cells: [], lines: [], segs: 0};
-  const cx0 = Math.max(0, floorDiv(X - 4800, CELL)), cx1 = floorDiv(X + 4799, CELL);
-  const cy0 = Math.max(0, floorDiv(Y - 1600, CELL)), cy1 = floorDiv(Y + 8319, CELL);
-  const cells = [];
-  for (let cy = cy0; cy <= cy1; cy++) for (let cx = cx0; cx <= cx1; cx++)
-    cells.push({cx, cy, key: ((cy << 16) | cx) >>> 0, d: (cx * CELL + 2048 - X) ** 2 + (cy * CELL + 2048 - Y) ** 2});
-  cells.sort((a, b) => a.d - b.d);
+  const cells = keys.map(key => ({key, cx: key & 0xFFFF, cy: key >>> 16}));
   let reads = 0, segs = 0;
-  const rows = new Map(), out = {cells: cells.map(c => c.key), lines: []};
+  const rows = new Map(), out = {lines: []};
   const lowerBound = key => { let lo = 0, hi = S.n; while (lo < hi) { const mid = lo + Math.floor((hi - lo) / 2); reads++; if (S.keys[mid] < key) lo = mid + 1; else hi = mid; } return lo; };
   for (const c of cells) {
     if (segs >= cap) break;
@@ -221,19 +214,48 @@ function readModel(fileBytes, at, latE7, lonE7, cap = 1e9) {
     }
     reads += Math.ceil(consumed / 192);
   }
-  return {reads, cells: out.cells, lines: out.lines, segs};
+  return {reads, lines: out.lines, segs};
 }
 // Frames inside the grid: a grid of rider positions (E7) with a rider at most 1 km around the grid.
 const frameAt = (x, y) => { const q = p(x, y); return {latE7: Math.round(q[0] * 1e7), lonE7: Math.round(q[1] * 1e7)}; };
-const frames50 = Array.from({length: 50}, (_, i) => frameAt(-50 + (i % 10) * 120, -50 + Math.floor(i / 10) * 230));
+const frames50 = Array.from({length: 50}, (_, i) => ({...frameAt(-50 + (i % 10) * 120, -50 + Math.floor(i / 10) * 230), course: (i * 37) % 360}));
 const layerAt = bare.length;
+// The cells under the turned screen (600 m wide, 520 m ahead, 100 m behind), in float: separating axes, gap < 0 is
+// under the screen. Cells within 2 m of an edge may go either way (the unit uses an integer sine).
+function screenCells(latE7, lonE7, course) {
+  const H = decodeWayback(bare).header, X = floorDiv((lonE7 - H.lon0E7) * H.lonU, 65536), Y = floorDiv((latE7 - H.lat0E7) * H.latU, 65536);
+  const ux = Math.sin(course * Math.PI / 180), uy = Math.cos(course * Math.PI / 180), ax = Math.abs(ux), ay = Math.abs(uy);
+  const mx = X + 3360 * ux, my = Y + 3360 * uy, hx = 4960 * ax + 4800 * ay, hy = 4960 * ay + 4800 * ax, r = 2048 * (ax + ay);
+  const sure = [], edge = new Set();
+  for (let cy = floorDiv(my - hy, CELL) - 1; cy <= floorDiv(my + hy, CELL) + 1; cy++) for (let cx = floorDiv(mx - hx, CELL) - 1; cx <= floorDiv(mx + hx, CELL) + 1; cx++) {
+    if (cx < 0 || cy < 0) continue;
+    const px = cx * CELL + 2048, py = cy * CELL + 2048, dx = px - mx, dy = py - my;
+    const gap = Math.max(Math.abs(dx) - hx - 2048, Math.abs(dy) - hy - 2048, Math.abs(dx * ux + dy * uy) - 4960 - r, Math.abs(dx * uy - dy * ux) - 4800 - r);
+    const key = ((cy << 16) | cx) >>> 0;
+    if (gap < -32) sure.push(key); else if (gap <= 32) edge.add(key);
+  }
+  return {X, Y, sure, edge};
+}
+test('the cells are the cells under the turned screen, nearest first, for 360 courses and 16 offsets', () => {
+  const frames = [];
+  for (let course = 0; course < 360; course++) for (let i = 0; i < 16; i++) frames.push({...frameAt(300 + i * 16, 300 + ((i * 5) % 16) * 16), course, cap: 1});
+  let most = 0;
+  runGrey(withLayer, id, frames).forEach((g, i) => {
+    const f = frames[i], m = screenCells(f.latE7, f.lonE7, f.course), tag = `course ${f.course} offset ${i % 16}`;
+    for (const k of m.sure) assert(g.cells.includes(k), `${tag}: cell ${k} is missing`);
+    for (const k of g.cells) assert(m.sure.includes(k) || m.edge.has(k), `${tag}: cell ${k} is not under the screen`);
+    const d = g.cells.map(k => ((k & 0xFFFF) * CELL + 2048 - m.X) ** 2 + ((k >>> 16) * CELL + 2048 - m.Y) ** 2);
+    assert(d.every((v, j) => j === 0 || d[j - 1] <= v), `${tag}: not nearest first`);
+    most = Math.max(most, g.cells.length);
+  });
+  assert(most >= 12 && most <= 20, `most cells ${most}`);
+});
 
 test('the grey lines of a frame equal the layer points, E7 exact, nearest cell first', () => {
   const got = runGrey(withLayer, id, frames50);
   got.forEach((g, i) => {
-    const m = readModel(withLayer, layerAt, frames50[i].latE7, frames50[i].lonE7);
+    const m = readModel(withLayer, layerAt, g.cells);
     assert.equal(g.layer, 1);
-    assert.deepEqual(g.cells, m.cells, `frame ${i} cells`);
     assert.deepEqual(g.lines, m.lines, `frame ${i} lines`);
   });
 });
@@ -241,14 +263,15 @@ test('the reads of the grey reader equal the model reads for 50 frames, with and
   for (const cap of [1000000000, 400, 5]) {
     const got = runGrey(withLayer, id, frames50.map(f => ({...f, cap})));
     got.forEach((g, i) => {
-      const m = readModel(withLayer, layerAt, frames50[i].latE7, frames50[i].lonE7, cap);
+      const m = readModel(withLayer, layerAt, g.cells, cap);
       assert.equal(g.reads, m.reads, `cap ${cap} frame ${i} reads`);
       assert.equal(g.segs, m.segs, `cap ${cap} frame ${i} segments`);
     });
   }
 });
 test('a read error at read 1, 5 or 20 returns 0, and the lines before it are a prefix of the full list', () => {
-  const busy = frames50.map((f, i) => ({i, reads: readModel(withLayer, layerAt, f.latE7, f.lonE7).reads, f})).find(x => x.reads >= 25);
+  const all = runGrey(withLayer, id, frames50);
+  const busy = frames50.map((f, i) => ({i, reads: readModel(withLayer, layerAt, all[i].cells).reads, f})).find(x => x.reads >= 25);
   assert(busy, 'a frame with at least 25 reads');
   const full = runGrey(withLayer, id, [busy.f])[0];
   for (const k of [1, 5, 20]) {

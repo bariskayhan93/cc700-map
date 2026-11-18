@@ -36,6 +36,7 @@ extern int32_t host_file_cnt;
 extern uint8_t host_file_tab[], host_label_opa;
 extern int16_t host_dash;
 extern uint16_t host_label_col;
+extern float host_map_head;
 #define fw_cc_rt host_cc_rt
 #define fw_cc_pos host_cc_pos
 #define fw_off_route() host_off_route()
@@ -60,6 +61,7 @@ extern uint16_t host_label_col;
 #define FW_LABEL_DSC ((void *)0)
 #define FW_LABEL_OPA host_label_opa
 #define FW_LABEL_COL host_label_col
+#define FW_MAP_HEAD host_map_head
 #else
 #define fw_cc_rt   ((void (*)(uint32_t))0x421dd920)                       /* v21 cc_rt */
 #define fw_cc_pos  ((uint32_t (*)(float *))0x421dd218)                    /* v21 cc_pos: {lat, lon} degrees */
@@ -83,6 +85,7 @@ extern uint16_t host_label_col;
 #define FW_LABEL_DSC ((void *)0x3c38a570)
 #define FW_LABEL_OPA (*(volatile uint8_t *)(0x3c38a570 + 26))
 #define FW_LABEL_COL (*(volatile uint16_t *)(0x3c38a570 + 12))
+#define FW_MAP_HEAD  (*(volatile float *)0x3c388d08)                      /* map heading: 450 - course, degrees */
 static uint32_t fw_off_route(void) { return *(volatile uint8_t *)(0x3c3894f0 + 145); }
 static uint32_t fw_stack(void) {                                          /* as loop_start.c */
   uint32_t sp; __asm__ volatile("mov %0,a1" : "=a"(sp));
@@ -160,7 +163,7 @@ static __attribute__((noinline)) uint32_t wbd_run(void *fp, uint32_t t0, const f
   *reads = c.reads;
   return i;
 }
-/* Grey streets of one frame (D3c, E15): the layer cells of the north-up box round the rider, nearest first, drawn
+/* Grey streets of one frame (D3c, E15): the layer cells under the heading-up screen, nearest first, drawn
  * as operation 30 before the line. The buffer is the line buffer of the frame: the line points are read after this
  * draw. A read error or the cap ends the grey for this frame only. */
 typedef struct { uint32_t segs; wbd_ctx *c; float *buf; } wbd_grey;
@@ -175,10 +178,12 @@ static int wbd_grey_visit(void *vctx, const int32_t *p, uint32_t n) {
   return g->segs < WBD_GREY_SEGS;
 }
 static void wbd_grey_draw(wbd_ctx *c, wb_engine *e, int32_t lat, int32_t lon, float *buf) {
-  uint32_t cells[16], n;
+  uint32_t cells[20], n;
+  float head = FW_MAP_HEAD;
   wbd_grey g;
+  if (!(head >= -360.0f && head <= 720.0f)) return;            /* NaN or a bad heading: no grey in this frame */
   g.segs = 0; g.c = c; g.buf = buf;
-  n = wb_grey_cells(e, lat, lon, cells);
+  n = wb_grey_cells(e, lat, lon, (uint32_t)(int32_t)(810.5f - head) % 360u, cells);   /* course + 360, rounded */
   (void)wb_grey_lines(e, cells, n, wbd_grey_visit, &g);
 }
 static uint32_t wbd_core(wbd_ctx *cp, uint32_t i, uint8_t *t, const float *pos, float *line, uint32_t *n, uint32_t *dm) {

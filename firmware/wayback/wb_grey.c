@@ -7,12 +7,13 @@
 #define GB_BLOCK 192u          /* block read of a cell body (the unit's WB_BLOCK) */
 #define GB_CELL 4096u          /* cell side in way-back units: 256 m */
 #define GB_ROW_RECORDS 8u      /* cell records read for one row */
-#define GB_MAX_ROWS 4u
-#define GB_MAX_CELLS 16u
+#define GB_MAX_ROWS 5u          /* the box of a turned screen spans at most 5 rows */
+#define GB_MAX_CELLS 20u
 #define GB_MAX_POINTS 32u      /* a line has at most 32 points */
-#define GB_HALF_W 4800         /* 300 m in units (1/16 m) */
-#define GB_BEHIND 1600         /* 100 m */
-#define GB_AHEAD 8320          /* 520 m */
+#define GB_HALF_W 4800         /* half the screen width: 300 m in units (1/16 m) */
+#define GB_HALF_L 4960         /* half the screen length: (520 m ahead + 100 m behind) / 2 */
+#define GB_MID 3360            /* the screen centre is 210 m ahead of the rider */
+#define GB_ONE 4096            /* scale of gb_sin */
 #define GB_SECTION_HEAD 16u    /* magic, shifts, reserved, cell count, body bytes */
 
 struct gb_row { uint32_t cy, cnt, key[GB_ROW_RECORDS], off[GB_ROW_RECORDS]; };
@@ -28,8 +29,12 @@ static uint32_t gb_u32(const uint8_t *p) {
   return (uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
 }
 
-static int32_t fdiv(int32_t v, int32_t d) {   /* floor(v / d) for d > 0 */
-  return v >= 0 ? v / d : -((-v + d - 1) / d);
+static int32_t gb_abs(int32_t v) { return v < 0 ? -v : v; }
+
+/* sin(d degrees) x 4096, Bhaskara I approximation: error below 0.2%, integer only. */
+static int32_t gb_sin(uint32_t d) {
+  int32_t x = (int32_t)(d % 180u), p = x * (180 - x), s = 4 * GB_ONE * p / (40500 - p);
+  return d % 360u < 180u ? s : -s;
 }
 
 /* 1 = byte, 0 = end of the body, -1 = read error. */
@@ -95,28 +100,27 @@ static int gb_cell(wb_engine *e, const wb_grid *g, uint32_t base, uint32_t len, 
   return 0;
 }
 
-uint32_t wb_grey_cells(const wb_engine *e, int32_t lat_e7, int32_t lon_e7, uint32_t *cells) {
+uint32_t wb_grey_cells(const wb_engine *e, int32_t lat_e7, int32_t lon_e7, uint32_t course_deg, uint32_t *cells) {
   wb_grid g;
-  uint32_t x, y, n = 0u;
-  uint64_t d[GB_MAX_CELLS];
-  int32_t X, Y, cx0, cx1, cy0, cy1, cx, cy;
+  uint32_t x, y, n = 0u, j, d[GB_MAX_CELLS];
+  int32_t ux = gb_sin(course_deg), uy = gb_sin(course_deg + 90u);   /* ahead, x 4096: east, north */
+  int32_t ax = gb_abs(ux), ay = gb_abs(uy), r = GB_CELL / 2 * (ax + ay);   /* r: half cell on a screen axis */
+  int32_t mx, my, hx, hy, cx, cy;
   wb_grid_get(e, &g);
   if (!wb_units(&g, lat_e7, lon_e7, &x, &y)) return 0u;
-  X = (int32_t)x;
-  Y = (int32_t)y;
-  cx0 = fdiv(X - GB_HALF_W, GB_CELL);
-  if (cx0 < 0) cx0 = 0;
-  cx1 = fdiv(X + GB_HALF_W - 1, GB_CELL);
-  cy0 = fdiv(Y - GB_BEHIND, GB_CELL);
-  if (cy0 < 0) cy0 = 0;
-  cy1 = fdiv(Y + GB_AHEAD - 1, GB_CELL);
-  for (cy = cy0; cy <= cy1; cy++) {
-    for (cx = cx0; cx <= cx1; cx++) {
-      int64_t dx = (int64_t)cx * GB_CELL + GB_CELL / 2 - X, dy = (int64_t)cy * GB_CELL + GB_CELL / 2 - Y;
-      uint64_t dd = (uint64_t)(dx * dx) + (uint64_t)(dy * dy);
-      uint32_t j;
-      if (n >= GB_MAX_CELLS) return n;   /* the box is at most 4 cells on each side */
-      j = n++;
+  mx = (int32_t)x + ux * GB_MID / GB_ONE;                            /* screen centre and its half box, units */
+  my = (int32_t)y + uy * GB_MID / GB_ONE;
+  hx = (GB_HALF_L * ax + GB_HALF_W * ay) / GB_ONE + 1;
+  hy = (GB_HALF_L * ay + GB_HALF_W * ax) / GB_ONE + 1;
+  for (cy = (my - hy) >> 12; cy <= (my + hy) >> 12; cy++) {          /* >> 12: the 4,096-unit cell, floor */
+    for (cx = (mx - hx) >> 12; cx <= (mx + hx) >> 12; cx++) {
+      int32_t dx = cx * (int32_t)GB_CELL + (int32_t)GB_CELL / 2 - (int32_t)x, dy = cy * (int32_t)GB_CELL + (int32_t)GB_CELL / 2 - (int32_t)y;
+      uint32_t dd = (uint32_t)(dx * dx + dy * dy);
+      /* Separating axes: the box rows and columns above, then the two screen axes. */
+      if (cx < 0 || cy < 0 || gb_abs(dx * ux + dy * uy - GB_MID * GB_ONE) >= GB_HALF_L * GB_ONE + r ||
+          gb_abs(dx * uy - dy * ux) >= GB_HALF_W * GB_ONE + r) continue;
+      if (n == GB_MAX_CELLS && dd >= d[n - 1u]) continue;           /* full: keep the nearest */
+      j = n < GB_MAX_CELLS ? n++ : n - 1u;
       while (j > 0u && d[j - 1u] > dd) {   /* insertion sort, stable: equal distances keep the scan order */
         d[j] = d[j - 1u];
         cells[j] = cells[j - 1u];

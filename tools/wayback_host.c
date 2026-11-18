@@ -173,7 +173,7 @@ static void run_selftest(wb_engine *e) {
          cases, mismatch, o.errors, o.visited, cover_cases, cover_errors, ncells);
 }
 
-/* --grey FILE ROUTE_ID_HEX32 < lines: each input line "lat_e7 lon_e7 cap fail_read" (cap: segments; fail_read: the
+/* --grey FILE ROUTE_ID_HEX32 < lines: each input line "lat_e7 lon_e7 cap fail_read course_deg" (cap: segments; fail_read: the
  * k-th read of the frame fails, -1 = none). One JSON object per line: cells, lines (lat, lon E7 pairs), ok, reads, segs. */
 typedef struct {
   long segs, cap;
@@ -196,7 +196,7 @@ static int grey_main(const char *file, const char *hex) {
   uint8_t route[16];
   host_ctx c;
   wb_engine *eng;
-  long size, lat, lon, cap, fail;
+  long size, lat, lon, cap, fail, course;
   char line[256];
   int mounted;
   if (!parse_route_id(hex, route)) return 2;
@@ -211,13 +211,13 @@ static int grey_main(const char *file, const char *hex) {
   c.grey_mode = 0; c.grey_reads = 0; c.grey_fail = -1;
   mounted = wb_mount(eng, host_reader, &c, (uint32_t)size, route);
   while (fgets(line, sizeof line, stdin)) {
-    uint32_t cells[16], info[3], n, i;
+    uint32_t cells[20], info[3], n, i;
     grey_ctx g;
     int layer, ok;
     if (!mounted) { printf("{\"mounted\":0}\n"); continue; }
-    if (sscanf(line, "%ld %ld %ld %ld", &lat, &lon, &cap, &fail) != 4) return 2;
+    if (sscanf(line, "%ld %ld %ld %ld %ld", &lat, &lon, &cap, &fail, &course) != 5) return 2;
     layer = wb_grey_section(eng, info);
-    n = wb_grey_cells(eng, (int32_t)lat, (int32_t)lon, cells);
+    n = wb_grey_cells(eng, (int32_t)lat, (int32_t)lon, (uint32_t)course, cells);
     printf("{\"mounted\":1,\"layer\":%d,\"cells\":[", layer);
     for (i = 0u; i < n; i++) printf("%s%" PRIu32, i ? "," : "", cells[i]);
     printf("],\"lines\":[");

@@ -4,7 +4,7 @@
 const MAGIC = [0x43, 0x43, 0x47, 0x4C];      // "CCGL"
 const CELL_SHIFT = 12, QUANTUM_SHIFT = 3;
 const CELL = 1 << CELL_SHIFT, QUANTUM = 1 << QUANTUM_SHIFT;
-const SIMPLIFY = 20;                         // Douglas-Peucker tolerance, 1.25 m (half a pixel at 2.5 m per pixel)
+const SIMPLIFY = 40;                         // Douglas-Peucker tolerance, 2.5 m (one pixel at 2.5 m per pixel)
 const MAX_POINTS = 32;                       // WBD_POINTS of the unit
 const MAX_BODY = 2048;                       // largest cell body
 const HEADER = 16, TABLE_ENTRY = 8, SENTINEL = 0xFFFFFFFF;
