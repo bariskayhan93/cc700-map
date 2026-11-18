@@ -7,9 +7,10 @@ import os from 'node:os';
 import path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import {hav} from '../js/geo.js';
-import {gridFixture} from './wayback_fixture.mjs';
+import {gridFixture, makeGraph, p as pt} from './wayback_fixture.mjs';
 import {buildWaybackModel} from './wayback_tree.mjs';
-import {encodeWaybackV2} from './wayback_format.mjs';
+import {encodeWaybackV2, decodeWayback} from './wayback_format.mjs';
+import {greyLayer} from '../js/wayback_grey_layer.js';
 import {embedWayback, readTrailer} from './wayback_embed.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -19,7 +20,7 @@ const exe = path.join(work, 'host');
 execFileSync('cc', ['-std=gnu11', '-O1', '-g', '-Wall', '-Wextra', '-Werror', '-DHOST',
   '-fsanitize=address,undefined', '-fno-sanitize-recover=all', '-I', path.join(root, 'firmware/wayback'),
   path.join(root, 'tools/wayback_device_host.c'), path.join(root, 'firmware/wayback/wb_device.c'),
-  path.join(root, 'firmware/wayback/wayback.c'), '-o', exe], {stdio: ['ignore', 'pipe', 'pipe']});
+  path.join(root, 'firmware/wayback/wayback.c'), path.join(root, 'firmware/wayback/wb_grey.c'), '-o', exe], {stdio: ['ignore', 'pipe', 'pipe']});
 
 const {graph, route, p} = gridFixture();
 const id = Uint8Array.from({length: 16}, (_, i) => i + 1);
@@ -32,6 +33,8 @@ fs.writeFileSync(plain, routeBytes);
 function run(o) {
   const q = p(o.x ?? 5, o.y ?? 120);
   const args = [o.file ?? withData, q[0], q[1], o.off ?? 1, o.stack ?? 4096, o.part ?? 0, o.pathMode ?? 1, o.gps ?? 1, o.step ?? 100, o.openOk ?? 1].map(String);
+  if (o.failAt) args.push(String(o.failAt));   // the failAt-th file read of the frame fails
+  if (o.exe) return JSON.parse(execFileSync(o.exe, args, {encoding: 'utf8'}));
   return JSON.parse(execFileSync(exe, args, {encoding: 'utf8'}));
 }
 const near = (pt, x, y, tol = 2) => assert(hav(pt, p(x, y)) <= tol, `${pt} is not at ${x},${y}`);
@@ -56,9 +59,9 @@ test('off the route near a street: the line is drawn two times, with the distanc
 test('the route call of state 3 (part 1) is handled as part 0', () => {
   assert.equal(run({part: 1}).lines.length, 2);
 });
-test('on the route, the test image shows wb3 and makes no lock, file or line call', () => {
+test('on the route there is no text, no lock, no file call and no line (wb3 removed, D5)', () => {
   const r = run({off: 0});
-  assert.deepEqual([r.rt, r.opens, r.reads, r.lines.length, r.text, r.takes], [1, 0, 0, 0, 'wb3', 0]);
+  assert.deepEqual([r.rt, r.opens, r.reads, r.lines.length, r.texts, r.takes], [1, 0, 0, 0, 0, 0]);
 });
 test('no street within 15 m shows code 4 and no line', () => {
   const r = run({x: 60, y: 100});
@@ -101,4 +104,80 @@ test('damaged way-back data shows code 7 and no line', () => {
   const f = path.join(work, 'bad.bin'); fs.writeFileSync(f, bad);
   const r = run({file: f});
   assert.deepEqual([r.lines.length, r.closes], [0, 1]); assert.match(r.text, /^wb7 /);
+});
+
+// ---- D5: the grey draw (north-up layer, before the line, at most 400 segments, 60 ms) ----
+const layerBytes = greyLayer(decodeWayback(wayback));
+const withLayer = path.join(work, 'route-layer.bin');
+fs.writeFileSync(withLayer, embedWayback(routeBytes, Buffer.concat([Buffer.from(wayback), Buffer.from(layerBytes)])));
+const other = Uint8Array.from({length: 16}, (_, i) => 255 - i);
+const otherWayback = encodeWaybackV2(buildWaybackModel(graph, route, {reach: 'line2k'}), other, () => 1);
+const otherLayer = path.join(work, 'route-other.bin');
+fs.writeFileSync(otherLayer, embedWayback(routeBytes, Buffer.concat([Buffer.from(otherWayback), Buffer.from(greyLayer(decodeWayback(otherWayback)))])));
+const exeCap = path.join(work, 'host-cap');   // the same adapter with 3 segments for the grey draw: the cap test
+execFileSync('cc', ['-std=gnu11', '-O1', '-g', '-Wall', '-Wextra', '-Werror', '-DHOST', '-DWBD_GREY_SEGS=3u',
+  '-fsanitize=address,undefined', '-fno-sanitize-recover=all', '-I', path.join(root, 'firmware/wayback'),
+  path.join(root, 'tools/wayback_device_host.c'), path.join(root, 'firmware/wayback/wb_device.c'),
+  path.join(root, 'firmware/wayback/wayback.c'), path.join(root, 'firmware/wayback/wb_grey.c'), '-o', exeCap], {stdio: ['ignore', 'pipe', 'pipe']});
+const greyOps = r => r.lines.filter(l => l.op === 30);
+const segsOf = ls => ls.reduce((s, l) => s + l.n - 1, 0);
+
+test('off the route with a layer: the grey lines come first (operation 30), then the line (17, 14)', () => {
+  const r = run({file: withLayer});
+  const ops = r.lines.map(l => l.op);
+  assert.deepEqual(ops.slice(-2), [17, 14]);
+  assert(ops.length > 2 && ops.slice(0, -2).every(o => o === 30), ops.join());
+  assert(r.lines.slice(0, -2).every(l => l.n >= 2));
+  assert.equal(r.takes, r.gives); assert.equal(r.dashAfter, 0); assert.equal(r.badDash, 0);
+});
+test('the line is the same with and without the layer', () => {
+  const plainRun = run({}), layerRun = run({file: withLayer});
+  assert.deepEqual(layerRun.lines.slice(-2), plainRun.lines);
+  assert.match(layerRun.text, /^1[12]\dm /);
+  assert.equal(layerRun.text.split(' ')[0], plainRun.text.split(' ')[0]);
+});
+test('at most 400 segments of grey are drawn (cap 3 in this build): the cap cuts the last line', () => {
+  const r = run({file: withLayer, exe: exeCap});
+  assert.deepEqual(r.lines.slice(-2).map(l => l.op), [17, 14]);
+  assert(segsOf(greyOps(r)) <= 3, `grey segments ${segsOf(greyOps(r))}`);
+  assert(segsOf(greyOps(r)) >= 1);
+});
+test('the grey draw stops 60 ms after the frame start: a fast clock draws less grey and the same line', () => {
+  const full = run({file: withLayer, step: 1}), late = run({file: withLayer, step: 5000});
+  assert(greyOps(late).length < greyOps(full).length, `${greyOps(late).length} against ${greyOps(full).length}`);
+  assert.deepEqual(late.lines.slice(-2).map(l => l.op), [17, 14]);
+  assert.equal(late.text.split(' ')[0], full.text.split(' ')[0]);
+});
+// A denser street grid (60 m, 13 by 13 crossings) for the read-error tests: the grey pass then has 20 reads and more.
+const dl = [], dlinks = [], DN = 13;
+for (let i = 0; i < DN; i++) for (let j = 0; j < DN; j++) dl.push([(i - 6) * 60, (j - 6) * 60]);
+for (let i = 0; i < DN; i++) for (let j = 0; j < DN; j++) {
+  const a = i * DN + j;
+  if (j + 1 < DN) dlinks.push([a, a + 1]);
+  if (i + 1 < DN) dlinks.push([a, a + DN]);
+}
+const denseGraph = makeGraph(dl, dlinks);
+const denseRoute = [{point: pt(-360, 0), progress: 0}, {point: pt(360, 0), progress: 720000}];
+const denseWb = encodeWaybackV2(buildWaybackModel(denseGraph, denseRoute, {reach: 'line2k'}), id, () => 1);
+const denseLayer = path.join(work, 'route-dense.bin'), densePlain = path.join(work, 'route-dense-plain.bin');
+fs.writeFileSync(denseLayer, embedWayback(routeBytes, Buffer.concat([Buffer.from(denseWb), Buffer.from(greyLayer(decodeWayback(denseWb)))])));
+fs.writeFileSync(densePlain, embedWayback(routeBytes, denseWb));
+const dense = {file: denseLayer, x: 5, y: 90};
+for (const k of [1, 5, 20]) {
+  test(`a read error at grey read ${k} keeps the line and the distance of the run without it`, () => {
+    const clean = run(dense), plainRun = run({...dense, file: densePlain});
+    assert(clean.greyFirstReads >= 0 && clean.reads >= clean.greyFirstReads + 20, `${clean.greyFirstReads} ${clean.reads}`);
+    const r = run({...dense, failAt: clean.greyFirstReads + k});
+    assert.deepEqual(r.lines.slice(-2), plainRun.lines.slice(-2));
+    assert.equal(r.text.split(' ')[0], plainRun.text.split(' ')[0]);
+    assert(greyOps(r).length < greyOps(clean).length, `k=${k}: ${greyOps(r).length} against ${greyOps(clean).length}`);
+  });
+}
+test('a route change mid-ride: the grey and the line come from the file of that frame', () => {
+  const otherPlain = path.join(work, 'route-other-plain.bin');
+  fs.writeFileSync(otherPlain, embedWayback(routeBytes, otherWayback));
+  const changed = run({file: otherLayer}), plainOther = run({file: otherPlain});
+  assert(greyOps(changed).length >= 1);
+  assert.deepEqual(changed.lines.slice(-2), plainOther.lines.slice(-2));
+  assert.match(changed.text, /^1[12]\dm /);
 });

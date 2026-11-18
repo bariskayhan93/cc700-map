@@ -3,8 +3,13 @@
  * No writable globals: each off-route frame opens the route file again, mounts the way-back data
  * from its end, draws and closes. Contract and addresses: firmware/wayback/README.md. */
 #include "wayback.h"
+#include "wb_grey.h"
 
 #define WBD_POINTS 32u              /* line points for each frame */
+#ifndef WBD_GREY_SEGS
+#define WBD_GREY_SEGS 400u         /* grey segments of one frame (R-D3); the host build with 3 tests the cap */
+#endif
+#define WBD_GREY_US 60000u          /* the grey draw stops this long after the frame start */
 #define WBD_TIME_US 300000u         /* file work for each frame; a later read fails */
 #define WBD_STACK 3360u             /* free stack needed before any file call */
 #define WBD_REC 132u                /* open-file table record: handle, then the name */
@@ -155,6 +160,27 @@ static __attribute__((noinline)) uint32_t wbd_run(void *fp, uint32_t t0, const f
   *reads = c.reads;
   return i;
 }
+/* Grey streets of one frame (D3c, E15): the layer cells of the north-up box round the rider, nearest first, drawn
+ * as operation 30 before the line. The buffer is the line buffer of the frame: the line points are read after this
+ * draw. A read error or the cap ends the grey for this frame only. */
+typedef struct { uint32_t segs; wbd_ctx *c; float *buf; } wbd_grey;
+static int wbd_grey_visit(void *vctx, const int32_t *p, uint32_t n) {
+  wbd_grey *g = (wbd_grey *)vctx;
+  uint32_t k;
+  if (g->segs >= WBD_GREY_SEGS || fw_clock() - g->c->t0 > WBD_GREY_US) return 0;
+  if (g->segs + (n - 1u) > WBD_GREY_SEGS) n = WBD_GREY_SEGS - g->segs + 1u;   /* the last line is cut at the cap */
+  for (k = 0; k < n; k++) { g->buf[2 * k] = (float)p[2 * k] * 1e-7f; g->buf[2 * k + 1] = (float)p[2 * k + 1] * 1e-7f; }
+  wbd_line(g->buf, n, 30u);
+  g->segs += n - 1u;
+  return g->segs < WBD_GREY_SEGS;
+}
+static void wbd_grey_draw(wbd_ctx *c, wb_engine *e, int32_t lat, int32_t lon, float *buf) {
+  uint32_t cells[16], n;
+  wbd_grey g;
+  g.segs = 0; g.c = c; g.buf = buf;
+  n = wb_grey_cells(e, lat, lon, cells);
+  (void)wb_grey_lines(e, cells, n, wbd_grey_visit, &g);
+}
 static uint32_t wbd_core(wbd_ctx *cp, uint32_t i, uint8_t *t, const float *pos, float *line, uint32_t *n, uint32_t *dm) {
   uint32_t store[32 + 2 * (sizeof(void *) - 4)]; wb_engine *e = (wb_engine *)store;   /* 128 B on the device */
   wb_input in; wb_output out; int32_t p[2];
@@ -165,6 +191,7 @@ static uint32_t wbd_core(wbd_ctx *cp, uint32_t i, uint8_t *t, const float *pos, 
   in.exit_progress_cm = 0; in.flags = WB_GPS_VALID | WB_OFF_ROUTE;   /* no trusted exit on the device: tree A values */
   wb_tick(e, &in, &out);
   if (out.state != WB_LINE) return out.reason ? out.reason : WB_READ;
+  wbd_grey_draw(cp, e, in.lat_e7, in.lon_e7, line);           /* grey first: the line points are read after it */
   for (i = 0; i < WBD_POINTS && wb_read_point(e, i, p); i++) { line[2 * i] = (float)p[0] * 1e-7f; line[2 * i + 1] = (float)p[1] * 1e-7f; }
   if (i < 2u) return WB_READ;                                  /* a failed read: draw nothing */
   if (i == WBD_POINTS && wb_read_point(e, WBD_POINTS, p)) return WBD_LINE_CAP;   /* more points: never cut silently */
@@ -198,7 +225,6 @@ static __attribute__((noinline)) void wbd_frame(void) {
 
 /* Replaces cc_rt in tramp_rt. The map frame (0x4204da24) makes one hooked route call for each frame. */
 void wb_rt(uint32_t part) {
-  uint32_t on = 0x00336277u;                                   /* "wb3": test image only, shows that the hook runs */
   fw_cc_rt(part);
-  if (fw_off_route()) wbd_frame(); else wbd_text((const char *)&on);
+  if (fw_off_route()) wbd_frame();                             /* on the route: no text, no file call (D5: wb3 removed) */
 }

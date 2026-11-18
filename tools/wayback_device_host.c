@@ -19,8 +19,11 @@ static float g_pos[2];
 static uint32_t g_off, g_stack, g_gps, g_clock, g_step, g_open_ok;
 static int g_busy_file, g_busy_nav, held;
 static int n_rt, n_open, n_close, n_lines, n_text, n_reads, n_take, n_give, bad_dash;
-static uint32_t line_op[4], line_n[4];
-static float line_first[4][2], line_last[4][2];
+#define MAX_LINES 4096           /* grey lines of one frame, at most 400 segments, plus the line */
+static uint32_t line_op[MAX_LINES], line_n[MAX_LINES];
+static float line_first[MAX_LINES][2], line_last[MAX_LINES][2];
+static uint32_t g_fail_at;                                   /* the g_fail_at-th read fails (1-based); 0 = none */
+static int first_grey_reads = -1;                            /* reads made before the first operation 30 line */
 static char text[128], opened[128];
 
 void host_cc_rt(uint32_t part) { (void)part; n_rt++; }
@@ -43,10 +46,15 @@ void *host_fopen(const char *path, const char *mode) {
 }
 int host_fclose(void *f) { n_close++; return fclose((FILE *)f); }
 int host_fseek(void *f, int32_t off, int whence) { return fseek((FILE *)f, off, whence); }
-uint32_t host_fread(void *dst, uint32_t size, uint32_t n, void *f) { n_reads++; return (uint32_t)fread(dst, size, n, (FILE *)f); }
+uint32_t host_fread(void *dst, uint32_t size, uint32_t n, void *f) {
+  n_reads++;
+  if (g_fail_at && (uint32_t)n_reads == g_fail_at) return 0;
+  return (uint32_t)fread(dst, size, n, (FILE *)f);
+}
 void host_proj(const float *p, uint32_t n) {
   if (!(host_dash & 0x8000)) bad_dash++;
-  if (n_lines < 4) {
+  if (first_grey_reads < 0 && (host_dash & 0xff) == 30) first_grey_reads = n_reads;
+  if (n_lines < MAX_LINES) {
     line_op[n_lines] = (uint32_t)host_dash & 0xffu; line_n[n_lines] = n;
     line_first[n_lines][0] = p[0]; line_first[n_lines][1] = p[1];
     line_last[n_lines][0] = p[2 * (n - 1)]; line_last[n_lines][1] = p[2 * (n - 1) + 1];
@@ -61,7 +69,8 @@ void host_canvas_text(void *cv, int32_t x, int32_t y, int32_t w, void *dsc, cons
 int main(int argc, char **argv) {
   int i, mode;
   void *route = &route, *other = &other;
-  if (argc != 11) return 2;
+  if (argc != 11 && argc != 12) return 2;
+  g_fail_at = argc == 12 ? (uint32_t)atoi(argv[11]) : 0u;
   g_pos[0] = strtof(argv[2], 0); g_pos[1] = strtof(argv[3], 0);
   g_off = (uint32_t)atoi(argv[4]); g_stack = (uint32_t)atoi(argv[5]);
   mode = atoi(argv[7]); g_gps = (uint32_t)atoi(argv[8]);
@@ -76,9 +85,9 @@ int main(int argc, char **argv) {
   wb_rt((uint32_t)atoi(argv[6]));
   printf("{\"rt\":%d,\"opens\":%d,\"closes\":%d,\"reads\":%d,\"texts\":%d,\"text\":\"%s\",\"opened\":\"%s\",", n_rt, n_open, n_close, n_reads, n_text, text, opened);
   printf("\"takes\":%d,\"gives\":%d,\"dashAfter\":%d,\"badDash\":%d,\"labelCol\":%u,\"lines\":[", n_take, n_give, host_dash, bad_dash, host_label_col);
-  for (i = 0; i < n_lines && i < 4; i++)
+  for (i = 0; i < n_lines && i < MAX_LINES; i++)
     printf("%s{\"op\":%u,\"n\":%u,\"first\":[%.7f,%.7f],\"last\":[%.7f,%.7f]}", i ? "," : "", line_op[i], line_n[i],
            (double)line_first[i][0], (double)line_first[i][1], (double)line_last[i][0], (double)line_last[i][1]);
-  printf("]}\n");
+  printf("],\"greyFirstReads\":%d}\n", first_grey_reads);
   return 0;
 }

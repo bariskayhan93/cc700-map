@@ -6,7 +6,7 @@ const K = Math.cos(51 * Math.PI / 180);
 export const p = (x, y) => [51 + y / 111320, 7 + x / (111320 * K)];
 
 // list: [[x, y], ...]; links: [[i, j]] (both ways) or [[i, j, 'one']] (i to j only).
-function makeGraph(list, links) {
+export function makeGraph(list, links) {
   const nodes = list.map(([x, y], id) => ({id, point: p(x, y)}));
   const edges = [];
   const add = (i, j) => edges.push({from: i, to: j, meters: hav(nodes[i].point, nodes[j].point)});
