@@ -3,7 +3,11 @@
 // Not 0: the entry is a polyline or area [centre, points...]; bits 0-3 class, bits 4-6 level + 2, bit 7 bridge, bit 8 tunnel.
 // Projection stays the firmware's (callback 0x4204c1bc); the draw operation reaches cc_line through the line descriptor's
 // dash fields, which the map layer never uses (bit 15 set = patch operation), and is cleared there.
+// cc26 (18 Nov 2026, after a crash in this draw): A, a line or dash piece whose box is outside the canvas plus
+// CLIP_M px makes no stock draw call (same pixels); B, cc_iter stops drawing after MAP_FRAME_US in one frame.
 #include "fw.h"
+#define CLIP_M 16                       // > half of the widest line (13 + 2 px) and of a round cap
+#define MAP_FRAME_US 400000u             // B: far below the stock watchdog, above any normal frame (not measured)
 #ifdef HOST
 extern uint32_t host_selection_checks;
 #define COUNT_ENTRY() (host_selection_checks++)
@@ -14,6 +18,9 @@ extern uint32_t host_selection_checks;
 enum { C_NONE, C_BUILT, C_GREEN, C_WATER, C_WLINE, C_MAJ, C_MIN, C_SRV, C_PTH, C_RAIL, C_CYC, C_TRAM, C_LABEL, C_SIG, C_STOP };
 enum { K_FILL = 1, K_LINE, K_DASH, K_DOT, K_TEXT };
 typedef struct { uint8_t kind, width, on, off; uint32_t rgb; } op_t;
+#ifdef CC26_AREA2                                          // the second code area has no data: the v21 tables in the base
+#define OPS ((const op_t *)0x3c1ddf40)
+#else
 // "sunlight" palette of the Map Lab (pixel widths)
 static const op_t OPS[] = {
   [0] = { 0 },
@@ -39,6 +46,7 @@ static const op_t OPS[] = {
   [30] = { K_LINE, 4, 0, 0, 0x9a9ea3 }, [31] = { K_LINE, 2, 0, 0, 0xf4f4f4 },   // A2: service road far from the route
   [32] = { K_DASH, 3, 2, 4, 0x3a2410 },  // A5: rough part of the route, dots over the route line   // green and water outline (Map Lab)  // street name (entry index in dash_gap)
 };
+#endif
 #define F_BRIDGE 0x100
 #define F_TUNNEL 0x200
 
@@ -46,6 +54,11 @@ static const op_t OPS[] = {
 static int sane(const pt_t *p, uint32_t n) {               // the projection leaves garbage after a failed point
   for (uint32_t i = 0; i < n; i++) if (p[i].x < -4000 || p[i].x > 4000 || p[i].y < -4000 || p[i].y > 4000) return i;
   return n;
+}
+static int outside(const pt_t *p, uint32_t n) {            // A: the box of the points misses the canvas + CLIP_M
+  int x0 = p[0].x, x1 = x0, y0 = p[0].y, y1 = y0;
+  for (uint32_t i = 1; i < n; i++) { if (p[i].x < x0) x0 = p[i].x; if (p[i].x > x1) x1 = p[i].x; if (p[i].y < y0) y0 = p[i].y; if (p[i].y > y1) y1 = p[i].y; }
+  return x1 < -CLIP_M || y1 < -CLIP_M || x0 > FW_CANVAS_W + CLIP_M || y0 > FW_CANVAS_H + CLIP_M;
 }
 static void line(const pt_t *p, uint32_t n, uint16_t col, int w, uint8_t opa) {
   line_dsc_t *d = FW_LINE_DSC;
@@ -60,13 +73,14 @@ static void dash(const pt_t *p, uint32_t n, uint16_t col, int w, uint8_t opa, in
   for (uint32_t i = 1; i < n; i++) {
     int32_t dx = p[i].x - p[i - 1].x, dy = p[i].y - p[i - 1].y; int32_t len = isqrt(dx * dx + dy * dy) << 16;
     if (!len) continue;
+    if (outside(p + i - 1, 2)) { ph = (int32_t)(((uint32_t)ph + (uint32_t)len) % (uint32_t)per); continue; }   // A: same phase, no draw
     for (int32_t s = 0; s < len;) {
       int32_t d;
       if (ph < (on << 16)) {
         d = (on << 16) - ph; if (d > len - s) d = len - s;
         pt_t q[2] = { { p[i - 1].x + (int16_t)(((int64_t)dx * s) / len), p[i - 1].y + (int16_t)(((int64_t)dy * s) / len) },
                       { p[i - 1].x + (int16_t)(((int64_t)dx * (s + d)) / len), p[i - 1].y + (int16_t)(((int64_t)dy * (s + d)) / len) } };
-        line(q, 2, col, w, opa);
+        if (!outside(q, 2)) line(q, 2, col, w, opa);   // A
       } else { d = per - ph; if (d > len - s) d = len - s; }
       s += d; ph += d; if (ph >= per) ph -= per;
     }
@@ -148,6 +162,7 @@ void cc_line(const pt_t *pts, uint32_t n, int32_t width, int32_t mode) {
   d->dash_width = 0; d->dash_gap = 0;
   if (!pts) return;
   n = sane(pts, n);
+  if (n && (sel & 0xff) != 23 && outside(pts, n)) { d->opa = 255; d->flags = 0; return; }   // A (23: label anchor)
   if (!(sel & 0x8000)) {                                    // original: grey edge, white core
     line(pts, n, fw_color_hex(mode == 1 ? 0xc86d : mode == 2 ? 0xc8d0de : 0x1f78ff), width, 255);
     line(pts, n, 0xffff, width - 4, 255);
@@ -172,10 +187,17 @@ void cc_line(const pt_t *pts, uint32_t n, int32_t width, int32_t mode) {
 // ---------- entry iterator ----------
 // draw passes: [class, op, op for a bridge edge pass (0 = none)]; done for each level -2..2 except fills and water lines
 typedef struct { uint8_t cls, op; } pass_t;
+#define N_FILLS 4u
+#define N_LEVEL 11u
+#ifdef CC26_AREA2
+#define FILLS ((const pass_t *)0x3c1ddf36)
+#define LEVEL ((const pass_t *)0x3c1ddf20)
+#else
 static const pass_t FILLS[] = { { C_BUILT, 1 }, { C_GREEN, 2 }, { C_WATER, 3 }, { C_WLINE, 4 } };
 static const pass_t LEVEL[] = { { C_RAIL, 12 }, { C_PTH, 11 }, { C_CYC, 13 },
   { C_SRV, 9 }, { C_MIN, 7 }, { C_MAJ, 5 },                 // edges of all roads first, so junctions merge
   { C_SRV, 10 }, { C_MIN, 8 }, { C_MAJ, 6 }, { C_TRAM, 14 }, { C_TRAM, 15 } };
+#endif
 
 // Bounds preserve entry order even for arbitrary unsorted legacy blocks.
 // 4 fills + 7 road classes * 5 levels + interleaved symbols + labels.
@@ -196,31 +218,34 @@ static void draw_entry(proj_cb_t cb, const ent_t *e, uint16_t sel, float *buf) {
 }
 void cc_iter(proj_cb_t cb) {
   fw_blk_lock();
-  uint32_t cnt = FW_BLK_CNT; ent_t *E = FW_BLK_ENTS;
+  uint32_t cnt = FW_BLK_CNT, t0 = fw_clock(); ent_t *E = FW_BLK_ENTS;
+#define LATE() (fw_clock() - t0 > MAP_FRAME_US)                  // B: the rest of this frame is not drawn
   label_state_t labels; labels.count=0;
   entry_range_t ranges[41];
   for(unsigned r=0;r<41;r++) {ranges[r].first=cnt;ranges[r].end=0;}
   if (cnt && E) {
-    const float k = 180.0f / 2147483648.0f; uint32_t big = 0;
+    const float k = 180.0f / 2147483648.0f; uint32_t big = 0, late = 0;
     for (uint32_t i = 0; i < cnt; i++, COUNT_ENTRY()) {
       const ent_t *e = &E[i];
       int b=bucket(e->style);
       if(b>=0) {if(ranges[b].first==cnt) ranges[b].first=i;ranges[b].end=i+1;}
       if (e->style) { if (e->cnt > big) big = e->cnt; continue; }
-      for (uint32_t j = 0; j < e->cnt; j++) {               // original star line: centre -> point j
+      if (!late && LATE()) late = 1;
+      for (uint32_t j = 0; j < e->cnt && !late; j++) {      // original star line: centre -> point j
         float l[4] = { (float)e->lat * k, (float)e->lon * k, (float)e->pts[2 * j] * k, (float)e->pts[2 * j + 1] * k };
         FW_LINE_DSC->dash_width = 0; cb(l, 2);
       }
     }
-    float *buf = big ? fw_malloc((big + 1) * 8, CAPS_PSRAM) : 0;
+    float *buf = big && !late ? fw_malloc((big + 1) * 8, CAPS_PSRAM) : 0;
     if (buf) {
-      for (uint32_t f = 0; f < sizeof FILLS / sizeof *FILLS; f++)
+      for (uint32_t f = 0; f < N_FILLS; f++)
         for (uint32_t i = ranges[f].first; i < ranges[f].end; i++, COUNT_ENTRY()) if (E[i].style && (E[i].style & 15) == FILLS[f].cls) {
+          if (LATE()) goto done;
           draw_entry(cb, &E[i], FILLS[f].op, buf);
           if ((FILLS[f].cls == C_GREEN || FILLS[f].cls == C_WATER) && !(E[i].style & 0x400)) draw_entry(cb, &E[i], FILLS[f].cls == C_GREEN ? 24 : 25, buf);
         }
       for (int lv = 0; lv <= 4; lv++)
-        for (uint32_t f = 0; f < sizeof LEVEL / sizeof *LEVEL; f++)
+        for (uint32_t f = 0; f < N_LEVEL; f++)
           for (uint32_t i = ranges[4+(LEVEL[f].cls-5)*5+lv].first; i < ranges[4+(LEVEL[f].cls-5)*5+lv].end; i++, COUNT_ENTRY()) {
             uint32_t s = E[i].style;
             if (!s || (s & 15) != LEVEL[f].cls || (int)((s >> 4) & 7) != lv) continue;
@@ -229,15 +254,18 @@ void cc_iter(proj_cb_t cb) {
             uint16_t sel = op | (s & 0x100 ? F_TUNNEL : 0);
             int edge = LEVEL[f].op == 5 || LEVEL[f].op == 7 || LEVEL[f].op == 9;
             if (edge && (s & 0x80)) sel |= F_BRIDGE;
+            if (LATE()) goto done;
             uint8_t c = s & 15;                                // F2: a path, cycleway or rail bridge gets a solid base
             if ((s & 0x80) && (c == C_PTH || c == C_CYC || c == C_RAIL)) { draw_entry(cb, &E[i], 26, buf); draw_entry(cb, &E[i], 27, buf); }
             draw_entry(cb, &E[i], sel, buf);
           }
       for (uint32_t i = ranges[39].first; i < ranges[39].end; i++, COUNT_ENTRY()) {                    // traffic signals and tram stops: edge, core
         uint32_t c = E[i].style & 15;
+        if (LATE()) goto done;
         if (c == C_SIG || c == C_STOP) { draw_entry(cb, &E[i], c == C_SIG ? 19 : 21, buf); draw_entry(cb, &E[i], c == C_SIG ? 20 : 22, buf); }
       }
       for (uint32_t i = ranges[40].first; i < ranges[40].end; i++, COUNT_ENTRY()) if ((E[i].style & 15) == C_LABEL) {   // street names: anchor only, text from the entry
+        if (LATE()) goto done;
         buf[0] = (float)E[i].lat * k; buf[1] = (float)E[i].lon * k;
         uint16_t old_color=FW_LINE_DSC->color; int16_t old_width=FW_LINE_DSC->width;
         FW_LINE_DSC->dash_width = (int16_t)(0x8000 | 23); FW_LINE_DSC->dash_gap = 0; cb(buf, 1);
@@ -247,6 +275,7 @@ void cc_iter(proj_cb_t cb) {
         }
         FW_LINE_DSC->color=old_color;FW_LINE_DSC->width=old_width;
       }
+    done:
       fw_free(buf);
     }
     FW_LINE_DSC->dash_width = 0;

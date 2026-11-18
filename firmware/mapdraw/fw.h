@@ -11,7 +11,7 @@ typedef struct { uint32_t n, style; int32_t lat, lon; uint32_t cnt; int32_t *pts
 #ifdef HOST                                                   // PC build of the same drawing code (host.c)
 extern line_dsc_t host_dsc; extern void *host_canvas; extern uint16_t *host_buf; extern uint16_t host_w, host_h; extern uint32_t host_cnt; extern ent_t *host_ents;
 uint16_t host_color_hex(uint32_t); void host_draw_line(void *, const pt_t *, uint32_t, const line_dsc_t *); void host_nop(void);
-void *host_malloc(uint32_t, uint32_t); void host_free(void *);
+void *host_malloc(uint32_t, uint32_t); void host_free(void *); uint32_t host_clock(void);
 #define FW_LINE_DSC (&host_dsc)
 #define FW_CANVAS host_canvas
 #define FW_CANVAS_BUF host_buf
@@ -25,6 +25,7 @@ void *host_malloc(uint32_t, uint32_t); void host_free(void *);
 #define fw_blk_unlock host_nop
 #define fw_malloc host_malloc
 #define fw_free host_free
+#define fw_clock host_clock
 #else
 #define FW_LINE_DSC   ((line_dsc_t *)0x3c38a590)              // map line descriptor (PSRAM), set up in 0x4205bab4
 #define FW_CANVAS     (*(void **)0x3c38a5dc)                  // map canvas object
@@ -39,6 +40,7 @@ void *host_malloc(uint32_t, uint32_t); void host_free(void *);
 #define fw_blk_unlock ((void (*)(void))0x420494b8)            // xSemaphoreGive
 #define fw_malloc     ((void *(*)(uint32_t, uint32_t))0x403763e0)   // heap_caps_malloc(size, caps)
 #define fw_free       ((void (*)(void *))0x40376398)
+#define fw_clock()    ((uint32_t)((uint64_t (*)(void))0x403779f4)())   // esp_timer_get_time, microseconds, low word
 #endif
 #define CAPS_PSRAM    0x404                                   // MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT, as the firmware uses
 typedef void (*proj_cb_t)(const float *latlon, uint32_t n);  // 0x4204c1bc: projects n points, then calls 0x4205bd90 (cc_line)
