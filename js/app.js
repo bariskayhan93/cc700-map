@@ -5,7 +5,7 @@ import { readFile, draw } from './preview.js';
 import { CC700 } from './ble.js';
 import { previewGuidance } from './preview_guidance.js';
 import {auditMapSection,budgetFailures,transitionPeak,TRANSITION_BUDGET} from './map_budget.js';
-import { addWayback } from './wayback.js';
+import { addWayback, checkWayback } from './wayback.js';
 const $ = id => document.getElementById(id);
 function say(id, text) {
   const node = $(id);
@@ -244,8 +244,11 @@ $('sendBtn').onclick = async () => {             // one button: connect when nec
   sending = true; upd();
   try {
     if (!dev?.dev?.gatt.connected) { say('dev', 'verbinde …'); dev = new CC700(log); await dev.connect(); }
+    const checked = await checkWayback(file);   // owner ruling (18 Nov): a mismatched way-back trailer is not sent
+    if (checked.status === 'dropped') say('dev', 'Rückweg-Daten passen nicht zur Routendatei: gesendet ohne Rückweg-Daten.');
+    const sent = checked.file;
     say('dev', 'sende …'); $('sendProg').hidden = false;
-    await dev.sendFile(name, file, new DataView(file.buffer).getUint32(0, true), (i, n) => { $('sendProg').max = n; $('sendProg').value = i; });
+    await dev.sendFile(name, sent, new DataView(sent.buffer, sent.byteOffset, sent.byteLength).getUint32(0, true), (i, n) => { $('sendProg').max = n; $('sendProg').value = i; });
     const list = await dev.routeList();
     say('dev', (list.includes(name) ? 'Gesendet als neue Route ' : 'Gesendet, aber nicht in der Routenliste: ') + name + '. Routen auf dem Gerät: ' + list.join(', '));
   } catch (e) { say('dev', 'Fehler: ' + e.message); log(e.stack || e.message); } finally {

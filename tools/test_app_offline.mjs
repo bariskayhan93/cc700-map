@@ -44,5 +44,6 @@ for (const styled of [false,true]) {
   assert.match(app, /\.\.\.\(codec \? \{ ?codec ?\} : \{\}\)/);
   assert.match(app, /localStorage\.setItem\('cc700-fw', \$\('fw'\)\.value\)/);
   assert.match(app, /addWayback\(r\.file, \{format: \$\('fw'\)\.value === 'patch25' \? 2 : 1\}\)/);
+  assert.match(app, /checkWayback\(file\)/);   // the identity is checked before the file is sent (owner ruling, 18 Nov)
   console.log('PASS page offers patch25 with the codec and saves the choice');
 }
