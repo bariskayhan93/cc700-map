@@ -8,7 +8,7 @@
 #define WBD_TIME_US 300000u         /* file work for each frame; a later read fails */
 #define WBD_STACK 3360u             /* free stack needed before any file call */
 #define WBD_REC 132u                /* open-file table record: handle, then the name */
-enum { WBD_LOCK = 6, WBD_NODATA = 7, WBD_STACK_LOW = 8, WBD_OPEN = 9 };   /* codes after the core reasons 1 to 5 */
+enum { WBD_LOCK = 6, WBD_NODATA = 7, WBD_STACK_LOW = 8, WBD_OPEN = 9, WBD_LINE_CAP = 10 };   /* codes after the core reasons 1 to 5 */
 
 typedef struct { void *fp; uint32_t base, t0, late, reads; } wbd_ctx;
 
@@ -167,6 +167,7 @@ static uint32_t wbd_core(wbd_ctx *cp, uint32_t i, uint8_t *t, const float *pos, 
   if (out.state != WB_LINE) return out.reason ? out.reason : WB_READ;
   for (i = 0; i < WBD_POINTS && wb_read_point(e, i, p); i++) { line[2 * i] = (float)p[0] * 1e-7f; line[2 * i + 1] = (float)p[1] * 1e-7f; }
   if (i < 2u) return WB_READ;                                  /* a failed read: draw nothing */
+  if (i == WBD_POINTS && wb_read_point(e, WBD_POINTS, p)) return WBD_LINE_CAP;   /* more points: never cut silently */
   *n = i; *dm = out.distance_dm;
   return 0;
 }
@@ -180,7 +181,7 @@ static __attribute__((noinline)) void wbd_frame(void) {
   else if ((found = wbd_path(s)) <= 0) code = found ? WBD_LOCK : WBD_NODATA;
   else if (!(fp = fw_fopen(s, (const char *)&mode))) code = WBD_OPEN;
   else { code = wbd_run(fp, t0, pos, line, &n, &dm, &rd); fw_fclose(fp); }
-  if (code) { *o++ = 'w'; *o++ = 'b'; *o++ = (char)('0' + code); }
+  if (code) { *o++ = 'w'; *o++ = 'b'; o = wbd_num(o, code); }
   else {
     wbd_line(line, n, 17u);                                    /* white 7 px, then dark purple 4 px */
     wbd_line(line, n, 14u);

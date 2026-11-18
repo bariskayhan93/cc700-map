@@ -86,6 +86,16 @@ test('file work above 300 ms stops with code 5, no line, and the file is closed'
   assert.deepEqual([r.lines.length, r.opens, r.closes], [0, 1, 1]); assert.match(r.text, /^wb5 \d+ \d+$/);
   assert(r.reads <= 3);
 });
+// D0 item 5: a line of more than 32 points is not cut. A chain of 91 nodes, 10 m apart, runs south to the route.
+const chainModel = {nodes: Array.from({length: 91}, (_, i) => ({point: p(0, i * 10), dist: i * 10, next: i > 0 ? i - 1 : -1})),
+  extras: [], chunks: []};
+const longFile = path.join(work, 'long.bin');
+fs.writeFileSync(longFile, embedWayback(routeBytes, encodeWaybackV2(chainModel, id, () => 1)));
+test('a line of more than 32 points is not cut: the frame shows code 10 and draws no line (D0 item 5)', () => {
+  const r = run({file: longFile, x: 5, y: 900});
+  assert.deepEqual([r.lines.length, r.closes], [0, 1]);
+  assert.match(r.text, /^wb10 \d+ \d+$/);
+});
 test('damaged way-back data shows code 7 and no line', () => {
   const bad = embedWayback(routeBytes, wayback); bad[8192] = 88;
   const f = path.join(work, 'bad.bin'); fs.writeFileSync(f, bad);
