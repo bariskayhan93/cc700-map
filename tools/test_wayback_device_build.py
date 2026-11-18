@@ -12,13 +12,23 @@ BASE=ROOT/'.local/navigation-phase/loop-start/build/ota_1_v23.bin'
 PREFIX=Path.home()/'xtensa-esp-elf/bin/xtensa-esp32s3-elf-'
 sys.path.insert(0,str(ROOT/'tools'))
 
+class WaybackDeviceBuildArgumentTests(unittest.TestCase):
+    def test_base_is_required(self):
+        # D0 item 1: no default base. A run without --base fails before any build, with a message.
+        with tempfile.TemporaryDirectory() as tmp:
+            p=subprocess.run([sys.executable,str(ROOT/'tools/wayback_device_build.py'),'--output',tmp],
+                             capture_output=True,text=True)
+            self.assertNotEqual(p.returncode,0)
+            self.assertIn('--base',p.stderr)
+            self.assertIn('required',p.stderr)
+
 @unittest.skipUnless(BASE.exists() and Path(str(PREFIX)+'gcc').exists(),'private image/toolchain absent')
 class WaybackDeviceBuildTests(unittest.TestCase):
     def test_real_build_scope_and_rejected_drift(self):
         with tempfile.TemporaryDirectory() as tmp:
             out=Path(tmp)
             p=subprocess.run([sys.executable,str(ROOT/'tools/wayback_device_build.py'),
-                              '--output',str(out)],capture_output=True,text=True)
+                              '--base',str(BASE),'--output',str(out)],capture_output=True,text=True)
             self.assertEqual(p.returncode,0,p.stderr)
             import wayback_device_build as b
             r=json.loads((out/'receipt.json').read_text());base=BASE.read_bytes()
