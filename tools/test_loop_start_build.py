@@ -1,8 +1,10 @@
 """Real Xtensa image build and fail-closed fragment validation."""
 import copy
+import sys
 import importlib.util
 import json
 from pathlib import Path
+sys.path.insert(0, str(Path(__file__).resolve().parent))
 import subprocess
 import sys
 import tempfile
@@ -49,3 +51,13 @@ class LoopBuildTests(unittest.TestCase):
             sections.pop('.tramp_loop_start')
             with self.assertRaisesRegex(ValueError,'inventory'):
                 b.build_candidate(base,sections,read)
+
+
+class TrampolineFrameTests(unittest.TestCase):
+    """D0 item 3: the loop-start trampoline frame is 48 (the argument 7 copy), checked against a constant."""
+
+    def test_frame_48_is_accepted_and_32_is_refused(self):
+        import loop_start_build as l
+        l.check_trampoline_frame('tramp_loop_start:\n entry a1,48\n')
+        with self.assertRaisesRegex(ValueError,'frame'):
+            l.check_trampoline_frame('tramp_loop_start:\n entry a1,32\n')

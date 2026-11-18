@@ -58,4 +58,14 @@ class WaybackDeviceBuildTests(unittest.TestCase):
             with self.assertRaisesRegex(ValueError,'hash mismatch'):
                 b.build_candidate(base,r['sections'],lambda n:bytes([read(n)[0]^1])+read(n)[1:] if n=='text.bin' else read(n))
 
+
+class HookFrameTests(unittest.TestCase):
+    """D0 item 3: the frame of wb_rt (the hook target) is 48 as the compiler built it, and any other frame is refused."""
+
+    def test_frame_48_is_accepted_and_32_is_refused(self):
+        import wayback_device_build as b
+        b.check_hook_frame('0000 <wb_rt>:\n 421dedc8:\t006136\tentry\ta1, 48\n')
+        with self.assertRaisesRegex(ValueError,'frame'):
+            b.check_hook_frame('0000 <wb_rt>:\n 421dedc8:\t006136\tentry\ta1, 32\n')
+
 if __name__=='__main__':unittest.main()

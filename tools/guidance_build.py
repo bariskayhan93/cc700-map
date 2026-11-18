@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 """Build a guarded cc22 OTA candidate and patch fragments. Never accesses a device."""
 import argparse
+import re
 import hashlib
 import importlib.util
 import json
@@ -32,6 +33,16 @@ def assert_native_guards(read):
 
 
 VERSION = b'CC700_V1.414-cc22'
+# Frame of the card and popup trampolines. A frame of 32 is safe only while the trampoline stores no stack argument:
+# a4..a7 go to registers, and no s32i to a1 may appear (checked below). Any other frame is refused.
+TRAMP_FRAME = 32
+
+def check_trampoline(block, name):
+    """block: the disassembly of one trampoline. Raises when the frame differs or a stack argument is stored."""
+    if f'entry\ta1, {TRAMP_FRAME}' not in block:
+        raise ValueError(f'{name} trampoline frame differs from {TRAMP_FRAME}')
+    if re.search(r'\bs32i(\.n)?\s+a\d+,\s*a1,', block):
+        raise ValueError(f'{name} trampoline stores a stack argument (s32i to a1)')
 SCOPES = {
     '.text': (0x421de050, 0x421e0000-0x421de050),
     '.tramp_guidance_card': (0x4205bdb0, 0x20),
@@ -177,7 +188,8 @@ def main():
         assert 'call8\t'+target in block, site
     for name in ('card','popup'):
         block=dis.split('Disassembly of section .tramp_guidance_'+name+':')[1].split('Disassembly of section')[0]
-        for ins in ('entry\ta1, 32','mov.n\ta10, a2','mov.n\ta11, a3','mov.n\ta12, a4','callx8\ta8','retw.n'):
+        check_trampoline(block,name)
+        for ins in ('mov.n\ta10, a2','mov.n\ta11, a3','mov.n\ta12, a4','callx8\ta8','retw.n'):
             assert ins in block, (name,ins)
     (args.output/'guidance.dis').write_text(dis)
     (args.output/'size.txt').write_text(run(args.prefix+'size','-A',elf))
