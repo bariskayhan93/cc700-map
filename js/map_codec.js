@@ -1,7 +1,7 @@
 // Scheme D map block, version 1 (cc25). The outer message stays protobuf, so the stock decoder
 // reads one empty entry (style 0, count 0) and does not fault. The payload holds all entries in
 // zigzag deltas. Lat and lon are int32 semicircles; all arithmetic wraps to int32.
-import {uv, zz, unzz, fu, fb} from './pb.js';
+import {uv, zz, unzz, fu, fs, fb, parse} from './pb.js';
 
 const PREFIX = [0x08, 0x00, 0x10, 0x00, 0x28, 0x00, 0x7a];   // n 0, style 0, cnt 0, field 15 (skipped by stock)
 const LABEL = 12;
@@ -23,6 +23,18 @@ function encodePayload(entries) {
     }
   }
   return out;
+}
+
+// Protobuf entry body (today's record without its index) to a decoded entry, and back. Used by the page
+// budgets and the readers, so the costs of a scheme D block equal those of its protobuf form.
+export function entryOf(body) {
+  const f = parse(Uint8Array.from(body)), get = (g, k) => g.find(x => x[0] === k)?.[2] ?? 0;
+  return {style: get(f, 2), lat: unzz(get(f, 3)), lon: unzz(get(f, 4)),
+    pts: f.filter(x => x[0] === 6).map(([, , v]) => { const q = parse(v); return [unzz(get(q, 1)), unzz(get(q, 2))]; })};
+}
+export function entryBody(e) {
+  return [...fu(2, e.style), ...fs(3, e.lat), ...fs(4, e.lon), ...fu(5, e.pts.length),
+    ...e.pts.flatMap(q => fb(6, [...fs(1, q[0]), ...fs(2, q[1])]))];
 }
 
 export function encodeBlockD(entries) {
@@ -49,8 +61,8 @@ function classify(b) {
   if (!b.length || b[0] !== 0x08) return 'proto';
   let r = readVar(b, 1);
   if (!r) return 'dbad';
-  let pos = r[1];
-  if (pos >= b.length) return 'dbad';
+  const N = r[0], pos = r[1];
+  if (pos >= b.length) return N === 0 ? 'proto' : 'dbad';   // count 0 alone is today's empty protobuf block
   if (b[pos] !== 0x12) return 'proto';
   r = readVar(b, pos + 1);
   if (!r) return 'dbad';

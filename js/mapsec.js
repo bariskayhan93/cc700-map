@@ -6,6 +6,7 @@ import { prepareDisplayLines, clipDisplayLine, chainRuns } from './map_geometry.
 import { labelName, prepareLabelCandidates, labelsForBlock } from './map_labels.js';
 import { canonicalEntries } from './map_order.js';
 import {estimateBlock,budgetFailures,transitionPeak,MAP_BUDGET,TRANSITION_BUDGET,BUDGET_VERSION} from './map_budget.js';
+import { encodeBlockD, entryOf } from './map_codec.js';
 const R = 300;
 export const STYLE = {                       // kind: [draw, param, max distance from route (m)]
   // V4 (2026-11-11): same range for all classes (a normal map, not a corridor), width by class: main 3 lines,
@@ -230,6 +231,12 @@ function topology(lines, F) {
   }
   return lines;
 }
+// One stored block: today's protobuf (count, then one record per entry, each starting with its index), or
+// scheme D when codec is 'd' (patch25). An empty block is the E3 block in scheme D.
+function blockOf(es, codec) {
+  if (codec === 'd') return encodeBlockD(es.map(e => entryOf(e)));
+  return es.length ? [...fu(1, es.length), ...es.flatMap((e, n) => fb(2, [...fu(1, n), ...e]))] : [8, 0x80, 0x80, 0x80, 0];
+}
 export function buildMapSection(sections, lines, F, opt = {}) {
   if (opt.topology !== false) lines = topology(lines, F);
   const CAP = opt.cap || CAP_STD, CAP_MAX = Math.max(CAP, opt.capMax || CAP_HI);   // opt.cap / opt.capMax: device limit tests only
@@ -282,7 +289,7 @@ export function buildMapSection(sections, lines, F, opt = {}) {
   }
   const body = new Bytes(), offs = new Array(sections.length).fill(0);
   for (const [i, j, es] of groups) {
-    const m = es.length ? [...fu(1, es.length), ...es.flatMap((e, n) => fb(2, [...fu(1, n), ...e]))] : [8, 0x80, 0x80, 0x80, 0];
+    const m = blockOf(es, opt.codec);
     const o = body.n; body.push(u32le(m.length)).push(m);
     for (let t = i; t <= j; t++) offs[t] = o;
   }
@@ -466,7 +473,7 @@ export function buildStyledSection(sections, data, F) {
     blocks:groups.map(({entries,...report})=>report)};
   const body = new Bytes(), offs = new Array(sections.length).fill(0);
   for (const {i,j,entries:es} of groups) {
-    const m = es.length ? [...fu(1, es.length), ...es.flatMap((e, n) => fb(2, [...fu(1, n), ...e]))] : [8, 0x80, 0x80, 0x80, 0];
+    const m = blockOf(es, data.opt?.codec);
     const o = body.n; body.push(u32le(m.length)).push(m);
     for (let t = i; t <= j; t++) offs[t] = o;
   }

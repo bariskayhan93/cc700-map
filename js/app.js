@@ -27,7 +27,7 @@ if (self.caches) { caches.delete('cc700-roads-v2'); caches.delete('cc700-roads-v
 const LAYERS = ['ground', 'water', 'rails', 'names', 'signals', 'stops', 'trams', 'rough', 'paths', 'arrows', 'details', 'lanes'];   // optional map layers
 const ON = new Set(['names', 'signals', 'stops', 'trams', 'rough', 'paths', 'details', 'lanes']);    // default on (patch layers)
 function updateFirmware() {
-  const patched = $('fw').value === 'patch';
+  const patched = $('fw').value !== 'orig';
   $('optPatch').hidden = !patched;
   $('optOrig').hidden = patched;
   $('fwWarning').hidden = !patched;
@@ -35,7 +35,8 @@ function updateFirmware() {
   $('fw').setAttribute('aria-describedby', patched ? 'fwWarning' : 'fwOriginal');
 }
 try {
-  if (localStorage.getItem('cc700-fw') === 'patch') $('fw').value = 'patch';
+  const savedFw = localStorage.getItem('cc700-fw');
+  if (savedFw === 'patch' || savedFw === 'patch25') $('fw').value = savedFw;
 } catch {}
 updateFirmware();
 $('fw').onchange = () => {
@@ -78,7 +79,7 @@ async function build() {
   needsBuild = false;
   if (!gpxFile) return;
   building = true;
-  const file = gpxFile, styled = $('fw').value === 'patch';
+  const file = gpxFile, fwChoice = $('fw').value, styled = fwChoice !== 'orig', codec = fwChoice === 'patch25' ? 'd' : undefined;
   const speedKmh = Math.max(8, Math.min(45, +$('speed').value || 18));
   const layers = Object.fromEntries(LAYERS.map(k => [k, $(k).checked]));
   try {
@@ -98,7 +99,7 @@ async function build() {
       speedKmh, id, label: gpx.name, title: gpx.name, nameImage, areas, water, rails, green, wlines, navigationLines,
       trams: layers.trams ? trams : [], signals: layers.signals ? signals : [], stops: layers.stops ? stops : [],
       noF9: styled,   // patched firmware: field 9 off, as tested on the device
-      map: { styled, ...layers, ...(LIMIT > 1200 ? { cap: LIMIT, capMax: LIMIT } : {}) },
+      map: { styled, ...layers, ...(codec ? { codec } : {}), ...(LIMIT > 1200 ? { cap: LIMIT, capMax: LIMIT } : {}) },
     });
     const model = readFile(r.file), check = verify(r, model, styled);
     if (check) throw new Error('Prüfung fehlgeschlagen: ' + check);
