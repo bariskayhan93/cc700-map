@@ -92,15 +92,23 @@ test('file work above 300 ms stops with code 5, no line, and the file is closed'
   assert.deepEqual([r.lines.length, r.opens, r.closes], [0, 1, 1]); assert.match(r.text, /^wb5 \d+ \d+$/);
   assert(r.reads <= 3);
 });
-// D0 item 5: a line of more than 32 points is not cut. A chain of 91 nodes, 10 m apart, runs south to the route.
+// Ride 18 Nov: most detour frames showed wb10. A line of more than 32 points now draws its first 32 points (from the rider)
+// and the text has '+'. A chain of 91 nodes, 10 m apart, runs south to the route.
 const chainModel = {nodes: Array.from({length: 91}, (_, i) => ({point: p(0, i * 10), dist: i * 10, next: i > 0 ? i - 1 : -1})),
   extras: [], chunks: []};
 const longFile = path.join(work, 'long.bin');
 fs.writeFileSync(longFile, embedWayback(routeBytes, encodeWaybackV2(chainModel, id, () => 1)));
-test('a line of more than 32 points is not cut: the frame shows code 10 and draws no line (D0 item 5)', () => {
+test('a line of more than 32 points draws its first 32 points from the rider and shows the full distance with +', () => {
   const r = run({file: longFile, x: 5, y: 900});
-  assert.deepEqual([r.lines.length, r.closes], [0, 1]);
-  assert.match(r.text, /^wb10 \d+ \d+$/);
+  assert.deepEqual(r.lines.map(l => [l.op, l.n]), [[17, 32], [14, 32]]);
+  assert.equal(r.closes, 1);
+  near(r.lines[0].first, 0, 900); near(r.lines[0].last, 0, 590);
+  assert.match(r.text, /^(89|90)\dm\+ \d+ \d+$/);
+});
+test('a line of exactly 32 points has no +', () => {
+  const r = run({file: longFile, x: 5, y: 310});
+  assert.deepEqual(r.lines.map(l => l.n), [32, 32]);
+  assert.match(r.text, /^3\d\dm \d+ \d+$/);
 });
 test('damaged way-back data shows code 7 and no line', () => {
   const bad = embedWayback(routeBytes, wayback); bad[8192] = 88;
@@ -145,7 +153,7 @@ test('at most 400 segments of grey are drawn (cap 3 in this build): the cap cuts
   assert(segsOf(greyOps(r)) <= 3, `grey segments ${segsOf(greyOps(r))}`);
   assert(segsOf(greyOps(r)) >= 1);
 });
-test('the grey draw stops 60 ms after the frame start: a fast clock draws less grey and the same line', () => {
+test('the grey draw stops 60 ms after its own start: a slow clock draws less grey and the same line', () => {
   const full = run({file: withLayer, step: 1}), late = run({file: withLayer, step: 5000});
   assert(greyOps(late).length < greyOps(full).length, `${greyOps(late).length} against ${greyOps(full).length}`);
   assert.deepEqual(late.lines.slice(-2).map(l => l.op), [17, 14]);
@@ -183,6 +191,19 @@ test('a route change mid-ride: the grey and the line come from the file of that 
   assert(greyOps(changed).length >= 1);
   assert.deepEqual(changed.lines.slice(-2), plainOther.lines.slice(-2));
   assert.match(changed.text, /^1[12]\dm /);
+});
+test('a slow frame stops the grey 220 ms after the frame start and keeps the line', () => {
+  const r = run({...dense, step: 1800}), full = run({...dense, step: 1});   // the grey starts near 200 ms
+  assert(greyOps(r).length >= 1 && greyOps(r).length < greyOps(full).length, `${greyOps(r).length} ${greyOps(full).length}`);
+  assert.deepEqual(r.lines.slice(-2), full.lines.slice(-2));
+  assert.equal(r.text.split(' ')[0], full.text.split(' ')[0]);
+});
+test('ride 18 Nov: mount and tick above 60 ms still leave the grey its own 60 ms', () => {
+  const clean = run({...dense, step: 1});
+  const step = Math.ceil(61000 / clean.greyFirstReads);                // the work before the grey takes more than 60 ms
+  const r = run({...dense, step});
+  assert(greyOps(r).length >= 1, `grey lines ${greyOps(r).length}, step ${step}`);
+  assert.deepEqual(r.lines.slice(-2).map(l => l.op), [17, 14]);
 });
 // The course comes from the stock map heading (450 - course): 90 is course 0, also at the start of a new navigation.
 const greyOf = h => greyOps(run({...dense, head: h}));
