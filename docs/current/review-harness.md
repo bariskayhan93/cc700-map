@@ -60,6 +60,16 @@ Read each changed file of the range. Answer each question with a finding (one cl
 1. Do the release text, the card and the manifests name the same files and SHA-256 values?
 2. Is each known gap written in the release text?
 
+### F. Security (public repo, phone page, unit)
+
+1. Does the page write outside data (GPX, OSM names, device answers) only as text (`textContent`), never as HTML?
+2. Does the page send data only to the listed hosts (the three Overpass servers) and the unit? No new host, no
+   personal data in a request.
+3. Does `js/ble.js` send only commands that a capture or a reviewed decode proves? An unknown command is a device
+   experiment: hypothesis, observation, duration, restore, and the owner's yes.
+4. Does a file from outside (GPX, shared file, opened file) go only through the parsers, with size and format checks?
+5. Do commits hold no secret, token, coordinate, ride data or device dump? Commit times are before 08:00 or after 19:00.
+
 ## Output
 
 The review writes one table of findings: severity, claim, `file:line`, fix, and the gate or question that found it.

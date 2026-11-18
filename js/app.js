@@ -141,7 +141,7 @@ async function build() {
     if(styled)log(JSON.stringify(r.mapStat));
     say('previewTitle', styled ? 'Kartenvorschau · Sunlight' : 'Kartenvorschau · Original');
     say('turnsN', `Abbiegungen (${r.sections.length})`);
-    $('turns').innerHTML = r.sections.map(s => `<li>${s.type === 2 ? '🏁' : ARROW[s.dir]} ${s.text.replace(/</g, '&lt;')}</li>`).join('');
+    $('turns').replaceChildren(...r.sections.map(s => { const li = document.createElement('li'); li.textContent = `${s.type === 2 ? '🏁' : ARROW[s.dir]} ${s.text}`; return li; }));   // OSM names as text, never HTML
     const position = +$('pos').value;
     $('pos').max = r.distance;
     $('pos').value = Math.min(position, +$('pos').max);
@@ -253,15 +253,26 @@ $('sendBtn').onclick = async () => {             // one button: connect when nec
   try {
     if (!dev?.dev?.gatt.connected) { say('dev', 'verbinde …'); dev = new CC700(log); await dev.connect(); }
     const checked = await checkWayback(file);   // owner ruling (18 Nov): a mismatched way-back trailer is not sent
-    if (checked.status === 'dropped') say('dev', 'Rückweg-Daten passen nicht zur Routendatei: gesendet ohne Rückweg-Daten.');
-    const sent = checked.file;
-    say('dev', 'sende …'); $('sendProg').hidden = false;
+    const note = checked.status === 'dropped' ? ' Rückweg-Daten passten nicht zur Routendatei: ohne Rückweg-Daten gesendet.' : '';
+    const sent = checked.file, kb = (sent.length / 1024).toFixed(0);
+    // The CC700 reports no free storage over BLE (not found in the protocol). The unit keeps a route only after its CRC
+    // check, so a full storage shows as a failed send or a missing route: then the rider gets the reason and the fix.
+    const before = await dev.routeList();
+    const full = `Möglicher Grund: Speicher des CC700 voll (Route ${kb} KB, ${before.length} Routen auf dem Gerät). Alte Routen am CC700 löschen und erneut senden.`;
+    say('dev', `sende ${kb} KB …`); $('sendProg').hidden = false;
     const t0 = performance.now();
-    await dev.sendFile(name, sent, new DataView(sent.buffer, sent.byteOffset, sent.byteLength).getUint32(0, true), (i, n) => { $('sendProg').max = n; $('sendProg').value = i; });
-    const sec = (performance.now() - t0) / 1000, rate = ` (${(sent.length / 1024).toFixed(0)} KB in ${sec.toFixed(0)} s, ${(sent.length / 1024 / sec).toFixed(1).replace('.', ',')} KB/s)`;
+    try {
+      await dev.sendFile(name, sent, new DataView(sent.buffer, sent.byteOffset, sent.byteLength).getUint32(0, true), (i, n) => { $('sendProg').max = n; $('sendProg').value = i; });
+    } catch (e) {
+      log(e.stack || e.message);
+      say('dev', `Route nicht gespeichert (${e.message}). ` + (dev.dev?.gatt.connected ? full : 'Verbindung getrennt: CC700 nah ans Handy halten und erneut senden.'));
+      return;
+    }
+    const sec = (performance.now() - t0) / 1000, rate = ` (${kb} KB in ${sec.toFixed(0)} s, ${(sent.length / 1024 / sec).toFixed(1).replace('.', ',')} KB/s)`;
     log(JSON.stringify({send: {bytes: sent.length, ms: Math.round(sec * 1000)}}));
     const list = await dev.routeList();
-    say('dev', (list.includes(name) ? 'Gesendet als neue Route ' : 'Gesendet, aber nicht in der Routenliste: ') + name + rate + '. Routen auf dem Gerät: ' + list.join(', '));
+    say('dev', list.includes(name) ? `Gesendet als neue Route ${name}${rate}. ${list.length} Routen auf dem Gerät.${note}`
+      : `Route nicht in der Routenliste des CC700: ${name}. ${full}`);
   } catch (e) { say('dev', 'Fehler: ' + e.message); log(e.stack || e.message); } finally {
     $('sendProg').hidden = true;
     sending = false;
