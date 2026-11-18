@@ -72,8 +72,11 @@ test('a route file without way-back data shows code 7 and is closed again', () =
   assert.deepEqual([r.lines.length, r.opens, r.closes], [0, 1, 1]); assert.match(r.text, /^wb7 /);
 });
 test('low stack shows code 8 and makes no lock or file call', () => {
-  const r = run({stack: 3071});
+  const r = run({stack: 3967});                                  // WBD_STACK is 3,968 B on cc26
   assert.deepEqual([r.lines.length, r.opens, r.reads, r.takes], [0, 0, 0, 0]); assert.match(r.text, /^wb8 /);
+});
+test('exactly 3,968 B of free stack is enough for the file calls', () => {
+  assert.doesNotMatch(run({stack: 3968}).text, /^wb8 /);
 });
 test('no position and a busy navigation lock show code 2; no route handle shows 7; a busy table lock shows 6', () => {
   const code = o => run(o).text.slice(0, 3);

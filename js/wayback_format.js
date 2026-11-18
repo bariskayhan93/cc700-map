@@ -1,4 +1,4 @@
-// CCWB version 1 file format for the way-back street tree. Little-endian, u24 is three bytes.
+// CCWB file format (version 1 and 2) for the way-back street tree. Little-endian, u24 is three bytes.
 // Version 2 may end with the grey layer section (js/wayback_grey_layer.js, E15): after the extras, found by the length.
 import {readGreyLayer} from './wayback_grey_layer.js';
 // Layout: 64-byte header; cells (cell_count + 1 records, last is the sentinel); nodes; extra
