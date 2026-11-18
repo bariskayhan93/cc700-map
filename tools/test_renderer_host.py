@@ -8,7 +8,8 @@ import unittest
 
 
 ROOT = Path(__file__).resolve().parents[1]
-SOURCE = Path(os.environ.get("CC700_PATCH_SRC", ROOT.parent / "cc700-backup/patch/src/blk.c")).parent
+SOURCE = Path(os.environ.get("CC700_PATCH_SRC", ROOT / "firmware/mapdraw/map.c")).parent
+V21_COMMIT = "6bacafc"   # firmware/mapdraw as built in the base image, before A and B (18 Nov 2026)
 
 
 class RendererHost(unittest.TestCase):
@@ -32,6 +33,18 @@ class RendererHost(unittest.TestCase):
                         "-fno-omit-frame-pointer", "-I", str(SOURCE),
                         str(ROOT / "tools/renderer_host.c"), str(legacy),
                         "-o", str(cls.legacy_exe)], check=True, capture_output=True)
+
+        v21 = Path(cls.tmp.name) / "v21"
+        v21.mkdir()
+        for name in ("map.c", "fw.h"):
+            (v21 / name).write_bytes(subprocess.run(["git", "-C", str(ROOT), "show", f"{V21_COMMIT}:firmware/mapdraw/{name}"],
+                                                    capture_output=True, check=True).stdout)
+        cls.v21_exe = Path(cls.tmp.name) / "v21-renderer"
+        subprocess.run(["cc", "-std=c11", "-O1", "-g", "-DHOST", "-Wno-implicit-function-declaration",
+                        "-fsanitize=address,undefined", "-fno-sanitize-recover=all",
+                        "-fno-omit-frame-pointer", "-I", str(v21),
+                        str(ROOT / "tools/renderer_host.c"), str(v21 / "map.c"),
+                        "-o", str(cls.v21_exe)], check=True, capture_output=True)
 
     @classmethod
     def tearDownClass(cls):
@@ -118,6 +131,33 @@ class RendererHost(unittest.TestCase):
         self.assertGreater(data["painted"],0)
         data=self.run_case("failed_projection")
         self.assertEqual(data["callbacks"],2)
+
+    def run_v21(self, case):
+        result = subprocess.run([str(self.v21_exe), case], capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        return json.loads(result.stdout)
+
+    def test_a_off_canvas_lines_make_no_draw_call_and_the_visible_calls_are_the_same(self):
+        for case in ("offscreen", "styles", "mixed", "dense1201", "geometry60", "labels"):
+            with self.subTest(case=case):
+                new, old = self.run_case(case), self.run_v21(case)
+                self.assertEqual(new["visible_trace"], old["visible_trace"])
+                self.assertEqual(new["visible_draws"], old["visible_draws"])
+                self.assertEqual(new["painted"], old["painted"])
+                self.assertEqual(new["callbacks"], old["callbacks"])
+                self.assertEqual(new["labels"], old["labels"])
+        new, old = self.run_case("offscreen"), self.run_v21("offscreen")
+        self.assertGreater(old["draws"], 20 * new["draws"], (old["draws"], new["draws"]))
+        self.assertGreater(new["visible_draws"], 0)
+
+    def test_b_a_slow_frame_stops_and_the_next_frame_draws_in_full(self):
+        data = self.run_case("slow")                      # frame 1: 1 ms per clock read, limit 400 ms
+        full = self.run_case("dense1201")["callbacks"]
+        self.assertGreater(data["first_frame_callbacks"], 0)
+        self.assertLess(data["first_frame_callbacks"], full)
+        self.assertLessEqual(data["first_frame_callbacks"], 402)
+        self.assertEqual(data["callbacks"] - data["first_frame_callbacks"], full)
+        self.assertEqual(data["allocations"], 2)
 
     def test_budget_work_counts_match_actual_iterator(self):
         from map_budget import block_budget

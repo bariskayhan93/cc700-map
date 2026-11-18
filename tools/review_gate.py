@@ -118,7 +118,7 @@ def g3_c(r, since):
         text = (ROOT / p).read_text()
         code = re.sub(r'/\*.*?\*/|//[^\n]*', '', text, flags=re.S)
         calls = sorted(set(LIB_CALL.findall(code)) - ({'free'} if 'mapdec' in p else set()))
-        top = [l for l in code.splitlines() if re.match(r'(static\s+)?(?!const\b)(?!typedef\b)(?!extern\b)'
+        top = [l for l in code.splitlines() if re.match(r'(?!(static\s+)?(const|typedef|extern)\b)'   # a const table is not writable
                                                          r'[A-Za-z_][\w\s\*]*\b\w+(\[[^\]]*\])?\s*(=[^;]*)?;\s*$', l)]
         floats = re.findall(r'\b(float|double)\b', code) if p in CORE_NO_FLOAT else []
         cc = subprocess.run(['cc', '-std=gnu11', '-DHOST', '-Wall', '-Wextra', '-Wshadow', '-Wvla', '-Werror',
@@ -200,7 +200,7 @@ def g7_image(r):
     import wayback_device_build as wdb
     m = json.loads((PACK / 'manifest-cc26.json').read_text())
     commit = m['source_commit']
-    drift = git('diff', '--name-only', commit, 'HEAD', '--', 'firmware/wayback', 'tools/cc26_build.py',
+    drift = git('diff', '--name-only', commit, 'HEAD', '--', 'firmware/wayback', 'firmware/mapdraw', 'tools/cc26_build.py',
                 'tools/area2_image.py', 'tools/incoming_refs.py', 'tools/wayback_device_build.py').split()
     say(r, 'G7', not drift, f'sources changed since {commit}: ' + (', '.join(drift) or 'none'))
     wdb.source_mark = lambda: m['version'][-7:]   # the build mark (the commit before the 18 Nov time rewrite)

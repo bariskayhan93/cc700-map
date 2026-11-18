@@ -20,7 +20,10 @@ static pt_t input_anchors[256];
 static int32_t input_names[256][64];
 static unsigned accepted[12];
 static int accepted_boxes[12][4];
-static uint64_t trace=1469598103934665603ULL;
+static uint64_t trace=1469598103934665603ULL, visible_trace=1469598103934665603ULL;
+static unsigned visible_draws, first_frame_callbacks;
+static uint32_t clock_now, clock_step;
+uint32_t host_clock(void) {clock_now+=clock_step;return clock_now;}   /* microseconds; the step is set by the case */
 void host_text(int x,int y,const char *t,uint16_t col) {
   (void)col;
   unsigned slot=labels%12;
@@ -62,6 +65,17 @@ void host_draw_line(void *canvas, const pt_t *p, uint32_t n, const line_dsc_t *d
   hash(d->color);hash((uint16_t)d->width);hash(d->opa);hash(d->flags);hash(n);
   for(unsigned i=0;i<n;i++){hash((uint16_t)p[i].x);hash((uint16_t)p[i].y);}
   for (unsigned i=0; i<n; i++) require(p[i].x>=-4000 && p[i].x<=4000, "unclean projection");
+  /* A call that can paint: its box meets the canvas widened by half the line width plus a round cap. */
+  int x0=p[0].x,x1=x0,y0=p[0].y,y1=y0,m=d->width/2+2;
+  for(unsigned i=1;i<n;i++){if(p[i].x<x0)x0=p[i].x;if(p[i].x>x1)x1=p[i].x;if(p[i].y<y0)y0=p[i].y;if(p[i].y>y1)y1=p[i].y;}
+  if(x1>=-m && y1>=-m && x0<host_w+m && y0<host_h+m) {
+    visible_draws++;
+    uint64_t t=visible_trace;
+    #define VH(v) (t=(t^(v))*1099511628211ULL)
+    VH(d->color);VH((uint16_t)d->width);VH(d->opa);VH(d->flags);VH(n);
+    for(unsigned i=0;i<n;i++){VH((uint16_t)p[i].x);VH((uint16_t)p[i].y);}
+    visible_trace=t;
+  }
 }
 static void project(const float *ll, uint32_t n) {
   require(held && ll && n <= 61, "projection contract");
@@ -121,6 +135,8 @@ int main(int argc, char **argv) {
     if(!strcmp(which,"labels_touch")) {n=2;label_mode=5;}
   }
   else if (!strcmp(which,"geometry60")) n=1;
+  else if (!strcmp(which,"offscreen")) n=64;                 /* long paths and streets, mostly off the canvas */
+  else if (!strcmp(which,"slow")) {n=1201;frames=2;clock_step=1000;}   /* frame 1: 1 ms for each clock read */
   else if (!strcmp(which,"failed_projection")) {n=1;failed_projection=1;}
   else require(!strcmp(which,"empty") || !strcmp(which,"unloaded") || !strcmp(which,"hole") || !strcmp(which,"hole_reverse"), "unknown case");
   unsigned pixels = host_w * host_h;
@@ -157,13 +173,26 @@ int main(int argc, char **argv) {
     }
     host_ents[0].style=2|(2<<4);host_ents[0].cnt=60;host_ents[0].pts=long_shape;
   }
+  if (!strcmp(which,"offscreen")) {
+    static int32_t far_pts[64][8];
+    uint32_t v=12345;
+    for (unsigned i=0;i<n;i++) {
+      for (unsigned j=0;j<8;j++) {v=v*1664525u+1013904223u; far_pts[i][j]=(int32_t)(v>>8)%380000;}
+      unsigned cls=(i%3==0)?8:(i%3==1)?7:9;                      /* path (dash), minor road, rail (dash) */
+      host_ents[i]=(ent_t){i,cls|(2<<4),(int32_t)(v>>9)%380000,(int32_t)(v>>10)%380000,4,far_pts[i]};
+    }
+  }
   if (!strcmp(which,"unloaded")) {host_cnt=4000; free(host_ents); host_ents=0;}
   if(!strncmp(which,"hole",4)) {
     pt_t ring[]={{10,10},{60,10},{60,60},{10,60},{10,10},{20,23},{20,43},{40,43},{40,23},{20,23},{10,10}};
     if(!strcmp(which,"hole_reverse")) for(unsigned i=0;i<11/2;i++){pt_t t=ring[i];ring[i]=ring[10-i];ring[10-i]=t;}
     host_nop();host_dsc.dash_width=0x8002;cc_line(ring,11,0,0);host_nop();
   }
-  for (unsigned frame=0; frame<frames; frame++) cc_iter(project);
+  for (unsigned frame=0; frame<frames; frame++) {
+    cc_iter(project);
+    if (frame==0) first_frame_callbacks=callbacks;
+    if (!strcmp(which,"slow")) clock_step=0;                    /* frame 2: a fast clock */
+  }
   if(!strncmp(which,"hole",4)) for(unsigned y=0;y<host_h;y++) for(unsigned x=0;x<host_w;x++) {
     unsigned expected=x>=10 && x<60 && y>=10 && y<60 && !(x>=20 && x<40 && y>=23 && y<43);
     require((host_buf[y*host_w+x]!=0)==expected,"hole pixel mismatch");
@@ -177,8 +206,8 @@ int main(int argc, char **argv) {
   for (unsigned i=0;i<pixels;i++) painted += host_buf[i]!=0;
   printf("{\"locks\":%u,\"unlocks\":%u,\"callbacks\":%u,\"draws\":%u,"
          "\"allocations\":%u,\"peak_bytes\":%u,\"live_bytes\":%u,"
-         "\"selection_checks\":%u,\"labels\":%u,\"trace\":%llu,\"guard_changed\":%u,\"painted\":%u,\"projected_points\":%u}\n",locks,unlocks,callbacks,draws,
-         allocations,peak_bytes,live_bytes,host_selection_checks,labels,(unsigned long long)trace,
+         "\"selection_checks\":%u,\"labels\":%u,\"trace\":%llu,\"visible_trace\":%llu,\"visible_draws\":%u,\"first_frame_callbacks\":%u,\"guard_changed\":%u,\"painted\":%u,\"projected_points\":%u}\n",locks,unlocks,callbacks,draws,
+         allocations,peak_bytes,live_bytes,host_selection_checks,labels,(unsigned long long)trace,(unsigned long long)visible_trace,visible_draws,first_frame_callbacks,
          guarded[0]!=0xbeef || guarded[pixels+1]!=0xbeef,painted,projected_points);
   free(host_ents); free(guarded);
   require(!held && !live_bytes,"leaked renderer state");
