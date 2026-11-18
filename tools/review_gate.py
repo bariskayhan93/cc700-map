@@ -203,7 +203,7 @@ def g7_image(r):
     drift = git('diff', '--name-only', commit, 'HEAD', '--', 'firmware/wayback', 'tools/cc26_build.py',
                 'tools/area2_image.py', 'tools/incoming_refs.py', 'tools/wayback_device_build.py').split()
     say(r, 'G7', not drift, f'sources changed since {commit}: ' + (', '.join(drift) or 'none'))
-    wdb.source_mark = lambda: commit
+    wdb.source_mark = lambda: m['version'][-7:]   # the build mark (the commit before the 18 Nov time rewrite)
     with tempfile.TemporaryDirectory() as t:
         image, _ = cc26_build.build((ROOT / '.local/cc25/ota_1_cc25.bin').read_bytes(), Path(t))
     got = hashlib.sha256(image).hexdigest()
