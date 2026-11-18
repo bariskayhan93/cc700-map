@@ -1,253 +1,216 @@
 # Device Candidates cc25 and cc26: Implementation Plan
 
-> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task by task. Steps use checkbox (`- [ ]`) syntax for tracking. Start only after `docs/current/map-economy-plan-2026-11-18.md` is complete (its Task A3 files and Task B2 result are inputs here).
+> **For agentic workers:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task by task. Steps use checkbox (`- [ ]`) syntax for tracking.
 
 **Goal:** Two firmware candidates that stay on the unit and get fixes on the same base:
-- **cc25:** draws map entries whose points are stored as differences (step 3, small form).
-- **cc26 (on cc25):** way-back file version 2 with 8-byte nodes, a street window around the rider, at most 400 street pieces per frame (step 2).
+- **cc25:** a compact map block format (scheme D). The 70 km map becomes 0.34 of today's size.
+- **cc26 (on cc25):** way-back file version 2 with 8-byte nodes, a street window around the rider, at most 400 street pieces per frame.
 
-**Architecture:** Each candidate adds code to the installed cc23 + trampoline fix image (SHA-256 `d225e179…`) and changes one literal word to reach it. The route file switches each feature on: a route without delta entries or without way-back data runs today's code. The page writes the new data only when the owner selects the new firmware choice. Every C file runs on the host first, under ASan/UBSan, with the real route files.
+**Architecture (owner rule: minimal hooks, small modules, no bloat):** each candidate is **one hook word plus one small C module**. cc25 replaces the literal of the stock map-entries decode callback (one word). The module decodes a scheme D block into exactly the structures the stock decoder makes, so the drawing code, the free code and the budgets do not change. Old blocks go on to the stock callback. The route file is the switch: a route without the new data runs today's code.
 
-**Tech Stack:** Freestanding C11 (no heap except the firmware's `heap_caps_malloc`, no float in the way-back core, no library call). `~/xtensa-esp-elf/bin/xtensa-esp32s3-elf-gcc` 13.2.0 with `-Os -mlongcalls -mtext-section-literals -ffreestanding -fno-builtin -nostdlib -ffunction-sections`. Python 3 `-I` builders. Node.js `node:test`.
+**Tech Stack:** Freestanding C11 (no float, no library call; memory only through the firmware's `heap_caps_malloc`). `~/xtensa-esp-elf/bin/xtensa-esp32s3-elf-gcc` 13.2.0, `-Os -mlongcalls -mtext-section-literals -ffreestanding -fno-builtin -nostdlib -ffunction-sections`. Python 3 `-I` builders. Node.js `node:test`.
 
-**Spec:** `.local/study/out/fw-study.md` (firmware facts, private), `.local/study/out/c-study.md` (B1, B2), `firmware/wayback/README.md` (way-back contract), `docs/current/budget-plan-2026-11-16.md`, `AGENTS.md`.
+**Spec:** `.local/study/out/fw-study.md` sections 2 and 8 (stock decode path, private), `.local/study/out/c-study.md` (B1, B2), `firmware/wayback/README.md`, `docs/current/budget-plan-2026-11-16.md`, `AGENTS.md`.
 
 ## How this plan keeps the unit stable (for the owner)
 
-1. **Same code on the host first.** The drawing code and the way-back core are compiled for the Mac with address and undefined-behaviour checks. The tests feed real route files, broken files and random input. A candidate goes to the unit only when all host tests pass.
-2. **Each builder changes only named bytes.** A builder accepts only the exact base image (by SHA-256), and it refuses the build if any byte outside the named ranges changes. This is how cc22 and cc23 were built.
-3. **The route file is the switch.** Old routes run old code paths. If a new feature fails on the unit, you make the route again without the option. No reflash is needed for that.
-4. **Limits in the code.** Time, file reads, stack and memory have fixed limits. At a limit the code stops and the unit shows the stock display.
-5. **One device test for each candidate**, with the hypothesis, what to look at, the duration and the restore step written before the flash. You approve each flash.
-6. **Fix forward.** A fault is analysed from the core file and fixed on the same base as cc25.1, cc25.2, and so on.
+1. **The same C runs on the Mac first**, with address and undefined-behaviour checks, on every block of real route files, on broken files and on random bytes.
+2. **Exact comparison:** for each real block, the module's output must equal the stock decoder's structures (style, centre, count, every point), byte for byte.
+3. **Each builder changes only named bytes** of one exact base image, as for cc22 and cc23.
+4. **The route file is the switch.** Old routes use the stock path. If the new path fails, make the route again with the old firmware choice. No reflash.
+5. **A fault in the data never crashes the unit:** the module checks every length, and on any error it leaves an empty, consistent block (nothing drawn there).
+6. **One device test for each candidate** with hypothesis, observation, duration and restore, approved by you. Then fixes go on the same base (cc25.1, cc25.2 …).
+
+## Stock facts this plan uses (mined 18 Nov, `fw-study.md` section 8)
+
+- Block load `0x420494d0` (kind 1 path `0x4204959c`): reads the block, frees the old entries (each `pts`, then the array at `0x3fc9fbe8`, which it sets to 0), clears the message struct `0x3c3887bc` (12 B: count, callback, argument), sets the entries callback from the literal `0x4203e3ec` (value `0x42049368`, used once), calls `pb_decode` (`0x4203a8e0`) with descriptor `0x3c1ee408`, then writes header `0x3c3887d4` +20 = count (only if count ≠ 0) and +28 = loaded.
+- Entries callback `0x42049368(stream, field, void **arg)`, `*arg` = header: allocates the array once (`28 × count`, caps `0x404`, zeroed) at `0x3fc9fbe8` and header +24; decodes one entry into `0x3c3887a0`; copies 20 B to `array + 24 × n`. The point callback allocates `pts` = `8 × cnt` and copies 8 B per point. It returns true.
+- Entry record (24 B stride): `n, style, lat, lon, cnt, pts` (`ent_t` in `../cc700-patch/src/fw.h`).
+- Stream: `{callback, state, bytes_left, errmsg}`; a buffer stream has callback `0x421cfe20` and `state` = current byte pointer.
+- Descriptors: block = fields 1 (uvarint) and 2 (callback); entry = fields 1 to 6; point = fields 1 and 2. An unknown field is skipped.
+- Stock faults that the new path avoids: no check of `n` against the count; a block with count 0 leaves header +20/+24 at the freed old entries. No real build has an empty block today (0 of 75, 4 and 104 blocks).
 
 ## Decisions
 
-- **E1 delta entry:** style bit 12 (`0x1000`) marks an entry whose field-6 points are zigzag differences: point 0 from the centre (fields 3 and 4), point k from point k−1, in semicircle integers. Only classes 1 to 11 can have bit 12. Labels (12), signals (13), stops (14) and arrows/rough route (15) never have it.
-- **E2 drawing:** the new iterator adds the differences in `int32` with wraparound (`uint32_t` sum), then converts to float as today. An entry without bit 12 is drawn exactly as v21.
-- **E3 page choice:** a third value `patch25` of the `fw` select ("Patch cc25+"). Only `patch25` writes bit-12 entries and CCWB version 2. `patch` and the original choice write today's files.
-- **E4 cc25 code place:** the free IROM tail at `0x421de800` (4,376 B usable, 1,768 B reserve stays). Reached by the iterator literal at `0x42049678` (today `0x421dcb2c`, the v21 `cc_iter`). Version text `CC700_V1.414-cc25`.
-- **E5 CCWB version 2 node (8 B, one little-endian `u64`):** bits 0–18 `X/2`, bits 19–37 `Y/2` (units of 1/16 m, stored halved, so 1/8 m and at most 65.5 km on each axis), bits 38–50 `next − index` as a signed 13-bit value (0 = on the route), bits 51–63 ride distance in whole metres (0 to 8,191). The header, the cells (12 B) and the extra pieces (8 B) are as in version 1. Version 2 has no exception lists. Measured on the 70 km 3 km file: 0 `next` values out of range at 13 bits, largest distance 6,000 m.
-- **E6 generator refusal:** if a node does not fit E5, the generator writes no version 2 file, and the page goes on with its existing reach fallback (2 km, then 1.5 km, then none). It never writes a partial file.
-- **E7 cc26 code place:** the second code area `0x4237b134..0x42380000` (20,172 B; constants through `0x3c37b134`). The image builder moves DRAM segment 1 (`0x3fc98200`, 20,188 B) to the end of the file, extends DROM segment 0 by the code, and fills the 24 B before the IROM header with one padding segment (load address 0). The way-back adapter hook stays the `tramp_rt` literal at `0x420496b8`. Version text `CC700_V1.414-cc26`.
-- **E8 street window:** 128 m cells, 5 cells wide, 5 ahead and 1 behind, turned by the map heading quadrant `round(h / 90) mod 4`. `h` is the `float` in degrees at `0x3c388d08` (written by `0x4204a504`, read by the projection at `0x4204c288`). The window refreshes when the rider's cell or the quadrant changes.
-- **E9 window cache:** RTC slow memory `0x50000000`, 8,192 B: a 32 B header (magic `CCWC`, first 8 bytes of the route identity, window key, piece count, origin) and at most 1,020 pieces of 8 B (four `int16`: start X, start Y, end X, end Y, in 1/16 m from the cache origin). At a refresh the cache keeps the 1,020 pieces nearest to the rider. Measured window sizes (5 x 6, 3,000 rider points): p90 679, p99 1,080, max 1,259 pieces. A header that does not match is a refresh, never a read of old data.
-- **E10 drawing of the window:** only while the off-route byte is set. Draw at most 400 pieces each frame, the nearest first (selection by a 32-bucket distance histogram, no sort). One pass, 3 px, colour `0x7a7e83`, drawn before the way-back line. Draw only pieces with both node distances 250 m or more by ride (nearer streets are in the map). The drawing stops at 60 ms after the frame start.
-- **E11 limits:** stack check 3,360 B (as today), 300 ms total for the way-back work in one frame, at most 160 file reads for one window refresh. At a limit: no window this frame, the line still draws if it is ready.
+- **E1 scheme D block (version 1).** The outer message stays protobuf, so stock code reads it without fault:
+  `field 1 = N` (N ≥ 1), then **one** `field 2` record whose bytes are `08 00 10 00 28 00 7A` + `uvarint(len)` + payload.
+  The stock entry decoder reads this as entry 0 (n 0, style 0, cnt 0) and skips field 15 (`7A`). So **old firmware draws an empty block and does not crash**.
+- **E2 payload:** `01` (version) `uvarint N`, then N entries: `uvarint style`, `uvarint cnt`, `zz(centre lat − previous centre lat)`, `zz(centre lon − previous centre lon)` (previous = 0 for entry 0), then `cnt` pairs: for class 12 (labels) the two raw words as `zz`; for every other class `zz(point − previous point)`, previous = the centre for point 0. All in int32 with wraparound. `zz` = zigzag 32-bit, varints at most 5 bytes.
+- **E3 empty block:** N = 1 with one entry `style 0, cnt 0, centre 0,0`. The new format never writes count 0.
+- **E4 module `mapdec` (cc25):** `int cc_entries(pb_istream_t *s, const void *field, void **arg)` at `0x421de800` (IROM tail, at most 1,024 B of the 4,376 B usable; the 1,768 B reserve stays). Hook: the literal `0x4203e3ec` → `cc_entries`. Version text `CC700_V1.414-cc25`. Rules:
+  1. If `s->callback != 0x421cfe20`, or the bytes do not start with the E1 prefix, tail-call the stock `0x42049368`.
+  2. Else decode the payload directly from `s->state`, check `version == 1` and `N == *(uint32_t *)0x3c3887bc`.
+  3. Allocate the array exactly as stock (`28 × N`, caps `0x404`, zeroed), store it at `0x3fc9fbe8` and header +24. For each entry, allocate `pts` = `8 × cnt` (none when cnt = 0) and fill `n = i, style, lat, lon, cnt, pts`.
+  4. Limits: `cnt ≤ 4096`, and before each allocation `bytes_left ≥ 2 × cnt`. Every varint read checks the end.
+  5. On a data error: stop, keep the entries made so far (the rest stay zero), consume the rest, return false.
+  6. On an allocation failure: set header +20 = 0, header +24 = 0, `0x3fc9fbe8` = 0 and the message count = 0, then return false. The stock iterator and free loop then see an empty block.
+  7. On success: `s->state += bytes_left; s->bytes_left = 0;` return true.
+- **E5 page choice:** a third value `patch25` of the `fw` select ("Patch cc25+"). Only `patch25` writes scheme D blocks (and, in cc26, way-back version 2). The other two choices write today's files.
+- **E6 one codec module on the page:** `js/map_codec.js` has `encodeBlockD(entries)` and `decodeBlockD(bytes)`. The generator, `preview.js` `readFile` and `map_budget.js` `auditMapSection` use it. The budgets stay as today (the serialized-byte check uses today's protobuf size, which is larger, so it is conservative).
+- **E7 CCWB version 2 node (cc26), 8 B, one little-endian `u64`:** bits 0–18 `X/2`, bits 19–37 `Y/2` (1/16 m units, stored halved: 1/8 m, at most 65.5 km on each axis), bits 38–50 `next − index` as signed 13 bits (0 = on the route), bits 51–63 ride distance in whole metres (0 to 8,191). Header, cells (12 B) and extras (8 B) as version 1; no exception lists. Measured on the 70 km 3 km file: 0 `next` out of range, largest distance 6,000 m. A node that does not fit: no version 2 file (the page goes on with its reach fallback).
+- **E8 cc26 code place:** the second code area `0x4237b134..0x42380000` (20,172 B, constants through `0x3c37b134`). The image builder moves DRAM segment 1 to the file end, extends DROM segment 0 by the code, and adds one 16 B padding segment (load address 0). Hook: the existing way-back literal `0x420496b8`. Version text `CC700_V1.414-cc26`.
+- **E9 street window (cc26):** 128 m cells, 5 wide, 5 ahead, 1 behind, turned by the quadrant of the map heading (`float` degrees at `0x3c388d08`; NaN or outside 0 to 360 gives 0). Cache: RTC slow memory `0x50000000`, 8,192 B = 32 B header (magic, route identity 8 B, window key, count, origin) + at most 1,020 pieces of 8 B. A header that does not match means a refresh. Per frame, only off route: at most 400 nearest pieces with both node distances 250 m or more, one pass 3 px `0x7a7e83`, before the line; stop at 60 ms. Limits: stack 3,360 B, 300 ms way-back work per frame, 160 reads per refresh.
 
 ## Global Constraints
 
-- No command that opens a USB or serial device. No `esptool`, no `flash.sh`, no `run_test.py install*`. Builders write only to `.local/`.
-- Edit only the files that a task names. `../cc700-patch/src/map.c` is the only file in `../cc700-patch` that this plan changes. Commit it in that repository, and do not move the `patch-v21` tag.
-- Stage only the named files. Never `git add -A`, `git add .` or `git commit -a`. Never push.
-- The repository is public: no coordinates, ride data or `.local/` content in committed files. Host tests use synthetic data near latitude 51, longitude 7. Real route files are read from `.local/` only by scripts that print counts.
+- No command that opens a USB or serial device (`esptool`, `flash.sh`, `run_test.py install*`). Builders write only to `.local/`.
+- Do not edit `../cc700-patch`. Edit only the files that a task names.
+- Stage only the named files. Never `git add -A`, `git add .` or `git commit -a`. Commit to `main`. Never push.
+- Public repository: no coordinates, ride data or `.local/` content in committed files. Host tests use synthetic data near latitude 51, longitude 7. Real route files are read from `.local/` by scripts that print counts only.
 - Docs and commit messages in ASD-STE100. Commit messages end with `Co-Authored-By: Claude Opus 5.5 <noreply@anthropic.com>`.
 - Do not change a number in "Decisions". If a step fails and the fix is not in this plan, stop and report. Do not weaken a test.
 - Every size and count in a doc comes from a command you ran.
 
 ## Review Focus
 
-1. **Wraparound in the point sum:** a difference that crosses ±180° longitude or the int32 limit must give the same point as the absolute value. Test in Task C1.
-2. **An entry with bit 12 and 0 points, or 1 point:** no read past `pts`, no draw. Test in Task C1.
-3. **A version 2 file with a `next` that points outside the node table** (delta past either end): `wb_mount` must refuse it, not walk into the next section. Test in Task D2.
-4. **RTC slow memory after a reset** holds old bytes: the cache must refresh and must never draw a piece from another route. Test in Task D3 (host fills the cache with another route's header first).
-5. **Heading not a number or outside 0 to 360** (sensor start-up): the quadrant must clamp to 0. Test in Task D3.
+1. **Truncated payload in the middle of a varint, a point list or an entry header:** no read past the end; the block stays consistent. Test in Task C2 (every truncation length of a real block).
+2. **N in the payload differs from field 1:** refused. Test in Task C2.
+3. **Wraparound:** differences across the int32 limit give the exact absolute value. Test in Tasks C1 and C2.
+4. **An old-format block after a scheme D block and the other way round:** the free and the next decode work (no stale array, no double free). Test in Task C2 with a host model of the load sequence.
+5. **Label words** (class 12) round-trip exactly, also words that are negative as int32. Test in Tasks C1 and C2.
 
 ## File Structure
 
 | File | Responsibility |
 |---|---|
-| `../cc700-patch/src/map.c` | `draw_entry` adds the differences when bit 12 is set (C1). |
-| `tools/renderer_host.c`, `tools/test_renderer_host.py` | Host case `styles_delta` (C1). |
-| `firmware/mapdelta/mapdelta.ld`, `tools/mapdelta_build.py`, `tools/test_mapdelta_build.py` | cc25 image: the new iterator in the tail and the literal change (C2). |
-| `js/mapsec.js`, `js/preview.js`, `index.html`, `js/app.js`, `js/route.js` | Delta entries and the `patch25` choice (C3). |
-| `js/wayback_format.js`, `tools/test_wayback_format.mjs` | CCWB version 2 encode and decode (D1). |
-| `firmware/wayback/wayback.c`, `wayback.h`, `tools/test_wayback_core.mjs` | Version 2 reader (D2). |
-| `firmware/wayback/wb_window.c`, `wb_window.h`, `tools/wb_window_host.c`, `tools/test_wb_window.mjs` | Window cache, selection and drawing list (D3). |
-| `firmware/wayback/wb_device.c`, `wb_area2.ld`, `tools/area2_image.py`, `tools/test_area2_image.py`, `tools/cc26_build.py`, `tools/test_cc26_build.py` | cc26 adapter and image (D4, D5). |
-| `docs/releases/cc25-2026-11-18.md`, `docs/releases/cc26-2026-11-18.md` | Release record and device test steps (C4, D6). |
+| `js/map_codec.js`, `tools/test_map_codec.mjs` | `encodeBlockD`, `decodeBlockD` (C1). |
+| `js/mapsec.js`, `js/preview.js`, `js/map_budget.js`, `js/route.js`, `js/app.js`, `index.html`, `sw.js` | Use the codec for `patch25` (C1, C3). |
+| `firmware/mapdec/mapdec.h`, `mapdec.c`, `mapdec.ld`, `README.md` | The cc25 module and its contract (C2). |
+| `tools/mapdec_host.c`, `tools/test_mapdec.mjs` | Host build, exact compare, truncation and random tests (C2). |
+| `tools/cc25_build.py`, `tools/test_cc25_build.py` | cc25 image (C4). |
+| `docs/releases/cc25-2026-11-18.md` | Release record and device test steps (C5). |
+| Part D files | As listed in each Part D task. |
 
 ---
 
-## Part C: cc25 (delta map points)
+## Part C: cc25 (scheme D map blocks)
 
-> **Gate result, 18 Nov (Task B2):** the protobuf-kept delta makes the 70 km map 2,681,396 B (ratio 0.701). With 2 km way-back data the unit estimate is 4,372,849 B, above the 4,000,000 B guard. Scheme D (ratio 0.338) gives 2,720,906 B. Part C as written fits 70 km only without way-back data. **Do not start Part C until the owner chooses:** (a) Part C as written, or (b) a scheme D decoder at the `pb_decode` call 0x4204957a, which needs the decode callback 0x420492f4 mined first (this is not a Haiku task).
+### Task C1: Page codec
 
-### Task C1: Delta drawing in `map.c`
-
-**Files:**
-- Modify: `../cc700-patch/src/map.c:198-204` (`draw_entry`)
-- Modify: `tools/renderer_host.c` (new case), `tools/test_renderer_host.py`
+**Files:** Create `js/map_codec.js`, `tools/test_map_codec.mjs`. Modify `tools/validate_local.py` (add the test to the node list), `sw.js` (add `js/map_codec.js` to `FILES`).
 
 **Interfaces:**
-- Produces: `draw_entry(cb, e, sel, buf)` keeps its signature. With `e->style & 0x1000` it reads `e->pts` as differences.
+- `encodeBlockD(entries) -> number[]`: `entries` = array of `{style, lat, lon, pts}` (`lat`, `lon` int32 semicircles; `pts` = array of `[a, b]` int32 pairs; for class 12 the pairs are the label words). Returns the whole outer message bytes of E1 (field 1, field 2 with prefix and payload). An empty array gives the E3 block.
+- `decodeBlockD(bytes) -> entries | null`: `null` when the bytes are not an E1 block. Throws `Error('scheme D: <reason>')` on a bad payload.
+- `isBlockD(bytes) -> boolean`.
 
-- [ ] **Step 1: Add the host cases.** In `tools/renderer_host.c`: case `styles_delta` = case `styles`, but after the entries are made, each entry with class 1 to 11 gets bit 12, and its points are replaced by differences (point 0 minus the centre, point k minus point k−1, computed in `uint32_t`). Case `delta_wrap` = one class-6 entry with centre lon `2147483000` and points that cross the int32 limit. Case `delta_short` = class-6 entries with bit 12 and `cnt` 0 and 1.
-- [ ] **Step 2: Add the tests** in `tools/test_renderer_host.py`:
-
-```python
-    def test_delta_entries_draw_the_same_as_absolute_entries(self):
-        a, b = self.run_case('styles'), self.run_case('styles_delta')
-        for k in ('trace', 'callbacks', 'draws', 'projected_points', 'painted'):
-            self.assertEqual(a[k], b[k], k)
-    def test_delta_sum_wraps_like_the_absolute_value(self):
-        self.run_case('delta_wrap')
-    def test_delta_entries_with_zero_or_one_point_are_safe(self):
-        self.run_case('delta_short')
-```
-
-`delta_wrap` checks inside `renderer_host.c` that each projected float equals the float of the absolute value (`require`).
-
-- [ ] **Step 3: Run and see the delta test fail.** Run: `CC700_PATCH_SRC=../cc700-patch/src/blk.c python3 -I -m unittest tools.test_renderer_host -v`. Expected: `test_delta_entries_draw_the_same_as_absolute_entries` FAILS (`trace` differs). The other tests PASS.
-- [ ] **Step 4: Change `draw_entry`.** Keep a `uint32_t` running value for lat and lon, starting at the centre. For each point: if bit 12, add the stored value; else take it. Convert the running value (as `int32_t`) with the same `k` as today.
-- [ ] **Step 5: Run all renderer tests.** Same command. Expected: all PASS.
-- [ ] **Step 6: Check that v21 still rebuilds from its tag.** Run: `cd ../cc700-patch && python3 -I tools/build_patch.py patch-v21`. Expected: exit 0 (the tag is unchanged).
-- [ ] **Step 7: Commit both repositories.** In `../cc700-patch`: `git add src/map.c`, message "Add the running sum for map entries with style bit 12". In this repository: `git add tools/renderer_host.c tools/test_renderer_host.py`, message "Test delta map entries against absolute entries on the host".
-
-### Task C2: cc25 image builder
-
-**Files:**
-- Create: `firmware/mapdelta/mapdelta.ld`, `tools/mapdelta_build.py`, `tools/test_mapdelta_build.py`
-
-**Interfaces:**
-- Consumes: `../cc700-patch/src/map.c` (Task C1), `cc700-backup/tools/espimg.py` (as `tools/wayback_device_build.py` loads it).
-- Produces: `build_candidate(base: bytes, sections: dict, fragment_read) -> bytes` and the CLI `python3 -I tools/mapdelta_build.py --base .local/mining/ota_1_cc23trampfix.bin --output .local/cc25`. Output: `ota_1_cc25.bin` and `manifest.json` (base SHA, map.c SHA, section addresses and sizes, output SHA).
-
-Copy the structure of `tools/wayback_device_build.py`. The differences:
-
-| Item | Value |
-|---|---|
-| Accepted base | only `d225e17970940be7b153c524aebcfc60f4ca7ae8cd74696ef2282396e461ce04` |
-| Code | `map.c` compiled with entry `cc_iter`, `--gc-sections`, linked at `0x421de800` |
-| Scopes | `.text` at `0x421de800`, at most 4,376 B with `.rodata`; `.rodata` through the `0x3c` alias, as in `../cc700-patch/src/patch.ld`; one literal word at `0x42049678` |
-| Literal check | the base word at `0x42049678` is `0x421dcb2c` |
-| Version | `CC700_V1.414-cc25` |
-| Writable data | `SIZEOF(.data) + SIZEOF(.bss) == 0` (linker assert) |
-
-- [ ] **Step 1: Write the failing tests** in `tools/test_mapdelta_build.py`: (a) a wrong base SHA raises `ValueError`; (b) the output differs from the base only in `0x421de800..end of .rodata`, `0x42049678..+4`, the version text, the checksum and the digest; (c) the new literal is the ELF address of `cc_iter`; (d) code plus constants are at most 4,376 B; (e) `xtensa-esp32s3-elf-nm -u` of the ELF is empty.
-- [ ] **Step 2: Run and see them fail.** Run: `python3 -I -m unittest tools.test_mapdelta_build -v`. Expected: FAIL, the module is missing.
-- [ ] **Step 3: Write `mapdelta.ld` and `mapdelta_build.py`.**
-- [ ] **Step 4: Run the tests.** Expected: all PASS. Write the code size in the commit message.
-- [ ] **Step 5: Build the candidate.** Run the CLI above. Expected: exit 0, `manifest.json` with `device_written: false`.
-- [ ] **Step 6: Commit** `firmware/mapdelta/mapdelta.ld tools/mapdelta_build.py tools/test_mapdelta_build.py`, message "Build cc25: the map iterator with delta entries in the IROM tail".
-
-### Task C3: Page writes delta entries for `patch25`
-
-**Files:**
-- Modify: `index.html` (the `fw` select), `js/app.js:29-43` and `js/app.js:81-100`, `js/route.js` (pass `map.delta`), `js/mapsec.js` (`sentry`), `js/preview.js` (`readFile` sums bit-12 points)
-- Test: `tools/test_map_contract.mjs`, `tools/test_preview.mjs`, `tools/test_app_offline.mjs`
-
-**Interfaces:**
-- Produces: `buildRoute(..., {map: {styled: true, delta: true}})` writes bit-12 entries for classes 1 to 11. `readFile` returns absolute points for both kinds.
-
-- [ ] **Step 1: Write the failing tests.** In `tools/test_map_contract.mjs`: `delta entries decode to the same points as absolute entries` (build the same route with `delta: false` and `delta: true`; `readFile` blocks are deep-equal after the style bit 12 is cleared; the delta file is smaller). `labels, signals and arrows never get bit 12`. In `tools/test_app_offline.mjs`: the `fw` select has the value `patch25`, and `patch25` sets `styled` and `delta`.
-- [ ] **Step 2: Run and see them fail.**
-- [ ] **Step 3: Implement.** `sentry(style, pts, delta)`: with `delta` and class 1 to 11, set `0x1000` and write `fs(1, sc(q[0]) - sc(prev[0]))`, `fs(2, ...)`, computed with `| 0` wraparound to int32. `styled = fw.startsWith('patch')`, `delta = fw === 'patch25'`. The `patch25` option text: "Patch cc25+ (kleinere Karte)". `localStorage` keeps `patch25` like `patch`.
-- [ ] **Step 4: Run** `node --test` on the tests of Task A2 Step 8 of the earlier plan plus `tools/test_app_offline.mjs`. Expected: all PASS.
-- [ ] **Step 5: Measure.** Build `t70.gpx` with `delta` on (add a `DELTA=1` env switch to `.local/study/m90/build.mjs` that sets `map.delta`). Write the map bytes beside the Task B2 `pbDelta` number. They must agree within 1%. If not, stop and report.
-- [ ] **Step 6: Commit** the named files, message "Write delta map entries for the cc25 firmware choice".
-
-### Task C4: cc25 release record and device test steps
-
-**Files:** Create `docs/releases/cc25-2026-11-18.md`.
-
-- [ ] **Step 1:** Write it with: what changed, image SHA-256 and size (from `manifest.json`), host test commands and results, and this device test:
-  - **Hypothesis:** cc25 draws a delta route exactly as cc23 draws the same route without delta, and an old route as before.
-  - **Observation:** the owner opens route 1 (made with `patch`) and route 2 (the same GPX, made with `patch25`), each for 2 minutes, stationary, then rides 10 minutes on route 2. Photos of the same place on both. No restart. `/ABNORMAL/` is empty after the test.
-  - **Duration:** 30 minutes.
-  - **Restore:** install `.local/mining/ota_1_cc23trampfix.bin` (`d225e179…`); delete route 2.
-- [ ] **Step 2: Commit** the doc. Do not flash. The owner approves the flash in chat.
-
----
-
-## Part D: cc26 (way-back version 2 and the street window), on cc25
-
-### Task D1: CCWB version 2 in the generator
-
-**Files:** Modify `js/wayback_format.js`, `tools/wayback_format.mjs` (re-export), `tools/wayback_build.mjs` (`--format 2`), `js/wayback.js` (format 2 for `patch25`). Test: `tools/test_wayback_format.mjs`, `tools/test_wayback_page.mjs`.
-
-**Interfaces:**
-- Produces: `encodeWaybackV2(model, routeId) -> Uint8Array` (throws `Error('node does not fit version 2: <field>')` per E6), and `decodeWayback(bytes)` reads versions 1 and 2. Version 2 nodes decode to `{X, Y, next, distDm}` with `X`, `Y` even and `distDm` a multiple of 10.
-
-- [ ] **Step 1: Failing tests:** round trip of `gridFixture()` (positions within 1 unit, distances within 5 dm, `next` exact); a node 70 km east throws `/X/`; a distance of 9,000 m throws `/dist/`; a `next` 5,000 indexes away throws `/next/`; the file size is `64 + 12 * (cells + 1) + 8 * nodes + 8 * extras`.
-- [ ] **Step 2 to 4:** run (fail), implement, run (pass).
-- [ ] **Step 5: Measure.** Add `--format 2` to `.local/study/m90/wb70.mjs` (it made `t70-v0.ccwb` and `t70-v0k3.ccwb` from `.local/study/var/`), and rebuild both reaches. Expected sizes: 916,812 B and 1,401,584 B (from the B1 counts). Write the sizes in the commit message.
+- [ ] **Step 1: Failing tests:** round trip of random entries (seed fixed: 200 entries, styles of every class 1 to 15, counts 0 to 60, coordinates across the int32 limit, label words negative); `decodeBlockD` of a protobuf block returns `null`; every truncation of an encoded block throws; a payload N that differs from field 1 throws; the empty array round-trips to one `style 0` entry; the first 9 bytes after the field-2 key and length are `08 00 10 00 28 00 7A` + length.
+- [ ] **Step 2: Run:** `node --test tools/test_map_codec.mjs`. Expected: FAIL (module missing).
+- [ ] **Step 3: Implement** E1, E2, E3 with `uv`, `zz` from `js/pb.js`. Use `| 0` for the int32 wraparound.
+- [ ] **Step 4: Run** again. Expected: PASS.
+- [ ] **Step 5: Size check on the real 70 km build:** convert every block of `.local/study/out/t70S1.bin` with the codec (a 20-line script in `.local/study/`). Expected: total within 2% of 1,293,208 B (B2 `D_exact`). Write the number in the commit message.
 - [ ] **Step 6: Commit.**
 
-### Task D2: Version 2 reader in the C core
+### Task C2: The `mapdec` module on the host
 
-**Files:** Modify `firmware/wayback/wayback.c`, `wayback.h`, `firmware/wayback/README.md` (format section). Test: `tools/test_wayback_core.mjs`, `tools/test_wayback_replay.mjs`.
-
-**Interfaces:**
-- `wb_mount` accepts version 2 only. Version 1 returns 0 (the cc26 unit ignores old way-back data; the stock display stays).
-- `#define WB_NODE_BYTES 8u`. `node_parse` reads one `u64` per E5. `X = 2 * field`.
-
-- [ ] **Step 1: Failing tests:** all existing core tests run on a version 2 file of the same fixture; the line points are within 2 units and `distance_dm` within 6 of the version 1 result; a file whose `next` delta points before node 0 or past the last node is refused by `wb_mount` (Review Focus 3); a version 1 file is refused.
-- [ ] **Step 2 to 4:** run (fail), implement, run (pass). Do not check all nodes in `wb_mount` (that reads the whole file). Check the `next` range in `load_node`, and return `WB_READ` when it is out of range. For Review Focus 3, `wb_mount` refuses the file when the first or the last node record has an out-of-range `next`, and the walk refuses any other one.
-- [ ] **Step 5: Replay equivalence on the private 70 km file.** Run `node tools/wayback_replay.mjs` for version 1 and version 2 on the 1,500 rider points of `detour.mjs` part 4. Expected: the same state for each point, the same point count, the distance within 1 m. Write the counts in `.local/study/out/c-study.md`.
-- [ ] **Step 6: Size.** Run `python3 -I tools/wayback_size.py`. Write the bytes.
-- [ ] **Step 7: Commit.**
-
-### Task D3: Street window
-
-**Files:** Create `firmware/wayback/wb_window.h`, `wb_window.c`, `tools/wb_window_host.c`, `tools/test_wb_window.mjs`.
+**Files:** Create `firmware/mapdec/mapdec.h`, `mapdec.c`, `firmware/mapdec/README.md`, `tools/mapdec_host.c`, `tools/test_mapdec.mjs`.
 
 **Interfaces:**
 
 ```c
-typedef struct { int16_t ax, ay, bx, by; } wbw_piece;            /* 1/16 m from the cache origin */
-typedef struct { uint32_t magic, route8[2], key, count, origin_x, origin_y, reserved; wbw_piece p[1020]; } wbw_cache;  /* 8,192 B */
-int  wbw_refresh(wb_engine *, wbw_cache *, int32_t lat_e7, int32_t lon_e7, float heading_deg, uint32_t max_reads); /* 1 = ok */
-uint32_t wbw_select(const wbw_cache *, int32_t lat_e7, int32_t lon_e7, uint16_t *out, uint32_t max); /* nearest first, max 400 */
-int  wbw_piece_e7(const wb_engine *, const wbw_cache *, uint32_t index, int32_t a[2], int32_t b[2]);
+/* mapdec.h */
+typedef struct { uint32_t n, style; int32_t lat, lon; uint32_t cnt; int32_t *pts; } md_ent;   /* = ent_t, 24 B */
+typedef struct pb_istream_s { int (*callback)(struct pb_istream_s *, uint8_t *, uint32_t); const uint8_t *state; uint32_t bytes_left; const char *errmsg; } pb_istream_t;
+int cc_entries(pb_istream_t *s, const void *field, void **arg);   /* E4 */
 ```
 
-- `_Static_assert(sizeof(wbw_cache) == 8192, ...)`.
-- `wbw_refresh` reads the cells of E8, keeps tree pieces (node → next) and extra pieces whose both ends have a ride distance of 250 m or more, keeps the 1,020 nearest (32-bucket histogram), and writes the header last.
-- The quadrant: `h` not finite, or outside 0 to 360, gives quadrant 0 (Review Focus 5).
+Device addresses come from macros in `mapdec.c` (`MD_BUF_READ 0x421cfe20`, `MD_STOCK_CB 0x42049368`, `MD_MSG 0x3c3887bc`, `MD_ARRAY 0x3fc9fbe8`, `MD_MALLOC 0x403763e0`, caps `0x404`). With `-DHOST` they map to host variables and stubs, as `tools/wayback_device_host.c` does.
 
-- [ ] **Step 1: Failing tests** (host command, JSON output, like `tools/wayback_host.c`): (a) a cache with another route's header refreshes (Review Focus 4); (b) a rider on a synthetic grid gets every piece of the 5 x 6 window; (c) `wbw_select` returns at most 400 indexes, sorted into nearer-first buckets; (d) with `max_reads` 5 the refresh returns 0 and the header stays invalid; (e) NaN and 720 degrees give quadrant 0; (f) the private 70 km file: refresh reads p50, p90 and max on the 3,000 rider points, and the share of refreshes that hit 1,020 pieces.
-- [ ] **Step 2 to 4:** run (fail), implement, run (pass) under ASan/UBSan.
-- [ ] **Step 5: Gate on the private file:** refresh reads p90 at most 160 (E11). If not, stop and report.
+`tools/mapdec_host.c` models the stock load sequence: free the old entries as `0x4204944c` does, clear the message, call `cc_entries` (or a host model of the stock callback for protobuf blocks), then set header +20 and +28 as `0x42049655..0x42049660` does. It prints JSON: entries (style, lat, lon, cnt, points), live allocations, errors.
+
+- [ ] **Step 1: Failing tests** in `tools/test_mapdec.mjs` (build with `cc -std=c11 -O1 -g -DHOST -fsanitize=address,undefined -fno-sanitize-recover=all`):
+  - **Exact compare:** for every block of `.local/study/out/cityS1.bin` and `.local/study/out/t70S1.bin` (skip with a message when the files are absent), encode with `encodeBlockD` (from the JS parse of the protobuf block) and decode with the host module. The entries equal the JS parse of the protobuf block field by field. Print the block count compared.
+  - **Synthetic exact compare** (always runs): the random entries of Task C1.
+  - **Truncation:** every length from 0 to the full size of three real blocks (or synthetic ones): no sanitizer error, and the header is consistent (array null and count 0, or array with N zeroed-or-filled entries).
+  - **Random bytes after the prefix:** 10,000 cases, fixed seed: no sanitizer error.
+  - **Allocation failure** at the array and at the k-th `pts`: E4 rule 6 holds; no leak.
+  - **Sequence:** protobuf block → D block → protobuf block → D block: no leak, no double free (host allocator counts).
+  - **Fallback:** a protobuf block reaches the stock-model callback; a stream with another `callback` reaches it too.
+- [ ] **Step 2: Run:** `node --test tools/test_mapdec.mjs`. Expected: FAIL (sources missing).
+- [ ] **Step 3: Implement** `mapdec.c` to E4. No writable globals. No float.
+- [ ] **Step 4: Run** again. Expected: PASS, with the compared block count printed.
+- [ ] **Step 5: Size:** compile for Xtensa with entry `cc_entries` and `--gc-sections`. Expected: at most 1,024 B, `nm -u` empty. Write the size in `firmware/mapdec/README.md`.
+- [ ] **Step 6: README:** normal behaviour, admission (E1 prefix, version, N), unavailable state (stock path), fallback (rule 5 and 6), restoration (an old-format route).
+- [ ] **Step 7: Commit.**
+
+### Task C3: The page writes scheme D for `patch25`
+
+**Files:** Modify `index.html` (`fw` select), `js/app.js:29-43` and `:81-100`, `js/route.js` (pass `map.codec`), `js/mapsec.js:285` and `:469` (block assembly), `js/preview.js` (`readFile`), `js/map_budget.js` (`auditMapSection`). Test: `tools/test_map_contract.mjs`, `tools/test_preview.mjs`, `tools/test_app_offline.mjs`, `tools/test_map_budget.mjs`.
+
+- [ ] **Step 1: Failing tests:** the same route built with `codec: 'd'` and without gives deep-equal `readFile` blocks and the same `auditMapSection` costs except the serialized bytes; the D file is smaller; `patch25` exists, saves to `localStorage`, and sets `styled` and `codec: 'd'`; an empty block in D mode is the E3 block.
+- [ ] **Step 2: Run** and see the failures.
+- [ ] **Step 3: Implement.** In the block assembly: with `opt.codec === 'd'`, parse each entry body (`parse` from `js/pb.js`) to `{style, lat, lon, pts}` and call `encodeBlockD`. Else today's code. `readFile` and `auditMapSection`: `isBlockD` first, then today's parser.
+- [ ] **Step 4: Run** the map test list of the earlier plan (Task A2 Step 8) plus the new tests. Expected: all PASS.
+- [ ] **Step 5: Measure:** build `t70.gpx` with `codec: 'd'` (env `CODEC=d` in `.local/study/m90/build.mjs`). Write the file size. Expected: map within 2% of Task C1 Step 5.
 - [ ] **Step 6: Commit.**
 
-### Task D4: Second code area in the image
+### Task C4: cc25 image
 
-**Files:** Create `tools/area2_image.py`, `tools/test_area2_image.py`.
+**Files:** Create `firmware/mapdec/mapdec.ld`, `tools/cc25_build.py`, `tools/test_cc25_build.py`.
 
-**Interfaces:** `add_area2(base: bytes, code: bytes) -> bytes`. Refuses a base that is not cc25 (`manifest.json` SHA of Task C2) or code longer than 20,172 B.
+Copy the structure of `tools/wayback_device_build.py`:
 
-- [ ] **Step 1: Failing tests:** with 0 B code, the output parses with `espimg.read` into 6 segments: DROM (same start, data equal to the base for its first 1,683,732 B), padding (load address 0, 16 B), IROM (same address, same data, file offset ≡ 0x20 mod 65,536), DRAM `0x3fc9d0dc`, IRAM, DRAM `0x3fc98200` (data equal to the base). With 20,172 B code, the DROM segment ends at `0x3c380000` and holds the code at `0x3c37b134`. 20,173 B raises `ValueError`. Checksum and digest are valid (`espimg.build` round trip).
+| Item | Value |
+|---|---|
+| Base | only `d225e17970940be7b153c524aebcfc60f4ca7ae8cd74696ef2282396e461ce04` (cc23 + trampoline fix) |
+| Code | `mapdec.c`, entry `cc_entries`, at `0x421de800`, text + constants ≤ 1,024 B, constants through the `0x3c` alias as in `../cc700-patch/src/patch.ld` |
+| Hook | the word at `0x4203e3ec`: base value `0x42049368`, new value = address of `cc_entries` |
+| Called entries | `0x42049368` and `0x403763e0` must begin with an `entry` instruction |
+| Version | `CC700_V1.414-cc25` |
+| Output | `.local/cc25/ota_1_cc25.bin`, `manifest.json` with `device_written: false` |
+
+- [ ] **Step 1: Failing tests:** wrong base refused; only `0x421de800..end`, `0x4203e3ec..+4`, the version text, the checksum and the digest change; the hook word is the ELF address of `cc_entries`; `nm -u` empty; size ≤ 1,024 B.
 - [ ] **Step 2 to 4:** run (fail), implement, run (pass).
-- [ ] **Step 5: Commit.**
+- [ ] **Step 5: Build** the candidate.
+- [ ] **Step 6: Commit** the three files.
 
-### Task D5: cc26 adapter and image
+### Task C5: cc25 release record and device test
 
-**Files:** Modify `firmware/wayback/wb_device.c`. Create `firmware/wayback/wb_area2.ld`, `tools/cc26_build.py`, `tools/test_cc26_build.py`. Modify `tools/wayback_device_host.c`, `tools/test_wayback_device.mjs`.
+**Files:** Create `docs/releases/cc25-2026-11-18.md`.
 
-- The adapter does what `firmware/wayback/README.md` "Device adapter" says, with these changes: no `wb3` text on the route; no screen text except the distance next to the line; the cache at `0x50000000`; heading from `0x3c388d08`; window drawn per E10 before the line; limits per E11.
-- `wb_area2.ld`: text at `0x4237b134`, constants through `0x3c37b134`, at most 20,172 B, no writable data.
-- `cc26_build.py`: base = cc25 output; replaces the literal at `0x420496b8` with the adapter entry; calls `add_area2`; version text `CC700_V1.414-cc26`.
-
-- [ ] **Step 1: Failing tests:** the adapter host tests of `tools/test_wayback_device.mjs` pass against the new adapter (stack gate, lock busy, no file, read failure, 300 ms limit); new: the window draws at most 400 pieces, draws nothing on the route, stops at 60 ms (host clock fixture); `test_cc26_build.py`: only the named ranges change, `nm -u` is empty, the size is printed.
-- [ ] **Step 2 to 4:** run (fail), implement, run (pass).
-- [ ] **Step 5: Build** to `.local/cc26/`. `device_written: false`.
-- [ ] **Step 6: Commit.**
-
-### Task D6: cc26 release record and device test steps
-
-**Files:** Create `docs/releases/cc26-2026-11-18.md`.
-
-- [ ] **Step 1:** Write it as Task C4, with this device test:
-  - **Hypothesis:** cc26 boots, runs code from the second area, and draws the window and the line off route inside 300 ms.
-  - **Observation:** boot; open an old route (no way-back data) for 2 minutes; open a `patch25` route with way-back data; ride 15 minutes with two planned detours. Photos with the distance text. No restart; `/ABNORMAL/` empty.
-  - **Duration:** 45 minutes.
-  - **Restore:** install cc25 (`ota_1_cc25.bin`) over USB with the existing install step. If cc26 does not boot, the USB install still works: the bootloader and the USB download mode are not changed by cc26.
-- [ ] **Step 2: Commit.** Do not flash.
+- [ ] **Step 1:** Write: what changed, image SHA-256 and size, host test results, and the device test:
+  - **Hypothesis:** cc25 draws a scheme D route as cc23 draws the same route in today's format, and old routes as before.
+  - **Observation:** route 1 = a GPX made with `patch`; route 2 = the same GPX made with `patch25`. Open each for 2 minutes, stationary, same place, photos. Ride 10 minutes on route 2 through two block changes. No restart; `/ABNORMAL/` empty.
+  - **Old-firmware check (before the flash, on the installed image):** open route 2 for 1 minute. Expected: the map area is empty, no restart. This proves E1 on the stock decoder.
+  - **Duration:** 35 minutes.
+  - **Restore:** install `.local/mining/ota_1_cc23trampfix.bin` (`d225e179…`); delete route 2.
+- [ ] **Step 2: Commit.** Do not flash. The owner approves each device step in chat.
 
 ---
 
+## Part D: cc26 (way-back version 2 and street window), on cc25
+
+Each task follows the same pattern: failing host tests first (ASan/UBSan), then the code, then a size check and a commit.
+
+### Task D1: CCWB version 2 in the generator
+Files: `js/wayback_format.js`, `tools/wayback_build.mjs` (`--format 2`), `js/wayback.js` (version 2 for `patch25`), tests `tools/test_wayback_format.mjs`, `tools/test_wayback_page.mjs`. `encodeWaybackV2(model, routeId)` per E7; it throws `Error('node does not fit version 2: <field>')`. Tests: round trip (positions within 1 unit, distance within 5 dm), refusals for X, distance and `next`, file size `64 + 12 × (cells + 1) + 8 × nodes + 8 × extras`. Measure: 2 km and 3 km sizes from `.local/study/m90/wb70.mjs` with `--format 2`; expected 916,812 B and 1,401,584 B.
+
+### Task D2: Version 2 reader in the C core
+Files: `firmware/wayback/wayback.c`, `wayback.h`, `README.md`, tests `tools/test_wayback_core.mjs`, `tools/test_wayback_replay.mjs`. `wb_mount` accepts version 2 only. `node_parse` reads one `u64`. `load_node` refuses a `next` out of range (`WB_READ`). Tests: the existing core tests on version 2 files (points within 2 units, distance within 6 dm of version 1); out-of-range `next` refused; version 1 refused. Replay on the 1,500 rider points: same state and point count, distance within 1 m.
+
+### Task D3: Street window module
+Files: `firmware/wayback/wb_window.h`, `wb_window.c`, `tools/wb_window_host.c`, `tools/test_wb_window.mjs`.
+
+```c
+typedef struct { int16_t ax, ay, bx, by; } wbw_piece;
+typedef struct { uint32_t magic, route8[2], key, count, origin_x, origin_y, reserved; wbw_piece p[1020]; } wbw_cache;  /* 8,192 B */
+int wbw_refresh(wb_engine *, wbw_cache *, int32_t lat_e7, int32_t lon_e7, float heading_deg, uint32_t max_reads);
+uint32_t wbw_select(const wbw_cache *, int32_t lat_e7, int32_t lon_e7, uint16_t *out, uint32_t max);
+int wbw_piece_e7(const wb_engine *, const wbw_cache *, uint32_t index, int32_t a[2], int32_t b[2]);
+```
+
+Tests: another route's header refreshes; every piece of the 5 × 6 window on a synthetic grid; at most 400 selected, nearer buckets first; `max_reads` 5 fails with the header invalid; NaN and 720 degrees give quadrant 0; on the private 70 km file, refresh reads p90 ≤ 160.
+
+### Task D4: Second code area in the image
+Files: `tools/area2_image.py`, `tools/test_area2_image.py`. `add_area2(base, code) -> bytes` per E8. Tests: 6 segments; DROM, IROM, IRAM and both DRAM segments keep their addresses and data; IROM file offset ≡ 0x20 mod 65,536; code at `0x3c37b134`; 20,173 B refused; checksum and digest valid.
+
+### Task D5: cc26 adapter and image
+Files: `firmware/wayback/wb_device.c`, `wb_area2.ld`, `tools/cc26_build.py`, `tools/test_cc26_build.py`, `tools/wayback_device_host.c`, `tools/test_wayback_device.mjs`. The adapter of `firmware/wayback/README.md` with: no text on the route, only the distance next to the line, the cache of E9, the window before the line, the limits of E9. Base = cc25 output. Hook = the literal `0x420496b8`.
+
+### Task D6: cc26 release record and device test
+As Task C5. Hypothesis: cc26 boots, runs code from the second area, and draws the window and the line off route within 300 ms. Observation: an old route 2 minutes; a `patch25` route with way-back data, 15 minutes with two planned detours; photos; no restart. Duration 45 minutes. Restore: install cc25 over USB.
+
 ## Not in this plan
 
-- Scheme D (map points without protobuf framing). It needs a new decoder in place of `pb_decode` at `0x420494d0`. Only if Task C3 Step 5 shows that 70 km does not fit.
-- The stock log writer for refusal codes (the cc24 diagnostic used `0x421434dc`). Its contract is not mined. Until then the adapter shows its codes nowhere in a release image.
+- The stock log writer for refusal codes (the cc24 diagnostic used `0x421434dc`; its contract is not mined).
+- Pool layout, the 0.25 m grid and zoom-out (tier 2).
