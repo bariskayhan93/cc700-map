@@ -8,6 +8,7 @@ import re
 from pathlib import Path
 import subprocess
 from guidance_build import assert_native_guards
+import incoming_refs as ir
 
 ROOT=Path(__file__).resolve().parents[1]
 BASE_SHA='cc6613211b2796ae95ef19a6967759a53c6e48af4612906b22adcbddc088d50f'
@@ -20,6 +21,8 @@ def check_trampoline_frame(block):
         raise ValueError(f'loop-start trampoline frame differs from {TRAMP_FRAME}')
 SCOPES={'.text':(0x421de120,0x421e0000-0x421de120),
         '.tramp_loop_start':(0x420496d8,0x40),'.call_loop_start':(0x420547dd,3)}
+# Overwritten bytes of this candidate (D0 item 2, R-D02): the L1 trampoline range and the matcher call site.
+LOOP_RANGES={'loop_l1':(0x420496d8,0x40),'loop_call':(0x420547dd,3)}
 
 def check_undefined(nm_output):
     """nm -u output of the linked ELF: any line is an undefined symbol, and the build is refused (D0 item 6)."""
@@ -99,6 +102,7 @@ def main():
     if hashlib.sha256(base).hexdigest()!=BASE_SHA:raise ValueError('expected exact cc22 baseline')
     esp=esp_module();_,segs,_=esp.read(base);irom=next(d for addr,d in segs if addr==0x42000020)
     def read(addr,n):return bytes(irom[addr-0x42000020:addr-0x42000020+n])
+    incoming=ir.check(irom,0x42000020,LOOP_RANGES,ir.DEAD_SPANS)
     a.output.mkdir(parents=True,exist_ok=True);src=ROOT/'firmware/loop_start';elf=a.output/'loop-start.elf'
     run(a.prefix+'gcc','-Os','-mlongcalls','-mtext-section-literals','-ffreestanding','-fno-builtin',
         '-nostdlib','-Wall','-Wextra','-Werror','-fstack-usage','-Wl,-T,'+str(src/'loop_start.ld'),
@@ -132,7 +136,7 @@ def main():
     if 'call8\t420496d8' not in call:raise ValueError('matcher call target differs')
     image,receipt=build_candidate(base,sections,lambda n:(a.output/n).read_bytes())
     (a.output/'ota_1_v24.bin').write_bytes(image)
-    m={'base_sha256':BASE_SHA,'sections':sections,**receipt,
+    m={'base_sha256':BASE_SHA,'sections':sections,'incoming_refs':incoming,**receipt,
        'source_sha256':{p.name:hashlib.sha256(p.read_bytes()).hexdigest() for p in src.iterdir() if p.is_file()}}
     (a.output/'manifest.json').write_text(json.dumps(m,indent=2)+'\n')
     print(json.dumps(receipt,indent=2))
