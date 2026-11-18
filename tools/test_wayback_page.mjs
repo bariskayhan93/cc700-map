@@ -91,6 +91,11 @@ test('the trailer points at the way-back bytes and the route bytes do not change
 test('format 2 writes way-back version 2 and format 1 keeps version 1 (cc26, D1)', async () => {
   const snapshot = await loadWaybackSnapshot(route, fetchOf([{body: response()}]));
   const id = new Uint8Array(16);
-  assert.equal(decodeWayback(waybackFromSnapshot(snapshot, route, id, {format: 2}).bytes).header.version, 2);
+  assert.equal(decodeWayback(waybackFromSnapshot(snapshot, route, id, {format: 2, routeBytes: new Uint8Array(0)}).bytes).header.version, 2);   // no map: every flag 1
   assert.equal(decodeWayback(waybackFromSnapshot(snapshot, route, id).bytes).header.version, 1);
+});
+
+test('format 2 without routeBytes throws: there is no default grey flag (D0 item 4)', async () => {
+  const snapshot = await loadWaybackSnapshot(route, fetchOf([{body: response()}]));
+  assert.throws(() => waybackFromSnapshot(snapshot, route, new Uint8Array(16), {format: 2}), /routeBytes/);
 });

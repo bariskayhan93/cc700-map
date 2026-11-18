@@ -11,7 +11,7 @@ import {compareLine} from './wayback_precision.mjs';
 const {graph, route, p} = gridFixture();
 const id = Uint8Array.from({length: 16}, (_, i) => i + 1);
 const model = buildWaybackModel(graph, route, {reach: 'line2k'});
-const file = encodeWaybackV2(model, id), v1file = encodeWayback(model, id);
+const file = encodeWaybackV2(model, id, () => 1), v1file = encodeWayback(model, id);   // every piece grey: the core reads states
 const e7 = (x, y) => { const q = p(x, y); return {latE7: Math.round(q[0] * 1e7), lonE7: Math.round(q[1] * 1e7)}; };
 const ll = pt => [pt[0] / 1e7, pt[1] / 1e7];
 const isAt = (pt, x, y, tol = 1.5) => assert(hav(ll(pt), p(x, y)) <= tol, `${ll(pt)} is not at ${x},${y}`);

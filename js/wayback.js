@@ -35,9 +35,10 @@ export function waybackBbox(route) {
 // format 2 (cc26): version 2 file with the grey flags of routeBytes (the route file with its map). A node that does not
 // fit gives no version 2 file at 2 km; the 1.5 km reach is tried.
 export function waybackFromSnapshot(snapshot, route, routeId, {reach = 'line2k', exceptions = false, maxBytes = 0, format = 1, routeBytes = null} = {}) {
+  if (format === 2 && !routeBytes) throw new Error('format 2 needs routeBytes: the grey flags come from the map (D0 item 4)');
   const graph = buildTransitionGraph(snapshot, {wayPolicy});
   const encode = model => format === 2
-    ? encodeWaybackV2(model, routeId, routeBytes ? greyFlags(routeBytes, makeFrame(model.nodes.map(n => n.point))) : undefined)
+    ? encodeWaybackV2(model, routeId, greyFlags(routeBytes, makeFrame(model.nodes.map(n => n.point))))
     : encodeWayback(model, routeId);
   const make = rch => {
     const model = buildWaybackModel(graph, route, {reach: rch, exceptions});

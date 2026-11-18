@@ -45,7 +45,7 @@ test('replay of 1,500 rider points: version 2 matches version 1 within the preci
   const fixture = JSON.parse(fs.readFileSync(new URL('./wayback_core_fixture.json', import.meta.url), 'utf8'));
   const lines = fixture.lines.slice(215);
   assert.equal(lines.length, 1500);
-  const bytes = encodeWaybackV2(model, id);
+  const bytes = encodeWaybackV2(model, id, () => 1);   // every piece grey: the replay compares states, not flags
   const dec = decodeWayback(bytes);
   const v2 = runCore(bytes, id, lines);
   assert.equal(v2.length, 1500);

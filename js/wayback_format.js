@@ -152,8 +152,9 @@ export function encodeWayback(model, routeId) {
 // halved), bits 38-50: next - index as a signed 13-bit delta (0 = no next), bits 51-62: distance in whole metres
 // (at most 4,095), bit 63: grey flag of the piece to next. An extra record: lenflags bits 0-12 length in 0.1 m
 // (at most 8,191), bit 13 grey flag, bits 14-15 toA and toB. No exception lists. A value that does not fit gives an
-// error that names the field. flagOf(a, b) gives the flag of a piece from its unit ends (default: every flag 1).
-export function encodeWaybackV2(model, routeId, flagOf = () => 1) {
+// error that names the field. flagOf(a, b) gives the flag of a piece from its unit ends. It is required (D0 item 4).
+export function encodeWaybackV2(model, routeId, flagOf) {
+  if (typeof flagOf !== 'function') throw new Error('encodeWaybackV2 needs flagOf: there is no default grey flag');
   if (!(routeId instanceof Uint8Array) || routeId.length !== 16) throw new Error('route id must be 16 bytes');
   const {N, frame, nUnits, dists, nNext, extras, cells} = layout(model);
   const nodeBytes = new Uint8Array(8 * N), nv = new DataView(nodeBytes.buffer);
