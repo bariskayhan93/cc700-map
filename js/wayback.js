@@ -6,14 +6,22 @@ import {routingQuery, captureRoutingSnapshot} from './routing_snapshot.js';
 import {buildTransitionGraph} from './recovery_transitions.js';
 import {conservativeWayPolicy} from './recovery_graph.js';
 import {buildWaybackModel} from './wayback_tree.js';
-import {encodeWayback, encodeWaybackV2, makeFrame} from './wayback_format.js';
+import {encodeWayback, encodeWaybackV2, decodeWayback, makeFrame} from './wayback_format.js';
 import {greyFlags} from './wayback_grey.js';
+import {greyLayer} from './wayback_grey_layer.js';
 import {embedWayback, readTrailer} from './wayback_embed.js';
 import {readNativeRoute} from './native_route.js';
 
 export const WAYBACK_MAX_BYTES = 1536 * 1024;   // test limit for the way-back bytes of one route file
 const MARGIN_M = 2200;                          // line2k reach (2 km) plus the longest piece
 const API = ['https://overpass.openstreetmap.fr/api/interpreter', 'https://overpass-api.de/api/interpreter', 'https://overpass.private.coffee/api/interpreter'];
+
+// The grey section of a version 2 file, or null: no grey piece, or a cell body over 2 KB (the file then has no section).
+function layerOf(bare) {
+  try { return greyLayer(decodeWayback(bare)); }
+  catch (e) { if (/grey cell over 2048 B/.test(e.message)) return null; throw e; }
+}
+const concat = (a, b) => { const out = new Uint8Array(a.length + b.length); out.set(a, 0); out.set(b, a.length); return out; };
 
 const sha256 = async bytes => new Uint8Array(await crypto.subtle.digest('SHA-256', bytes));
 const hex = bytes => [...bytes].map(b => b.toString(16).padStart(2, '0')).join('');
@@ -33,13 +41,16 @@ export function waybackBbox(route) {
 
 // Pure step. Returns {bytes, reach, model}, or null when the bytes exceed maxBytes in both reaches.
 // format 2 (cc26): version 2 file with the grey flags of routeBytes (the route file with its map). A node that does not
-// fit gives no version 2 file at 2 km; the 1.5 km reach is tried.
-export function waybackFromSnapshot(snapshot, route, routeId, {reach = 'line2k', exceptions = false, maxBytes = 0, format = 1, routeBytes = null} = {}) {
+// fit gives no version 2 file at 2 km; the 1.5 km reach is tried. layer: true appends the grey layer section (E15).
+export function waybackFromSnapshot(snapshot, route, routeId, {reach = 'line2k', exceptions = false, maxBytes = 0, format = 1, routeBytes = null, layer = false} = {}) {
   if (format === 2 && !routeBytes) throw new Error('format 2 needs routeBytes: the grey flags come from the map (D0 item 4)');
   const graph = buildTransitionGraph(snapshot, {wayPolicy});
-  const encode = model => format === 2
-    ? encodeWaybackV2(model, routeId, greyFlags(routeBytes, makeFrame(model.nodes.map(n => n.point))))
-    : encodeWayback(model, routeId);
+  const encode = model => {
+    if (format !== 2) return encodeWayback(model, routeId);
+    const bare = encodeWaybackV2(model, routeId, greyFlags(routeBytes, makeFrame(model.nodes.map(n => n.point))));
+    const section = layer ? layerOf(bare) : null;
+    return section ? concat(bare, section) : bare;
+  };
   const make = rch => {
     const model = buildWaybackModel(graph, route, {reach: rch, exceptions});
     try { return {bytes: encode(model), reach: rch, model}; }
@@ -85,10 +96,11 @@ export async function checkWayback(file) {
 }
 
 // Route file bytes -> route file bytes with way-back data. Throws when no data can be made; the caller keeps the plain file.
-export async function addWayback(routeBytes, {fetchImpl = fetch, maxBytes = WAYBACK_MAX_BYTES, format = 1} = {}) {
+// layer (default true): version 2 writes the grey layer section after the extras. layer: false writes no section.
+export async function addWayback(routeBytes, {fetchImpl = fetch, maxBytes = WAYBACK_MAX_BYTES, format = 1, layer = true} = {}) {
   const route = readNativeRoute(routeBytes);
   const snapshot = await loadWaybackSnapshot(route, fetchImpl);
-  const made = waybackFromSnapshot(snapshot, route, await routeIdentity(routeBytes), {maxBytes, format, routeBytes});
+  const made = waybackFromSnapshot(snapshot, route, await routeIdentity(routeBytes), {maxBytes, format, routeBytes, layer});
   if (!made) throw new Error('way-back data exceeds ' + maxBytes + ' bytes');
   if (!made.model.stats.stored) throw new Error('no stored street');
   return {file: embedWayback(routeBytes, made.bytes), bytes: made.bytes.length, reach: made.reach, stats: made.model.stats};

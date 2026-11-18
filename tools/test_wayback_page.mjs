@@ -96,6 +96,28 @@ test('format 2 writes way-back version 2 and format 1 keeps version 1 (cc26, D1)
   assert.equal(decodeWayback(waybackFromSnapshot(snapshot, route, id).bytes).header.version, 1);
 });
 
+test('format 2 with layer: true appends the grey section after the extras; layer: false writes none (D3a)', async () => {
+  const snapshot = await loadWaybackSnapshot(route, fetchOf([{body: response()}]));
+  const id = new Uint8Array(16), none = new Uint8Array(0);   // no map: every piece is grey
+  const bare = waybackFromSnapshot(snapshot, route, id, {format: 2, routeBytes: none}).bytes;
+  const withLayer = waybackFromSnapshot(snapshot, route, id, {format: 2, routeBytes: none, layer: true}).bytes;
+  assert.equal(decodeWayback(bare).layer, null);
+  assert(decodeWayback(withLayer).layer, 'the section is there');
+  assert.deepEqual([...withLayer.subarray(0, bare.length)], [...bare]);
+  assert.deepEqual(decodeWayback(withLayer).nodes, decodeWayback(bare).nodes);
+});
+
+test('checkWayback keeps the way-back data when the layer section is present, and drops it after a byte change (D3a)', async () => {
+  const snapshot = await loadWaybackSnapshot(route, fetchOf([{body: response()}]));
+  const plain = Uint8Array.from({length: 8192}, (_, i) => (i * 7) & 255);
+  const made = waybackFromSnapshot(snapshot, route, await routeIdentity(plain), {format: 2, routeBytes: new Uint8Array(0), layer: true});
+  const out = embedWayback(plain, made.bytes);
+  assert.equal((await checkWayback(out)).status, 'ok');
+  const changed = out.slice();
+  changed[100] ^= 1;   // a byte of the route bytes in front of the trailer
+  assert.equal((await checkWayback(changed)).status, 'dropped');
+});
+
 test('format 2 without routeBytes throws: there is no default grey flag (D0 item 4)', async () => {
   const snapshot = await loadWaybackSnapshot(route, fetchOf([{body: response()}]));
   assert.throws(() => waybackFromSnapshot(snapshot, route, new Uint8Array(16), {format: 2}), /routeBytes/);
