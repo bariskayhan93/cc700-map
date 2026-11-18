@@ -38,7 +38,7 @@ function main() {
   const routeBytes = fs.readFileSync(cfg.route);
   const route = readNativeRoute(routeBytes);
   const routeId = createHash('sha256').update(routeBytes).digest().subarray(0, 16);
-  const made = waybackFromSnapshot(snapshot, route, routeId, args);
+  const made = waybackFromSnapshot(snapshot, route, routeId, {...args, routeBytes});
   if (!made) {
     console.error(`file is above --max-bytes ${args.maxBytes}; no file written`);
     return 3;

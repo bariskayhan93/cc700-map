@@ -8,7 +8,9 @@ const NONE24 = 0xFFFFFF;
 const SENTINEL_KEY = 0xFFFFFFFF;
 const LAT_U_Q16 = 11673;      // Q16 units per 1e-7 degree of latitude (16 units per metre)
 const MAX_PIECE_UNITS = 1700;  // longest tree edge or extra piece, per axis
-const MAX_LEN_DM = 0x3FFF;     // extra piece length field: 14 bits, 0.1 m
+const MAX_LEN_DM = 0x3FFF;     // version 1 extra piece length field: 14 bits, 0.1 m
+const MAX_LEN_DM_V2 = 0x1FFF;  // version 2 extra piece length field: 13 bits (bit 13 is the grey flag)
+const MAX_DIST_M_V2 = 0xFFF;   // version 2 node distance: 12 bits, whole metres
 
 const cellKeyOf = ([X, Y]) => ((Y >> 11) << 16) | (X >> 11);
 
@@ -71,9 +73,7 @@ function layout(model) {
     const [ax, ay] = units[e.a], [bx, by] = units[e.b];
     if (Math.max(Math.abs(bx - ax), Math.abs(by - ay)) > MAX_PIECE_UNITS) throw new Error('extra piece longer than 1700 units');
     const lenDm = Math.round(e.meters * 10);
-    if (!(lenDm >= 0 && lenDm <= MAX_LEN_DM)) throw new Error(`extra piece length ${lenDm} does not fit`);
-    const lenflags = lenDm | (e.toA ? 0x4000 : 0) | (e.toB ? 0x8000 : 0);
-    return {a: na, b: nb, lenflags, key: nKey[na]};
+    return {a: na, b: nb, lenDm, toA: !!e.toA, toB: !!e.toB, key: nKey[na], ua: units[e.a], ub: units[e.b]};
   }).sort((p, q) => (p.key - q.key) || (p.a - q.a) || (p.b - q.b));
 
   // Cells: one record per occupied key, then the sentinel.
@@ -138,31 +138,39 @@ export function encodeWayback(model, routeId) {
     putU24(out, off + 6, nNext[i]); putU24(out, off + 9, dists[i]);
     off += 12;
   }
-  for (const e of extras) { putU24(out, off, e.a); putU24(out, off + 3, e.b); dv.setUint16(off + 6, e.lenflags, true); off += 8; }
+  for (const e of extras) {
+    if (!(e.lenDm >= 0 && e.lenDm <= MAX_LEN_DM)) throw new Error(`extra piece length ${e.lenDm} does not fit`);
+    putU24(out, off, e.a); putU24(out, off + 3, e.b);
+    dv.setUint16(off + 6, e.lenDm | (e.toA ? 0x4000 : 0) | (e.toB ? 0x8000 : 0), true); off += 8;
+  }
   if (hasChunks) { for (const s of chunkStart) { dv.setUint32(off, s, true); off += 4; } }
   for (const r of exc) { putU24(out, off, r.node); putU24(out, off + 3, r.next); dv.setUint16(off + 6, r.dist, true); off += 8; }
   return out;
 }
 
-// Version 2 (cc26, E7): 8-byte node, one little-endian u64. Bits 0-18: x/2, bits 19-37: y/2 (1/16 m units,
-// halved), bits 38-50: next - index as a signed 13-bit delta (0 = no next), bits 51-63: distance in whole metres.
-// No exception lists. A value that does not fit gives an error that names the field.
-export function encodeWaybackV2(model, routeId) {
+// Version 2 (cc26, E7, D1b): 8-byte node, one little-endian u64. Bits 0-18: x/2, bits 19-37: y/2 (1/16 m units,
+// halved), bits 38-50: next - index as a signed 13-bit delta (0 = no next), bits 51-62: distance in whole metres
+// (at most 4,095), bit 63: grey flag of the piece to next. An extra record: lenflags bits 0-12 length in 0.1 m
+// (at most 8,191), bit 13 grey flag, bits 14-15 toA and toB. No exception lists. A value that does not fit gives an
+// error that names the field. flagOf(a, b) gives the flag of a piece from its unit ends (default: every flag 1).
+export function encodeWaybackV2(model, routeId, flagOf = () => 1) {
   if (!(routeId instanceof Uint8Array) || routeId.length !== 16) throw new Error('route id must be 16 bytes');
-  const {N, frame, nUnits, nKey, dists, nNext, extras, cells} = layout(model);
+  const {N, frame, nUnits, dists, nNext, extras, cells} = layout(model);
   const nodeBytes = new Uint8Array(8 * N), nv = new DataView(nodeBytes.buffer);
   for (let i = 0; i < N; i++) {
     const [X, Y] = nUnits[i];
     if (X >= 0x100000) throw new Error('node does not fit version 2: x');
     if (Y >= 0x100000) throw new Error('node does not fit version 2: y');
-    let delta = 0;
+    let delta = 0, grey = 0n;
     if (nNext[i] !== NONE24) {
       delta = nNext[i] - i;
       if (delta === 0 || delta < -4096 || delta > 4095) throw new Error('node does not fit version 2: next');
+      grey = flagOf(nUnits[i], nUnits[nNext[i]]) ? 1n : 0n;
     }
     const metres = Math.round(dists[i] / 10);
-    if (metres > 8191) throw new Error('node does not fit version 2: dist');
-    const v = BigInt(X >>> 1) | (BigInt(Y >>> 1) << 19n) | (BigInt(delta & 0x1fff) << 38n) | (BigInt(metres) << 51n);
+    if (!(metres >= 0 && metres <= MAX_DIST_M_V2)) throw new Error('node does not fit version 2: dist');
+    const v = BigInt(X >>> 1) | (BigInt(Y >>> 1) << 19n) | (BigInt(delta & 0x1fff) << 38n)
+      | (BigInt(metres) << 51n) | (grey << 63n);
     nv.setBigUint64(8 * i, v, true);
   }
   const cellCount = cells.length - 1;
@@ -185,7 +193,12 @@ export function encodeWaybackV2(model, routeId) {
   for (const c of cells) { dv.setUint32(off, c.key, true); dv.setUint32(off + 4, c.firstNode, true); dv.setUint32(off + 8, c.firstExtra, true); off += 12; }
   out.set(nodeBytes, off);
   off += 8 * N;
-  for (const e of extras) { putU24(out, off, e.a); putU24(out, off + 3, e.b); dv.setUint16(off + 6, e.lenflags, true); off += 8; }
+  for (const e of extras) {
+    if (!(e.lenDm >= 0 && e.lenDm <= MAX_LEN_DM_V2)) throw new Error('extra piece does not fit version 2: length');
+    const grey = flagOf(e.ua, e.ub) ? 0x2000 : 0;
+    putU24(out, off, e.a); putU24(out, off + 3, e.b);
+    dv.setUint16(off + 6, e.lenDm | grey | (e.toA ? 0x4000 : 0) | (e.toB ? 0x8000 : 0), true); off += 8;
+  }
   return out;
 }
 
@@ -231,7 +244,8 @@ export function decodeWayback(bytes) {
       const v = dv.getBigUint64(nodesOff + i * 8, true), d = Number((v >> 38n) & 0x1fffn);
       const next = d === 0 ? -1 : i + (d >= 4096 ? d - 8192 : d);
       if (d !== 0 && (next < 0 || next >= nodeCount)) throw new Error('node next index out of range');
-      nodes.push({x: 2 * Number(v & 0x7ffffn), y: 2 * Number((v >> 19n) & 0x7ffffn), next, distM: Number(v >> 51n)});
+      nodes.push({x: 2 * Number(v & 0x7ffffn), y: 2 * Number((v >> 19n) & 0x7ffffn), next,
+        distM: Number((v >> 51n) & 0xfffn), grey: Number(v >> 63n)});
       continue;
     }
     const o = nodesOff + i * 12, nx = getU24(b, o + 6);
@@ -243,7 +257,8 @@ export function decodeWayback(bytes) {
     const o = extrasOff + i * 8, lf = dv.getUint16(o + 6, true);
     const a = getU24(b, o), bb = getU24(b, o + 3);
     if (a >= nodeCount || bb >= nodeCount) throw new Error('extra piece node out of range');
-    extras.push({a, b: bb, lenDm: lf & MAX_LEN_DM, toA: !!(lf & 0x4000), toB: !!(lf & 0x8000)});
+    if (version === 2) extras.push({a, b: bb, lenDm: lf & MAX_LEN_DM_V2, grey: (lf >> 13) & 1, toA: !!(lf & 0x4000), toB: !!(lf & 0x8000)});
+    else extras.push({a, b: bb, lenDm: lf & MAX_LEN_DM, toA: !!(lf & 0x4000), toB: !!(lf & 0x8000)});
   }
   const chunks = [];
   for (let c = 0; c < chunkCount; c++) {
