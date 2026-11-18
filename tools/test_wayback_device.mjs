@@ -9,7 +9,7 @@ import {fileURLToPath} from 'node:url';
 import {hav} from '../js/geo.js';
 import {gridFixture} from './wayback_fixture.mjs';
 import {buildWaybackModel} from './wayback_tree.mjs';
-import {encodeWayback} from './wayback_format.mjs';
+import {encodeWaybackV2} from './wayback_format.mjs';
 import {embedWayback, readTrailer} from './wayback_embed.mjs';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
@@ -23,7 +23,7 @@ execFileSync('cc', ['-std=gnu11', '-O1', '-g', '-Wall', '-Wextra', '-Werror', '-
 
 const {graph, route, p} = gridFixture();
 const id = Uint8Array.from({length: 16}, (_, i) => i + 1);
-const wayback = encodeWayback(buildWaybackModel(graph, route, {reach: 'line2k'}), id);
+const wayback = encodeWaybackV2(buildWaybackModel(graph, route, {reach: 'line2k'}), id);   // version 2 only (R-GREEN)
 const routeBytes = new Uint8Array(8192).fill(7);
 const withData = path.join(work, 'route-wb.bin'), plain = path.join(work, 'route.bin');
 fs.writeFileSync(withData, embedWayback(routeBytes, wayback));

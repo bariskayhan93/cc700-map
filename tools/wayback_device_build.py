@@ -7,8 +7,15 @@ import importlib.util
 import json
 from pathlib import Path
 import subprocess
+import tempfile
 
 ROOT=Path(__file__).resolve().parents[1]
+# The version 1 core of the installed cc23wb image. The new core is built only for cc26 (R-SIZE); this builder
+# reads wayback.c and wayback.h from this commit into a temp dir and keeps no second copy in the tree.
+CORE_COMMIT='6091401'
+CORE_FILES=('wayback.c','wayback.h')
+# The adapter, the trampoline and the linker script are the tree files (unchanged since CORE_COMMIT).
+TREE_FILES=('wb_device.c','wb_tramp.S','wb_device.ld')
 BASE_SHA='6146fb25de504e4aa9684fe519a7ce46a6ce332ae109c698259dc8f00d836b43'
 FIXED_BASE_SHA='d225e17970940be7b153c524aebcfc60f4ca7ae8cd74696ef2282396e461ce04'  # cc23 + trampoline frame 48
 VERSION=b'CC700_V1.414-cc23wb1'
@@ -90,9 +97,14 @@ def main():
     p.add_argument('--prefix',default=str(Path.home()/'xtensa-esp-elf/bin/xtensa-esp32s3-elf-'))
     a=p.parse_args();base=a.base.read_bytes()
     a.output.mkdir(parents=True,exist_ok=True);src=ROOT/'firmware/wayback';elf=a.output/'wb-device.elf'
-    run(a.prefix+'gcc','-Os','-mlongcalls','-mtext-section-literals','-ffreestanding','-fno-builtin',
-        '-nostdlib','-DWB_NO_FWD','-Wall','-Wextra','-Werror','-fstack-usage','-Wl,-T,'+str(src/'wb_device.ld'),
-        '-Wl,--gc-sections','-Wl,-e,wb_rt','-o',elf,src/'wb_device.c',src/'wayback.c',src/'wb_tramp.S','-lgcc')
+    with tempfile.TemporaryDirectory() as tmp:
+        t=Path(tmp)
+        for n in CORE_FILES:(t/n).write_bytes(subprocess.run(['git','-C',str(ROOT),'show',f'{CORE_COMMIT}:firmware/wayback/{n}'],capture_output=True,check=True).stdout)
+        for n in TREE_FILES:(t/n).write_bytes((src/n).read_bytes())
+        # -DWB_NO_FWD: the cc23wb image was built without forward mode (its code is the 4,284 B measured at CORE_COMMIT).
+        run(a.prefix+'gcc','-Os','-mlongcalls','-mtext-section-literals','-ffreestanding','-fno-builtin',
+            '-nostdlib','-DWB_NO_FWD','-Wall','-Wextra','-Werror','-fstack-usage','-Wl,-T,'+str(t/'wb_device.ld'),
+            '-Wl,--gc-sections','-Wl,-e,wb_rt','-o',elf,t/'wb_device.c',t/'wayback.c',t/'wb_tramp.S','-lgcc')
     if run(a.prefix+'nm','-u',elf).strip():raise ValueError('undefined symbols')
     sections={}
     for line in run(a.prefix+'objdump','-h',elf).splitlines():

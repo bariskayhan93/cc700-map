@@ -1,18 +1,24 @@
 // tools/test_wayback_core.mjs
+import fs from 'node:fs';
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {hav} from '../js/geo.js';
-import {gridFixture, loopFixture} from './wayback_fixture.mjs';
+import {gridFixture} from './wayback_fixture.mjs';
 import {buildWaybackModel} from './wayback_tree.mjs';
-import {encodeWayback} from './wayback_format.mjs';
-import {runCore} from './wayback_core_host.mjs';
+import {encodeWayback, encodeWaybackV2, decodeWayback} from './wayback_format.mjs';
+import {runCore, runSelfTest} from './wayback_core_host.mjs';
+import {compareLine} from './wayback_precision.mjs';
 const {graph, route, p} = gridFixture();
 const id = Uint8Array.from({length: 16}, (_, i) => i + 1);
-const file = encodeWayback(buildWaybackModel(graph, route, {reach: 'line2k'}), id);
+const model = buildWaybackModel(graph, route, {reach: 'line2k'});
+const file = encodeWaybackV2(model, id), v1file = encodeWayback(model, id);
 const e7 = (x, y) => { const q = p(x, y); return {latE7: Math.round(q[0] * 1e7), lonE7: Math.round(q[1] * 1e7)}; };
 const ll = pt => [pt[0] / 1e7, pt[1] / 1e7];
 const isAt = (pt, x, y, tol = 1.5) => assert(hav(ll(pt), p(x, y)) <= tol, `${ll(pt)} is not at ${x},${y}`);
 const ON = 3; // WB_GPS_VALID | WB_OFF_ROUTE
+// Recorded output of the version 1 core (commit 6091401) on the same grid: tools/wayback_core_fixture.json.
+const fixture = JSON.parse(fs.readFileSync(new URL('./wayback_core_fixture.json', import.meta.url), 'utf8'));
+const FIXTURE_SEEDED_END = 215;   // lines 0-14: core tests; 15-214: 200 seeded positions; 215-1714: replay
 
 test('a rider near a street gets the line along the stored next values to the route', () => {
   const [r] = runCore(file, id, [{...e7(5, 120), flags: ON}]);
@@ -71,51 +77,83 @@ test('200 seeded positions: each line starts near the rider, ends on the route, 
   });
   assert(lines >= 10);
 });
-const L = loopFixture();
-const loopFile = encodeWayback(buildWaybackModel(L.graph, L.route, {reach: 'ride1500', exceptions: true}), id);
-const le7 = (x, y) => { const q = L.p(x, y); return {latE7: Math.round(q[0] * 1e7), lonE7: Math.round(q[1] * 1e7)}; };
-const yOf = pt => (pt[0] / 1e7 - 51) * 111320;
-test('a trusted exit in km 4 leads forward to the second pass of the route', () => {
-  const [r] = runCore(loopFile, id, [{...le7(4, 150), flags: 7, exitCm: 450000}]);
-  assert.equal(r.state, 1); assert.equal(r.forward, 1);
-  assert(Math.abs(yOf(r.points.at(-1)) - 420) <= 1.5); assert(Math.abs(r.distanceDm - 2700) <= 30);
-});
-test('an exit that is not trusted uses tree A', () => {
-  const [r] = runCore(loopFile, id, [{...le7(4, 150), flags: 3, exitCm: 450000}]);
-  assert.equal(r.forward, 0); assert(Math.abs(yOf(r.points.at(-1))) <= 1.5); assert(Math.abs(r.distanceDm - 1500) <= 30);
-});
-test('a trusted exit in km 0 leads to the first pass, also from a node that is nearer to the second pass', () => {
-  const [r, q] = runCore(loopFile, id, [{...le7(4, 150), flags: 7, exitCm: 10000}, {...le7(4, 270), flags: 7, exitCm: 10000}]);
-  assert.equal(r.forward, 1); assert(Math.abs(yOf(r.points.at(-1))) <= 1.5); assert(Math.abs(r.distanceDm - 1500) <= 30);
-  assert(Math.abs(yOf(q.points.at(-1))) <= 1.5); assert(Math.abs(q.distanceDm - 2700) <= 30);
-});
-test('an exit km that is not in the file uses tree A', () => {
-  const [r] = runCore(loopFile, id, [{...le7(4, 150), flags: 7, exitCm: 900000}]);
-  assert.equal(r.state, 1); assert.equal(r.forward, 0); assert(Math.abs(yOf(r.points.at(-1))) <= 1.5);
-});
 test('a file with no exception lists uses tree A with a trusted exit', () => {
   const [r] = runCore(file, id, [{...e7(5, 120), flags: 7, exitCm: 10000}]);
   assert.equal(r.forward, 0); assert.equal(r.points.length, 4);
 });
-test('changed is 1 when the exit km changes on the same piece', () => {
-  const r = runCore(loopFile, id, [{...le7(4, 150), flags: 7, exitCm: 10000}, {...le7(4, 150), flags: 7, exitCm: 450000}]);
-  assert.deepEqual(r.map(x => x.changed), [1, 1]);
+test('the core on version 2 matches the version 1 fixture within the precision rules (R-PREC)', () => {
+  const lines = fixture.lines.slice(0, FIXTURE_SEEDED_END);
+  const out = runCore(file, id, lines);
+  const dec = decodeWayback(file);
+  assert.equal(out.length, FIXTURE_SEEDED_END);
+  let band = 0;
+  out.forEach((r, i) => { if (compareLine(lines[i].name, dec, r, fixture.v1[i], lines[i].latE7, lines[i].lonE7, graph) === 'band') band++; });
+  console.log(`fixture lines 0-214: states in the 14.5 m to 15.5 m band: ${band}`);
 });
-test('a rider beside the first pass with a forward exit in km 4 ends on the second pass', () => {
-  const [r] = runCore(loopFile, id, [{...le7(130, 3), flags: 7, exitCm: 450000}]);
-  assert.equal(r.state, 1); assert.equal(r.forward, 1);
-  assert(Math.abs(yOf(r.points.at(-1)) - 420) <= 1.5); assert(Math.abs(r.distanceDm - 5490) <= 30);
+test('the core output is the same as before the shared scan: state, reason, distance, piece and points', () => {
+  const out = runCore(file, id, fixture.lines);
+  assert.equal(out.length, fixture.v2pre.length);
+  out.forEach((r, i) => {
+    const b = fixture.v2pre[i];
+    assert.deepEqual([r.state, r.reason, r.distanceDm, r.changed, r.piece, r.points], [b.state, b.reason, b.distanceDm, b.changed, b.piece, b.points], `line ${i} ${fixture.lines[i].name}`);
+  });
+});
+test('forward is 0 for every rider point of the fixture (version 2 has no forward mode)', () => {
+  const out = runCore(file, id, fixture.lines);
+  assert.equal(out.filter(r => r.forward !== 0).length, 0);
+});
+test('a file with the flags bit 0 set is refused: version 2 has no exception lists', () => {
+  const bad = file.slice(); new DataView(bad.buffer).setUint16(6, 1, true);
+  assert.equal(runCore(bad, id, [{...e7(5, 120), flags: ON}])[0].mounted, 0);
+});
+test('a file with a chunk count that is not 0 is refused', () => {
+  const bad = file.slice(); new DataView(bad.buffer).setUint32(60, 1, true);
+  assert.equal(runCore(bad, id, [{...e7(5, 120), flags: ON}])[0].mounted, 0);
 });
 const u32at = (b, off, v) => new DataView(b.buffer, b.byteOffset, b.byteLength).setUint32(off, v, true);
 const u32of = (b, off) => new DataView(b.buffer, b.byteOffset, b.byteLength).getUint32(off, true);
-test('mount refuses a chunk table whose middle entry is larger than the exception count', () => {
-  const bad = loopFile.slice();
-  const off = 64 + (u32of(bad, 52) + 1) * 12 + u32of(bad, 48) * 12 + u32of(bad, 56) * 8;   // chunk table
-  u32at(bad, off + 2 * 4, 0xFFFFFF);
-  assert.equal(runCore(bad, id, [{...le7(4, 150), flags: 7, exitCm: 450000}])[0].mounted, 0);
-});
 test('mount refuses a sentinel cell record whose first extra index is wrong', () => {
   const bad = file.slice();
   u32at(bad, 64 + u32of(bad, 52) * 12 + 8, 0x7FFFFF);
   assert.equal(runCore(bad, id, [{...e7(5, 120), flags: ON}])[0].mounted, 0);
+});
+
+// cc26 (D2): version 2 mounts; version 1 does not; the piece id and the piece entry (wb_tick_piece).
+test('a version 1 file is refused: the core mounts version 2 only', () => {
+  const [r] = runCore(v1file, id, [{...e7(5, 120), flags: ON}]);
+  assert.equal(r.mounted, 0);
+});
+test('a next value that names no node gives WB_READ (reason 5)', () => {
+  const bad = Uint8Array.from(file), dv = new DataView(bad.buffer), h = decodeWayback(file).header;
+  const nodes = 64 + 12 * (h.cellCount + 1);
+  for (let i = 0; i < h.nodeCount; i++) {
+    const o = nodes + 8 * i, v = dv.getBigUint64(o, true);
+    if (((v >> 38n) & 0x1fffn) !== 0n) dv.setBigUint64(o, (v & ~(0x1fffn << 38n)) | (100n << 38n), true);
+  }
+  const [r] = runCore(bad, id, [{...e7(5, 120), flags: ON}]);
+  assert.equal(r.reason, 5);
+  assert.equal(r.state, 0);
+});
+test('wb_tick_piece on the piece of a tick gives the same state, reason, distance and points', () => {
+  const [r] = runCore(file, id, [{...e7(5, 120), flags: ON}]);
+  assert(r.piece > 0 && r.piece < 0x1000000, 'the piece id is bits 0-23 of a stored piece');
+  assert.equal(r.pieceAt.state, r.state);
+  assert.equal(r.pieceAt.reason, r.reason);
+  assert.equal(r.pieceAt.distanceDm, r.distanceDm);
+  assert.deepEqual(r.pieceAt.points, r.points);
+});
+test('a piece farther than 15 m from the rider gives WB_NO_STREET (reason 4)', () => {
+  const [a] = runCore(file, id, [{...e7(5, 120), flags: ON}]);
+  const [b] = runCore(file, id, [{...e7(300, 400), flags: ON, pieceId: a.piece}]);
+  assert.equal(b.pieceAt.reason, 4);
+  assert.equal(b.pieceAt.state, 0);
+});
+test('the self test: wb_out equals the old near test for 100,000 random pairs and the edges; scan order holds', () => {
+  const t = runSelfTest(file, id);
+  assert.equal(t.wbOutMismatch, 0);
+  assert(t.wbOutCases >= 100000);
+  assert.equal(t.scanOrderErrors, 0);
+  assert(t.scanVisited > 0);
+  assert(t.scanCoverCases >= 250, 'the 5 x 6 window was tested at 250 or more rider points that got a line (300 riders tried)');
+  assert.equal(t.scanCoverErrors, 0, 'every piece that wb_tick chooses is visited by the 5 x 6 window');
 });
