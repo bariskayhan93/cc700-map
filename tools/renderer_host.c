@@ -5,6 +5,9 @@
 #include <stdint.h>
 #include <string.h>
 #include "fw.h"
+#ifndef BLK_FLAGS_MAGIC                 /* the v21 fw.h (6bacafc) has no block flags */
+#define BLK_FLAGS_MAGIC 0x7F434346
+#endif
 
 void cc_iter(proj_cb_t);
 void cc_line(const pt_t *, uint32_t, int32_t, int32_t);
@@ -23,9 +26,11 @@ static int accepted_boxes[12][4];
 static uint64_t trace=1469598103934665603ULL, visible_trace=1469598103934665603ULL;
 static unsigned visible_draws, first_frame_callbacks;
 static uint32_t clock_now, clock_step;
+static char map_text[16];   /* cc27: the map time text of cc_iter at (6, 24) */
 uint32_t host_clock(void) {clock_now+=clock_step;return clock_now;}   /* microseconds; the step is set by the case */
 void host_text(int x,int y,const char *t,uint16_t col) {
   (void)col;
+  if(x==6 && y==24) {snprintf(map_text,sizeof map_text,"%s",t);return;}
   unsigned slot=labels%12;
   unsigned nc=0;
   for(const unsigned char *q=(const unsigned char *)t;*q;q++) if((*q&0xc0)!=0x80) nc++;
@@ -35,6 +40,8 @@ void host_text(int x,int y,const char *t,uint16_t col) {
   labels++;
 }
 static void hash(unsigned v) {trace=(trace^v)*1099511628211ULL;}
+/* cc27 cases: entry i has lat = 1000 * (i + 1) semicircles, so the projection knows the entry of each pass. */
+static unsigned entry_mode, seen_ops[64][40], seen_n[64], fills_seen;
 static int32_t shape[] = {-4000,-4000, -4000,4000, 4000,4000, 4000,-4000};
 static int32_t long_shape[120];
 
@@ -94,6 +101,11 @@ static void project(const float *ll, uint32_t n) {
     if(label_mode==6) projected[0]=input_anchors[callbacks];
   }
   if (failed_projection && n>1) projected[1].x=5000;
+  if (entry_mode) {
+    unsigned op=(uint16_t)host_dsc.dash_width&0xff, i=(unsigned)(ll[0]/(180.0f/2147483648.0f)/1000.0f+0.5f)-1;
+    if (op==1) fills_seen++;
+    if (i<64 && seen_n[i]<40) seen_ops[i][seen_n[i]++]=op;
+  }
   hash((uint16_t)host_dsc.dash_width);hash(n);
   for(unsigned j=0;j<2*n;j++){uint32_t bits;memcpy(&bits,ll+j,4);hash(bits);}
   callbacks++;
@@ -138,6 +150,9 @@ int main(int argc, char **argv) {
   else if (!strcmp(which,"offscreen")) n=64;                 /* long paths and streets, mostly off the canvas */
   else if (!strcmp(which,"slow")) {n=1201;frames=2;clock_step=1000;}   /* frame 1: 1 ms for each clock read */
   else if (!strcmp(which,"failed_projection")) {n=1;failed_projection=1;}
+  else if (!strcmp(which,"own") || !strcmp(which,"own_off") || !strcmp(which,"flags_text")) {n=40;entry_mode=1;}
+  else if (!strcmp(which,"level_stop")) {n=60;entry_mode=1;clock_step=150000;}    /* 150 ms for each clock read */
+  else if (!strcmp(which,"fill_stop")) {n=20;entry_mode=1;clock_step=250000;}
   else require(!strcmp(which,"empty") || !strcmp(which,"unloaded") || !strcmp(which,"hole") || !strcmp(which,"hole_reverse"), "unknown case");
   unsigned pixels = host_w * host_h;
   uint16_t *guarded = malloc((pixels+2)*sizeof(uint16_t));
@@ -182,6 +197,18 @@ int main(int argc, char **argv) {
       host_ents[i]=(ent_t){i,cls|(2<<4),(int32_t)(v>>9)%380000,(int32_t)(v>>10)%380000,4,far_pts[i]};
     }
   }
+  if (entry_mode) {                                          /* road classes 5..7 at levels 0..4; fill_stop: 10 fills first */
+    for (unsigned i=0;i<n;i++) {
+      unsigned style=(5+i%3)|(((i/3)%5)<<4);
+      if (!strcmp(which,"fill_stop") && i<10) style=1|(2<<4);
+      host_ents[i]=(ent_t){i,style,(int32_t)(1000*(i+1)),0,4,shape};
+    }
+    unsigned flags=!strcmp(which,"own")?1u:!strcmp(which,"flags_text")?2u:0u;
+    if (flags) {                                             /* the flags entry, last (cc27) */
+      ent_t *e=realloc(host_ents,(n+1)*sizeof(ent_t));require(e!=0,"entry allocation");host_ents=e;
+      host_ents[n]=(ent_t){n,15,BLK_FLAGS_MAGIC,(int32_t)flags,0,0};host_cnt=++n;
+    }
+  }
   if (!strcmp(which,"unloaded")) {host_cnt=4000; free(host_ents); host_ents=0;}
   if(!strncmp(which,"hole",4)) {
     pt_t ring[]={{10,10},{60,10},{60,60},{10,60},{10,10},{20,23},{20,43},{40,43},{40,23},{20,23},{10,10}};
@@ -201,6 +228,18 @@ int main(int argc, char **argv) {
     printf("{\"accepted\":[");for(unsigned i=0;i<labels;i++)printf("%s%u",i?",":"",accepted[i]);
     printf("],\"boxes\":[");for(unsigned i=0;i<labels;i++)printf("%s[%d,%d,%d,%d]",i?",":"",accepted_boxes[i][0],accepted_boxes[i][1],accepted_boxes[i][2],accepted_boxes[i][3]);
     printf("]}\n");free(host_ents);free(guarded);return 0;
+  }
+  if (entry_mode) {
+    int whole=1, maxlv=-1, drawn=0;
+    for (unsigned i=0;i<n && i<64;i++) {
+      int edge=0, core=0; unsigned c=host_ents[i].style&15;
+      for (unsigned k=0;k<seen_n[i];k++) {unsigned op=seen_ops[i][k]; if(op==5||op==7||op==9) edge=1; if(op==6||op==8||op==10) core=1;}
+      if (c>=5 && c<=7) { if (edge!=core) whole=0; if (edge||core) {drawn++; int lv=(host_ents[i].style>>4)&7; if(lv>maxlv) maxlv=lv;} }
+    }
+    unsigned painted=0; for (unsigned i=0;i<pixels;i++) painted += host_buf[i]!=0;
+    printf("{\"whole\":%d,\"max_level\":%d,\"roads_drawn\":%d,\"fills\":%u,\"draws\":%u,\"callbacks\":%u,\"painted\":%u,\"labels\":%u,\"map_text\":\"%s\",\"locks\":%u,\"unlocks\":%u,\"live_bytes\":%u}\n",
+           whole,maxlv,drawn,fills_seen,draws,callbacks,painted,labels,map_text,locks,unlocks,live_bytes);
+    free(host_ents); free(guarded); require(!held && !live_bytes,"leaked renderer state"); return 0;
   }
   unsigned painted=0;
   for (unsigned i=0;i<pixels;i++) painted += host_buf[i]!=0;

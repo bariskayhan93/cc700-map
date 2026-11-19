@@ -1,17 +1,32 @@
-/* Grey layer reader (cc26, D3c). The grey streets of the mounted file come from the CCGL section (E15), one body per
- * 256 m cell. The reader needs the engine only through wb_read_at, wb_grid_get and wb_grey_section (wayback.h). */
+/* Grey layer reader (cc27): section type 2 of the route file, layer version 2 (js/wayback_grey_layer.js has the
+ * layout). Integer code only, no float, no static memory. One heap buffer of GL_BUF bytes for each frame:
+ *   [0, 1052)    header (28 B) and the directory (at most 256 keys), one read in gl_open
+ *   [1052, 1628) the cell records of one row (72 x 8 B), one read for each row
+ *   [1628, 3676) one cell body (at most 2,048 B), one read for each cell
+ *   [3676, 3932) the points of one line (32 x 2 x int32)
+ * Reads of one frame: 1 + rows + cells with a body. */
 #pragma once
 #include <stdint.h>
 #include "wayback.h"
 
-/* Called for each line, nearest cell first. pts: lat, lon E7 pairs. Return 0 to stop. */
-typedef int (*wb_grey_fn)(void *ctx, const int32_t *pts, uint32_t n);
+#define GL_BUF 4096u
+#define GL_CELLS 20u                 /* cells of one screen */
+#define GL_POINTS 32u                /* points of one line */
 
-/* The cell keys ((cy << 16) | cx) of the cells under the screen. The map is heading-up: the screen is 600 m wide,
- * 520 m ahead and 100 m behind, turned to course_deg (clockwise from north). Nearest centre first, at most 20.
- * Returns the count, 0 when the rider is outside the grid. */
-uint32_t wb_grey_cells(const wb_engine *e, int32_t lat_e7, int32_t lon_e7, uint32_t course_deg, uint32_t *cells);
+typedef struct { wb_reader rd; void *ctx; uint32_t at, size, n, body, pix_cap, pt_cap, stride, m; uint8_t *buf; } gl_layer;
 
-/* Draws the lines of the given cells (keys from wb_grey_cells). Returns 1 when done or stopped by fn, 0 on a read
- * error. No layer in the file: returns 1 and calls nothing. */
-int wb_grey_lines(wb_engine *e, const uint32_t *cells, uint32_t ncells, wb_grey_fn fn, void *ctx);
+/* Reads the header and the directory of the layer at [at, at + size) of the reader (one read) into buf (GL_BUF bytes).
+ * 1 = a version 2 layer; 0 = a read error or a bad layer. */
+int gl_open(gl_layer *l, wb_reader rd, void *ctx, uint32_t at, uint32_t size, uint8_t *buf);
+
+/* The cell keys ((cy << 16) | cx) under the heading-up screen of a rider at (x, y) units: 600 m wide, 520 m ahead and
+ * 100 m behind, turned to course_deg (clockwise from north). Nearest cell centre first, at most 20. js/screen_proof.js
+ * greyCells gives the same keys. */
+uint32_t gl_cells(uint32_t x, uint32_t y, uint32_t course_deg, uint32_t cells[GL_CELLS]);
+
+/* Called for each line: n (2..32) points, x and y in way-back units. Return 0 to stop. */
+typedef int (*gl_fn)(void *ctx, const int32_t *xy, uint32_t n);
+
+/* The lines of the cells (gl_cells order: nearest first; lines in body order). First one record read for each row,
+ * then one body read for each cell. 1 = all lines given or fn stopped; 0 = a read error or a bad record or body. */
+int gl_lines(gl_layer *l, const uint32_t *cells, uint32_t n, gl_fn fn, void *ctx);

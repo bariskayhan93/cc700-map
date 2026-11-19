@@ -63,7 +63,7 @@ test('online legacy cells refresh to version 9 using original tags',async()=>{
  let requests=0;const writes=[];
  globalThis.fetch=async()=>{requests++;return {ok:true,json:async()=>({elements:[way({surface:'gravel'})]})}};
  try{
-  const result=await loadOSM([[.02,.02]],null,{get:async k=>k.startsWith('n')?{t:Date.now(),sig:[],stop:[]}:old,put:async(k,v)=>writes.push([k,v])});
+  const result=await loadOSM([[.02,.02]],null,{get:async k=>k.startsWith('n')?{t:Date.now(),v:2,sig:[],stop:[],lm:[]}:old,put:async(k,v)=>writes.push([k,v])});   // node cell of cc27 (v 2)
   assert.equal(requests,1);assert.equal(writes.length,1);assert.equal(writes[0][1].v,9);
   assert.equal(result.lines[0].fl&64,64);assert.equal(hasRouteRough(entries(result.lines)),true);
  }finally{globalThis.fetch=fetch;if(nav)Object.defineProperty(globalThis,'navigator',nav);else delete globalThis.navigator;}
@@ -85,4 +85,23 @@ test('tagged unpaved cycleway retains bicycle infrastructure classification',asy
  const es=entries(lines);
  assert(es.some(e=>(e.style&15)===MAP_CLASS.CYC));
  assert.equal(hasRouteRough(es),true);
+});
+
+test('a node cell without the landmark version is loaded again online and gives the three landmark types (cc27)',async()=>{
+ const nav=Object.getOwnPropertyDescriptor(globalThis,'navigator'),fetch=globalThis.fetch;
+ Object.defineProperty(globalThis,'navigator',{value:{onLine:true},configurable:true});
+ const els=[{type:'node',id:1,lat:.021,lon:.021,tags:{amenity:'drinking_water'}},{type:'way',id:2,center:{lat:.022,lon:.022},tags:{amenity:'place_of_worship',religion:'christian',name:'St. Paul'}},
+  {type:'node',id:3,lat:.023,lon:.023,tags:{shop:'supermarket'}},{type:'node',id:4,lat:.024,lon:.024,tags:{amenity:'place_of_worship',religion:'muslim'}},{type:'node',id:5,lat:.025,lon:.025,tags:{highway:'traffic_signals'}}];
+ let queries=[];const writes=[];
+ globalThis.fetch=async(url,o)=>{queries.push(String(o.body));return {ok:true,json:async()=>({elements:els})}};
+ try{
+  const cellNow={...cell({}),t:Date.now()};
+  const result=await loadOSM([[.02,.02]],null,{get:async k=>k.startsWith('n')?{t:Date.now(),sig:[],stop:[]}:cellNow,put:async(k,v)=>writes.push([k,v])});
+  assert(queries.some(q=>/drinking_water/.test(decodeURIComponent(q))&&/out\+center/.test(q)),'one node query with the landmarks');
+  const node=writes.find(([k])=>k.startsWith('n'))[1];
+  assert.equal(node.v,2);
+  assert.deepEqual(node.lm.map(x=>[x[0],x[3],x[4]]),[['n1','water',''],['w2','church','St. Paul'],['n3','supermarket','']]);
+  assert.equal(result.landmarks.length,3);assert.deepEqual(result.landmarks[1],{q:[.022,.022],type:'church',name:'St. Paul'});
+  assert.equal(result.signals.length,1);
+ }finally{globalThis.fetch=fetch;if(nav)Object.defineProperty(globalThis,'navigator',nav);else delete globalThis.navigator;}
 });

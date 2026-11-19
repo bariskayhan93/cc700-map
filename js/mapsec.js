@@ -326,6 +326,10 @@ function lentry(c, name) {                               // the map font has ASC
   const dv = new DataView(new Uint8Array(b).buffer), v = []; for (let i = 0; i < b.length; i += 4) v.push(dv.getInt32(i, true));
   return [...fu(2, S.LABEL | (2 << 4)), ...fs(3, sc(c[0])), ...fs(4, sc(c[1])), ...fu(5, v.length / 2), ...Array.from({ length: v.length / 2 }, (_, i) => fb(6, [...fs(1, v[2 * i]), ...fs(2, v[2 * i + 1])])).flat()];
 }
+// cc27 block switches (firmware/common/types.h): the last entry of each block, class 15, no points, lat = 0x7F434346 (above
+// 2^30: never a latitude), lon = the flags (F_OWN 1, F_TEXT 2, F_ROUTE 4). cc26 and the stock code skip it.
+export const BLK_FLAGS_MAGIC = 0x7F434346;
+export function flagsEntry(flags) { return [...fu(2, 15), ...fs(3, BLK_FLAGS_MAGIC), ...fs(4, flags | 0), ...fu(5, 0)]; }
 function sentry(style, pts) {
   const [c, ...ps] = pts;
   return [...fu(2, style), ...fs(3, sc(c[0])), ...fs(4, sc(c[1])), ...fu(5, ps.length), ...ps.flatMap(q => fb(6, [...fs(1, sc(q[0])), ...fs(2, sc(q[1]))]))];
@@ -400,7 +404,7 @@ export function buildStyledSection(sections, data, F) {
     displayWlines: prepareDisplayLines((data.wlines || []).map(pts => ({pts})), F), areas: (data.areas || []).map(toM), green: (data.green || []).map(toM), water: (data.water || []).map(toM) };
   const all = sections.flat();
   const routeCor = new Corridor(all, F);
-  D.labelCandidates = data.opt?.names === false ? [] : prepareLabelCandidates(D.lines.map(L => ({...L, cls: lineClass(L)})), F, (...q) => routeCor.near(...q), data.routeNames || new Set());
+  D.labelCandidates = data.opt?.names === false ? [] : prepareLabelCandidates(D.lines.map(L => ({...L, cls: lineClass(L)})), F, (...q) => routeCor.near(...q), data.routeNames || new Set(), data.landmarks || []);
   const win = (i, j) => { const a = sections[i][0][2] - BEHIND * 100, b = sections[j].at(-1)[2] + AHEAD * 100; return all.filter(p => p[2] >= a && p[2] <= b); };
   const rough = [];
   // A5: rough parts of the route (tracks): class 15 with bit 15, the route shape; the patch draws dots over the route
@@ -421,7 +425,9 @@ export function buildStyledSection(sections, data, F) {
     const es = styledEntries(D,cor,data.opt || {},floor,cap);
     const a=sections[i][0][2]-BEHIND*100,b=sections[j].at(-1)[2]+AHEAD*100;
     for (const r of rough) if(a<=r.b && b>=r.a) es.push(r.entry);
-    const entries=canonicalEntries(es),cost=estimateBlock(entries);
+    const entries=canonicalEntries(es);
+    if (Number.isInteger(data.opt?.blockFlags)) entries.push(flagsEntry(data.opt.blockFlags));   // cc27: always the last entry
+    const cost=estimateBlock(entries);
     return {i,j,entries,cost,coverageFloor:floor,contextRadiusCap:cap,omittedProtectedEntries:0,stoppedBy:[]};
   };
   const groups=[];

@@ -1,6 +1,6 @@
 // CCWB file format (version 1 and 2) for the way-back street tree. Little-endian, u24 is three bytes.
-// Version 2 may end with the grey layer section (js/wayback_grey_layer.js, E15): after the extras, found by the length.
-import {readGreyLayer} from './wayback_grey_layer.js';
+// A cc26 version 2 file may end with the grey layer (version 1) after its extras; it is kept as raw bytes (layer).
+// Version 3 (cc27) has no tail: the grey layer is section type 2 of the route file (js/wayback_embed.js).
 // Layout: 64-byte header; cells (cell_count + 1 records, last is the sentinel); nodes; extra
 // pieces; chunk table (only with exception lists); exception records. See the plan, "File format".
 // No graph search here: encode takes a model from wayback_tree.mjs.
@@ -12,7 +12,7 @@ const LAT_U_Q16 = 11673;      // Q16 units per 1e-7 degree of latitude (16 units
 const MAX_PIECE_UNITS = 1700;  // longest tree edge or extra piece, per axis
 const MAX_LEN_DM = 0x3FFF;     // version 1 extra piece length field: 14 bits, 0.1 m
 const MAX_LEN_DM_V2 = 0x1FFF;  // version 2 extra piece length field: 13 bits (bit 13 is the grey flag)
-const MAX_DIST_M_V2 = 0xFFF;   // version 2 node distance: 12 bits, whole metres
+const MAX_DIST_M_V3 = 8190;    // version 3 node distance: 12 bits of 2 m steps (cc27)
 
 const cellKeyOf = ([X, Y]) => ((Y >> 11) << 16) | (X >> 11);
 
@@ -150,36 +150,36 @@ export function encodeWayback(model, routeId) {
   return out;
 }
 
-// Version 2 (cc26, E7, D1b): 8-byte node, one little-endian u64. Bits 0-18: x/2, bits 19-37: y/2 (1/16 m units,
-// halved), bits 38-50: next - index as a signed 13-bit delta (0 = no next), bits 51-62: distance in whole metres
-// (at most 4,095), bit 63: grey flag of the piece to next. An extra record: lenflags bits 0-12 length in 0.1 m
+// Version 3 (cc27; version 2 of cc26, E7, D1b, with 2 m distance steps): 8-byte node, one little-endian u64. Bits 0-18:
+// x/2, bits 19-37: y/2 (1/16 m units, halved), bits 38-50: next - index as a signed 13-bit delta (0 = no next), bits
+// 51-62: distance in 2 m steps (at most 8,190 m), bit 63: grey flag of the piece to next. An extra record: lenflags bits 0-12 length in 0.1 m
 // (at most 8,191), bit 13 grey flag, bits 14-15 toA and toB. No exception lists. A value that does not fit gives an
 // error that names the field. flagOf(a, b) gives the flag of a piece from its unit ends. It is required (D0 item 4).
-export function encodeWaybackV2(model, routeId, flagOf) {
-  if (typeof flagOf !== 'function') throw new Error('encodeWaybackV2 needs flagOf: there is no default grey flag');
+export function encodeWaybackV3(model, routeId, flagOf) {
+  if (typeof flagOf !== 'function') throw new Error('encodeWaybackV3 needs flagOf: there is no default grey flag');
   if (!(routeId instanceof Uint8Array) || routeId.length !== 16) throw new Error('route id must be 16 bytes');
   const {N, frame, nUnits, dists, nNext, extras, cells} = layout(model);
   const nodeBytes = new Uint8Array(8 * N), nv = new DataView(nodeBytes.buffer);
   for (let i = 0; i < N; i++) {
     const [X, Y] = nUnits[i];
-    if (X >= 0x100000) throw new Error('node does not fit version 2: x');
-    if (Y >= 0x100000) throw new Error('node does not fit version 2: y');
+    if (X >= 0x100000) throw new Error('node does not fit version 3: x');
+    if (Y >= 0x100000) throw new Error('node does not fit version 3: y');
     let delta = 0, grey = 0n;
     if (nNext[i] !== NONE24) {
       delta = nNext[i] - i;
-      if (delta === 0 || delta < -4096 || delta > 4095) throw new Error('node does not fit version 2: next');
+      if (delta === 0 || delta < -4096 || delta > 4095) throw new Error('node does not fit version 3: next');
       grey = flagOf(nUnits[i], nUnits[nNext[i]]) ? 1n : 0n;
     }
-    const metres = Math.round(dists[i] / 10);
-    if (!(metres >= 0 && metres <= MAX_DIST_M_V2)) throw new Error('node does not fit version 2: dist');
+    const steps = Math.round(dists[i] / 20);   // dm -> 2 m steps
+    if (!(steps >= 0 && steps <= MAX_DIST_M_V3 / 2)) throw new Error('node does not fit version 3: dist');
     const v = BigInt(X >>> 1) | (BigInt(Y >>> 1) << 19n) | (BigInt(delta & 0x1fff) << 38n)
-      | (BigInt(metres) << 51n) | (grey << 63n);
+      | (BigInt(steps) << 51n) | (grey << 63n);
     nv.setBigUint64(8 * i, v, true);
   }
   const cellCount = cells.length - 1;
   const out = new Uint8Array(HEADER + cells.length * 12 + 8 * N + extras.length * 8), dv = new DataView(out.buffer);
   out.set([0x43, 0x43, 0x57, 0x42], 0);
-  dv.setUint16(4, 2, true);
+  dv.setUint16(4, 3, true);
   dv.setUint16(6, 0, true);                       // no exception lists
   out.set(routeId, 8);
   dv.setInt32(24, frame.lat0E7, true);
@@ -197,7 +197,7 @@ export function encodeWaybackV2(model, routeId, flagOf) {
   out.set(nodeBytes, off);
   off += 8 * N;
   for (const e of extras) {
-    if (!(e.lenDm >= 0 && e.lenDm <= MAX_LEN_DM_V2)) throw new Error('extra piece does not fit version 2: length');
+    if (!(e.lenDm >= 0 && e.lenDm <= MAX_LEN_DM_V2)) throw new Error('extra piece does not fit version 3: length');
     const grey = flagOf(e.ua, e.ub) ? 0x2000 : 0;
     putU24(out, off, e.a); putU24(out, off + 3, e.b);
     dv.setUint16(off + 6, e.lenDm | grey | (e.toA ? 0x4000 : 0) | (e.toB ? 0x8000 : 0), true); off += 8;
@@ -211,7 +211,7 @@ export function decodeWayback(bytes) {
   if (b[0] !== 0x43 || b[1] !== 0x43 || b[2] !== 0x57 || b[3] !== 0x42) throw new Error('bad magic');
   const dv = new DataView(b.buffer, b.byteOffset, b.byteLength);
   const version = dv.getUint16(4, true);
-  if (version !== 1 && version !== 2) throw new Error(`unsupported version ${version}`);
+  if (version !== 1 && version !== 2 && version !== 3) throw new Error(`unsupported version ${version}`);
   const flags = dv.getUint16(6, true);
   const nodeCount = dv.getUint32(48, true), cellCount = dv.getUint32(52, true);
   const extraCount = dv.getUint32(56, true), chunkCount = dv.getUint32(60, true);
@@ -222,7 +222,7 @@ export function decodeWayback(bytes) {
     nodeCount, cellCount, extraCount, chunkCount,
   };
   const cellsOff = HEADER, nodesOff = cellsOff + (cellCount + 1) * 12;
-  const extrasOff = nodesOff + nodeCount * (version === 2 ? 8 : 12), chunksOff = extrasOff + extraCount * 8;
+  const extrasOff = nodesOff + nodeCount * (version >= 2 ? 8 : 12), chunksOff = extrasOff + extraCount * 8;
   const chunkBytes = chunkCount ? (chunkCount + 1) * 4 : 0, excOff = chunksOff + chunkBytes;
   if (b.length < excOff) throw new Error('file is shorter than its sections');
   let excCount = 0;
@@ -236,10 +236,9 @@ export function decodeWayback(bytes) {
   const tail = b.length - (excOff + excCount * 8);
   let layer = null;
   if (tail !== 0) {
-    // Only version 2 has a grey layer section, after its extras. readGreyLayer refuses a bad magic or bad lengths.
+    // Only a cc26 version 2 file has a grey tail after its extras (not parsed here).
     if (version !== 2 || excCount) throw new Error('file size does not match the sections');
     layer = b.subarray(excOff);
-    readGreyLayer(layer);
   }
 
   const cells = [];
@@ -248,14 +247,14 @@ export function decodeWayback(bytes) {
     cells.push({key: dv.getUint32(o, true), firstNode: dv.getUint32(o + 4, true), firstExtra: dv.getUint32(o + 8, true)});
   }
   const nodes = [];
-  if (version === 2 && chunkCount) throw new Error('version 2 has no exception lists');
+  if (version >= 2 && chunkCount) throw new Error('version 2 and 3 have no exception lists');
   for (let i = 0; i < nodeCount; i++) {
-    if (version === 2) {
+    if (version >= 2) {
       const v = dv.getBigUint64(nodesOff + i * 8, true), d = Number((v >> 38n) & 0x1fffn);
       const next = d === 0 ? -1 : i + (d >= 4096 ? d - 8192 : d);
       if (d !== 0 && (next < 0 || next >= nodeCount)) throw new Error('node next index out of range');
       nodes.push({x: 2 * Number(v & 0x7ffffn), y: 2 * Number((v >> 19n) & 0x7ffffn), next,
-        distM: Number((v >> 51n) & 0xfffn), grey: Number(v >> 63n)});
+        distM: Number((v >> 51n) & 0xfffn) * (version === 3 ? 2 : 1), grey: Number(v >> 63n)});
       continue;
     }
     const o = nodesOff + i * 12, nx = getU24(b, o + 6);
@@ -267,7 +266,7 @@ export function decodeWayback(bytes) {
     const o = extrasOff + i * 8, lf = dv.getUint16(o + 6, true);
     const a = getU24(b, o), bb = getU24(b, o + 3);
     if (a >= nodeCount || bb >= nodeCount) throw new Error('extra piece node out of range');
-    if (version === 2) extras.push({a, b: bb, lenDm: lf & MAX_LEN_DM_V2, grey: (lf >> 13) & 1, toA: !!(lf & 0x4000), toB: !!(lf & 0x8000)});
+    if (version >= 2) extras.push({a, b: bb, lenDm: lf & MAX_LEN_DM_V2, grey: (lf >> 13) & 1, toA: !!(lf & 0x4000), toB: !!(lf & 0x8000)});
     else extras.push({a, b: bb, lenDm: lf & MAX_LEN_DM, toA: !!(lf & 0x4000), toB: !!(lf & 0x8000)});
   }
   const chunks = [];
@@ -279,5 +278,5 @@ export function decodeWayback(bytes) {
     }
     chunks.push(list);
   }
-  return {header, cells, nodes, extras, chunks, layer};
+  return {header, cells, nodes, extras, chunks, ...(layer ? {layer} : {})};
 }

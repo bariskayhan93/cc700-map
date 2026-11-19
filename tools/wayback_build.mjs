@@ -1,7 +1,7 @@
 #!/usr/bin/env node
 // Builds one way-back file from private ride inputs and prints one JSON size report.
-// Usage: node tools/wayback_build.mjs <config.json> <out.ccwb> [--reach line2k|ride1500] [--exceptions] [--max-bytes N] [--format 1|2]
-// Host only. The file and the report stay in .local/ (git ignores it). Exit 3: file too large.
+// Usage: node tools/wayback_build.mjs <config.json> <out.ccwb> [--reach line1k|line2k|line3k|ride1500] [--exceptions] [--max-bytes N] [--format 1|2] [--layer]
+// --layer (format 2): also the fitted grey section, written to <out.ccwb>.grey (section type 2). Host only. The file and the report stay in .local/ (git ignores it). Exit 3: file too large.
 import fs from 'node:fs';
 import path from 'node:path';
 import {createHash} from 'node:crypto';
@@ -10,6 +10,7 @@ import {readNativeRoute} from './recovery_planner.mjs';
 import {forwardChainsOpen} from './wayback_tree.mjs';
 import {decodeWayback} from './wayback_format.mjs';
 import {waybackFromSnapshot} from '../js/wayback.js';
+import {REACH} from '../js/wayback_tree.js';
 
 const MB = 1048576, FREE_MB = 5.58;
 
@@ -20,16 +21,17 @@ function parseArgs(argv) {
     else if (argv[i] === '--exceptions') out.exceptions = true;
     else if (argv[i] === '--max-bytes') out.maxBytes = Number(argv[++i]);
     else if (argv[i] === '--format') out.format = Number(argv[++i]);
+    else if (argv[i] === '--layer') out.layer = true;
     else throw new Error(`unknown argument ${argv[i]}`);
   }
-  if (out.reach !== 'line2k' && out.reach !== 'ride1500') throw new Error(`unknown reach ${out.reach}`);
+  if (!REACH[out.reach] && out.reach !== 'ride1500') throw new Error(`unknown reach ${out.reach}`);
   return out;
 }
 
 function main() {
   const [configPath, outPath, ...rest] = process.argv.slice(2);
   if (!configPath || !outPath) {
-    console.error('usage: node tools/wayback_build.mjs <config.json> <out.ccwb> [--reach line2k|ride1500] [--exceptions] [--max-bytes N] [--format 1|2]');
+    console.error('usage: node tools/wayback_build.mjs <config.json> <out.ccwb> [--reach line1k|line2k|line3k|ride1500] [--exceptions] [--max-bytes N] [--format 1|2] [--layer]');
     return 2;
   }
   const args = parseArgs(rest);
@@ -46,6 +48,7 @@ function main() {
   const {bytes, reach, model} = made;
   fs.mkdirSync(path.dirname(outPath), {recursive: true});
   fs.writeFileSync(outPath, bytes);
+  if (made.grey) fs.writeFileSync(outPath + '.grey', made.grey);
 
   const d = decodeWayback(bytes);
   const excCount = d.chunks.reduce((s, c) => s + c.length, 0);
@@ -70,6 +73,7 @@ function main() {
     freeMb: FREE_MB,
     stats: model.stats,
     forwardChains: args.exceptions ? forwardChainsOpen(model) : null,
+    grey: made.grey ? {bytes: made.grey.length, ...made.greyReport} : made.greyReport,
   };
   console.log(JSON.stringify(report, null, 2));
   return 0;

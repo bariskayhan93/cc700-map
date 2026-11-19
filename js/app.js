@@ -5,7 +5,8 @@ import { readFile, draw } from './preview.js';
 import { CC700 } from './ble.js';
 import { previewGuidance } from './preview_guidance.js';
 import {auditMapSection,budgetFailures,transitionPeak,TRANSITION_BUDGET} from './map_budget.js';
-import { addWayback, checkWayback } from './wayback.js';
+import { checkWayback } from './wayback.js';
+import { cc27Flags, cc27Sections, gpxHasElevation } from './cc27_file.js';
 const $ = id => document.getElementById(id);
 function say(id, text) {
   const node = $(id);
@@ -34,10 +35,11 @@ function updateFirmware() {
   $('fwOriginal').hidden = patched;
   $('fw').setAttribute('aria-describedby', patched ? 'fwWarning' : 'fwOriginal');
 }
-// Default: cc26 (patch25) with way-back. New keys (18 Nov), so a choice saved under the old defaults does not stay.
+// Default: cc27 (patch27) with way-back, grey streets and elevation. cc26 (patch25) stays for a unit on cc26: the map
+// only, its way-back formats are gone. New keys (18 Nov), so a choice saved under the old defaults does not stay.
 try {
   const savedFw = localStorage.getItem('cc700-fw2');
-  if (savedFw === 'orig' || savedFw === 'patch' || savedFw === 'patch25') $('fw').value = savedFw;
+  if (savedFw === 'orig' || savedFw === 'patch' || savedFw === 'patch25' || savedFw === 'patch27') $('fw').value = savedFw;
 } catch {}
 updateFirmware();
 $('fw').onchange = () => {
@@ -53,10 +55,18 @@ $('gpx').onchange = () => {
   requestBuild();
 };
 $('speed').onchange = requestBuild;
-$('wayback').checked = true;   // default on
-try { if (localStorage.getItem('cc700-wb2') === '0') $('wayback').checked = false; } catch {}
-$('wayback').onchange = () => {
-  try { localStorage.setItem('cc700-wb2', $('wayback').checked ? '1' : '0'); } catch {}
+// cc27 switches, each saved: way-back and grey (wayback), own lines (F_OWN), test text (F_TEXT), elevation (section, F_ROUTE).
+for (const [k, key] of [['wayback', 'cc700-wb2'], ['ownLines', 'cc700-own'], ['testText', 'cc700-text'], ['elevation', 'cc700-elev']]) {
+  $(k).checked = true;   // default on
+  try { if (localStorage.getItem(key) === '0') $(k).checked = false; } catch {}
+  $(k).onchange = () => {
+    try { localStorage.setItem(key, $(k).checked ? '1' : '0'); } catch {}
+    requestBuild();
+  };
+}
+try { const r = localStorage.getItem('cc700-reach'); if (r === 'line1k' || r === 'line2k' || r === 'line3k') $('waybackReach').value = r; } catch {}
+$('waybackReach').onchange = () => {
+  try { localStorage.setItem('cc700-reach', $('waybackReach').value); } catch {}
   requestBuild();
 };
 for (const k of LAYERS) {
@@ -82,14 +92,15 @@ async function build() {
   if (!gpxFile) return;
   building = true;
   const t0 = performance.now();
-  const file = gpxFile, fwChoice = $('fw').value, styled = fwChoice !== 'orig', codec = fwChoice === 'patch25' ? 'd' : undefined;
+  const file = gpxFile, fwChoice = $('fw').value, styled = fwChoice !== 'orig', codec = fwChoice === 'patch25' || fwChoice === 'patch27' ? 'd' : undefined;
+  const cc27 = fwChoice === 'patch27', sw = { ownLines: $('ownLines').checked, testText: $('testText').checked, elevation: $('elevation').checked };
   const speedKmh = Math.max(8, Math.min(45, +$('speed').value || 18));
   const layers = Object.fromEntries(LAYERS.map(k => [k, $(k).checked]));
   try {
     const gpx = parseGPX(await file.text());
     if (needsBuild) return;
     if (gpx.pts.length < 2) throw new Error('GPX ohne Trackpunkte');
-    const { lines, areas, water, rails, green, trams, wlines, signals, stops, coverage, navigationLines } =
+    const { lines, areas, water, rails, green, trams, wlines, signals, stops, landmarks, coverage, navigationLines } =
       await loadOSM(gpx.pts, (i, n) => { if (!needsBuild) say('sum', `Kartendaten ${i + 1}/${n} …`); }, undefined, {coverageMeters:styled?1000:0});
     if (needsBuild) return;
     const tOsm = performance.now();
@@ -102,24 +113,27 @@ async function build() {
     const r = buildRoute(gpx, lines, {
       speedKmh, id, label: gpx.name, title: gpx.name, nameImage, areas, water, rails, green, wlines, navigationLines,
       trams: layers.trams ? trams : [], signals: layers.signals ? signals : [], stops: layers.stops ? stops : [],
+      landmarks: layers.names ? landmarks || [] : [],                                // cc27: three landmark types, with the names
       noF9: styled,   // patched firmware: field 9 off, as tested on the device
-      map: { styled, ...layers, ...(codec ? { codec } : {}), ...(LIMIT > 1200 ? { cap: LIMIT, capMax: LIMIT } : {}) },
+      map: { styled, ...layers, ...(codec ? { codec } : {}), ...(cc27 ? { blockFlags: cc27Flags(sw, gpxHasElevation(gpx)) } : {}),
+        ...(LIMIT > 1200 ? { cap: LIMIT, capMax: LIMIT } : {}) },
     });
     const tRoute = performance.now();
     const model = readFile(r.file), check = verify(r, model, styled);
     if (check) throw new Error('Prüfung fehlgeschlagen: ' + check);
-    // Way-back data (test): appended after the check, so the route part of the file is the verified one.
+    // cc27 sections (way-back, grey, elevation): appended after the check, so the route part of the file is the verified one.
     // Any failure keeps the plain route file.
     let wayback = '';
-    if (fwChoice === 'patch25' && $('wayback').checked) {   // only cc26 reads way-back version 2
-      say('sum', 'Rückweg-Daten werden geladen …');
+    if (cc27 && ($('wayback').checked || sw.elevation)) {
+      if ($('wayback').checked) say('sum', 'Rückweg-Daten werden geladen …');
       try {
-        const w = await addWayback(r.file, {format: 2});
+        const c = await cc27Sections(r.file, { wayback: $('wayback').checked, elevation: sw.elevation, reach: $('waybackReach').value });
         if (needsBuild) return;
-        if (w.file.length > 4_000_000) throw new Error('Datei mit Rückweg-Daten zu groß');
-        r.file = w.file;
-        wayback = ` · Rückweg-Daten ${(w.bytes / 1024).toFixed(0)} KB (${w.reach === 'line2k' ? '2 km' : '1,5 km'})`;
-        log(JSON.stringify({wayback: {bytes: w.bytes, reach: w.reach, stats: w.stats}}));
+        r.file = c.file;
+        const km = c.report.reach ? (/(\d)k$/.exec(c.report.reach) || [0, '?'])[1] + ' km' : '';
+        wayback = (c.report.waybackBytes ? ` · Rückweg-Daten ${((c.report.waybackBytes + c.report.greyBytes) / 1024).toFixed(0)} KB (${km})` : '') +
+          (c.report.waybackError ? ' · ohne Rückweg-Daten: ' + c.report.waybackError : '') + (c.report.elevationBytes ? ' · Höhenprofil' : '');
+        log(JSON.stringify({cc27: c.report}));
       } catch (e) {
         if (needsBuild) return;
         wayback = ' · ohne Rückweg-Daten: ' + e.message;

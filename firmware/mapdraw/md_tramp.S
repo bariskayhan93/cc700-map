@@ -1,4 +1,4 @@
-/* cc26: the literals of tramp_iter (0x42049678) and tramp_line (0x4205bd98) held the v21 cc_iter and cc_line.
+/* cc26: the literals of tramp_iter and tramp_line (fw.h) held the v21 cc_iter and cc_line.
  * They now hold the copies in the second code area (A: no draw call off the canvas, B: frame limit). */
 .section .lit_cc_iter,"a"
 .global cc_iter_literal

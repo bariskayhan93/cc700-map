@@ -42,3 +42,45 @@ test('closed road anchors remain identical when source direction reverses',()=>{
  const ring={name:'Ring',cls:6,pts:[[0,100],[100,100],[100,200],[0,200],[0,100]]};
  assert.deepEqual(prepareLabelCandidates([ring],F,near),prepareLabelCandidates([{...ring,pts:[...ring.pts].reverse()}],F,near));
 });
+
+// ---- cc27 Task 11: name positions away from the route and the junctions, and three landmark types ----
+import {landmarkName} from '../js/map_labels.js';
+const at = (name, pts, cls = 6) => ({name, cls, pts});
+test('a route street name comes before a landmark, and a landmark before a side street', () => {
+  const roads = [at('Side', [[1600, 200], [2000, 200]], 5), at('Route', [[0, 100], [400, 100]], 7), at('Cross', [[1200, -200], [1200, 250]], 7)];
+  const marks = [{q: [600, 150], type: 'church', name: ''}];
+  const c = prepareLabelCandidates(roads, F, near, new Set(['Route']), marks);
+  assert.deepEqual(c.map(x => x.name), ['Route', 'Cross', 'Kirche', 'Side']);   // Cross crosses the route
+  assert.deepEqual(c.find(x => x.name === 'Kirche').q, [600, 150]);
+  assert.equal(c.find(x => x.name === 'Kirche').cls, 12);
+});
+test('a name is 20 m or more from the route line and from each junction', () => {
+  // A street crosses the route (y = 0) at x = 100 and meets another street at (100, 150).
+  const roads = [at('Long', [[100, -200], [100, 0], [100, 150], [100, 300]]), at('Other', [[100, 150], [-200, 150]])];
+  const c = prepareLabelCandidates(roads, F, near);
+  const long = c.find(x => x.name === 'Long'), other = c.find(x => x.name === 'Other');
+  assert(Math.abs(long.q[1]) >= 20 && Math.hypot(long.q[0] - 100, long.q[1] - 150) >= 20, String(long.q));
+  assert.deepEqual(long.q, [100, -110]);                         // the middle of the longest straight stretch, -200..-20
+  assert(Math.hypot(other.q[0] - 100, other.q[1] - 150) >= 20);
+  // A street that is within 20 m of the route over its whole length gets no position.
+  assert.equal(prepareLabelCandidates([at('Close', [[0, 10], [300, 10]])], F, near).length, 0);
+});
+test('a block with 14 candidates keeps 12 names and at most 384 B', () => {
+  const roads = Array.from({length: 14}, (_, i) => at('Strasse Nummer ' + String(i).padStart(8, '0'), [[i * 250, 40], [i * 250, 290]]));
+  const all = prepareLabelCandidates(roads, F, near), block = labelsForBlock(all, () => [0, 0]);
+  assert.equal(all.length, 14);
+  assert.equal(block.length, 12);
+  assert(block.reduce((s, l) => s + Math.ceil((labelName(l.name).length + 1) / 8) * 8, 0) <= 384);
+});
+test('a supermarket without a name gets "Supermarkt"; a 30-byte name is cut on a character boundary', () => {
+  assert.equal(landmarkName('supermarket', ''), 'Supermarkt');
+  assert.equal(landmarkName('water'), 'Trinkwasser');
+  assert.equal(landmarkName('church', undefined), 'Kirche');
+  const long = 'Evangelische Kirche Sankt Jürgen';        // 33 B in UTF-8, the ü near the cut
+  const cut = landmarkName('church', long), bytes = new TextEncoder().encode(cut);
+  assert(bytes.length <= 23 && bytes.length >= 20, cut);
+  assert.equal(new TextDecoder('utf-8', {fatal: true}).decode(bytes), cut);
+  assert.match(cut, /^[\x20-\x7e]+$/);
+  const marks = [{q: [100, 100], type: 'supermarket', name: ''}, {q: [100, 900], type: 'water', name: 'Brunnen'}];
+  assert.deepEqual(prepareLabelCandidates([], F, near, new Set(), marks).map(x => x.name), ['Supermarkt']);   // 900 m: not within 300 m
+});

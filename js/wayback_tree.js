@@ -7,8 +7,8 @@ const SPLIT_M = 100;        // edges longer than this get new nodes
 const SAMPLE_M = 5;         // route samples for the route-node test
 const ROUTE_NEAR_M = 8;     // a graph node this close to a sample is on the route
 const AIR_SAMPLE_M = 25;    // route samples for the straight-line test
-const AIR_LIMIT_M = 2000;   // line2k: straight-line limit
-const RIDE_LIMIT_M = 4000;  // line2k: ride limit
+// Reach (cc27): the straight-line limit and the ride limit (two times the air limit). ride1500: study tools only.
+export const REACH = {line1k: {air: 1000, ride: 2000}, line2k: {air: 2000, ride: 4000}, line3k: {air: 3000, ride: 6000}};
 const GRID_M = 50;          // grid cell for route samples (larger than ROUTE_NEAR_M)
 
 class MinHeap {
@@ -192,9 +192,9 @@ function forwardLists({N, outAdj, inAdj, onRoute, keep, next, newIndex, totalM, 
 }
 
 export function buildWaybackModel(graph, route, {reach = 'line2k', exceptions = false} = {}) {
-  if (reach !== 'line2k' && reach !== 'ride1500') throw new Error(`unknown reach ${reach}`);
+  if (!REACH[reach] && reach !== 'ride1500') throw new Error(`unknown reach ${reach}`);
   if (!Array.isArray(route) || route.length < 2) throw new Error('route needs two points');
-  const R = reach === 'line2k' ? RIDE_LIMIT_M : 1500;
+  const R = REACH[reach] ? REACH[reach].ride : 1500, AIR = REACH[reach] ? REACH[reach].air : REACH.line2k.air;
   const pts = graph.nodes.map(n => n.point.slice());
   const graphNodes = graph.nodes.length;
   const {edges, index} = splitGraph(graph, pts);
@@ -258,7 +258,7 @@ export function buildWaybackModel(graph, route, {reach = 'line2k', exceptions = 
   for (let i = 0; i < N; i++) {
     if (dist[i] === Infinity) continue;
     if (reach === 'ride1500') { if (dist[i] <= R) keep[i] = 1; }
-    else if (dist[i] <= RIDE_LIMIT_M && airOf(i) <= AIR_LIMIT_M) keep[i] = 1;
+    else if (dist[i] <= R && airOf(i) <= AIR) keep[i] = 1;
   }
   const seeds = Array.from(keep);
   const chainDone = new Uint8Array(N);
@@ -297,7 +297,7 @@ export function buildWaybackModel(graph, route, {reach = 'line2k', exceptions = 
   extras.sort((p, q) => p.a - q.a || p.b - q.b);
 
   const stats = {graphNodes, splitNodes: N - graphNodes, routeNodes, stored: kept.length, extras: extras.length, noWay: 0, noWayInside2km: 0};
-  for (let i = 0; i < graphNodes; i++) if (dist[i] === Infinity) { stats.noWay++; if (airOf(i) <= AIR_LIMIT_M) stats.noWayInside2km++; }
+  for (let i = 0; i < graphNodes; i++) if (dist[i] === Infinity) { stats.noWay++; if (airOf(i) <= AIR) stats.noWayInside2km++; }
 
   const model = {nodes, extras, chunks: [], stats};
   if (exceptions) {

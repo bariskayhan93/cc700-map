@@ -186,9 +186,14 @@ async function overpass(r, c) {
   }
   throw err;
 }
-async function overpassNodes(r, c) {                  // traffic signals and tram stops of a cell
+// cc27: node cells of version 2 have the landmarks; an older cell is loaded again when the phone is online.
+const NODES_V = 2;
+const landmarkType = t => t?.amenity === 'drinking_water' ? 'water' : t?.amenity === 'place_of_worship' && t?.religion === 'christian' ? 'church' :
+  t?.shop === 'supermarket' ? 'supermarket' : null;
+async function overpassNodes(r, c) {                  // traffic signals, tram stops and landmarks (cc27) of a cell
   const box = [r * DLAT, c * DLON, (r + 1) * DLAT, (c + 1) * DLON].map(v => v.toFixed(4)).join(',');
-  const q = `[out:json][timeout:60][bbox:${box}];(node[highway=traffic_signals];node[railway=tram_stop];node[public_transport=stop_position][tram=yes];);out;`;
+  const q = `[out:json][timeout:60][bbox:${box}];(node[highway=traffic_signals];node[railway=tram_stop];node[public_transport=stop_position][tram=yes];` +
+    `nwr[amenity=drinking_water];nwr[amenity=place_of_worship][religion=christian];nwr[shop=supermarket];);out center;`;
   let err;
   for (let n = 0; n < 2 * API.length; n++) {
     try {
@@ -208,7 +213,7 @@ const phone = {                                       // processed cells on the 
 export async function loadOSM(track, onProgress, store = phone, {coverageMeters = 0} = {}) {
   if (!Number.isFinite(coverageMeters) || coverageMeters < 0 || coverageMeters > 1000) throw new RangeError('Invalid map source coverage');
   const cells = new Set(), lines = new Map(), areas = new Map(), water = new Map(), rails = new Map(), green = new Map(), trams = new Map(), wlines = new Map(); let n = 0;
-  const signals = new Map(), stops = new Map(), navigationCells = [], legacyLines = new Set(), navigationLines = new Map();
+  const signals = new Map(), stops = new Map(), landmarks = new Map(), navigationCells = [], legacyLines = new Set(), navigationLines = new Map();
   // Preserve the baseline mandatory cells (and their native-navigation input).
   // Interpolated samples and outer cells supply optional display context only.
   for (const [la, lo] of track) for (const a of [la - REACH, la + REACH]) for (const o of [lo - REACH * 1.6, lo + REACH * 1.6]) cells.add(Math.floor(a / DLAT) + ',' + Math.floor(o / DLON));
@@ -243,15 +248,18 @@ export async function loadOSM(track, onProgress, store = phone, {coverageMeters 
     for (const [id, rings] of cell.green || []) if (!green.has(id)) green.set(id, rings.map(unflat));
     for (const [id, f, fl] of cell.trams || []) if (!trams.has(id)) trams.set(id, Object.assign(unflat(f), { fl: fl || 0 }));
     for (const [id, f] of cell.wlines || []) if (!wlines.has(id)) wlines.set(id, unflat(f));
-    let nc = await store.get('n' + key);                // nodes: optional, a failed load only drops the dots
-    if (navigator.onLine !== false && (!nc || Date.now() - nc.t > MAX_AGE)) try {
-      const [r, c] = key.split(',').map(Number), els = await overpassNodes(r, c);
-      nc = { t: Date.now(), sig: els.filter(e => e.tags?.highway === 'traffic_signals').map(e => [e.id, e.lat, e.lon]),
-        stop: els.filter(e => e.tags?.railway === 'tram_stop' || e.tags?.tram === 'yes').map(e => [e.id, e.lat, e.lon]) };
+    let nc = await store.get('n' + key);                // nodes: optional, a failed load only drops the dots and landmarks
+    if (navigator.onLine !== false && (!nc || !(nc.v >= NODES_V) || Date.now() - nc.t > MAX_AGE)) try {
+      const [r, c] = key.split(',').map(Number), els = await overpassNodes(r, c), node = e => e.type === undefined || e.type === 'node';
+      nc = { t: Date.now(), v: NODES_V, sig: els.filter(e => node(e) && e.tags?.highway === 'traffic_signals').map(e => [e.id, e.lat, e.lon]),
+        stop: els.filter(e => node(e) && (e.tags?.railway === 'tram_stop' || e.tags?.tram === 'yes')).map(e => [e.id, e.lat, e.lon]),
+        lm: els.map(e => [e, landmarkType(e.tags)]).filter(([e, k]) => k && Number.isFinite(e.lat ?? e.center?.lat))
+          .map(([e, k]) => [(e.type || 'node')[0] + e.id, e.lat ?? e.center.lat, e.lon ?? e.center.lon, k, e.tags.name || '']) };
       await store.put('n' + key, nc);
     } catch {}
     for (const [id, la, lo] of nc?.sig || []) signals.set(id, [la, lo]);
     for (const [id, la, lo] of nc?.stop || []) stops.set(id, [la, lo]);
+    for (const [id, la, lo, type, name] of nc?.lm || []) landmarks.set(id, { q: [la, lo], type, name });
   }
   const navigationSource = mergeNavigationSources(navigationCells);
   const recoverSurface = (target,source) => {
@@ -268,5 +276,6 @@ export async function loadOSM(track, onProgress, store = phone, {coverageMeters 
   recoverSurface(lines,navigationSource);
   recoverSurface(navigationLines,mergeNavigationSources(navigationCells.filter(c=>required.has(c.key))));
   return { coverage, navigationSource, navigationLines:[...navigationLines.values()], lines: [...lines.values()], areas: [...areas.values()], water: [...water.values()], rails: [...rails.values()],
-    green: [...green.values()], trams: [...trams.values()], wlines: [...wlines.values()], signals: [...signals.values()], stops: [...stops.values()] };
+    green: [...green.values()], trams: [...trams.values()], wlines: [...wlines.values()], signals: [...signals.values()], stops: [...stops.values()],
+    landmarks: [...landmarks.values()] };
 }

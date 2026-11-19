@@ -35,6 +35,7 @@ export function estimateBlock(entries) {
       if(style&0x80&&[8,9,10].includes(cls))passes+=2;
     } else if(cls===12){passes=1;length=1;labelBytes+=n*8;}
     else if(cls===13||cls===14)passes=2;
+    else if(cls===15&&n===0){}   // cc27 flags entry: no draw, only its 28 B and its bytes
     else if(cls===15){
       // Separate arrow/rough path. Charge both edge/core even when a particular
       // overlay needs one pass; never omit overlay work from admission.

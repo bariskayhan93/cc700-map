@@ -78,3 +78,16 @@ test('no forward chain in any chunk stays open, on the loop and grid fixtures', 
     assert.deepEqual(forwardChainsOpen(buildWaybackModel(G.graph, G.route, {reach, exceptions: true})).open, 0);
   }
 });
+
+// cc27 Task 5: the reach 1, 2 or 3 km (air limit; the ride limit is two times the air limit)
+test('line3k keeps a street 2,900 m from the route and line2k does not; line1k stops at 1,000 m', async () => {
+  const {makeGraph} = await import('./wayback_fixture.mjs');
+  const list = [[-300, 0], [0, 0], [300, 0]], links = [[0, 1], [1, 2]];
+  for (let k = 1; k <= 35; k++) { list.push([0, 100 * k]); links.push([k === 1 ? 1 : list.length - 2, list.length - 1]); }
+  const g = makeGraph(list, links), r = [{point: p(-300, 0), progress: 0}, {point: p(300, 0), progress: 60000}];
+  const has = (m, y) => m.nodes.some(n => hav(n.point, p(0, y)) < 1);
+  assert.ok(has(buildWaybackModel(g, r, {reach: 'line3k'}), 2900));
+  assert.ok(!has(buildWaybackModel(g, r, {reach: 'line3k'}), 3100));
+  assert.ok(!has(buildWaybackModel(g, r, {reach: 'line2k'}), 2900));
+  assert.ok(has(buildWaybackModel(g, r, {reach: 'line1k'}), 1000) && !has(buildWaybackModel(g, r, {reach: 'line1k'}), 1100));
+});

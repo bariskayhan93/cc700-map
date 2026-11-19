@@ -19,8 +19,9 @@ class RendererHost(unittest.TestCase):
         cls.exe = Path(cls.tmp.name) / "renderer"
         subprocess.run(["cc", "-std=c11", "-O1", "-g", "-DHOST",
                         "-fsanitize=address,undefined", "-fno-sanitize-recover=all",
-                        "-fno-omit-frame-pointer", "-I", str(SOURCE),
-                        str(ROOT / "tools/renderer_host.c"), str(SOURCE / "map.c"),
+                        "-fno-omit-frame-pointer", "-I", str(SOURCE), "-I", str(ROOT / "firmware/common"),
+                        "-I", str(ROOT / "firmware/raster"),
+                        str(ROOT / "tools/renderer_host.c"), str(SOURCE / "map.c"), str(ROOT / "firmware/raster/raster.c"),
                         "-o", str(cls.exe)], check=True, capture_output=True)
 
         legacy = Path(cls.tmp.name) / "legacy.c"
@@ -30,8 +31,9 @@ class RendererHost(unittest.TestCase):
         cls.legacy_exe = Path(cls.tmp.name) / "legacy"
         subprocess.run(["cc", "-std=c11", "-O1", "-g", "-DHOST",
                         "-fsanitize=address,undefined", "-fno-sanitize-recover=all",
-                        "-fno-omit-frame-pointer", "-I", str(SOURCE),
-                        str(ROOT / "tools/renderer_host.c"), str(legacy),
+                        "-fno-omit-frame-pointer", "-I", str(SOURCE), "-I", str(ROOT / "firmware/common"),
+                        "-I", str(ROOT / "firmware/raster"),
+                        str(ROOT / "tools/renderer_host.c"), str(legacy), str(ROOT / "firmware/raster/raster.c"),
                         "-o", str(cls.legacy_exe)], check=True, capture_output=True)
 
         v21 = Path(cls.tmp.name) / "v21"
@@ -150,14 +152,52 @@ class RendererHost(unittest.TestCase):
         self.assertGreater(old["draws"], 20 * new["draws"], (old["draws"], new["draws"]))
         self.assertGreater(new["visible_draws"], 0)
 
-    def test_b_a_slow_frame_stops_and_the_next_frame_draws_in_full(self):
-        data = self.run_case("slow")                      # frame 1: 1 ms per clock read, limit 400 ms
+    def test_b_a_slow_frame_is_not_cut_inside_a_level(self):
+        # cc27 (design 8.4): the 400 ms stop is checked only between passes. 1,201 roads of one level with 1 ms for each
+        # clock read: the frame is drawn in full (cc26 stopped after 400 entries, between an edge and a core).
+        data = self.run_case("slow")
         full = self.run_case("dense1201")["callbacks"]
-        self.assertGreater(data["first_frame_callbacks"], 0)
-        self.assertLess(data["first_frame_callbacks"], full)
-        self.assertLessEqual(data["first_frame_callbacks"], 402)
+        self.assertEqual(data["first_frame_callbacks"], full)
         self.assertEqual(data["callbacks"] - data["first_frame_callbacks"], full)
         self.assertEqual(data["allocations"], 2)
+
+    def run_entries(self, case):
+        result = subprocess.run([str(self.exe), case], capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        data = json.loads(result.stdout)
+        self.assertEqual((data["locks"], data["live_bytes"]), (data["unlocks"], 0))
+        return data
+
+    def test_block_without_flags_entry_draws_as_cc26(self):
+        off = self.run_entries("own_off")                    # no flags entry: LVGL calls, the stub paints nothing
+        self.assertEqual(off["draws"], 2 * 40)
+        self.assertEqual(off["painted"], 0)
+        self.assertEqual(off["map_text"], "")
+
+    def test_flags_entry_is_not_drawn_and_not_counted_as_a_label(self):
+        own = self.run_entries("own")
+        self.assertEqual(own["callbacks"], 2 * 40)            # edge and core of the 40 roads; nothing for the flags entry
+        self.assertEqual(own["labels"], 0)
+
+    def test_own_lines_draw_pixels_and_make_no_lvgl_call(self):
+        own = self.run_entries("own")
+        self.assertEqual(own["draws"], 0)
+        self.assertGreater(own["painted"], 0)
+
+    def test_level_stop_keeps_each_road_whole(self):
+        r = self.run_entries("level_stop")                   # 150 ms for each clock read: the stop comes before level 1
+        self.assertEqual(r["whole"], 1)
+        self.assertEqual(r["max_level"], 0)
+        self.assertGreater(r["roads_drawn"], 0)
+
+    def test_fill_pass_and_name_pass_stop_only_at_their_start(self):
+        r = self.run_entries("fill_stop")                    # 250 ms for each read: all 10 fills, then the stop
+        self.assertEqual(r["fills"], 10)
+        self.assertEqual(r["roads_drawn"], 0)
+
+    def test_map_time_text_only_with_F_TEXT(self):
+        self.assertRegex(self.run_entries("flags_text")["map_text"], r"^m[0-9]+$")
+        self.assertEqual(self.run_entries("own")["map_text"], "")
 
     def test_budget_work_counts_match_actual_iterator(self):
         from map_budget import block_budget

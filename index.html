@@ -81,10 +81,11 @@
       <select id="fw" aria-describedby="fwOriginal">
         <option value="orig">Original (Kreuzungskarte)</option>
         <option value="patch">Patch v18 / v19 / v20 / v21 (farbige Sunlight-Karte)</option>
-        <option value="patch25" selected>Patch cc26 (kompakte Kartendaten, Format D, Rückweg)</option>
+        <option value="patch25">Patch cc26 (kompakte Kartendaten, Format D; ohne Rückweg)</option>
+        <option value="patch27" selected>Patch cc27 (eigene Linien, graue Straßen, Höhenprofil)</option>
       </select>
       <p id="fwOriginal" class="mut">Für Geräte mit unveränderter Firmware.</p>
-      <p id="fwWarning" class="warning" hidden>Nur für Geräte mit installiertem Patch v18, v19, v20, v21 oder cc26 für Firmware V1.414.</p>
+      <p id="fwWarning" class="warning" hidden>Nur für Geräte mit installiertem Patch v18, v19, v20, v21, cc26 oder cc27 für Firmware V1.414.</p>
     </div>
     <label class="btn">GPX wählen<input id="gpx" type="file" accept=".gpx,application/gpx+xml,application/xml,text/xml,application/octet-stream" hidden></label>
     <div id="sum" class="mut" role="status">Aus einem GPX wird eine CC700-Route mit Abbiegehinweisen, Straßennamen und Karte.</div>
@@ -147,7 +148,11 @@
         <label><input id="paths" type="checkbox"> Fußwege und Pfade</label>
         <label><input id="details" type="checkbox"> Parkwege und Radwege neben Straßen</label>
         <label><input id="lanes" type="checkbox"> Getrennte Fahrbahnen (Straßenbahn in der Mitte)</label>
-        <label><input id="wayback" type="checkbox"> Rückweg-Linie und graue Straßen (nur Patch cc26; lädt Straßen bis 2 km um die Route)</label>
+        <label><input id="wayback" type="checkbox"> Rückweg-Linie und graue Straßen (nur Patch cc27; lädt Straßen um die Route)</label>
+        <label>Rückweg-Reichweite <select id="waybackReach"><option value="line1k">1 km</option><option value="line2k">2 km</option><option value="line3k" selected>3 km</option></select></label>
+        <label><input id="ownLines" type="checkbox"> Eigene Linien (cc27; aus: Linien wie cc26)</label>
+        <label><input id="testText" type="checkbox"> Testtext oben links (cc27)</label>
+        <label><input id="elevation" type="checkbox"> Höhenprofil des nächsten Kilometers auf der Route (cc27)</label>
       </fieldset>
       <fieldset id="optOrig"><legend>Kartenebenen (Original)</legend>
         <label><input id="ground" type="checkbox"> Bebauung grau</label>

@@ -73,3 +73,17 @@ test('the field 2 record starts with the stock-safe prefix, then the payload len
   do { x = body[i++]; len += (x & 127) * m; m *= 128; } while (x & 128);
   assert.equal(i + len, body.length);
 });
+
+// ---- cc27 Task 12: the flags entry (class 15, no points, lat 0x7F434346, lon = flags) is the last entry of a block ----
+import {flagsEntry} from '../js/mapsec.js';
+import {entryOf} from '../js/map_codec.js';
+test('flags entry after a southern entry (lat -2^30) decodes to lat 0x7F434346 and the right lon', () => {
+  const south = {style: 6, lat: -(2 ** 30), lon: sc(7.1), pts: [[-(2 ** 30), sc(7.1)], [-(2 ** 30) + 99, sc(7.1) + 99]]};
+  const flags = entryOf(flagsEntry(7));
+  assert.deepEqual(flags, {style: 15, lat: 0x7F434346, lon: 7, pts: []});
+  const d = decodeBlockD(encodeBlockD([south, flags]));
+  assert.deepEqual(d.at(-1), {style: 15, lat: 0x7F434346, lon: 7, pts: []});
+  assert.deepEqual(d[0], south);
+  const north = decodeBlockD(encodeBlockD([{...south, lat: 2 ** 30, pts: []}, entryOf(flagsEntry(5))]));
+  assert.deepEqual(north.at(-1), {style: 15, lat: 0x7F434346, lon: 5, pts: []});
+});

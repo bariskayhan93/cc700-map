@@ -5,13 +5,13 @@ import assert from 'node:assert/strict';
 import {hav} from '../js/geo.js';
 import {gridFixture} from './wayback_fixture.mjs';
 import {buildWaybackModel} from './wayback_tree.mjs';
-import {encodeWayback, encodeWaybackV2, decodeWayback} from './wayback_format.mjs';
+import {encodeWayback, encodeWaybackV3, decodeWayback} from './wayback_format.mjs';
 import {runCore, runSelfTest} from './wayback_core_host.mjs';
 import {compareLine} from './wayback_precision.mjs';
 const {graph, route, p} = gridFixture();
 const id = Uint8Array.from({length: 16}, (_, i) => i + 1);
 const model = buildWaybackModel(graph, route, {reach: 'line2k'});
-const file = encodeWaybackV2(model, id, () => 1), v1file = encodeWayback(model, id);   // every piece grey: the core reads states
+const file = encodeWaybackV3(model, id, () => 1), v1file = encodeWayback(model, id);   // every piece grey: the core reads states
 const e7 = (x, y) => { const q = p(x, y); return {latE7: Math.round(q[0] * 1e7), lonE7: Math.round(q[1] * 1e7)}; };
 const ll = pt => [pt[0] / 1e7, pt[1] / 1e7];
 const isAt = (pt, x, y, tol = 1.5) => assert(hav(ll(pt), p(x, y)) <= tol, `${ll(pt)} is not at ${x},${y}`);
@@ -158,138 +158,9 @@ test('the self test: wb_out equals the old near test for 100,000 random pairs an
   assert.equal(t.scanCoverErrors, 0, 'every piece that wb_tick chooses is visited by the 5 x 6 window');
 });
 
-// ---- D3c: the grey layer reader on the unit core (heading-up screen, 20 cells at most, rows read once) ----
-import {greyLayer, readGreyLayer} from '../js/wayback_grey_layer.js';
-import {runGrey} from './wayback_core_host.mjs';
-const bare = file;   // every piece grey, version 2, no layer
-const withLayer = (() => { const s = greyLayer(decodeWayback(bare)); const out = new Uint8Array(bare.length + s.length); out.set(bare); out.set(s, bare.length); return out; })();
-const CELL = 4096, floorDiv = (a, b) => Math.floor(a / b);
-// The section table and bodies, as bytes after the bare file.
-function sectionOf(fileBytes, at) {
-  const sec = fileBytes.subarray(at), dv = new DataView(sec.buffer, sec.byteOffset, sec.byteLength);
-  const n = dv.getUint32(8, true), keys = [], offs = [];
-  for (let i = 0; i <= n; i++) { keys.push(dv.getUint32(16 + 8 * i, true)); offs.push(dv.getUint32(16 + 8 * i + 4, true)); }
-  return {sec, n, keys, offs, bodyAt: 16 + 8 * (n + 1)};
-}
-// Line ends in one cell body: [{end, pts: [[qx, qy], ...]}] with end = bytes consumed through the line.
-function bodyLines(sec, at, len) {
-  const b = sec.subarray(at, at + len);
-  let p = 0;
-  const v = () => { let x = 0, s = 0, c; do { c = b[p++]; x += (c & 0x7F) * 2 ** s; s += 7; } while (c & 0x80); return x; };
-  const zz = z => (z % 2 === 0 ? z / 2 : -(z + 1) / 2);
-  const lines = [], count = v();
-  for (let l = 0; l < count; l++) {
-    const m = v(); let qx = b[p] | (b[p + 1] << 8), qy = b[p + 2] | (b[p + 3] << 8); p += 4;
-    const pts = [[qx, qy]];
-    for (let k = 1; k < m; k++) { qx += zz(v()); qy += zz(v()); pts.push([qx, qy]); }
-    lines.push({end: p, pts});
-  }
-  return lines;
-}
-// The read model of the unit (D3c): a binary search per new row (one 4 B read per step), one read of up to 8 records
-// per new row, and one read per 192 B of body consumed. The cap stops after the line that reaches it.
-function readModel(fileBytes, at, keys, cap = 1e9) {
-  const H = decodeWayback(fileBytes.subarray(0, at)).header, S = sectionOf(fileBytes, at);
-  const cells = keys.map(key => ({key, cx: key & 0xFFFF, cy: key >>> 16}));
-  let reads = 0, segs = 0;
-  const rows = new Map(), out = {lines: []};
-  const lowerBound = key => { let lo = 0, hi = S.n; while (lo < hi) { const mid = lo + Math.floor((hi - lo) / 2); reads++; if (S.keys[mid] < key) lo = mid + 1; else hi = mid; } return lo; };
-  for (const c of cells) {
-    if (segs >= cap) break;
-    if (!rows.has(c.cy)) {
-      const minCx = Math.min(...cells.filter(d => d.cy === c.cy).map(d => d.cx));
-      const at0 = lowerBound(((c.cy << 16) | minCx) >>> 0);
-      const cnt = Math.min(8, S.n + 1 - at0); reads++;
-      rows.set(c.cy, {keys: S.keys.slice(at0, at0 + cnt), offs: S.offs.slice(at0, at0 + cnt)});
-    }
-    const rec = rows.get(c.cy), j = rec.keys.indexOf(c.key);
-    if (j < 0) continue;
-    const len = rec.offs[j + 1] - rec.offs[j];
-    let consumed = len;
-    for (const ln of bodyLines(S.sec, S.bodyAt + rec.offs[j], len)) {
-      const pts = ln.pts.map(([qx, qy]) => [H.lat0E7 + Math.floor((c.cy * CELL + qy * 8) * H.latE / 65536), H.lon0E7 + Math.floor((c.cx * CELL + qx * 8) * H.lonE / 65536)]);
-      out.lines.push(pts);
-      segs += pts.length - 1;
-      if (segs >= cap) { consumed = ln.end; break; }
-    }
-    reads += Math.ceil(consumed / 192);
-  }
-  return {reads, lines: out.lines, segs};
-}
-// Frames inside the grid: a grid of rider positions (E7) with a rider at most 1 km around the grid.
-const frameAt = (x, y) => { const q = p(x, y); return {latE7: Math.round(q[0] * 1e7), lonE7: Math.round(q[1] * 1e7)}; };
-const frames50 = Array.from({length: 50}, (_, i) => ({...frameAt(-50 + (i % 10) * 120, -50 + Math.floor(i / 10) * 230), course: (i * 37) % 360}));
-const layerAt = bare.length;
-// The cells under the turned screen (600 m wide, 520 m ahead, 100 m behind), in float: separating axes, gap < 0 is
-// under the screen. Cells within 2 m of an edge may go either way (the unit uses an integer sine).
-function screenCells(latE7, lonE7, course) {
-  const H = decodeWayback(bare).header, X = floorDiv((lonE7 - H.lon0E7) * H.lonU, 65536), Y = floorDiv((latE7 - H.lat0E7) * H.latU, 65536);
-  const ux = Math.sin(course * Math.PI / 180), uy = Math.cos(course * Math.PI / 180), ax = Math.abs(ux), ay = Math.abs(uy);
-  const mx = X + 3360 * ux, my = Y + 3360 * uy, hx = 4960 * ax + 4800 * ay, hy = 4960 * ay + 4800 * ax, r = 2048 * (ax + ay);
-  const sure = [], edge = new Set();
-  for (let cy = floorDiv(my - hy, CELL) - 1; cy <= floorDiv(my + hy, CELL) + 1; cy++) for (let cx = floorDiv(mx - hx, CELL) - 1; cx <= floorDiv(mx + hx, CELL) + 1; cx++) {
-    if (cx < 0 || cy < 0) continue;
-    const px = cx * CELL + 2048, py = cy * CELL + 2048, dx = px - mx, dy = py - my;
-    const gap = Math.max(Math.abs(dx) - hx - 2048, Math.abs(dy) - hy - 2048, Math.abs(dx * ux + dy * uy) - 4960 - r, Math.abs(dx * uy - dy * ux) - 4800 - r);
-    const key = ((cy << 16) | cx) >>> 0;
-    if (gap < -32) sure.push(key); else if (gap <= 32) edge.add(key);
-  }
-  return {X, Y, sure, edge};
-}
-test('the cells are the cells under the turned screen, nearest first, for 360 courses and 16 offsets', () => {
-  const frames = [];
-  for (let course = 0; course < 360; course++) for (let i = 0; i < 16; i++) frames.push({...frameAt(300 + i * 16, 300 + ((i * 5) % 16) * 16), course, cap: 1});
-  let most = 0;
-  runGrey(withLayer, id, frames).forEach((g, i) => {
-    const f = frames[i], m = screenCells(f.latE7, f.lonE7, f.course), tag = `course ${f.course} offset ${i % 16}`;
-    for (const k of m.sure) assert(g.cells.includes(k), `${tag}: cell ${k} is missing`);
-    for (const k of g.cells) assert(m.sure.includes(k) || m.edge.has(k), `${tag}: cell ${k} is not under the screen`);
-    const d = g.cells.map(k => ((k & 0xFFFF) * CELL + 2048 - m.X) ** 2 + ((k >>> 16) * CELL + 2048 - m.Y) ** 2);
-    assert(d.every((v, j) => j === 0 || d[j - 1] <= v), `${tag}: not nearest first`);
-    most = Math.max(most, g.cells.length);
-  });
-  assert(most >= 12 && most <= 20, `most cells ${most}`);
-});
-
-test('the grey lines of a frame equal the layer points, E7 exact, nearest cell first', () => {
-  const got = runGrey(withLayer, id, frames50);
-  got.forEach((g, i) => {
-    const m = readModel(withLayer, layerAt, g.cells);
-    assert.equal(g.layer, 1);
-    assert.deepEqual(g.lines, m.lines, `frame ${i} lines`);
-  });
-});
-test('the reads of the grey reader equal the model reads for 50 frames, with and without the cap', () => {
-  for (const cap of [1000000000, 400, 5]) {
-    const got = runGrey(withLayer, id, frames50.map(f => ({...f, cap})));
-    got.forEach((g, i) => {
-      const m = readModel(withLayer, layerAt, g.cells, cap);
-      assert.equal(g.reads, m.reads, `cap ${cap} frame ${i} reads`);
-      assert.equal(g.segs, m.segs, `cap ${cap} frame ${i} segments`);
-    });
-  }
-});
-test('a read error at read 1, 5 or 20 returns 0, and the lines before it are a prefix of the full list', () => {
-  const all = runGrey(withLayer, id, frames50);
-  const busy = frames50.map((f, i) => ({i, reads: readModel(withLayer, layerAt, all[i].cells).reads, f})).find(x => x.reads >= 25);
-  assert(busy, 'a frame with at least 25 reads');
-  const full = runGrey(withLayer, id, [busy.f])[0];
-  for (const k of [1, 5, 20]) {
-    const [g] = runGrey(withLayer, id, [{...busy.f, failAt: k - 1}]);
-    assert.equal(g.ok, 0, `read ${k}`);
-    assert.deepEqual(g.lines, full.lines.slice(0, g.lines.length), `read ${k} prefix`);
-  }
-});
-test('a file with no layer: no line, return 1, no read', () => {
-  const [g] = runGrey(bare, id, [frames50[12]]);
-  assert.equal(g.layer, 0); assert.equal(g.ok, 1); assert.equal(g.reads, 0); assert.deepEqual(g.lines, []);
-});
-test('the wb_tick output of a file with the layer equals the output without it', () => {
-  const lines = [{...frameAt(300, 400), flags: ON}, {...frameAt(0, 120), flags: ON}, {...frameAt(900, 60), flags: ON}];
-  assert.deepEqual(runCore(withLayer, id, lines), runCore(bare, id, lines));
-});
-test('a section with a bad magic refuses the mount', () => {
-  const bad = withLayer.slice(); bad[layerAt] ^= 0xFF;
-  assert.equal(runGrey(bad, id, [frames50[0]])[0].mounted, 0);
-  assert.equal(runCore(bad, id, [{...frameAt(300, 400), flags: ON}])[0].mounted, 0);
+// ---- cc27: the grey layer is its own section (type 2); its reader is tested in tools/test_grey_reader.mjs ----
+test('bytes after the extras refuse the mount (no grey tail since cc27)', () => {
+  const tail = new Uint8Array(file.length + 16); tail.set(file);
+  const q = gridFixture().p(300, 400);
+  assert.equal(runCore(tail, id, [{latE7: Math.round(q[0] * 1e7), lonE7: Math.round(q[1] * 1e7), flags: ON}])[0].mounted, 0);
 });
