@@ -6,6 +6,7 @@ import {readGreyLayer} from '../js/wayback_grey_layer.js';
 import {proveGreyLayer} from '../js/screen_proof.js';
 import {buildRoute} from '../js/route.js';
 import {decodeWayback} from '../js/wayback_format.js';
+import {readNativeRoute} from '../js/native_route.js';
 import {SECTION as SEC, embedSections as embedS, readSections as readS} from '../js/wayback_embed.js';
 // cc27: test adapters over the section table (one way-back section)
 const embedWayback = (r, w) => embedS(r, [{type: SEC.WAYBACK, bytes: w}]);
@@ -81,6 +82,20 @@ test('a route area above the bounded region is refused before any request', asyn
   const far = [{point: [51, 7], progress: 0}, {point: [51.6, 7.9], progress: 9000000}], f = fetchOf([{body: response()}]);
   await assert.rejects(loadWaybackSnapshot(far, f), /bounded/);
   assert.equal(f.calls(), 0);
+});
+
+// A 100 km route to the north: its 3 km box is about 680 km2 (over the 600 km2 query bound), its 2 km box about 460 km2.
+test('the fetch steps the reach down when the box of the chosen reach is over the bounded area', async () => {
+  const gpx = {name: 'Long', pts: Array.from({length: 101}, (_, k) => [51 + k * 1000 / 111320, 7, 0])};
+  const plain = buildRoute(gpx, [], {id: '11120000', nameImage: () => new Uint8Array(42), map: {styled: true}, speedKmh: 18}).file;
+  const boxes = [], f = async (url, opt) => { boxes.push(/\(([^)]*)\)/.exec(opt.body.get('data'))[1]); return {ok: true, status: 200, json: async () => response()}; };
+  const w = await addWayback(plain, {fetchImpl: f, format: 2, reach: 'line3k'});
+  assert.equal(w.reach, 'line2k');
+  assert.deepEqual(boxes, [waybackBbox(readNativeRoute(plain), 'line2k').join(',')]);
+  const far = {name: 'Far', pts: [[51, 7, 0], [51.6, 7.9, 0]]}, g = fetchOf([{body: response()}]);
+  const wide = buildRoute(far, [], {id: '11120000', nameImage: () => new Uint8Array(42), map: {styled: true}, speedKmh: 18}).file;
+  await assert.rejects(addWayback(wide, {fetchImpl: g, format: 2, reach: 'line3k'}), /bounded/);   // too large at 1 km too
+  assert.equal(g.calls(), 0);
 });
 
 test('the trailer points at the way-back bytes and the route bytes do not change', async () => {

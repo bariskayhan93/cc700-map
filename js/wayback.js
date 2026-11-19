@@ -101,6 +101,13 @@ export async function loadWaybackSnapshot(route, fetchImpl = fetch, reach = 'lin
   return snapshot;
 }
 
+// The reach of the fetch: the chosen reach, or the next smaller one when its box is over the bounded query area (owner,
+// 19 Nov). The last reach of the chain stays as it is: its fetch then refuses the area.
+function fetchReach(route, reach) {
+  const start = REACH_CHAIN.indexOf(reach), chain = start < 0 ? [reach] : REACH_CHAIN.slice(start);
+  return chain.find(r => { try { routingQuery(waybackBbox(route, r)); return true; } catch { return false; } }) ?? chain.at(-1);
+}
+
 // Owner ruling (18 Nov, option a): the way-back data stays only when its route identity equals the identity of the route
 // bytes in front of it. Otherwise the plain route bytes are returned, with status 'dropped'. Called before a file is sent.
 export async function checkWayback(file) {
@@ -113,9 +120,9 @@ export async function checkWayback(file) {
 // Route file bytes -> the way-back section bytes and the grey section bytes (null: no grey section). The caller puts them
 // with embedSections. Throws when no data can be made; the caller keeps the plain file. layer (default true): the grey section.
 export async function addWayback(routeBytes, {fetchImpl = fetch, maxBytes = WAYBACK_MAX_BYTES, format = 1, layer = true, reach = 'line2k', caps = GREY_CAPS} = {}) {
-  const route = readNativeRoute(routeBytes);
-  const snapshot = await loadWaybackSnapshot(route, fetchImpl, reach);
-  const made = waybackFromSnapshot(snapshot, route, await routeIdentity(routeBytes), {maxBytes, format, routeBytes, layer, reach, caps});
+  const route = readNativeRoute(routeBytes), r = fetchReach(route, reach);
+  const snapshot = await loadWaybackSnapshot(route, fetchImpl, r);
+  const made = waybackFromSnapshot(snapshot, route, await routeIdentity(routeBytes), {maxBytes, format, routeBytes, layer, reach: r, caps});
   if (!made) throw new Error('way-back data exceeds ' + maxBytes + ' bytes');
   if (!made.model.stats.stored) throw new Error('no stored street');
   return {wayback: made.bytes, grey: made.grey, greyReport: made.greyReport, bytes: made.bytes.length + (made.grey ? made.grey.length : 0), reach: made.reach, stats: made.model.stats};

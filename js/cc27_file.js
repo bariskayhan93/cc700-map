@@ -16,8 +16,8 @@ export function cc27Flags({ownLines = true, testText = true, elevation = true} =
   return (ownLines ? F_OWN : 0) | (testText ? F_TEXT : 0) | ((elevation && elevationPresent) || testText ? F_ROUTE : 0);
 }
 
-// The route file with its sections. wayback: way-back and grey (the reach steps down 3 -> 2 -> 1 km when the data does
-// not fit; report.reach is the reach used). A way-back failure keeps the elevation section; report.waybackError says why.
+// The route file with its sections. wayback: way-back and grey (the reach steps down 3 -> 2 -> 1 km when the query area
+// is over the bound or the data does not fit; report.reach is the reach used). A way-back failure keeps the elevation section; report.waybackError says why.
 export async function cc27Sections(routeFile, {wayback = true, elevation = true, reach = 'line3k', fetchImpl = globalThis.fetch} = {}) {
   const sections = [], report = {};
   if (wayback) {
