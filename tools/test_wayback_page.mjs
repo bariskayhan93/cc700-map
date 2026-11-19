@@ -1,10 +1,15 @@
 // tools/test_wayback_page.mjs: the page path of the way-back build (js/wayback.js) on a synthetic street grid.
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {waybackBbox, waybackFromSnapshot, loadWaybackSnapshot, routeIdentity, addWayback, checkWayback} from '../js/wayback.js';
+import {waybackBbox, waybackFromSnapshot, loadWaybackSnapshot, routeIdentity, addWayback, checkWayback, waybackSections} from '../js/wayback.js';
+import {readGreyLayer} from '../js/wayback_grey_layer.js';
+import {proveGreyLayer} from '../js/screen_proof.js';
 import {buildRoute} from '../js/route.js';
 import {decodeWayback} from '../js/wayback_format.js';
-import {embedWayback, readTrailer} from '../js/wayback_embed.js';
+import {SECTION as SEC, embedSections as embedS, readSections as readS} from '../js/wayback_embed.js';
+// cc27: test adapters over the section table (one way-back section)
+const embedWayback = (r, w) => embedS(r, [{type: SEC.WAYBACK, bytes: w}]);
+const readTrailer = f => { const s = readS(f), w = s && s.find(x => x.type === SEC.WAYBACK); return w ? {offset: w.offset, size: w.size} : null; };
 
 // Streets every 100 m on a 1 km square at (51, 7). The route is the bottom street.
 const K = Math.cos(51 * Math.PI / 180), pt = (x, y) => [51 + y / 111320, 7 + x / (111320 * K)];
@@ -57,7 +62,7 @@ test('a size limit falls back to the shorter reach and then to no file', async (
   const snapshot = await loadWaybackSnapshot(route, fetchOf([{body: response()}]));
   const id = new Uint8Array(16), full = waybackFromSnapshot(snapshot, route, id).bytes.length;
   const less = waybackFromSnapshot(snapshot, route, id, {maxBytes: full - 1});
-  assert(less === null || (less.reach === 'ride1500' && less.bytes.length < full));
+  assert(less === null || (less.reach === 'line1k' && less.bytes.length < full));
   assert.equal(waybackFromSnapshot(snapshot, route, id, {maxBytes: 64}), null);
 });
 
@@ -89,33 +94,41 @@ test('the trailer points at the way-back bytes and the route bytes do not change
   assert.throws(() => embedWayback(out, made.bytes), /already has/);
 });
 
-test('format 2 writes way-back version 2 and format 1 keeps version 1 (cc26, D1)', async () => {
+test('format 2 writes way-back version 3 (cc27) and format 1 keeps version 1 (cc26, D1)', async () => {
   const snapshot = await loadWaybackSnapshot(route, fetchOf([{body: response()}]));
   const id = new Uint8Array(16);
-  assert.equal(decodeWayback(waybackFromSnapshot(snapshot, route, id, {format: 2, routeBytes: new Uint8Array(0)}).bytes).header.version, 2);   // no map: every flag 1
+  assert.equal(decodeWayback(waybackFromSnapshot(snapshot, route, id, {format: 2, routeBytes: new Uint8Array(0)}).bytes).header.version, 3);   // no map: every flag 1
   assert.equal(decodeWayback(waybackFromSnapshot(snapshot, route, id).bytes).header.version, 1);
 });
 
-test('format 2 with layer: true appends the grey section after the extras; layer: false writes none (D3a)', async () => {
+test('format 2 with layer: true gives a fitted grey section of its own; the way-back bytes do not change (cc27)', async () => {
   const snapshot = await loadWaybackSnapshot(route, fetchOf([{body: response()}]));
   const id = new Uint8Array(16), none = new Uint8Array(0);   // no map: every piece is grey
-  const bare = waybackFromSnapshot(snapshot, route, id, {format: 2, routeBytes: none}).bytes;
-  const withLayer = waybackFromSnapshot(snapshot, route, id, {format: 2, routeBytes: none, layer: true}).bytes;
-  assert.equal(decodeWayback(bare).layer, null);
-  assert(decodeWayback(withLayer).layer, 'the section is there');
-  assert.deepEqual([...withLayer.subarray(0, bare.length)], [...bare]);
-  assert.deepEqual(decodeWayback(withLayer).nodes, decodeWayback(bare).nodes);
+  const bare = waybackFromSnapshot(snapshot, route, id, {format: 2, routeBytes: none});
+  const withLayer = waybackFromSnapshot(snapshot, route, id, {format: 2, routeBytes: none, layer: true});
+  assert.equal(bare.grey, null);
+  assert.deepEqual(withLayer.bytes, bare.bytes);
+  const g = readGreyLayer(withLayer.grey);
+  assert.deepEqual([g.version, g.pixCap, g.ptCap], [2, 60000, 2048]);
+  assert.equal(proveGreyLayer(g.cells).over.length, 0);
+  assert(withLayer.greyReport.removedLines >= 0 && withLayer.greyReport.screens > 0, JSON.stringify(withLayer.greyReport));
+  const small = waybackFromSnapshot(snapshot, route, id, {format: 2, routeBytes: none, layer: true, caps: {pixCap: 2000, ptCap: 2048}});
+  assert(small.greyReport.removedLines > 0 && readGreyLayer(small.grey).pixCap === 2000);
 });
 
-test('checkWayback keeps the way-back data when the layer section is present, and drops it after a byte change (D3a)', async () => {
+test('checkWayback keeps the way-back and grey sections when the identity holds, and drops both after a byte change', async () => {
   const snapshot = await loadWaybackSnapshot(route, fetchOf([{body: response()}]));
   const plain = Uint8Array.from({length: 8192}, (_, i) => (i * 7) & 255);
   const made = waybackFromSnapshot(snapshot, route, await routeIdentity(plain), {format: 2, routeBytes: new Uint8Array(0), layer: true});
-  const out = embedWayback(plain, made.bytes);
+  const out = embedS(plain, waybackSections({wayback: made.bytes, grey: made.grey}));
+  assert.deepEqual(readS(out).map(x => x.type), [SEC.WAYBACK, SEC.GREY]);
   assert.equal((await checkWayback(out)).status, 'ok');
   const changed = out.slice();
-  changed[100] ^= 1;   // a byte of the route bytes in front of the trailer
-  assert.equal((await checkWayback(changed)).status, 'dropped');
+  changed[100] ^= 1;   // a byte of the route bytes in front of the sections
+  const dropped = await checkWayback(changed);
+  assert.equal(dropped.status, 'dropped');
+  assert.equal(readS(dropped.file), null);
+  assert.equal(dropped.file.length, plain.length);
 });
 
 test('format 2 without routeBytes throws: there is no default grey flag (D0 item 4)', async () => {
@@ -128,7 +141,9 @@ test('format 2 without routeBytes throws: there is no default grey flag (D0 item
 test('a route file whose bytes changed after addWayback loses its way-back trailer before it is sent', async () => {
   const gpx = {name: 'Identity', pts: route.map(r => [...r.point, 0])};
   const plain = buildRoute(gpx, [], {id: '11120000', nameImage: () => new Uint8Array(42), map: {styled: true}, speedKmh: 18}).file;
-  const w = await addWayback(plain, {fetchImpl: fetchOf([{body: response()}])});
+  const w = await addWayback(plain, {fetchImpl: fetchOf([{body: response()}]), format: 2});
+  assert(w.grey, 'format 2 gives the grey section by default');
+  w.file = embedS(plain, waybackSections(w));
   const kept = await checkWayback(w.file);
   assert.equal(kept.status, 'ok');
   assert.notEqual(readTrailer(kept.file), null);
@@ -140,3 +155,51 @@ test('a route file whose bytes changed after addWayback loses its way-back trail
   assert.equal(dropped.file.length, plain.length);
 });
 
+
+// ---- cc27 Task 6: trailer version 2, the section table (last 64 B) ----
+import {SECTION, embedSections, readSections} from '../js/wayback_embed.js';
+const fakeRoute = () => new Uint8Array(8192).fill(7);
+const wbBytes = n => { const b = new Uint8Array(n).fill(1); b.set([0x43, 0x43, 0x57, 0x42]); return b; };
+test('embedSections then readSections gives the same three sections; the route bytes are unchanged', () => {
+  const r = fakeRoute(), w = wbBytes(5000), g = new Uint8Array(3000).fill(2), e = new Uint8Array(900).fill(3);
+  const f = embedSections(r, [{type: SECTION.WAYBACK, bytes: w}, {type: SECTION.GREY, bytes: g}, {type: SECTION.ELEV, bytes: e}]);
+  assert.equal(f.length % 4096, 0);
+  assert.deepEqual(f.subarray(0, r.length), r);
+  const s = readSections(f);
+  assert.deepEqual(s.map(x => x.type), [1, 2, 3]);
+  for (const [x, b] of [[s[0], w], [s[1], g], [s[2], e]]) assert.deepEqual(f.subarray(x.offset, x.offset + x.size), b);
+  assert.equal(s[0].offset, r.length);
+  assert.throws(() => embedSections(f, [{type: SECTION.WAYBACK, bytes: w}]), /already has/);
+});
+test('a table with an overlap, a section past the trailer, or count 5 is refused', () => {
+  const f = embedSections(fakeRoute(), [{type: SECTION.WAYBACK, bytes: wbBytes(5000)}, {type: SECTION.ELEV, bytes: new Uint8Array(100)}]);
+  const at = f.length - 64, edit = (fn) => { const c = f.slice(); fn(new DataView(c.buffer), c); return readSections(c); };
+  assert.notEqual(readSections(f), null);
+  assert.equal(edit(v => v.setUint32(at + 4, 5, true)), null);                                  // count 5
+  assert.equal(edit(v => v.setUint32(at + 24, v.getUint32(at + 12, true) + 10, true)), null);   // elevation inside the way-back bytes
+  assert.equal(edit(v => v.setUint32(at + 28, f.length, true)), null);                          // elevation past the trailer
+  assert.equal(edit(v => v.setUint32(at + 20, 1, true)), null);                                 // the way-back type two times
+  assert.equal(edit(v => v.setUint32(at, 0x54574343, true)), null);                             // the cc26 magic CCWT
+});
+
+// Final review: a grey fit above its removal limit gives no grey section; the way-back data stays.
+test('a grey fit over its removal limit gives no grey section and keeps the way-back bytes', async () => {
+  const snapshot = await loadWaybackSnapshot(route, fetchOf([{body: response()}]));
+  const id = new Uint8Array(16), none = new Uint8Array(0);
+  const ok = waybackFromSnapshot(snapshot, route, id, {format: 2, routeBytes: none, layer: true});
+  const over = waybackFromSnapshot(snapshot, route, id, {format: 2, routeBytes: none, layer: true, caps: {pixCap: 0, ptCap: 2048, maxRemovals: 3}});
+  assert.equal(over.grey, null);
+  assert.match(over.greyReport.reason, /more than 3 removals/);
+  assert.deepEqual(over.bytes, ok.bytes);
+});
+
+// Final review: the 1,536 KB cap is for the way-back section; the grey section has its own section (file guard 4 MB).
+test('the way-back size limit counts the way-back section only, not the grey section', async () => {
+  const snapshot = await loadWaybackSnapshot(route, fetchOf([{body: response()}]));
+  const id = new Uint8Array(16), none = new Uint8Array(0);
+  const full = waybackFromSnapshot(snapshot, route, id, {format: 2, routeBytes: none, layer: true, reach: 'line3k'});
+  assert(full.grey && full.grey.length > 0);
+  const tight = waybackFromSnapshot(snapshot, route, id, {format: 2, routeBytes: none, layer: true, reach: 'line3k', maxBytes: full.bytes.length});
+  assert.equal(tight.reach, 'line3k');
+  assert.deepEqual(tight.bytes, full.bytes);
+});

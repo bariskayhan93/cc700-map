@@ -186,3 +186,11 @@ test('payload N that differs from field 1 is refused: no entry is made, the coun
   assert.deepEqual(o.rc, [0]);
   assert.equal(fin.live, 0);
 });
+
+// cc27 Task 12 (Review focus 5): the unit decoder adds the int32 delta from a southern entry to the flags entry with wrap.
+test('the flags entry after a southern entry decodes on the unit decoder (int32 wrap)', () => {
+  const south = {style: 6, lat: -(2 ** 30), lon: 85000000, pts: [[-(2 ** 30), 85000000], [-(2 ** 30) + 99, 85000099]]};
+  const flags = {style: 15, lat: 0x7F434346, lon: 7, pts: []};
+  const out = run([encodeBlockD([south, flags])]);
+  assert.deepEqual(out[0].entries, want([south, flags]));
+});

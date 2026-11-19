@@ -9,34 +9,43 @@ import {fileURLToPath} from 'node:url';
 import {hav} from '../js/geo.js';
 import {gridFixture, makeGraph, p as pt} from './wayback_fixture.mjs';
 import {buildWaybackModel} from './wayback_tree.mjs';
-import {encodeWaybackV2, decodeWayback} from './wayback_format.mjs';
-import {greyLayer} from '../js/wayback_grey_layer.js';
-import {embedWayback, readTrailer} from './wayback_embed.mjs';
+import {encodeWaybackV3, decodeWayback} from './wayback_format.mjs';
+import {encodeGreyLayer, greyCellLines} from '../js/wayback_grey_layer.js';
+import {greyCells} from '../js/screen_proof.js';
+import {elevationFromPoints} from '../js/elevation_section.js';
+import {SECTION, embedSections, readSections} from './wayback_embed.mjs';
+// cc27: test adapters over the section table (one way-back section)
+const embedWayback = (r, w) => embedSections(r, [{type: SECTION.WAYBACK, bytes: w}]);
+const readTrailer = f => { const s = readSections(f), w = s && s.find(x => x.type === SECTION.WAYBACK); return w ? {offset: w.offset, size: w.size} : null; };
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const work = fs.mkdtempSync(path.join(os.tmpdir(), 'wayback-device-'));
 process.on('exit', () => { try { fs.rmSync(work, {recursive: true, force: true}); } catch {} });
 const exe = path.join(work, 'host');
+const F = d => path.join(root, 'firmware', d);
 execFileSync('cc', ['-std=gnu11', '-O1', '-g', '-Wall', '-Wextra', '-Werror', '-DHOST',
-  '-fsanitize=address,undefined', '-fno-sanitize-recover=all', '-I', path.join(root, 'firmware/wayback'),
-  path.join(root, 'tools/wayback_device_host.c'), path.join(root, 'firmware/wayback/wb_device.c'),
-  path.join(root, 'firmware/wayback/wayback.c'), path.join(root, 'firmware/wayback/wb_grey.c'), '-o', exe], {stdio: ['ignore', 'pipe', 'pipe']});
+  '-fsanitize=address,undefined', '-fno-sanitize-recover=all', '-I', F('wayback'), '-I', F('common'), '-I', F('raster'), '-I', F('view'),
+  '-I', F('elev'), path.join(root, 'tools/wayback_device_host.c'), F('wayback/wb_device.c'), F('wayback/wayback.c'), F('wayback/wb_grey.c'),
+  F('wayback/wb_grey_draw.c'), F('raster/raster.c'), F('view/view.c'), F('elev/elev.c'), '-lm', '-o', exe], {stdio: ['ignore', 'pipe', 'pipe']});
 
 const {graph, route, p} = gridFixture();
 const id = Uint8Array.from({length: 16}, (_, i) => i + 1);
-const wayback = encodeWaybackV2(buildWaybackModel(graph, route, {reach: 'line2k'}), id, () => 1);   // version 2 only (R-GREEN); every piece grey
+const wayback = encodeWaybackV3(buildWaybackModel(graph, route, {reach: 'line2k'}), id, () => 1);   // version 2 only (R-GREEN); every piece grey
 const routeBytes = new Uint8Array(8192).fill(7);
 const withData = path.join(work, 'route-wb.bin'), plain = path.join(work, 'route.bin');
 fs.writeFileSync(withData, embedWayback(routeBytes, wayback));
 fs.writeFileSync(plain, routeBytes);
-// run({file, x, y, off, stack, part, pathMode, gps, step, openOk})
+// run({file, x, y, off, stack, part, pathMode, gps, step, openOk, failAt, head, scale})
 function run(o) {
   const q = p(o.x ?? 5, o.y ?? 120);
   const args = [o.file ?? withData, q[0], q[1], o.off ?? 1, o.stack ?? 4096, o.part ?? 0, o.pathMode ?? 1, o.gps ?? 1, o.step ?? 100, o.openOk ?? 1].map(String);
-  args.push(String(o.failAt ?? 0), String(o.head ?? 90));   // the failAt-th read fails; map heading 90 = course 0
+  args.push(String(o.failAt ?? 0), String(o.head ?? 90), String(o.scale ?? 2.5));   // the failAt-th read fails; map heading 90 = course 0; m/px
+  args.push(String(o.flags ?? F_TEXT), String(o.mallocOk ?? 1));   // block flags (-1: no flags entry, cc26 block); 0: the heap allocation fails
+  args.push(String(o.U ?? 0), String(o.T ?? 0), String(o.sel ?? 0));   // stock progress: remaining U (u32 m), total T (float), selector
   if (o.exe) return JSON.parse(execFileSync(o.exe, args, {encoding: 'utf8'}));
   return JSON.parse(execFileSync(exe, args, {encoding: 'utf8'}));
 }
+const F_OWN = 1, F_TEXT = 2, F_ROUTE = 4;
 const near = (pt, x, y, tol = 2) => assert(hav(pt, p(x, y)) <= tol, `${pt} is not at ${x},${y}`);
 
 test('the embedded file keeps the route bytes and has a trailer at the end', () => {
@@ -53,8 +62,8 @@ test('off the route near a street: the line is drawn two times, with the distanc
   assert.equal(r.opened, withData);                            // the name of the route handle, not of record 0
   assert.deepEqual(r.lines.map(l => [l.op, l.n]), [[17, 4], [14, 4]]);
   near(r.lines[0].first, 0, 120); near(r.lines[0].last, 0, 0);
-  assert.match(r.text, /^1[12]\dm \d+ \d+$/);                 // 120 m to the route, then ms, then reads
-  assert.deepEqual([r.takes, r.gives, r.dashAfter, r.badDash, r.labelCol], [2, 2, 0, 0, 0x1234]);
+  assert.match(r.text, /^1[12]\dm w\d+ r\d+ g0$/);                 // 120 m to the route, then ms, then reads
+  assert.deepEqual([r.takes, r.gives, r.dashAfter, r.badDash, r.labelCol, r.anchors, r.mallocs], [2, 2, 0, 0, 0x1234, 0, 0]);   // no grey section: no anchor, no heap
 });
 test('the route call of state 3 (part 1) is handled as part 0', () => {
   assert.equal(run({part: 1}).lines.length, 2);
@@ -65,18 +74,32 @@ test('on the route there is no text, no lock, no file call and no line (wb3 remo
 });
 test('no street within 15 m shows code 4 and no line', () => {
   const r = run({x: 60, y: 100});
-  assert.deepEqual([r.lines.length, r.opens, r.closes], [0, 1, 1]); assert.match(r.text, /^wb4 \d+ \d+$/);
+  assert.deepEqual([r.lines.length, r.opens, r.closes], [0, 1, 1]); assert.match(r.text, /^wb4 w\d+ r\d+ g0$/);
 });
 test('a route file without way-back data shows code 7 and is closed again', () => {
   const r = run({file: plain});
   assert.deepEqual([r.lines.length, r.opens, r.closes], [0, 1, 1]); assert.match(r.text, /^wb7 /);
 });
+test('a cc26 file (CCWT trailer) gives wb7 and the file is closed', () => {
+  const total = Math.ceil((routeBytes.length + wayback.length + 12) / 4096) * 4096, old = new Uint8Array(total);
+  old.set(routeBytes); old.set(wayback, routeBytes.length);
+  const v = new DataView(old.buffer); v.setUint32(total - 12, 0x54574343, true); v.setUint32(total - 8, routeBytes.length, true); v.setUint32(total - 4, wayback.length, true);
+  const f = path.join(work, 'route-cc26.bin'); fs.writeFileSync(f, old);
+  const r = run({file: f});
+  assert.deepEqual([r.lines.length, r.opens, r.closes], [0, 1, 1]); assert.match(r.text, /^wb7 /);
+});
+test('the unit refuses a version 2 file with code 7 (cc27: version 3 only)', () => {
+  const v2 = wayback.slice(); v2[4] = 2;
+  const f = path.join(work, 'route-v2.bin'); fs.writeFileSync(f, embedWayback(routeBytes, v2));
+  const r = run({file: f});
+  assert.equal(r.lines.length, 0); assert.match(r.text, /^wb7 /);
+});
 test('low stack shows code 8 and makes no lock or file call', () => {
   const r = run({stack: 3967});                                  // WBD_STACK is 3,968 B on cc26
-  assert.deepEqual([r.lines.length, r.opens, r.reads, r.takes], [0, 0, 0, 0]); assert.match(r.text, /^wb8 /);
+  assert.deepEqual([r.lines.length, r.opens, r.reads, r.takes], [0, 0, 0, 0]); assert.equal(r.text, 'wb8');   // the switches are not read: no tail
 });
 test('exactly 3,968 B of free stack is enough for the file calls', () => {
-  assert.doesNotMatch(run({stack: 3968}).text, /^wb8 /);
+  assert.doesNotMatch(run({stack: 3968}).text, /^wb8/);
 });
 test('no position and a busy navigation lock show code 2; no route handle shows 7; a busy table lock shows 6', () => {
   const code = o => run(o).text.slice(0, 3);
@@ -89,7 +112,7 @@ test('a failed open shows code 9 and no close is made', () => {
 });
 test('file work above 300 ms stops with code 5, no line, and the file is closed', () => {
   const r = run({step: 200000});
-  assert.deepEqual([r.lines.length, r.opens, r.closes], [0, 1, 1]); assert.match(r.text, /^wb5 \d+ \d+$/);
+  assert.deepEqual([r.lines.length, r.opens, r.closes], [0, 1, 1]); assert.match(r.text, /^wb5 w\d+ r\d+ g0$/);
   assert(r.reads <= 3);
 });
 // Ride 18 Nov: most detour frames showed wb10. A line of more than 32 points now draws its first 32 points (from the rider)
@@ -97,18 +120,18 @@ test('file work above 300 ms stops with code 5, no line, and the file is closed'
 const chainModel = {nodes: Array.from({length: 91}, (_, i) => ({point: p(0, i * 10), dist: i * 10, next: i > 0 ? i - 1 : -1})),
   extras: [], chunks: []};
 const longFile = path.join(work, 'long.bin');
-fs.writeFileSync(longFile, embedWayback(routeBytes, encodeWaybackV2(chainModel, id, () => 1)));
+fs.writeFileSync(longFile, embedWayback(routeBytes, encodeWaybackV3(chainModel, id, () => 1)));
 test('a line of more than 32 points draws its first 32 points from the rider and shows the full distance with +', () => {
   const r = run({file: longFile, x: 5, y: 900});
   assert.deepEqual(r.lines.map(l => [l.op, l.n]), [[17, 32], [14, 32]]);
   assert.equal(r.closes, 1);
   near(r.lines[0].first, 0, 900); near(r.lines[0].last, 0, 590);
-  assert.match(r.text, /^(89|90)\dm\+ \d+ \d+$/);
+  assert.match(r.text, /^(89|90)\dm\+ w\d+ r\d+ g0$/);
 });
 test('a line of exactly 32 points has no +', () => {
   const r = run({file: longFile, x: 5, y: 310});
   assert.deepEqual(r.lines.map(l => l.n), [32, 32]);
-  assert.match(r.text, /^3\d\dm \d+ \d+$/);
+  assert.match(r.text, /^3\d\dm w\d+ r\d+ g0$/);
 });
 test('damaged way-back data shows code 7 and no line', () => {
   const bad = embedWayback(routeBytes, wayback); bad[8192] = 88;
@@ -117,49 +140,8 @@ test('damaged way-back data shows code 7 and no line', () => {
   assert.deepEqual([r.lines.length, r.closes], [0, 1]); assert.match(r.text, /^wb7 /);
 });
 
-// ---- D5: the grey draw (heading-up screen, before the line, at most 400 segments, 60 ms) ----
-const layerBytes = greyLayer(decodeWayback(wayback));
-const withLayer = path.join(work, 'route-layer.bin');
-fs.writeFileSync(withLayer, embedWayback(routeBytes, Buffer.concat([Buffer.from(wayback), Buffer.from(layerBytes)])));
-const other = Uint8Array.from({length: 16}, (_, i) => 255 - i);
-const otherWayback = encodeWaybackV2(buildWaybackModel(graph, route, {reach: 'line2k'}), other, () => 1);
-const otherLayer = path.join(work, 'route-other.bin');
-fs.writeFileSync(otherLayer, embedWayback(routeBytes, Buffer.concat([Buffer.from(otherWayback), Buffer.from(greyLayer(decodeWayback(otherWayback)))])));
-const exeCap = path.join(work, 'host-cap');   // the same adapter with 3 segments for the grey draw: the cap test
-execFileSync('cc', ['-std=gnu11', '-O1', '-g', '-Wall', '-Wextra', '-Werror', '-DHOST', '-DWBD_GREY_SEGS=3u',
-  '-fsanitize=address,undefined', '-fno-sanitize-recover=all', '-I', path.join(root, 'firmware/wayback'),
-  path.join(root, 'tools/wayback_device_host.c'), path.join(root, 'firmware/wayback/wb_device.c'),
-  path.join(root, 'firmware/wayback/wayback.c'), path.join(root, 'firmware/wayback/wb_grey.c'), '-o', exeCap], {stdio: ['ignore', 'pipe', 'pipe']});
-const greyOps = r => r.lines.filter(l => l.op === 30);
-const segsOf = ls => ls.reduce((s, l) => s + l.n - 1, 0);
-
-test('off the route with a layer: the grey lines come first (operation 30), then the line (17, 14)', () => {
-  const r = run({file: withLayer});
-  const ops = r.lines.map(l => l.op);
-  assert.deepEqual(ops.slice(-2), [17, 14]);
-  assert(ops.length > 2 && ops.slice(0, -2).every(o => o === 30), ops.join());
-  assert(r.lines.slice(0, -2).every(l => l.n >= 2));
-  assert.equal(r.takes, r.gives); assert.equal(r.dashAfter, 0); assert.equal(r.badDash, 0);
-});
-test('the line is the same with and without the layer', () => {
-  const plainRun = run({}), layerRun = run({file: withLayer});
-  assert.deepEqual(layerRun.lines.slice(-2), plainRun.lines);
-  assert.match(layerRun.text, /^1[12]\dm /);
-  assert.equal(layerRun.text.split(' ')[0], plainRun.text.split(' ')[0]);
-});
-test('at most 400 segments of grey are drawn (cap 3 in this build): the cap cuts the last line', () => {
-  const r = run({file: withLayer, exe: exeCap});
-  assert.deepEqual(r.lines.slice(-2).map(l => l.op), [17, 14]);
-  assert(segsOf(greyOps(r)) <= 3, `grey segments ${segsOf(greyOps(r))}`);
-  assert(segsOf(greyOps(r)) >= 1);
-});
-test('the grey draw stops 60 ms after its own start: a slow clock draws less grey and the same line', () => {
-  const full = run({file: withLayer, step: 1}), late = run({file: withLayer, step: 5000});
-  assert(greyOps(late).length < greyOps(full).length, `${greyOps(late).length} against ${greyOps(full).length}`);
-  assert.deepEqual(late.lines.slice(-2).map(l => l.op), [17, 14]);
-  assert.equal(late.text.split(' ')[0], full.text.split(' ')[0]);
-});
-// A denser street grid (60 m, 13 by 13 crossings) for the read-error tests: the grey pass then has 20 reads and more.
+// ---- cc27 Task 8: the grey section (type 2). 4 anchors give the view; every line of the screen cells is drawn with the
+// raster, before the way-back line. A denser street grid (60 m, 13 by 13 crossings).
 const dl = [], dlinks = [], DN = 13;
 for (let i = 0; i < DN; i++) for (let j = 0; j < DN; j++) dl.push([(i - 6) * 60, (j - 6) * 60]);
 for (let i = 0; i < DN; i++) for (let j = 0; j < DN; j++) {
@@ -167,61 +149,201 @@ for (let i = 0; i < DN; i++) for (let j = 0; j < DN; j++) {
   if (j + 1 < DN) dlinks.push([a, a + 1]);
   if (i + 1 < DN) dlinks.push([a, a + DN]);
 }
-const denseGraph = makeGraph(dl, dlinks);
-const denseRoute = [{point: pt(-360, 0), progress: 0}, {point: pt(360, 0), progress: 720000}];
-const denseWb = encodeWaybackV2(buildWaybackModel(denseGraph, denseRoute, {reach: 'line2k'}), id, () => 1);
-const denseLayer = path.join(work, 'route-dense.bin'), densePlain = path.join(work, 'route-dense-plain.bin');
-fs.writeFileSync(denseLayer, embedWayback(routeBytes, Buffer.concat([Buffer.from(denseWb), Buffer.from(greyLayer(decodeWayback(denseWb)))])));
-fs.writeFileSync(densePlain, embedWayback(routeBytes, denseWb));
-const dense = {file: denseLayer, x: 5, y: 90};
-for (const k of [1, 5, 20]) {
-  test(`a read error at grey read ${k} keeps the line and the distance of the run without it`, () => {
-    const clean = run(dense), plainRun = run({...dense, file: densePlain});
-    assert(clean.greyFirstReads >= 0 && clean.reads >= clean.greyFirstReads + 20, `${clean.greyFirstReads} ${clean.reads}`);
-    const r = run({...dense, failAt: clean.greyFirstReads + k});
-    assert.deepEqual(r.lines.slice(-2), plainRun.lines.slice(-2));
-    assert.equal(r.text.split(' ')[0], plainRun.text.split(' ')[0]);
-    assert(greyOps(r).length < greyOps(clean).length, `k=${k}: ${greyOps(r).length} against ${greyOps(clean).length}`);
-  });
+const denseWb = encodeWaybackV3(buildWaybackModel(makeGraph(dl, dlinks), [{point: pt(-360, 0), progress: 0}, {point: pt(360, 0), progress: 720000}], {reach: 'line2k'}), id, () => 1);
+const denseCells = greyCellLines(decodeWayback(denseWb)), byKey = new Map(denseCells.map(c => [c.key, c]));
+const fileWith = (name, wb, grey) => { const f = path.join(work, name); fs.writeFileSync(f, embedSections(routeBytes, [{type: SECTION.WAYBACK, bytes: wb}, ...(grey ? [{type: SECTION.GREY, bytes: grey}] : [])])); return f; };
+const BIG = {pixCap: 1e9, ptCap: 1e6};
+const denseGrey = fileWith('dense-grey.bin', denseWb, encodeGreyLayer(denseCells, BIG)), densePlain = fileWith('dense-plain.bin', denseWb);
+const dense = {file: denseGrey, x: 5, y: 90};
+const gOf = r => Number(/ g(\d+)\+?$/.exec(r.text)[1]);
+// The rider units and the course as the unit computes them: float position, (int32)(deg * 1e7f), the grid of the header.
+const f32 = Math.fround, e7 = v => Math.trunc(f32(f32(v) * f32(1e7)));
+function reference(o) {
+  const dv = new DataView(denseWb.buffer, denseWb.byteOffset), [la, lo] = p(o.x, o.y), head = o.head ?? 90;
+  const ux = Math.floor((e7(lo) - dv.getInt32(28, true)) * dv.getUint32(36, true) / 65536), uy = Math.floor((e7(la) - dv.getInt32(24, true)) * dv.getUint32(32, true) / 65536);
+  const sel = greyCells(ux, uy, Math.trunc(810.5 - head) % 360), withBody = sel.filter(k => byKey.has(k));
+  return {rows: new Set(sel.map(k => k >>> 16)).size, cells: withBody.length, lines: withBody.reduce((t, k) => t + byKey.get(k).lines.length, 0), first: byKey.get(withBody[0]).lines.length};
 }
-test('a route change mid-ride: the grey and the line come from the file of that frame', () => {
-  const otherPlain = path.join(work, 'route-other-plain.bin');
-  fs.writeFileSync(otherPlain, embedWayback(routeBytes, otherWayback));
-  const changed = run({file: otherLayer}), plainOther = run({file: otherPlain});
-  assert(greyOps(changed).length >= 1);
-  assert.deepEqual(changed.lines.slice(-2), plainOther.lines.slice(-2));
-  assert.match(changed.text, /^1[12]\dm /);
+
+test('off the route with a grey section: 4 anchors, no projection call for a grey line, then the line (17, 14)', () => {
+  const r = run(dense);
+  assert.equal(r.anchors, 4);
+  assert.deepEqual(r.lines.map(l => l.op), [17, 14]);
+  assert(r.greyPx > 500 && gOf(r) > 0, `${r.greyPx} ${r.text}`);
+  assert.deepEqual([r.mallocs, r.frees, r.dashAfter, r.badDash, r.takes, r.gives], [1, 1, 0, 0, 2, 2]);
+  assert.deepEqual(r.dsc, [0x5555, 7, 0]);                     // the anchors give back the colour and the width
 });
-test('a slow frame stops the grey 220 ms after the frame start and keeps the line', () => {
-  const r = run({...dense, step: 1800}), full = run({...dense, step: 1});   // the grey starts near 200 ms
-  assert(greyOps(r).length >= 1 && greyOps(r).length < greyOps(full).length, `${greyOps(r).length} ${greyOps(full).length}`);
-  assert.deepEqual(r.lines.slice(-2), full.lines.slice(-2));
-  assert.equal(r.text.split(' ')[0], full.text.split(' ')[0]);
+test('the line and the distance are the same with and without the grey section', () => {
+  const a = run(dense), b = run({...dense, file: densePlain});
+  assert.deepEqual(a.lines, b.lines);
+  assert.equal(a.text.split(' ')[0], b.text.split(' ')[0]);
+  assert.deepEqual([b.anchors, b.mallocs, b.greyPx, gOf(b)], [0, 0, 0, 0]);
 });
-test('ride 18 Nov: mount and tick above 60 ms still leave the grey its own 60 ms', () => {
-  const clean = run({...dense, step: 1});
-  const step = Math.ceil(61000 / clean.greyFirstReads);                // the work before the grey takes more than 60 ms
-  const r = run({...dense, step});
-  assert(greyOps(r).length >= 1, `grey lines ${greyOps(r).length}, step ${step}`);
-  assert.deepEqual(r.lines.slice(-2).map(l => l.op), [17, 14]);
+test('every line of the selected cells is drawn: the drawn line count equals the JS reference', () => {
+  for (const head of [90, 45, 0, 300]) {
+    const r = run({...dense, head});
+    assert.equal(gOf(r), reference({...dense, head}).lines, `map heading ${head}`);
+    assert.match(r.text, / g\d+$/);                            // no '+': every line is drawn
+  }
+});
+test('the same position and heading give the same canvas hash with a fast and a slow clock (below 300 ms)', () => {
+  const fast = run({...dense, step: 1}), slow = run({...dense, step: Math.floor(250000 / (fast.reads + 4))});   // one clock call per read
+  assert.doesNotMatch(slow.text, /^wb/);
+  assert(Number(/ w(\d+) /.exec(slow.text)[1]) < 300, slow.text);
+  assert.equal(slow.hash, fast.hash);
+  assert.equal(gOf(slow), gOf(fast));
+});
+test('reads for grey are at most 1 + rows + cells', () => {
+  for (const head of [90, 0]) {
+    const r = run({...dense, head}), plainRun = run({...dense, head, file: densePlain}), ref = reference({...dense, head});
+    assert(r.reads - plainRun.reads <= 1 + ref.rows + ref.cells, `${r.reads - plainRun.reads} > 1 + ${ref.rows} + ${ref.cells}`);
+    assert(r.reads - plainRun.reads >= 2);
+  }
+});
+test('the pixel cap of the header stops at a line boundary: fewer lines, a + in the text, the same line', () => {
+  const capped = fileWith('dense-cap.bin', denseWb, encodeGreyLayer(denseCells, {pixCap: 3000, ptCap: 1e6}));
+  const full = run(dense), r = run({...dense, file: capped});
+  assert(gOf(r) > 0 && gOf(r) < gOf(full), `${gOf(r)} ${gOf(full)}`);
+  assert.match(r.text, / g\d+\+$/);
+  assert(r.greyPx < full.greyPx);
+  assert.deepEqual(r.lines, full.lines);
+});
+test('an anchor that fails (outside ±4000 px) or a NaN heading: no grey, the same line and text', () => {
+  const ref = run({...dense, file: densePlain});
+  const far = run({...dense, scale: 0.2}), nan = run({...dense, head: 'nan'});
+  assert(far.anchors >= 1 && nan.anchors === 0, `${far.anchors} ${nan.anchors}`);
+  for (const r of [far, nan]) {
+    assert.deepEqual([r.greyPx, gOf(r)], [0, 0]);
+    assert.deepEqual(r.lines, ref.lines);
+    assert.equal(r.text.split(' ')[0], ref.text.split(' ')[0]);
+    assert.deepEqual(r.dsc, [0x5555, 7, 0]);
+  }
+  for (const h of [721, -361]) assert.equal(run({...dense, head: h}).greyPx, 0, `head ${h}`);
+});
+test('a read error in a cell body: no more grey, the same line and distance', () => {
+  const clean = run(dense), ref = reference(dense), plainRun = run({...dense, file: densePlain});
+  const first = run({...dense, failAt: clean.anchorReads + 1 + ref.rows + 1});   // the first body read
+  assert.deepEqual([first.greyPx, gOf(first)], [0, 0]);
+  assert.deepEqual(first.lines, plainRun.lines);
+  assert.equal(first.text.split(' ')[0], plainRun.text.split(' ')[0]);
+  const second = run({...dense, failAt: clean.anchorReads + 1 + ref.rows + 2});
+  assert.equal(gOf(second), ref.first);
+  assert.deepEqual(second.lines, plainRun.lines);
+  const open = run({...dense, failAt: clean.anchorReads + 1});                     // the header read
+  assert.deepEqual([open.greyPx, gOf(open)], [0, 0]);
+});
+test('a grey section that is not layer version 2 draws no grey and the same line', () => {
+  const v1 = encodeGreyLayer(denseCells, BIG).slice(); v1[6] = 1;
+  const r = run({...dense, file: fileWith('dense-v1.bin', denseWb, v1)});
+  assert.deepEqual([r.greyPx, gOf(r)], [0, 0]);
+  assert.deepEqual(r.lines, run({...dense, file: densePlain}).lines);
+});
+test('the heap buffer is freed on each path (malloc count == free count)', () => {
+  const clean = run(dense);
+  for (const o of [dense, {...dense, scale: 0.2}, {...dense, head: 'nan'}, {...dense, failAt: clean.anchorReads + 3}, {...dense, x: 30, y: 30},
+    {...dense, step: 200000}, {...dense, file: densePlain}, {...dense, stack: 100}, {...dense, openOk: 0}]) {
+    const r = run(o);
+    assert.equal(r.mallocs, r.frees, JSON.stringify(o));
+    assert(r.mallocs <= 1);
+  }
 });
 // The course comes from the stock map heading (450 - course): 90 is course 0, also at the start of a new navigation.
-const greyOf = h => greyOps(run({...dense, head: h}));
+const hashOf = h => run({...dense, head: h}).hash;
 test('map heading 90 and 450 are course 0, 0 and 720 are course 90, 180 and -180 are course 270', () => {
-  assert.deepEqual(greyOf(450), greyOf(90));
-  assert.deepEqual(greyOf(720), greyOf(0));
-  assert.deepEqual(greyOf(-180), greyOf(180));
-  assert.notDeepEqual(greyOf(0), greyOf(90));
+  assert.equal(hashOf(450), hashOf(90));
+  assert.equal(hashOf(720), hashOf(0));
+  assert.equal(hashOf(-180), hashOf(180));
+  assert.notEqual(hashOf(0), hashOf(90));
 });
-test('course 90 draws the grey east of the rider, course 270 west', () => {
-  const lon = ls => ls.reduce((s, l) => s + l.first[1], 0) / ls.length;
-  assert(lon(greyOf(0)) > lon(greyOf(180)));
-});
-test('a NaN or bad map heading draws no grey and the same line', () => {
-  const ref = run({...dense, file: densePlain});
-  for (const h of ['nan', 721, -361]) {
-    const r = run({...dense, head: h});
-    assert.equal(greyOps(r).length, 0, `head ${h}`);
-    assert.deepEqual(r.lines, ref.lines);
+
+// ---- cc27 Task 9: the block switches (flags entry of the map block), the frame order and the text ----
+test('on the route without F_ROUTE: no block-flag text, no file call, no heap call (cc26)', () => {
+  for (const flags of [-1, 0, F_TEXT | F_OWN]) {
+    const r = run({...dense, off: 0, flags});
+    assert.deepEqual([r.rt, r.opens, r.reads, r.texts, r.mallocs, r.lines.length, r.takes], [1, 0, 0, 0, 0, 0, 0], `flags ${flags}`);
   }
+});
+const withElev = fileWith('dense-elev.bin', denseWb, null);
+fs.writeFileSync(withElev, embedSections(routeBytes, [{type: SECTION.WAYBACK, bytes: denseWb}, {type: SECTION.ELEV, bytes: new Uint8Array(912).fill(1)}]));
+test('on the route with F_ROUTE: one open, one table read, one close; the heap buffer is freed', () => {
+  const r = run({...dense, file: withElev, off: 0, flags: F_ROUTE | F_TEXT});
+  assert.deepEqual([r.opens, r.reads, r.closes, r.mallocs, r.frees, r.lines.length, r.anchors], [1, 1, 1, 1, 1, 0, 0]);
+  assert.match(r.text, /^e\d+ u\d+ t\d+ w\d+$/);
+  const quiet = run({...dense, file: withElev, off: 0, flags: F_ROUTE});
+  assert.deepEqual([quiet.opens, quiet.closes, quiet.texts, quiet.mallocs, quiet.frees], [1, 1, 0, 1, 1]);   // no F_TEXT: no text
+  const noElev = run({...dense, off: 0, flags: F_ROUTE | F_TEXT});
+  assert.deepEqual([noElev.opens, noElev.closes, noElev.mallocs], [1, 1, 0]);
+  assert.match(noElev.text, /^e1 u0 t0 w\d+$/);               // e1: no elevation section (U and T are 0 in this run)
+});
+test('off the route without F_TEXT the text is only the distance; with F_TEXT it has w and r', () => {
+  assert.match(run({...dense, flags: 0}).text, /^\d+m$/);
+  assert.match(run({...dense, flags: -1}).text, /^\d+m$/);     // a block without the flags entry: cc26 switches
+  assert.match(run({...dense, flags: F_TEXT}).text, /^\d+m w\d+ r\d+ g\d+$/);
+  assert.match(run({...dense, x: 30, y: 30, flags: 0}).text, /^wb4$/);
+  assert.match(run({...dense, x: 30, y: 30, flags: F_TEXT}).text, /^wb4 w\d+ r\d+ g0$/);
+});
+test('a failed heap allocation shows the line and code 11 in the text with F_TEXT', () => {
+  const r = run({...dense, mallocOk: 0}), ok = run(dense);
+  assert.deepEqual(r.lines, ok.lines);
+  assert.deepEqual([r.greyPx, r.anchors, r.mallocs, r.frees], [0, 0, 1, 0]);   // the failed call is counted, nothing to free
+  assert.match(r.text, /^\d+m w\d+ r\d+ wb11$/);
+  assert.equal(r.text.split(' ')[0], ok.text.split(' ')[0]);
+  assert.match(run({...dense, mallocOk: 0, flags: 0}).text, /^\d+m$/);
+});
+test('the stack check comes before the block lock and before any file call', () => {
+  const low = run({...dense, stack: 3967});
+  assert.deepEqual([low.blockLocks, low.opens, low.reads, low.takes, low.mallocs], [0, 0, 0, 0, 0]);
+  assert.equal(low.text, 'wb8');
+  const lowOn = run({...dense, stack: 3967, off: 0, flags: F_ROUTE | F_TEXT});
+  assert.deepEqual([lowOn.blockLocks, lowOn.opens, lowOn.texts], [0, 0, 0]);
+  const ok = run(dense);
+  assert.equal(ok.blockLocks, 2);                              // one lock and one unlock, before the file work
+  assert.equal(ok.fileUnderBlockLock, 0);
+});
+test('without F_OWN the way-back line goes through LVGL (no OP_OWN), with F_OWN through the raster', () => {
+  const lv = run({...dense, flags: F_TEXT}), own = run({...dense, flags: F_TEXT | F_OWN});
+  assert.deepEqual(lv.lines.map(l => [l.op, l.own]), [[17, 0], [14, 0]]);
+  assert.deepEqual(own.lines.map(l => [l.op, l.own]), [[17, 1], [14, 1]]);
+  assert.equal(own.hash, lv.hash);                             // the grey is the raster in both
+});
+
+// ---- cc27 Task 10: the elevation strip on the route (progress p = T - U, trusted only through the gates) ----
+const elevBytes = elevationFromPoints(Array.from({length: 501}, (_, i) => ({distance: i * 10, elevation: 100 + i / 10})), 500000);   // 5 km
+const elevFile = path.join(work, 'route-elev5.bin');
+fs.writeFileSync(elevFile, embedSections(routeBytes, [{type: SECTION.WAYBACK, bytes: denseWb}, {type: SECTION.ELEV, bytes: elevBytes}]));
+const onRoute = o => run({...dense, file: elevFile, off: 0, flags: F_ROUTE | F_TEXT, U: 3000, T: 5000, sel: 0, ...o});
+test('on the route with trusted progress the strip is drawn: e0 with u and t, 3 reads, the heap buffer freed', () => {
+  const r = onRoute({});
+  assert.match(r.text, /^e0 u3000 t5000 w\d+$/);
+  assert(r.greyPx >= 232 * 32, String(r.greyPx));              // the white strip and the profile
+  assert.deepEqual([r.reads, r.mallocs, r.frees, r.lines.length, r.anchors], [3, 1, 1, 0, 0]);
+  assert.equal(run({...dense, file: elevFile, off: 0, flags: F_ROUTE, U: 3000, T: 5000}).hash, r.hash);   // no text: the same strip
+});
+test('progress gates: off route, selector 1, U 0, U > T, |T - L| > max(50, L/100) draw nothing and give e2', () => {
+  for (const o of [{sel: 1}, {U: 0}, {U: 5001}, {T: 5051}, {T: 4949}, {T: 'nan'}]) {
+    const r = onRoute(o);
+    assert.match(r.text, /^e2 /, JSON.stringify(o));
+    assert.equal(r.greyPx, 0, JSON.stringify(o));
+    assert.equal(r.mallocs, r.frees);
+  }
+  assert.match(onRoute({T: 5050}).text, /^e0 /);                 // |T - L| = 50: inside the gate
+  const off = run({...dense, file: elevFile, flags: F_ROUTE | F_TEXT, U: 3000, T: 5000});
+  assert.match(off.text, /^\d+m w\d+ r\d+ g0$/);                // off the route: the way-back text, no strip
+  assert.equal(off.greyPx, 0);
+});
+test('no elevation section gives e1 and no strip', () => {
+  const r = run({...dense, file: densePlain, off: 0, flags: F_ROUTE | F_TEXT, U: 3000, T: 5000});
+  assert.match(r.text, /^e1 u3000 t5000 w\d+$/);
+  assert.deepEqual([r.greyPx, r.mallocs], [0, 0]);
+});
+test('past the end gives e3; a read error gives e4; no strip in both', () => {
+  const end = onRoute({U: 1, T: 5050});                         // p = 5,049 m of a 5,000 m section
+  assert.match(end.text, /^e3 /);
+  for (const failAt of [2, 3]) {                                // the header read, the window read
+    const r = onRoute({failAt});
+    assert.match(r.text, /^e4 /, `failAt ${failAt}`);
+    assert.equal(r.greyPx, 0);
+    assert.equal(r.mallocs, r.frees);
+  }
+  assert.match(onRoute({mallocOk: 0}).text, /^e11 /);
 });

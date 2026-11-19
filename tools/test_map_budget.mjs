@@ -68,3 +68,14 @@ test('scheme D section: the budget audit gives the protobuf costs (budgets uncha
  assert(D.bytes.length<P.bytes.length,`scheme D ${D.bytes.length} B, protobuf ${P.bytes.length} B`);
  assert.deepEqual(auditMapSection(D.bytes),auditMapSection(P.bytes));
 });
+
+// ---- cc27 Task 12: the flags entry costs 28 B decoded and its serialized bytes, no call and no point ----
+import {flagsEntry} from '../js/mapsec.js';
+test('a block with the flags entry costs 28 B more decoded and the same calls', () => {
+  const line = [...fu(2, 6), ...fs(3, 1000), ...fs(4, 2000), ...fu(5, 2), ...fb(6, [...fs(1, 1000), ...fs(2, 2000)]), ...fb(6, [...fs(1, 1100), ...fs(2, 2100)])];
+  const arrow = [...fu(2, 15), ...fs(3, 1000), ...fs(4, 2000), ...fu(5, 2), ...fb(6, [...fs(1, 1000), ...fs(2, 2000)]), ...fb(6, [...fs(1, 1100), ...fs(2, 2100)])];
+  const a = estimateBlock([line, arrow]), f = estimateBlock([line, arrow, flagsEntry(7)]);
+  assert.equal(f.decodedBytes, a.decodedBytes + 28);
+  for (const k of ['projectionCalls', 'projectedPoints', 'storedPairs', 'overlayEntries', 'labelBytes', 'fillVertices']) assert.equal(f[k], a[k], k);
+  assert.equal(f.serializedBytes, a.serializedBytes + fb(2, [...fu(1, 2), ...flagsEntry(7)]).length);
+});

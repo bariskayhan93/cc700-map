@@ -50,8 +50,10 @@ class Cc26BuildTests(unittest.TestCase):
         self.assertEqual(o[0x3c1e0020][48:len(b[0x3c1e0020])], b[0x3c1e0020][48:])
         irom_b, irom_o = b[0x42000020], o[0x42000020]
         diff = [i for i in range(len(irom_b)) if irom_b[i] != irom_o[i]]
-        word = set(range(0x420496b8 - 0x42000020, 0x420496bc - 0x42000020))
-        self.assertTrue(diff and set(diff) <= word, diff)   # the hook word; the top byte 0x42 is unchanged
+        word = set()
+        for lit in (0x420496b8, 0x42049678, 0x4205bd98):   # wb_rt, then the cc_iter and cc_line words (since 112a91b)
+            word |= set(range(lit - 0x42000020, lit + 4 - 0x42000020))
+        self.assertTrue(diff and set(diff) <= word, diff)   # the three hook words; the top byte 0x42 is unchanged
 
     def test_the_hook_word_points_into_the_second_area(self):
         word = int(self.receipt['hook_target'], 16)
@@ -64,6 +66,11 @@ class Cc26BuildTests(unittest.TestCase):
     def test_code_fits_the_area_and_nm_is_empty(self):
         self.assertLessEqual(self.receipt['code_bytes'], 20172)
         self.assertEqual(self.receipt['undefined_symbols'], '')
+
+    def test_the_cc26_record_builds_the_cc26_code(self):
+        # The cc26 sources come from git f8914d0. (cc27 Task 1 moved the addresses into firmware/common/fw.h: that tree
+        # gave 24850755..., the same code plus two memw for the volatile canvas pointer.)
+        self.assertEqual(self.receipt['code_sha256'], '3eb0d0364b490af6f3203b3fd30531518a7b4f4c97a2b5060eeaf815fa86fca1')
 
     def test_called_firmware_entries_begin_with_entry(self):
         cb.check_called(self.base)

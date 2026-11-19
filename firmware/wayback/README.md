@@ -83,33 +83,46 @@ The core writes nothing. It changes no stock state.
 
 `wb_device.c` replaces one word: the literal of `tramp_rt` at `0x420496b8` (was `cc_rt`, `0x421dd920`). `wb_rt` calls `cc_rt` first.
 The map frame (`0x4204da24`) makes one hooked route call for each frame, so the adapter runs one time for each frame.
-On the route, the test image writes `wb3` and does nothing else. This text shows that the hook runs. A release image must not have it.
-While the off-route byte (`0x3c3894f0 + 145`) is set, the adapter does the steps below. It has no stored state.
+It has no stored state. The switches come from the flags entry of the current map block (`firmware/common/types.h`):
+`F_OWN` (bit 0) draws the way-back line with the raster module, `F_TEXT` (bit 1) adds the test text, `F_ROUTE` (bit 2)
+lets the adapter open the route file on the route. A block without the flags entry has flags 0: cc26 behaviour.
 
-1. Checks the free stack of the task (3,968 B or more on cc26), as `loop_start.c` does.
-2. Takes the position through `cc_pos` with a zero-wait navigation lock, as `cc_rt` does.
-3. Finds the path of the first open route file in the open-file table of the firmware (zero-wait lock).
-4. Opens that file a second time for reading. It never moves the position of the firmware's own handle.
-5. Reads the trailer, mounts the data, runs one tick, draws the grey streets and reads at most 32 points. A read later than 300 ms after the frame start fails (raw timer `0x403779f4`). The grey draw stops 60 ms after its own start, and never later than 220 ms after the frame start. A line of more than 32 points is cut: the first 32 points from the rider are drawn, and the text has `+` after the distance.
-6. Closes the file. Draws the line two times through the projection callback (`0x4204c1bc`): operation 17 (white, 7 px), then 14 (dark purple, 4 px).
-7. Writes a text at the top left of the map: the ride distance to the route in metres, or a code, then the time of this work in ms, then the number of file reads.
+1. Checks the free stack of the task (3,968 B or more), as `loop_start.c` does. Low stack: off the route `wb8`, on the route nothing.
+2. Reads the switches under the block lock (`0x420494a4`, `0x420494b8`), the lock of `cc_iter`. On the route without `F_ROUTE`: stops (cc26).
+3. Off the route: takes the position through `cc_pos` with a zero-wait navigation lock, as `cc_rt` does.
+4. Finds the path of the first open route file in the open-file table of the firmware (zero-wait lock).
+5. Opens that file a second time for reading. It never moves the position of the firmware's own handle.
+6. Reads the section table (last 64 B, one read). Takes one heap buffer of 4,096 B (`heap_caps_malloc`, PSRAM) when the
+   frame has a section for it: off the route the grey layer (type 2), on the route the elevation (type 3, Task 10).
+7. Off the route: mounts the way-back data (type 1), runs one tick, reads at most 32 line points, then the grey: 4 anchors
+   (op 23 through the projection), the view, and every line of the screen cells with the raster under the page caps.
+   A read later than 300 ms after the frame start fails (raw timer `0x403779f4`). A line of more than 32 points is cut:
+   the first 32 points from the rider are drawn, and the text has `+` after the distance.
+8. Gives the heap buffer back and closes the file. Off the route draws the line two times through the projection callback
+   (`0x4204c1bc`): operation 17 (white, 7 px), then 14 (dark purple, 4 px); with `F_OWN` both carry `OP_OWN`.
+9. Writes a text at the top left of the map.
 
 | Text | Cause |
 |---|---|
-| `123m 45 130` | A line is drawn. 123 m is the ride distance to the route. The work took 45 ms and 130 file reads. |
-| `820m+ 150 120` | As above, but the line has more than 32 points: only its first 32 points (from the rider) are drawn. |
-| `wb3` | The rider is on the route (test image only). |
-| `wb2 45` | No position, no route list, or the navigation lock is busy. |
-| `wb4 45` | No stored street within 15 m. |
-| `wb5 45` | A file read failed, or the 300 ms limit was reached. |
-| `wb6 45` | The open-file table lock is busy. |
-| `wb7 45` | No open route file, no way-back data at its end, or the data is refused by `wb_mount`. |
-| `wb8 45` | Less than 3,968 B of stack are free. No file call is made. |
-| `wb9 45` | The second open of the route file failed. |
+| `123m` | Off the route, a line is drawn. 123 m is the ride distance to the route. |
+| `123m w45 r30 g87` | The same with `F_TEXT`: 45 ms of work, 30 file reads, 87 grey lines. |
+| `123m w45 r30 g60+` | Not every grey line of the screen cells is drawn: a page cap or a read error. |
+| `123m w45 r12 wb11` | No heap buffer: no grey. The line is drawn. |
+| `820m+ w150 r20 g0` | The line has more than 32 points: only its first 32 points (from the rider) are drawn. |
+| `wb2` | No position, no route list, or the navigation lock is busy. |
+| `wb4` | No stored street within 15 m. |
+| `wb5` | A file read failed, or the 300 ms limit was reached. |
+| `wb6` | The open-file table lock is busy. |
+| `wb7` | No open route file, no way-back section, or the data is refused by `wb_mount` (also a cc26 file). |
+| `wb8` | Less than 3,968 B of stack are free. No lock and no file call is made. |
+| `wb9` | The second open of the route file failed. |
+| `e1 w12` | On the route with `F_ROUTE` and `F_TEXT`: no elevation section (Task 10 adds the other codes). |
 
-**Way-back data in the route file.** `tools/wayback_embed.mjs` appends the way-back file to the route file.
-The route bytes do not change. The last 12 bytes are the trailer: `CCWT`, `u32` offset, `u32` size.
-The identity check of `wb_mount` gets the identity from the data itself. The binding is that the data is inside its route file.
+With `F_TEXT` each `wb<code>` off the route also has the tail ` w<ms> r<reads> g<lines>`.
+
+**Sections in the route file.** `js/wayback_embed.js` (page) and `tools/wayback_embed.mjs` (host) append the sections
+and the table; the route bytes do not change. The identity check of `wb_mount` gets the identity from the data itself.
+The binding is that the data is inside its route file.
 
 **Firmware functions used** (stock V1.414). `fopen` `0x421b85b0`, `fseek` `0x421b8848` and `fread` `0x421b8818` are each confirmed at two or more call sites.
 `fclose` `0x421b7de0` has one call site; its body agrees with `_fclose_r` of the toolchain `libc.a`. Also:
@@ -128,6 +141,7 @@ It never writes to the device. `tools/wayback_device_build.py` keeps only the sh
 - A fresh mount for each frame has no memory of the last street piece. The line can change between two near pieces.
 - With more than one open route file (after a reroute from the app), the adapter uses the first one.
 - The text position (6, 6) can be under a stock widget. Not checked on the screen.
+- The anchors assume that the stock projection is affine on the screen area (a fourth anchor checks it in each frame). Not checked on the device.
 - The host tests were written after the adapter code.
 
 ## Files

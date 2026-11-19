@@ -3,7 +3,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {gridFixture, loopFixture} from './wayback_fixture.mjs';
 import {buildWaybackModel} from './wayback_tree.mjs';
-import {makeFrame, encodeWayback, decodeWayback, encodeWaybackV2} from './wayback_format.mjs';
+import {makeFrame, encodeWayback, decodeWayback, encodeWaybackV3} from './wayback_format.mjs';
 const {graph, route, p} = gridFixture();
 const model = buildWaybackModel(graph, route, {reach: 'line2k'});
 const id = Uint8Array.from({length: 16}, (_, i) => i + 1);
@@ -52,29 +52,29 @@ test('exception lists survive encode and decode, sorted by node', () => {
 });
 
 // Version 2 (cc26, D1): 8-byte nodes, no exception lists.
-test('version 2 round trip: positions within 1 unit, distance within 0.5 m, next exact', () => {
-  const v2 = decodeWayback(encodeWaybackV2(model, id, ALL_GREY)), v1 = decodeWayback(encodeWayback(model, id));
-  assert.equal(v2.header.version, 2);
+test('version 3 round trip: positions within 1 unit, distance within 1 m, next exact', () => {
+  const v2 = decodeWayback(encodeWaybackV3(model, id, ALL_GREY)), v1 = decodeWayback(encodeWayback(model, id));
+  assert.equal(v2.header.version, 3);
   assert.equal(v2.nodes.length, v1.nodes.length);
   v2.nodes.forEach((n, i) => {
     assert(Math.abs(n.x - v1.nodes[i].X) <= 1, `x ${i}`);
     assert(Math.abs(n.y - v1.nodes[i].Y) <= 1, `y ${i}`);
     assert.equal(n.next, v1.nodes[i].next, `next ${i}`);
-    assert(Math.abs(n.distM - v1.nodes[i].distDm / 10) <= 0.5, `distance ${i}`);
+    assert(Math.abs(n.distM - v1.nodes[i].distDm / 10) <= 1, `distance ${i}`);
   });
 });
 
 test('version 2 size: header, cells, 8-byte nodes and 8-byte extras', () => {
   const cells = decodeWayback(encodeWayback(model, id)).header.cellCount;
-  assert.equal(encodeWaybackV2(model, id, ALL_GREY).length, 64 + 12 * (cells + 1) + 8 * model.nodes.length + 8 * model.extras.length);
+  assert.equal(encodeWaybackV3(model, id, ALL_GREY).length, 64 + 12 * (cells + 1) + 8 * model.nodes.length + 8 * model.extras.length);
 });
 
-test('version 2 refuses a position outside 65.5 km, a distance over 4,095 m and a next delta over 4,095', () => {
+test('version 3 refuses a position outside 65.5 km, a distance over 8,190 m and a next delta over 4,095', () => {
   const far = (lat, lon) => ({nodes: [{point: [51, 7], dist: 5, next: -1}, {point: [lat, lon], dist: 5, next: -1}], extras: [], chunks: []});
-  assert.throws(() => encodeWaybackV2(far(51, 8.0), id, ALL_GREY), /does not fit version 2: x$/);
-  assert.throws(() => encodeWaybackV2(far(51.7, 7), id, ALL_GREY), /does not fit version 2: y$/);
-  const dist = {nodes: [{point: [51, 7], dist: 4096, next: -1}], extras: [], chunks: []};
-  assert.throws(() => encodeWaybackV2(dist, id, ALL_GREY), /does not fit version 2: dist$/);
+  assert.throws(() => encodeWaybackV3(far(51, 8.0), id, ALL_GREY), /does not fit version 3: x$/);
+  assert.throws(() => encodeWaybackV3(far(51.7, 7), id, ALL_GREY), /does not fit version 3: y$/);
+  const dist = {nodes: [{point: [51, 7], dist: 8192, next: -1}], extras: [], chunks: []};
+  assert.throws(() => encodeWaybackV3(dist, id, ALL_GREY), /does not fit version 3: dist$/);
   // 4,225 nodes on a 1 m grid. The first node in file order links to the node 4,096 places later (edge under 1,700 units).
   const pts = [];
   for (let i = 0; i < 65; i++) for (let j = 0; j < 65; j++) pts.push([51 + (i / 111320), 7 + (j / (111320 * Math.cos(51 * Math.PI / 180)))]);
@@ -84,24 +84,24 @@ test('version 2 refuses a position outside 65.5 km, a distance over 4,095 m and 
   nodes[order[0]].next = order[4096];
   const long = {nodes, extras: [], chunks: []};
   assert.doesNotThrow(() => encodeWayback(long, id));
-  assert.throws(() => encodeWaybackV2(long, id, ALL_GREY), /does not fit version 2: next$/);
+  assert.throws(() => encodeWaybackV3(long, id, ALL_GREY), /does not fit version 3: next$/);
 });
 
 // Version 2 has no default grey flag (D0 item 4): the caller passes flagOf.
-test('encodeWaybackV2 without flagOf throws', () => {
-  assert.throws(() => encodeWaybackV2(model, id), /flagOf/);
+test('encodeWaybackV3 without flagOf throws', () => {
+  assert.throws(() => encodeWaybackV3(model, id), /flagOf/);
 });
 
 // Version 2 grey flag (cc26, D1b): bit 63 of a node is the flag of its piece to next; extra bit 13 is the flag.
-test('version 2 keeps the grey flag of each piece: nodes with a next, and extras', () => {
+test('version 3 keeps the grey flag of each piece: nodes with a next, and extras', () => {
   const a = p(0, 0), b = p(100, 0);
   const pair = {nodes: [{point: a, dist: 4095.4, next: 1}, {point: b, dist: 0, next: -1}],
     extras: [{a: 0, b: 1, meters: 100, toA: false, toB: true}], chunks: []};
-  const on = decodeWayback(encodeWaybackV2(pair, id, () => 1)), off = decodeWayback(encodeWaybackV2(pair, id, () => 0));
+  const on = decodeWayback(encodeWaybackV3(pair, id, () => 1)), off = decodeWayback(encodeWaybackV3(pair, id, () => 0));
   const withNext = on.nodes.filter(n => n.next >= 0);
   assert.equal(withNext.length, 1);
   assert.equal(withNext[0].grey, 1);
-  assert.equal(withNext[0].distM, 4095);
+  assert.equal(withNext[0].distM, 4096);   // 4,095.4 m in 2 m steps
   assert.equal(on.nodes.find(n => n.next < 0).grey, 0);
   assert.equal(off.nodes.find(n => n.next >= 0).grey, 0);
   assert.equal(on.extras[0].grey, 1); assert.equal(off.extras[0].grey, 0);
@@ -109,14 +109,24 @@ test('version 2 keeps the grey flag of each piece: nodes with a next, and extras
 });
 test('version 2 with a flag function that gives 1 sets every flag of a piece to 1', () => {
   const pair = {nodes: [{point: p(0, 0), dist: 1, next: 1}, {point: p(100, 0), dist: 1, next: -1}], extras: [], chunks: []};
-  const d = decodeWayback(encodeWaybackV2(pair, id, ALL_GREY));
+  const d = decodeWayback(encodeWaybackV3(pair, id, ALL_GREY));
   assert.equal(d.nodes.find(n => n.next >= 0).grey, 1);
 });
-test('version 2 refuses a distance of 4,096 m, and an extra piece longer than 8,191 dm', () => {
+test('version 3 refuses a distance of 8,192 m, and an extra piece longer than 8,191 dm', () => {
   const pair = (dist, meters) => ({nodes: [{point: p(0, 0), dist, next: 1}, {point: p(100, 0), dist: 0, next: -1}],
     extras: meters === undefined ? [] : [{a: 0, b: 1, meters, toA: false, toB: false}], chunks: []});
-  assert.throws(() => encodeWaybackV2(pair(4096, undefined), id, ALL_GREY), /does not fit version 2: dist$/);
-  assert.doesNotThrow(() => encodeWaybackV2(pair(4095.4, undefined), id, ALL_GREY));
-  assert.throws(() => encodeWaybackV2(pair(1, 819.2), id, ALL_GREY), /does not fit version 2/);
-  assert.doesNotThrow(() => encodeWaybackV2(pair(1, 819.1), id, ALL_GREY));
+  assert.throws(() => encodeWaybackV3(pair(8192, undefined), id, ALL_GREY), /does not fit version 3: dist$/);
+  assert.doesNotThrow(() => encodeWaybackV3(pair(8190.9, undefined), id, ALL_GREY));
+  assert.throws(() => encodeWaybackV3(pair(1, 819.2), id, ALL_GREY), /does not fit version 3/);
+  assert.doesNotThrow(() => encodeWaybackV3(pair(1, 819.1), id, ALL_GREY));
+});
+
+// cc27 Task 5: version 3 = version 2 with the distance in 2 m steps (0 to 8,190 m)
+test('version 3 keeps 8,190 m and refuses 8,192 m', () => {
+  const pair = dist => ({nodes: [{point: p(0, 0), dist, next: 1}, {point: p(100, 0), dist: 0, next: -1}], extras: [], chunks: []});
+  assert.throws(() => encodeWaybackV3(pair(8192), id, ALL_GREY), /does not fit version 3: dist$/);
+  const d = decodeWayback(encodeWaybackV3(pair(8190), id, ALL_GREY));
+  assert.equal(d.header.version, 3);
+  assert.equal(d.nodes.find(n => n.next >= 0).distM, 8190);
+  assert.equal(decodeWayback(encodeWaybackV3(pair(3001), id, ALL_GREY)).nodes.find(n => n.next >= 0).distM, 3002);
 });

@@ -27,7 +27,8 @@ XT = Path.home() / 'xtensa-esp-elf/bin/xtensa-esp32s3-elf-'
 PACK = ROOT / '.local/cc26-pack'
 RELEASE = ROOT / 'docs/releases/cc26-2026-11-18.md'
 WB = ROOT / 'firmware/wayback'
-CORE_NO_FLOAT = ('firmware/wayback/wayback.c', 'firmware/wayback/wb_grey.c', 'firmware/mapdec/mapdec.c')
+CORE_NO_FLOAT = ('firmware/wayback/wayback.c', 'firmware/wayback/wb_grey.c', 'firmware/wayback/wb_grey_draw.c', 'firmware/raster/raster.c',
+                 'firmware/view/view.c', 'firmware/elev/elev.c', 'firmware/mapdec/mapdec.c')
 LIB_CALL = re.compile(r'\b(memcpy|memset|memmove|strlen|strcpy|malloc|calloc|realloc|free|printf|sprintf)\s*\(')
 COORD_PAIR = re.compile(r'-?\b\d{1,3}\.\d{4,}\s*,\s*-?\d{1,3}\.\d{4,}\b')
 PRIVATE_EXT = ('.bin', '.gpx', '.fit', '.ccwb', '.elf')
@@ -35,23 +36,30 @@ STACK_ROOT = 'wb_rt'
 STACK_LIMIT = 3968                          # WBD_STACK: free stack wb_rt needs before any file call
 # The core (wayback.c, wb_grey.c) calls only these callbacks indirectly. An indirect call in wb_device.c goes to stock
 # code: it is counted as 0 B here, and the room left for it is reported.
-CALLBACKS = ('wbd_read', 'wbd_grey_visit', 'pick_visit')
+CALLBACKS = ('wbd_read', 'wbd_file', 'gd_line', 'pick_visit')
 CORE_FILES = ('wayback.ci', 'wb_grey.ci')
+# The cc27 adapter tree for the stack graph: (directory, source) under firmware/.
+STACK_SOURCES = (('wayback', 'wb_device.c'), ('wayback', 'wayback.c'), ('wayback', 'wb_grey.c'), ('wayback', 'wb_grey_draw.c'),
+                 ('raster', 'raster.c'), ('view', 'view.c'), ('elev', 'elev.c'))
 
 # One limit, each place that states it: (file, regex with one group, transform to a common value).
 HEX_OR_DEC = lambda s: int(s, 0)
 LIMITS = {
     'line points': [('firmware/wayback/wb_device.c', r'#define WBD_POINTS (\d+)u', int),
-                    ('firmware/wayback/wb_grey.c', r'#define GB_MAX_POINTS (\d+)u', int),
+                    ('firmware/wayback/wb_grey.h', r'#define GL_POINTS (\d+)u', int),
                     ('js/wayback_grey_layer.js', r'const MAX_POINTS = (\d+);', int)],
-    'block read B': [('firmware/wayback/wayback.c', r'#define WB_BLOCK (\d+)u', int),
-                     ('firmware/wayback/wb_grey.c', r'#define GB_BLOCK (\d+)u', int)],
-    'grey cell units': [('firmware/wayback/wb_grey.c', r'#define GB_CELL (\d+)u', int),
+    'grey cell units': [('firmware/wayback/wb_grey.c', r'#define GL_CELL (\d+)', int),
                         ('js/wayback_grey_layer.js', r'CELL_SHIFT = (\d+),', lambda s: 1 << int(s))],
-    'grey quantum units': [('firmware/wayback/wb_grey.c', r'qx \* (\d+)u', int),
-                           ('js/wayback_grey_layer.js', r'QUANTUM_SHIFT = (\d+);', lambda s: 1 << int(s))],
-    'node distance max m': [('firmware/wayback/wayback.c', r'\(hi >> 19\) & (0x[0-9A-F]+)u', HEX_OR_DEC),
-                            ('js/wayback_format.js', r'MAX_DIST_M_V2 = (0x[0-9A-F]+);', HEX_OR_DEC)],
+    'grey quantum units': [('firmware/wayback/wb_grey.c', r'qx \* (\d+);', int),
+                           ('js/wayback_grey_layer.js', r'QUANTUM_SHIFT = (\d+),', lambda s: 1 << int(s))],
+    'grey body max B': [('firmware/wayback/wb_grey.c', r'#define GL_BODY (\d+)u', int),
+                        ('js/wayback_grey_layer.js', r'const MAX_BODY = (\d+);', int)],
+    'grey screen cells': [('firmware/wayback/wb_grey.h', r'#define GL_CELLS (\d+)u', int),
+                          ('js/screen_proof.js', r'MAX_CELLS = (\d+),', int)],
+    'elevation columns': [('firmware/elev/elev.h', r'#define EL_COLS (\d+)u', int), ('js/elevation_section.js', r'COLS: (\d+),', int)],
+    'elevation block B': [('firmware/elev/elev.h', r'#define EL_BLOCK (\d+)u', int), ('js/elevation_section.js', r'BLOCK: (\d+),', int)],
+    'node distance max m': [('firmware/wayback/wayback.c', r'\(hi >> 19\) & (0x[0-9A-F]+)u', lambda s: 2 * int(s, 0)),   # 2 m steps
+                            ('js/wayback_format.js', r'MAX_DIST_M_V3 = (\d+);', int)],
     'extra length max dm': [('firmware/wayback/wayback.c', r'WB_EXTRA_LEN_MASK (0x[0-9A-F]+)u', HEX_OR_DEC),
                             ('js/wayback_format.js', r'MAX_LEN_DM_V2 = (0x[0-9A-F]+);', HEX_OR_DEC)],
     'piece units max': [('firmware/wayback/wayback.c', r'dx > (\d+) \|\|', int),
@@ -65,7 +73,7 @@ LIMITS = {
                  ('tools/cc26_build.py', r'<= word < (0x[0-9a-f]+)', HEX_OR_DEC)],
 }
 # Writers of each layer format: (layer, format, regex of a call outside the tests).
-WRITERS = [('way-back', 'version 1', r'\bencodeWayback\('), ('way-back', 'version 2', r'\bencodeWaybackV2\('),
+WRITERS = [('way-back', 'version 1', r'\bencodeWayback\('), ('way-back', 'version 3', r'\bencodeWaybackV3\('),
            ('map block', 'protobuf', r'fb\(2, \[\.\.\.fu\(1, n\)'), ('map block', 'scheme D', r'\bencodeBlockD\(')]
 
 
@@ -130,11 +138,11 @@ def g3_c(r, since):
 
 
 def stack_graph(tmp):
-    """{function: (own bytes, {callees})} from -fcallgraph-info=su of the cc26 tree."""
-    for n in ('wayback.c', 'wayback.h', 'wb_grey.c', 'wb_grey.h', 'wb_device.c'):
-        (tmp / n).write_bytes((WB / n).read_bytes())
+    """{function: (own bytes, {callees})} from -fcallgraph-info=su of the cc27 adapter tree."""
+    fw = ROOT / 'firmware'
+    inc = [a for d in ('common', 'raster', 'view', 'elev', 'wayback') for a in ('-I', str(fw / d))]
     subprocess.run([str(XT) + 'gcc', '-Os', '-mlongcalls', '-mtext-section-literals', '-ffreestanding', '-fno-builtin',
-                    '-nostdlib', '-std=gnu11', '-fcallgraph-info=su', '-c', 'wb_device.c', 'wayback.c', 'wb_grey.c'],
+                    '-nostdlib', '-std=gnu11', '-fcallgraph-info=su', *inc, '-c', *(str(fw / d / n) for d, n in STACK_SOURCES)],
                    cwd=tmp, check=True, capture_output=True)
     nodes, edges = {}, {}
     name = lambda t: t.split(':')[-1]   # a compiler clone (name$constprop$0) is its own node

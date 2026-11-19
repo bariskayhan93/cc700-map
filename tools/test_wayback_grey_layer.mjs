@@ -1,9 +1,9 @@
-// tools/test_wayback_grey_layer.mjs (cc26, D3a): the grey layer section of way-back version 2 (E15).
+// tools/test_wayback_grey_layer.mjs (cc26 D3a, cc27 Task 7): the grey layer section (type 2 of the section table).
 // Synthetic street graphs only. Way-back units: 1/16 m, cells of 4,096 units.
 import {test} from 'node:test';
 import assert from 'node:assert/strict';
-import {greyLayer, readGreyLayer} from '../js/wayback_grey_layer.js';
-import {encodeWaybackV2, decodeWayback} from '../js/wayback_format.js';
+import {greyLayer, greyCellLines, encodeGreyLayer, readGreyLayer} from '../js/wayback_grey_layer.js';
+import {encodeWaybackV3, decodeWayback} from '../js/wayback_format.js';
 import {gridFixture} from './wayback_fixture.mjs';
 import {buildWaybackModel} from './wayback_tree.mjs';
 
@@ -79,20 +79,50 @@ test('a cell body over 2,048 B throws', () => {
   assert.throws(() => greyLayer(parts(nodes)), /grey cell over 2048 B/);
 });
 
-test('the layer of a version 2 file keeps the nodes and extras, and a bad magic is refused', () => {
+// ---- cc27 Task 7: layer version 2 (header with the caps and the directory stride) ----
+test('the caps and the stride are in the header; readGreyLayer gives the same lines', () => {
+  const nodes = Array.from({length: 40}, (_, i) => node(100 + 40 * i, 1000 + (i % 2) * 100, i < 39 ? i + 1 : -1));
+  const cells = greyCellLines(parts(nodes));
+  const bytes = greyLayer(parts(nodes), {pixCap: 12345, ptCap: 678}), dv = new DataView(bytes.buffer, bytes.byteOffset);
+  assert.deepEqual([...bytes.subarray(0, 8)], [0x43, 0x43, 0x47, 0x4C, 12, 3, 2, 4]);
+  assert.deepEqual([dv.getUint32(8, true), dv.getUint32(16, true), dv.getUint32(20, true), dv.getUint32(24, true)], [cells.length, 12345, 678, 1]);
+  assert.equal(dv.getUint32(28, true), cells[0].key);                       // directory key 0: the key of cell 0
+  const r = readGreyLayer(bytes);
+  assert.deepEqual([r.version, r.stride, r.pixCap, r.ptCap], [2, 16, 12345, 678]);
+  assert.deepEqual(r.cells, cells);
+  assert.equal(bytes.length, 28 + 4 * 1 + 8 * (cells.length + 1) + dv.getUint32(12, true));
+  assert.deepEqual(readGreyLayer(greyLayer(parts(nodes))).pixCap, 60000);
+  assert.deepEqual(readGreyLayer(greyLayer(parts(nodes))).ptCap, 2048);
+});
+const manyCells = k => Array.from({length: k}, (_, i) => ({key: (((i >> 7) << 16) | (i & 127)) >>> 0,
+  lines: [[[(i & 127) * 4096 + 80, (i >> 7) * 4096 + 80], [(i & 127) * 4096 + 160, (i >> 7) * 4096 + 80]]]}));
+test('the stride is the smallest of 16, 32 and 64 with at most 256 directory keys; above 16,384 cells no layer', () => {
+  const head = c => { const b = encodeGreyLayer(c), dv = new DataView(b.buffer, b.byteOffset); return [b[7], dv.getUint32(24, true)]; };
+  assert.deepEqual(head(manyCells(4096)), [4, 256]);
+  assert.deepEqual(head(manyCells(4097)), [5, 129]);
+  assert.deepEqual(head(manyCells(8193)), [6, 129]);
+  const r = readGreyLayer(encodeGreyLayer(manyCells(8193)));
+  assert.equal(r.cells.length, 8193);
+  assert.deepEqual(r.cells[8192], manyCells(8193)[8192]);
+  assert.throws(() => encodeGreyLayer(manyCells(16385)), /grey layer over 16,384 cells/);
+  assert.equal(encodeGreyLayer([]), null);
+});
+test('readGreyLayer refuses a version 1 layer, a bad stride and a wrong directory count', () => {
+  const nodes = [node(100, 100, 1), node(900, 100)];
+  const good = greyLayer(parts(nodes));
+  const edit = (at, v) => { const b = good.slice(); b[at] = v; return b; };
+  assert.throws(() => readGreyLayer(edit(6, 1)), /version/);
+  assert.throws(() => readGreyLayer(edit(7, 3)), /stride/);
+  assert.throws(() => readGreyLayer(edit(24, 2)), /directory/);
+  assert.throws(() => readGreyLayer(edit(0, 0)), /magic/);
+});
+test('a version 3 file with bytes after the extras is refused (the grey layer is its own section since cc27)', () => {
   const {graph, route} = gridFixture();
-  const model = buildWaybackModel(graph, route, {reach: 'line2k'});
-  const id = Uint8Array.from({length: 16}, (_, i) => i + 1);
-  const grey = () => 1;
-  const bare = encodeWaybackV2(model, id, grey);
+  const bare = encodeWaybackV3(buildWaybackModel(graph, route, {reach: 'line2k'}), Uint8Array.from({length: 16}, (_, i) => i + 1), () => 1);
   const layer = greyLayer(decodeWayback(bare));
   assert(layer, 'the grid has grey pieces');
   const file = new Uint8Array(bare.length + layer.length);
   file.set(bare, 0); file.set(layer, bare.length);
-  const plain = decodeWayback(bare), withLayer = decodeWayback(file);
-  assert.deepEqual(withLayer.nodes, plain.nodes);
-  assert.deepEqual(withLayer.extras, plain.extras);
-  const bad = file.slice();
-  bad[bare.length] ^= 0xFF;   // first byte of the magic
-  assert.throws(() => decodeWayback(bad));
+  assert.equal(decodeWayback(bare).layer, undefined);
+  assert.throws(() => decodeWayback(file), /file size does not match/);
 });

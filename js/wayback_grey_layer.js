@@ -1,13 +1,19 @@
-// Grey layer section of way-back version 2 (cc26, D3a, E15). The page writes the grey streets as polylines, one body per
-// 256 m cell, after the extras of the version 2 file. The unit reads the cells that a frame needs (D3c).
+// Grey layer, section type 2 of the route file (cc27, layer version 2; cc26 had version 1 after the way-back extras).
+// The page writes the grey streets as polylines, one body per 256 m cell; the unit reads the cells that a frame needs.
 // Way-back units: 1/16 m. Cells of 4,096 units. Quantum 8 units (0.5 m), local to the cell corner.
+// Layout (little-endian): header 28 B = "CCGL", u8 12 (cell shift), u8 3 (quantum shift), u8 2 (version), u8 log2 stride
+// (4, 5 or 6), u32 n cells, u32 body bytes, u32 pixel cap, u32 point cap, u32 m = ceil(n / stride) directory keys;
+// then m x u32 (the key of cell stride * j); then (n + 1) x {u32 key, u32 body offset} (sentinel key 0xFFFFFFFF, offset =
+// body bytes); then the bodies. Body: varint lines; per line varint m (2..32), u16 qx, u16 qy, then (m - 1) zigzag deltas.
 const MAGIC = [0x43, 0x43, 0x47, 0x4C];      // "CCGL"
-const CELL_SHIFT = 12, QUANTUM_SHIFT = 3;
+const CELL_SHIFT = 12, QUANTUM_SHIFT = 3, VERSION = 2;
 const CELL = 1 << CELL_SHIFT, QUANTUM = 1 << QUANTUM_SHIFT;
 const SIMPLIFY = 40;                         // Douglas-Peucker tolerance, 2.5 m (one pixel at 2.5 m per pixel)
-const MAX_POINTS = 32;                       // WBD_POINTS of the unit
-const MAX_BODY = 2048;                       // largest cell body
-const HEADER = 16, TABLE_ENTRY = 8, SENTINEL = 0xFFFFFFFF;
+const MAX_POINTS = 32;                       // GL_POINTS of the unit
+const MAX_BODY = 2048;                       // GL_BODY of the unit: the largest cell body
+const MAX_KEYS = 256, MAX_CELLS = 16384;     // directory keys; cells at stride 64
+const HEADER = 28, TABLE_ENTRY = 8, SENTINEL = 0xFFFFFFFF;
+export const GREY_CAPS = {pixCap: 60000, ptCap: 2048};   // design 8.5 start values
 
 // Grey pieces of the parts (decodeWayback form): a tree piece from node i to its next, and each extra piece.
 function greyPieces({nodes, extras}) {
@@ -125,29 +131,36 @@ function varint(out, v) {
 const zigzag = v => (v >= 0 ? 2 * v : -2 * v - 1);
 const unzigzag = z => (z % 2 === 0 ? z / 2 : -(z + 1) / 2);
 
-// The section bytes for the grey pieces of a version 2 file (parts = decodeWayback output). Returns null when no piece
-// is grey. Throws 'grey cell over 2048 B' when one cell body is larger.
-export function greyLayer(parts) {
-  const pieces = greyPieces(parts);
-  if (!pieces.length) return null;
+// The grey lines of the parts (decodeWayback form), by cell: [{key, lines: [[[x, y], ...], ...]}], keys ascending, points in
+// way-back units on the 0.5 m grid of the cell. A line has 2 to 32 points; two parts of one chain share the cut point.
+export function greyCellLines(parts) {
   const byCell = new Map();
-  for (const chain of joinChains(pieces)) {
+  for (const chain of joinChains(greyPieces(parts))) {
     const pts = simplify(chain.map(v => [parts.nodes[v].x, parts.nodes[v].y]), SIMPLIFY);
     for (const run of cutAtCells(pts)) {
       const cx = (run.key & 0xFFFF) * CELL, cy = (run.key >>> 16) * CELL;
       for (const part of splitPoints(run.pts)) {
-        const q = part.map(([x, y]) => [Math.round((x - cx) / QUANTUM), Math.round((y - cy) / QUANTUM)]);
         if (!byCell.has(run.key)) byCell.set(run.key, []);
-        byCell.get(run.key).push(q);
+        byCell.get(run.key).push(part.map(([x, y]) => [cx + QUANTUM * Math.round((x - cx) / QUANTUM), cy + QUANTUM * Math.round((y - cy) / QUANTUM)]));
       }
     }
   }
-  const keys = [...byCell.keys()].sort((a, b) => a - b);
-  const bodies = keys.map(key => {
-    const out = [];
-    const lines = byCell.get(key);
+  return [...byCell.keys()].sort((a, b) => a - b).map(key => ({key, lines: byCell.get(key)}));
+}
+
+// Layer bytes of cells (greyCellLines form, keys ascending) with the caps in the header. null when there is no cell.
+// Throws 'grey cell over 2048 B' (one body) and 'grey layer over 16,384 cells': the page then writes no layer.
+export function encodeGreyLayer(cells, {pixCap = GREY_CAPS.pixCap, ptCap = GREY_CAPS.ptCap} = {}) {
+  const n = cells.length;
+  if (!n) return null;
+  if (n > MAX_CELLS) throw new Error('grey layer over 16,384 cells');
+  const bodies = cells.map(({key, lines}) => {
+    const out = [], cx = (key & 0xFFFF) * CELL, cy = (key >>> 16) * CELL;
     varint(out, lines.length);
-    for (const q of lines) {
+    for (const line of lines) {
+      const q = line.map(([x, y]) => [(x - cx) / QUANTUM, (y - cy) / QUANTUM]);
+      if (q.length < 2 || q.length > MAX_POINTS) throw new Error('grey layer: point count');
+      if (q.some(([a, b]) => !Number.isInteger(a) || !Number.isInteger(b) || a < 0 || b < 0 || a > 512 || b > 512)) throw new Error('grey layer: point outside its cell');
       varint(out, q.length);
       out.push(q[0][0] & 0xFF, (q[0][0] >> 8) & 0xFF, q[0][1] & 0xFF, (q[0][1] >> 8) & 0xFF);
       for (let k = 1; k < q.length; k++) {
@@ -158,31 +171,40 @@ export function greyLayer(parts) {
     if (out.length > MAX_BODY) throw new Error('grey cell over 2048 B');
     return out;
   });
-  const offsets = [];
-  let total = 0;
-  for (const b of bodies) { offsets.push(total); total += b.length; }
-  const n = keys.length;
-  const bytes = new Uint8Array(HEADER + (n + 1) * TABLE_ENTRY + total);
-  const dv = new DataView(bytes.buffer);
+  let shift = 4;
+  while (Math.ceil(n / (1 << shift)) > MAX_KEYS) shift++;
+  const stride = 1 << shift, m = Math.ceil(n / stride);
+  const total = bodies.reduce((t, b) => t + b.length, 0);
+  const bytes = new Uint8Array(HEADER + 4 * m + (n + 1) * TABLE_ENTRY + total), dv = new DataView(bytes.buffer);
   bytes.set(MAGIC, 0);
-  bytes[4] = CELL_SHIFT; bytes[5] = QUANTUM_SHIFT;
-  dv.setUint32(8, n, true); dv.setUint32(12, total, true);
-  let at = HEADER;
-  keys.forEach((key, i) => { dv.setUint32(at, key, true); dv.setUint32(at + 4, offsets[i], true); at += TABLE_ENTRY; });
+  bytes[4] = CELL_SHIFT; bytes[5] = QUANTUM_SHIFT; bytes[6] = VERSION; bytes[7] = shift;
+  [n, total, pixCap, ptCap, m].forEach((v, i) => dv.setUint32(8 + 4 * i, v, true));
+  for (let j = 0; j < m; j++) dv.setUint32(HEADER + 4 * j, cells[stride * j].key, true);
+  let at = HEADER + 4 * m, off = 0;
+  cells.forEach((c, i) => { dv.setUint32(at, c.key, true); dv.setUint32(at + 4, off, true); at += TABLE_ENTRY; off += bodies[i].length; });
   dv.setUint32(at, SENTINEL, true); dv.setUint32(at + 4, total, true); at += TABLE_ENTRY;
   for (const b of bodies) { bytes.set(b, at); at += b.length; }
   return bytes;
 }
 
-// Reads a section back: {cellShift, quantum, cells: [{key, lines: [[[x, y], ...], ...]}]}, points in way-back units.
+// The layer bytes for the grey pieces of the parts, with the caps in the header and no proof (fitGreyLayer in
+// js/screen_proof.js proves and fits). null when no piece is grey.
+export function greyLayer(parts, caps = {}) { return encodeGreyLayer(greyCellLines(parts), caps); }
+
+// Reads a layer back (version 2 only): {version, stride, pixCap, ptCap, cells: [{key, lines}]}, points in way-back units.
 export function readGreyLayer(bytes) {
   const b = bytes instanceof Uint8Array ? bytes : Uint8Array.from(bytes);
   if (b.length < HEADER || MAGIC.some((m, i) => b[i] !== m)) throw new Error('grey layer: bad magic');
-  const dv = new DataView(b.buffer, b.byteOffset, b.byteLength);
-  const n = dv.getUint32(8, true), total = dv.getUint32(12, true);
-  if (b.length !== HEADER + (n + 1) * TABLE_ENTRY + total) throw new Error('grey layer: lengths do not add up');
-  const tableAt = HEADER, bodyAt = HEADER + (n + 1) * TABLE_ENTRY;
+  if (b[4] !== CELL_SHIFT || b[5] !== QUANTUM_SHIFT) throw new Error('grey layer: bad cell or quantum shift');
+  if (b[6] !== VERSION) throw new Error('grey layer: version ' + b[6] + ' (cc27 reads version 2)');
+  if (b[7] < 4 || b[7] > 6) throw new Error('grey layer: bad stride');
+  const dv = new DataView(b.buffer, b.byteOffset, b.byteLength), stride = 1 << b[7];
+  const [n, total, pixCap, ptCap, m] = [0, 1, 2, 3, 4].map(i => dv.getUint32(8 + 4 * i, true));
+  if (!n || m !== Math.ceil(n / stride) || m > MAX_KEYS) throw new Error('grey layer: bad directory count');
+  if (b.length !== HEADER + 4 * m + (n + 1) * TABLE_ENTRY + total) throw new Error('grey layer: lengths do not add up');
+  const tableAt = HEADER + 4 * m, bodyAt = tableAt + (n + 1) * TABLE_ENTRY;
   if (dv.getUint32(tableAt + n * TABLE_ENTRY, true) !== SENTINEL) throw new Error('grey layer: no sentinel');
+  for (let j = 0; j < m; j++) if (dv.getUint32(HEADER + 4 * j, true) !== dv.getUint32(tableAt + stride * j * TABLE_ENTRY, true)) throw new Error('grey layer: directory key');
   const cells = [];
   for (let i = 0; i < n; i++) {
     const key = dv.getUint32(tableAt + i * TABLE_ENTRY, true);
@@ -212,5 +234,5 @@ export function readGreyLayer(bytes) {
     }
     cells.push({key, lines});
   }
-  return {cellShift: CELL_SHIFT, quantum: QUANTUM, cells};
+  return {version: VERSION, stride, pixCap, ptCap, cells};
 }

@@ -27,6 +27,8 @@ HOOK_BASE = 0x421dd920
 VERSION_PREFIX = b'CC700_V1.414-cc26-'
 # Frame of wb_rt as the compiler built it for cc26. A different frame means different compiled code: refused.
 HOOK_FRAME = 32
+# cc26 sources as recorded (the tree moved on to cc27): read from git, not from the working tree.
+SRC_REV = 'f8914d0'
 TREE = ('wayback.c', 'wayback.h', 'wb_grey.c', 'wb_grey.h', 'wb_device.c', 'wb_tramp.S', 'wb_area2.ld')
 MAP_TREE = ('map.c', 'fw.h', 'md_tramp.S')   # firmware/mapdraw: v21 cc_iter and cc_line with A and B (after the 18 Nov crash)
 # Map draw hooks: literal address -> (base value = v21 function, section of the new word).
@@ -119,10 +121,10 @@ def build(base, outdir, prefix=PREFIX):
     outdir.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory() as tmp:
         t = Path(tmp)
-        for n in TREE:
-            (t / n).write_bytes((ROOT / 'firmware/wayback' / n).read_bytes())
-        for n in MAP_TREE:
-            (t / n).write_bytes((ROOT / 'firmware/mapdraw' / n).read_bytes())
+        for d, names in (('firmware/wayback', TREE), ('firmware/mapdraw', MAP_TREE)):
+            for n in names:
+                (t / n).write_bytes(subprocess.run(['git', '-C', str(ROOT), 'show', f'{SRC_REV}:{d}/{n}'],
+                                                   capture_output=True, check=True).stdout)
         check_map_tables(segs, t, prefix)
         elf = t / 'cc26.elf'
         run(prefix + 'gcc', *CFLAGS, '-Wl,-T,' + str(t / 'wb_area2.ld'), '-Wl,--gc-sections', '-Wl,-e,wb_rt',
@@ -183,9 +185,9 @@ def build(base, outdir, prefix=PREFIX):
         raise ValueError('candidate roundtrip failed')
     receipt = {'version': version.decode(), 'source_commit': version[-7:].decode(),
                'source_dirty': bool(run('git', '-C', str(ROOT), 'status', '--porcelain', '--', 'firmware/wayback',
-                                        'firmware/mapdraw', 'tools/cc26_build.py', 'tools/area2_image.py').strip()),
+                                        'firmware/mapdraw', 'firmware/common', 'tools/cc26_build.py', 'tools/area2_image.py').strip()),
                'base_sha256': BASE_SHA, 'image_sha256': hashlib.sha256(image).hexdigest(), 'image_bytes': len(image),
-               'code_bytes': len(code), 'area_bytes': a2.AREA_LIMIT, 'hook_target': hex(word), 'hook_word_hex': lit.hex(),
+               'code_bytes': len(code), 'code_sha256': hashlib.sha256(code).hexdigest(), 'area_bytes': a2.AREA_LIMIT, 'hook_target': hex(word), 'hook_word_hex': lit.hex(),
                'undefined_symbols': undefined, 'incoming': {'hook': hook_refs}, 'map_hooks': map_refs, 'dead_spans_ok': spans_ok is None,
                'stack_usage': stack, 'device_written': False}
     return image, receipt

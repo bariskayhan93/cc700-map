@@ -31,7 +31,3 @@ int wb_scan(wb_engine *, uint32_t cx0, uint32_t cy0, uint32_t cx1, uint32_t cy1,
 /* The line of one piece by its id (the id of wb_output.piece), for the rider position in input. */
 void wb_tick_piece(wb_engine *, const wb_input *, uint32_t id, wb_output *);
 void wb_line_info(const wb_engine *, uint32_t info[3]);   /* end_dm, len, end_first of the current line */
-/* The grey layer section of the mounted file (D3c): 0 = none; else info = {section offset, cell count, body bytes}. */
-int wb_grey_section(const wb_engine *, uint32_t info[3]);
-/* Reads n bytes of the file at off, through the reader of wb_mount. 1 = ok. */
-int wb_read_at(const wb_engine *, uint32_t off, uint8_t *dst, uint32_t n);

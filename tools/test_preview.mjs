@@ -286,3 +286,10 @@ test('v21 removes only red-route transparency while retaining v20 map palette',(
  assert(a>=0&&b>=0);assert.equal(old.alphas[a],180/255);assert.equal(next.alphas[b],1);
  assert.deepEqual(next.paths,old.paths);assert.deepEqual(next.rectangles,old.rectangles);
 });
+
+// cc27 Task 12: the flags entry (class 15, no points) is not drawn
+test('the preview of a block with the flags entry is the same as without it', () => {
+  const plain = render(readFile(generate(true, {codec: 'd'}).file)), flagged = readFile(generate(true, {codec: 'd', blockFlags: 7}).file);
+  assert(flagged.blocks.every(b => b.at(-1).style === 15 && b.at(-1).points.length === 0), 'every block ends with the flags entry');
+  assert.deepEqual(render(flagged), plain);
+});
