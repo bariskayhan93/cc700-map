@@ -119,8 +119,8 @@ static __attribute__((noinline)) uint32_t wbd_run(wbd_ctx *c, uint32_t off, cons
   if (ok && (off ? sec.size[2] : sec.size[3])) { c->buf = (uint8_t *)fw_malloc(GL_BUF, CAPS_PSRAM); c->nomem = !c->buf; }
   if (off) code = wbd_core(c, sec.size[1], t, pos, line, n, dm);
   else {                                                     /* the text shows U and T with every elevation code */
-    float t = FW_ROUTE_TOTAL;
-    c->u = FW_ROUTE_LEFT; c->t = t >= 0.0f && t < 16777216.0f ? (uint32_t)t : 0u;
+    float total = FW_ROUTE_TOTAL;
+    c->u = FW_ROUTE_LEFT; c->t = total >= 0.0f && total < 16777216.0f ? (uint32_t)total : 0u;
     c->ecode = !ok || !sec.size[3] ? WBD_E_NONE : c->nomem ? WBD_HEAP : wbd_elev(c, sec.at[3], sec.size[3]);
   }
   if (c->buf) fw_free(c->buf);

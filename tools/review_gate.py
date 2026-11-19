@@ -27,6 +27,8 @@ XT = Path.home() / 'xtensa-esp-elf/bin/xtensa-esp32s3-elf-'
 PACK = ROOT / '.local/cc26-pack'
 RELEASE = ROOT / 'docs/releases/cc26-2026-11-18.md'
 WB = ROOT / 'firmware/wayback'
+# The include paths of the cc27 tree (the builder copies these directories flat): a file includes fw.h, raster.h, ...
+TREE_INC = [a for d in ('common', 'raster', 'view', 'elev', 'wayback', 'mapdraw') for a in ('-I', str(ROOT / 'firmware' / d))]
 CORE_NO_FLOAT = ('firmware/wayback/wayback.c', 'firmware/wayback/wb_grey.c', 'firmware/wayback/wb_grey_draw.c', 'firmware/raster/raster.c',
                  'firmware/view/view.c', 'firmware/elev/elev.c', 'firmware/mapdec/mapdec.c')
 LIB_CALL = re.compile(r'\b(memcpy|memset|memmove|strlen|strcpy|malloc|calloc|realloc|free|printf|sprintf)\s*\(')
@@ -130,7 +132,7 @@ def g3_c(r, since):
                                                          r'[A-Za-z_][\w\s\*]*\b\w+(\[[^\]]*\])?\s*(=[^;]*)?;\s*$', l)]
         floats = re.findall(r'\b(float|double)\b', code) if p in CORE_NO_FLOAT else []
         cc = subprocess.run(['cc', '-std=gnu11', '-DHOST', '-Wall', '-Wextra', '-Wshadow', '-Wvla', '-Werror',
-                             '-fsyntax-only', '-I', str(ROOT / Path(p).parent), str(ROOT / p)], capture_output=True, text=True)
+                             '-fsyntax-only', '-I', str(ROOT / Path(p).parent), *TREE_INC, str(ROOT / p)], capture_output=True, text=True)
         ok = not calls and not top and not floats and cc.returncode == 0
         detail = [f'library calls {calls}' if calls else '', f'file-scope variables {top[:1]}' if top else '',
                   f'float in the core: {len(floats)}' if floats else '', cc.stderr.strip().splitlines()[0] if cc.returncode else '']
