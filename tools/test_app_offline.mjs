@@ -54,7 +54,8 @@ for (const styled of [false,true]) {
   assert.match(app, /localStorage\.setItem\('cc700-fw2', \$\('fw'\)\.value\)/);
   assert.match(app, /cc27Sections\(r\.file, \{ wayback: \$\('wayback'\)\.checked, elevation: sw\.elevation, reach: \$\('waybackReach'\)\.value \}\)/);
   assert.doesNotMatch(app, /addWayback/);           // only cc27 writes way-back data (cc26 formats are gone)
-  assert.match(cc27, /addWayback\(routeFile, \{format: 2, reach, fetchImpl\}\)/);
+  assert.match(cc27, /addWayback\(routeFile, \{format: 2, reach: r, fetchImpl\}\)/);
+  assert.match(app, /ohne graue Straßen: ' \+ c\.report\.greyReason/);   // review finding 4: the summary says why
   assert.match(app, /checkWayback\(file\)/);   // the identity is checked before the file is sent (owner ruling, 18 Nov)
   console.log('PASS page defaults to patch27 with way-back, grey streets and elevation, keeps patch25, saves the choice');
 }
@@ -92,4 +93,37 @@ for (const styled of [false,true]) {
   assert.deepEqual(flat.sections, [3]);                          // no way-back data: the elevation section stays
   assert.match(flat.report.waybackError, /offline/);
   console.log('PASS patch27 with "Eigene Linien" off gives flags without bit 0; a way-back failure keeps the elevation');
+}
+// Review finding 2: at the file guard the page drops the grey section first, then steps the reach down; the elevation
+// section stays in every case. A 3 km street grid (31 x 31 crossings, 100 m) around a 1 km route along its bottom row.
+{
+  const {cc27Sections} = await import('../js/cc27_file.js');
+  const {readSections, embedSections} = await import('../js/wayback_embed.js');
+  const K = Math.cos(51 * Math.PI / 180), pt = (x, y) => [51 + y / 111320, 7 + x / (111320 * K)], N = 31, nodeId = (i, j) => 1000 + i * N + j + 1;
+  const els = [];
+  for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) { const [lat, lon] = pt(i * 100 - 1000, j * 100); els.push({type: 'node', id: nodeId(i, j), lat, lon}); }
+  for (let k = 0; k < N; k++) {
+    els.push({type: 'way', id: 100 + k, nodes: Array.from({length: N}, (_, i) => nodeId(i, k)), tags: {highway: 'residential'}});
+    els.push({type: 'way', id: 200 + k, nodes: Array.from({length: N}, (_, j) => nodeId(k, j)), tags: {highway: 'residential'}});
+  }
+  const fetchImpl = async () => ({ok: true, status: 200, json: async () => ({osm3s: {timestamp_osm_base: '2026-11-01T00:00:00Z'}, elements: els})});
+  const gpx = {name: 'guard', pts: Array.from({length: 11}, (_, i) => [...pt(i * 100, 0), 50 + i])};
+  const plain = buildRoute(gpx, [], {id: '11120000', nameImage: () => new Uint8Array(42), speedKmh: 18, noF9: true, map: {styled: true, codec: 'd', blockFlags: 7}}).file;
+  const full = await cc27Sections(plain, {fetchImpl, reach: 'line3k'});
+  assert.deepEqual(full.sections, [1, 2, 3]);
+  const sec = t => { const s = readSections(full.file).find(x => x.type === t); return full.file.slice(s.offset, s.offset + s.size); };
+  const noGreySize = embedSections(plain, [{type: 1, bytes: sec(1)}, {type: 3, bytes: sec(3)}]).length;
+  const elevOnly = embedSections(plain, [{type: 3, bytes: sec(3)}]).length;
+  assert(noGreySize < full.file.length && elevOnly < noGreySize, `${elevOnly} ${noGreySize} ${full.file.length}`);
+  const noGrey = await cc27Sections(plain, {fetchImpl, reach: 'line3k', fileLimit: noGreySize});
+  assert.deepEqual([noGrey.sections, noGrey.report.reach], [[1, 3], 'line3k']);
+  assert.match(noGrey.report.greyReason, /Datei über/);
+  const smaller = await cc27Sections(plain, {fetchImpl, reach: 'line3k', fileLimit: noGreySize - 1});
+  assert(smaller.file.length <= noGreySize - 1 && smaller.sections.at(-1) === 3, JSON.stringify(smaller.sections));
+  assert(smaller.sections[0] !== 1 || ['line2k', 'line1k'].includes(smaller.report.reach), smaller.report.reach);
+  const onlyElev = await cc27Sections(plain, {fetchImpl, reach: 'line3k', fileLimit: elevOnly});
+  assert.deepEqual(onlyElev.sections, [3]);
+  assert.match(onlyElev.report.waybackError, /Datei über/);
+  await assert.rejects(cc27Sections(plain, {fetchImpl, reach: 'line3k', fileLimit: elevOnly - 1}), /zu groß/);
+  console.log('PASS at the file guard the grey goes first, then the reach steps down; the elevation stays');
 }

@@ -104,3 +104,14 @@ test('a malformed body stops the grey without a line: point count 33, a point ou
   assert.deepEqual([r2.done, r2.lines, r2.px], [0, 0, 0]);
   assert.equal(readGreyLayer(bytes).cells.length, 1);
 });
+
+// Review finding 5: a delta that would overflow int32 (qx 1, zigzag 0xFFFFFFFE = +2^31 - 1) is refused before the sum.
+// This binary aborts on undefined behaviour, so a signed overflow fails the test.
+test('a delta beyond the cell is refused without an int32 overflow', () => {
+  const c = 10 * 4096, one = [{key: (10 << 16) | 10, lines: [[[c + 8, c + 8], [c + 16, c + 16], [c + 24, c + 8], [c + 32, c + 16]]]}];
+  const bytes = encodeGreyLayer(one), body = 28 + 4 + 16, at = {x: c + 1000, y: c + 1000};
+  assert.deepEqual([...bytes.subarray(body, body + 11)], [1, 4, 1, 0, 1, 0, 2, 2, 2, 1, 2]);
+  const bad = bytes.slice(); bad.set([0xfe, 0xff, 0xff, 0xff, 0x0f, 0x00], body + 6);
+  const r = draw({...layerFile(bad, 'overflow.bin'), ...at});
+  assert.deepEqual([r.open, r.done, r.lines, r.px], [1, 0, 0, 0]);
+});
