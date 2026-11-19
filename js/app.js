@@ -132,6 +132,7 @@ async function build() {
         r.file = c.file;
         const km = c.report.reach ? (/(\d)k$/.exec(c.report.reach) || [0, '?'])[1] + ' km' : '';
         wayback = (c.report.waybackBytes ? ` · Rückweg-Daten ${((c.report.waybackBytes + c.report.greyBytes) / 1024).toFixed(0)} KB (${km})` : '') +
+          (c.report.greyReason ? ' · ohne graue Straßen: ' + c.report.greyReason : '') +
           (c.report.waybackError ? ' · ohne Rückweg-Daten: ' + c.report.waybackError : '') + (c.report.elevationBytes ? ' · Höhenprofil' : '');
         log(JSON.stringify({cc27: c.report}));
       } catch (e) {

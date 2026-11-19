@@ -95,7 +95,8 @@ static int gl_cell(gl_layer *l, uint32_t key, uint32_t len, gl_fn fn, void *ctx)
     for (k = 0u; k < m; k++) {
       if (k) {
         uint32_t zx, zy;
-        if (!gl_var(&p, end, &zx) || !gl_var(&p, end, &zy)) return -1;
+        /* a step inside the cell is at most 512 (zigzag 1024): a larger one is refused before the sum can overflow */
+        if (!gl_var(&p, end, &zx) || !gl_var(&p, end, &zy) || zx > 1024u || zy > 1024u) return -1;
         qx += gl_unzig(zx); qy += gl_unzig(zy);
       }
       if (qx < 0 || qx > 512 || qy < 0 || qy > 512) return -1;

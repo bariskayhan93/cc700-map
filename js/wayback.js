@@ -57,6 +57,7 @@ export function waybackFromSnapshot(snapshot, route, routeId, {reach = 'line2k',
   const encode = model => {
     if (format !== 2) return {bytes: encodeWayback(model, routeId), grey: null, greyReport: null};
     const bytes = encodeWaybackV3(model, routeId, greyFlags(routeBytes, makeFrame(model.nodes.map(n => n.point))));
+    if (maxBytes && bytes.length > maxBytes) return {bytes, grey: null, greyReport: null};   // this reach steps down: no fit
     const g = layer ? greyOf(bytes, caps) : {bytes: null, report: null};
     return {bytes, grey: g.bytes, greyReport: g.report};
   };

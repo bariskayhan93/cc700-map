@@ -67,6 +67,28 @@ test('a size limit falls back to the shorter reach and then to no file', async (
   assert.equal(waybackFromSnapshot(snapshot, route, id, {maxBytes: 64}), null);
 });
 
+// Review finding 3: a reach whose way-back bytes are over the size limit gets no grey fit (the fit is the slow part).
+test('a reach over the size limit makes no grey fit', async () => {
+  const N = 31, big = [], id3 = (i, j) => 1000 + i * N + j + 1;   // 3 km grid: the 1 km reach covers less of it than 2 km
+  for (let i = 0; i < N; i++) for (let j = 0; j < N; j++) { const [lat, lon] = pt(i * 100, j * 100); big.push({type: 'node', id: id3(i, j), lat, lon}); }
+  for (let k = 0; k < N; k++) {
+    big.push({type: 'way', id: 100 + k, nodes: Array.from({length: N}, (_, i) => id3(i, k)), tags: {highway: 'residential'}});
+    big.push({type: 'way', id: 200 + k, nodes: Array.from({length: N}, (_, j) => id3(k, j)), tags: {highway: 'residential'}});
+  }
+  const snapshot = await loadWaybackSnapshot(route, fetchOf([{body: {osm3s: {timestamp_osm_base: '2026-11-01T00:00:00Z'}, elements: big}}]));
+  const id = new Uint8Array(16), none = new Uint8Array(0);
+  const full = waybackFromSnapshot(snapshot, route, id, {format: 2, routeBytes: none}).bytes.length;
+  let reads = 0;
+  const caps = {get pixCap() { reads++; return 60000; }, ptCap: 2048};
+  const stepped = waybackFromSnapshot(snapshot, route, id, {format: 2, routeBytes: none, layer: true, caps, maxBytes: full - 1});
+  const steppedReads = reads;
+  reads = 0;
+  const direct = waybackFromSnapshot(snapshot, route, id, {format: 2, routeBytes: none, layer: true, caps, reach: 'line1k'});
+  assert.equal(stepped.reach, 'line1k');
+  assert.deepEqual(stepped.grey, direct.grey);
+  assert.equal(steppedReads, reads, 'the line2k fit ran although its bytes were over the limit');
+});
+
 test('street data that is not complete gives no snapshot', async () => {
   await assert.rejects(loadWaybackSnapshot(route, fetchOf([{body: response({drop: nodeId(3, 3)})}])), /not complete: missing-way-node/);
   await assert.rejects(loadWaybackSnapshot(route, fetchOf([{body: {elements: []}}])), /not complete/);

@@ -1,6 +1,6 @@
 // The cc27 route file on the page: the block switches for buildRoute (map.blockFlags) and the sections after the route
 // bytes (way-back type 1, grey type 2, elevation type 3; js/wayback_embed.js). Pure code: the page and the tests use it.
-import {addWayback, waybackSections} from './wayback.js';
+import {addWayback, waybackSections, REACH_CHAIN} from './wayback.js';
 import {elevationSection} from './elevation_section.js';
 import {SECTION, embedSections} from './wayback_embed.js';
 
@@ -17,22 +17,29 @@ export function cc27Flags({ownLines = true, testText = true, elevation = true} =
 }
 
 // The route file with its sections. wayback: way-back and grey (the reach steps down 3 -> 2 -> 1 km when the query area
-// is over the bound or the data does not fit; report.reach is the reach used). A way-back failure keeps the elevation section; report.waybackError says why.
-export async function cc27Sections(routeFile, {wayback = true, elevation = true, reach = 'line3k', fetchImpl = globalThis.fetch} = {}) {
-  const sections = [], report = {};
-  if (wayback) {
-    try {
-      const w = await addWayback(routeFile, {format: 2, reach, fetchImpl});
-      sections.push(...waybackSections(w));
-      Object.assign(report, {waybackBytes: w.wayback.length, greyBytes: w.grey ? w.grey.length : 0, reach: w.reach, grey: w.greyReport, stats: w.stats});
-    } catch (e) { report.waybackError = e.message; }
+// is over the bound or the data does not fit; report.reach is the reach used). Over the file limit, the grey section goes
+// first, then the reach steps down; the elevation section stays in every case. report.waybackError says why a file has
+// no way-back data, report.greyReason why it has way-back data but no grey section.
+export async function cc27Sections(routeFile, {wayback = true, elevation = true, reach = 'line3k', fetchImpl = globalThis.fetch, fileLimit = FILE_LIMIT} = {}) {
+  const report = {}, e = elevation ? elevationSection(routeFile) : null, tail = e ? [{type: SECTION.ELEV, bytes: e}] : [];
+  if (elevation) report.elevationBytes = e ? e.length : 0;
+  const make = s => s.length ? embedSections(routeFile, s) : routeFile, over = `Datei über ${fileLimit.toLocaleString('de-DE')} B`;
+  for (let r = wayback ? reach : null; r;) {
+    let w;
+    try { w = await addWayback(routeFile, {format: 2, reach: r, fetchImpl}); } catch (err) { report.waybackError = err.message; break; }
+    for (const grey of w.grey ? [true, false] : [false]) {
+      const sections = [...waybackSections(grey ? w : {...w, grey: null}), ...tail], file = make(sections);
+      if (file.length > fileLimit) continue;
+      Object.assign(report, {waybackBytes: w.wayback.length, greyBytes: grey ? w.grey.length : 0, reach: w.reach, grey: w.greyReport, stats: w.stats});
+      if (!grey) report.greyReason = w.grey ? over : w.greyReport?.reason;
+      delete report.waybackError;
+      return {file, sections: sections.map(s => s.type), report};
+    }
+    report.waybackError = `${over} mit ${w.reach}`;
+    const i = REACH_CHAIN.indexOf(w.reach);
+    r = i < 0 ? null : REACH_CHAIN[i + 1];
   }
-  if (elevation) {
-    const e = elevationSection(routeFile);
-    if (e) sections.push({type: SECTION.ELEV, bytes: e});
-    report.elevationBytes = e ? e.length : 0;
-  }
-  const file = sections.length ? embedSections(routeFile, sections) : routeFile;
-  if (file.length > FILE_LIMIT) throw new Error('Datei mit Rückweg-Daten zu groß');
-  return {file, sections: sections.map(s => s.type), report};
+  const file = make(tail);
+  if (file.length > fileLimit) throw new Error('Datei mit Rückweg-Daten zu groß');
+  return {file, sections: tail.map(s => s.type), report};
 }
