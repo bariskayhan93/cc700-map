@@ -150,7 +150,8 @@ int main(int argc, char **argv) {
   else if (!strcmp(which,"offscreen")) n=64;                 /* long paths and streets, mostly off the canvas */
   else if (!strcmp(which,"slow")) {n=1201;frames=2;clock_step=1000;}   /* frame 1: 1 ms for each clock read */
   else if (!strcmp(which,"failed_projection")) {n=1;failed_projection=1;}
-  else if (!strcmp(which,"own") || !strcmp(which,"own_off") || !strcmp(which,"flags_text")) {n=40;entry_mode=1;}
+  else if (!strcmp(which,"own") || !strcmp(which,"own_off") || !strcmp(which,"flags_text") || !strcmp(which,"own_aa") || !strcmp(which,"nodraw")
+           || !strcmp(which,"cyc") || !strcmp(which,"cyc_off")) {n=40;entry_mode=1;}
   else if (!strcmp(which,"level_stop")) {n=60;entry_mode=1;clock_step=150000;}    /* 150 ms for each clock read */
   else if (!strcmp(which,"fill_stop")) {n=20;entry_mode=1;clock_step=250000;}
   else require(!strcmp(which,"empty") || !strcmp(which,"unloaded") || !strcmp(which,"hole") || !strcmp(which,"hole_reverse"), "unknown case");
@@ -200,10 +201,12 @@ int main(int argc, char **argv) {
   if (entry_mode) {                                          /* road classes 5..7 at levels 0..4; fill_stop: 10 fills first */
     for (unsigned i=0;i<n;i++) {
       unsigned style=(5+i%3)|(((i/3)%5)<<4);
+      if (!strncmp(which,"cyc",3)) style=10|(2<<4);              /* cycleways (class 10) */
       if (!strcmp(which,"fill_stop") && i<10) style=1|(2<<4);
       host_ents[i]=(ent_t){i,style,(int32_t)(1000*(i+1)),0,4,shape};
     }
-    unsigned flags=!strcmp(which,"own")?1u:!strcmp(which,"flags_text")?2u:0u;
+    unsigned flags=!strcmp(which,"own")?1u:!strcmp(which,"flags_text")?2u:!strcmp(which,"own_aa")?1u|8u:!strcmp(which,"nodraw")?1u|32u:
+                   !strcmp(which,"cyc")?1u|16u:!strcmp(which,"cyc_off")?1u:0u;   /* F_OWN 1, F_TEXT 2, F_AA 8, F_CYC 16, F_NODRAW 32 */
     if (flags) {                                             /* the flags entry, last (cc27) */
       ent_t *e=realloc(host_ents,(n+1)*sizeof(ent_t));require(e!=0,"entry allocation");host_ents=e;
       host_ents[n]=(ent_t){n,15,BLK_FLAGS_MAGIC,(int32_t)flags,0,0};host_cnt=++n;

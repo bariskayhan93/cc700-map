@@ -7,10 +7,11 @@ static uint32_t rs_isqrt(uint32_t v) {
   while (b) { if (v >= r + b) { v -= r + b; r = (r >> 1) + b; } else r >>= 1; b >>= 2; }
   return r;
 }
+static uint32_t rs_div255(uint32_t x) { return (x + 1u + (x >> 8)) >> 8; }   /* x / 255 for x <= 65025, no divide */
 static uint16_t rs_blend(uint16_t s, uint16_t d, uint32_t a) {
-  uint32_t r = (((uint32_t)(s >> 11) & 31u) * a + ((uint32_t)(d >> 11) & 31u) * (255u - a)) / 255u;
-  uint32_t g = (((uint32_t)(s >> 5) & 63u) * a + ((uint32_t)(d >> 5) & 63u) * (255u - a)) / 255u;
-  uint32_t b = (((uint32_t)s & 31u) * a + ((uint32_t)d & 31u) * (255u - a)) / 255u;
+  uint32_t r = rs_div255(((uint32_t)(s >> 11) & 31u) * a + ((uint32_t)(d >> 11) & 31u) * (255u - a));
+  uint32_t g = rs_div255(((uint32_t)(s >> 5) & 63u) * a + ((uint32_t)(d >> 5) & 63u) * (255u - a));
+  uint32_t b = rs_div255(((uint32_t)s & 31u) * a + ((uint32_t)d & 31u) * (255u - a));
   return (uint16_t)((r << 11) | (g << 5) | b);
 }
 static void rs_put(const rs_canvas *c, int x, int y, uint16_t col, uint8_t opa) {
@@ -64,6 +65,89 @@ void rs_line(const rs_canvas *c, const pt_t *p, uint32_t n, int w, uint16_t col,
   if (n == 1) rs_seg(c, p[0].x, p[0].y, p[0].x, p[0].y, w, col, opa);
   for (i = 1; i < n; i++) rs_seg(c, p[i - 1].x, p[i - 1].y, p[i].x, p[i].y, w, col, opa);
   if (round && w >= 3 && opa == 255) for (i = 0; i < n; i++) rs_disk(c, p[i].x, p[i].y, w, col, opa);
+}
+
+/* ---------- cc28 smooth lines ---------- */
+/* pixel (x, y) (or (y, x) when swap) with coverage cov of 256 */
+static void rs_cov(const rs_canvas *c, int x, int y, int swap, uint32_t cov, uint16_t col, uint8_t opa) {
+  uint16_t *q;
+  if (swap) { int t = x; x = y; y = t; }
+  if (!cov || x < 0 || y < 0 || x >= c->w || y >= c->h) return;
+  q = c->buf + y * c->w + x;
+  if (cov >= 256u) *q = opa == 255 ? col : rs_blend(col, *q, opa);
+  else *q = rs_blend(col, *q, (cov * opa + 128u) >> 8);
+}
+/* One segment as a slab of columns along the major axis u; v is the minor axis. Columns u0 .. u1, less the end
+ * column when open. Centre v(u) = v0 + (u - u0) * dv / du, exact floor of the magnitude (Q16), so collinear
+ * segments give the same centres. Half height hv = w / 2 * len / du (Q16). */
+static void rs_slab(const rs_canvas *c, int u0, int v0, int u1, int v1, int w, uint16_t col, uint8_t opa, int swap, int open_end) {
+  int du = u1 - u0, dv = v1 - v0, sg = dv < 0 ? -1 : 1, adv = dv < 0 ? -dv : dv, ua = u0, ub = u1, umax = swap ? c->h : c->w, vmax = swap ? c->w : c->h;
+  uint32_t q, r, ratio, k;
+  int32_t hv, vc, rem;
+  if (open_end) { if (u1 >= u0) ub--; else ub++; }
+  if (du < 0) { int t = ua; ua = ub; ub = t; du = -du; }      /* walk u upwards; the centre stays a function of u */
+  if (!du) { if (!open_end) { hv = w * 32768; for (int v = (v0 * 65536 - hv + 32768) >> 16; v <= ((v0 * 65536 + hv + 32767) >> 16); v++)
+      rs_cov(c, u0, v, swap, 256u, col, opa); } return; }
+  {                                                            /* ratio = sqrt(1 + (dv/du)^2), Q12 */
+    uint32_t s16 = ((uint32_t)adv << 16) / (uint32_t)du, s4 = s16 >> 4;
+    ratio = rs_isqrt((1u << 24) + s4 * s4);
+  }
+  hv = (int32_t)((uint32_t)w * ratio * 8u);                    /* w / 2 * ratio, Q16 */
+  q = ((uint32_t)adv << 16) / (uint32_t)du; r = ((uint32_t)adv << 16) % (uint32_t)du;
+  if (u1 < u0) { int t = u0; u0 = u1; u1 = t; t = v0; v0 = v1; v1 = t; sg = -sg; }   /* centre from the low-u end */
+  if (ua < 0) ua = 0;
+  if (ub > umax - 1) ub = umax - 1;
+  if (ua > ub) return;
+  k = (uint32_t)(ua - u0);
+  rem = (int32_t)((r * k) % (uint32_t)du);
+  vc = v0 * 65536 + sg * (int32_t)(q * k + (r * k) / (uint32_t)du);
+  for (int u = ua; u <= ub; u++) {
+    int32_t top = vc - hv, bot = vc + hv;
+    int va = (top + 32768) >> 16, vb = (bot + 32767) >> 16;
+    if (va < 0) va = 0;
+    if (vb > vmax - 1) vb = vmax - 1;
+    for (int v = va; v <= vb; v++) {
+      int32_t lo = v * 65536 - 32768, hi = lo + 65536;
+      if (lo < top) lo = top;
+      if (hi > bot) hi = bot;
+      if (hi > lo) rs_cov(c, u, v, swap, (uint32_t)(hi - lo) >> 8, col, opa);
+    }
+    vc += sg * (int32_t)q; rem += (int32_t)r;
+    if (rem >= du) { rem -= du; vc += sg; }
+  }
+}
+static void rs_dot_aa(const rs_canvas *c, int x, int y, int w, uint16_t col, uint8_t opa) {
+  int R = (w + 2) / 2;
+  int32_t in2 = (w - 1) * (w - 1), out2 = (w + 1) * (w + 1);    /* 4 * d^2 against (w -+ 1)^2 */
+  if (x + R < 0 || y + R < 0 || x - R >= c->w || y - R >= c->h) return;
+  for (int j = -R; j <= R; j++) for (int i = -R; i <= R; i++) {
+    int32_t d4 = 4 * (i * i + j * j);
+    if (d4 >= out2) continue;
+    if (d4 <= in2) { rs_cov(c, x + i, y + j, 0, 256u, col, opa); continue; }
+    int32_t cv = w * 128 + 128 - (int32_t)rs_isqrt((uint32_t)(i * i + j * j) << 16);   /* r + 1/2 - distance, Q8 */
+    if (cv > 0) rs_cov(c, x + i, y + j, 0, cv > 256 ? 256u : (uint32_t)cv, col, opa);
+  }
+}
+static int rs_turn(pt_t a, pt_t b, pt_t d) {                   /* the turn at b is over about 10 degrees (tan 10 = 10 / 57) */
+  int ax = b.x - a.x, ay = b.y - a.y, bx = d.x - b.x, by = d.y - b.y;
+  while (rs_abs(ax) > 2047 || rs_abs(ay) > 2047 || rs_abs(bx) > 2047 || rs_abs(by) > 2047) { ax /= 2; ay /= 2; bx /= 2; by /= 2; }
+  int32_t dot = ax * bx + ay * by, cr = ax * by - ay * bx;
+  return dot <= 0 || rs_abs(cr) * 57 > dot * 10;
+}
+void rs_line_aa(const rs_canvas *c, const pt_t *p, uint32_t n, int w, uint16_t col, uint8_t opa, int round) {
+  uint32_t i;
+  if (!c->buf || !p || !n || w <= 0) return;
+  if (n == 1) { rs_dot_aa(c, p[0].x, p[0].y, w, col, opa); return; }
+  for (i = 1; i < n; i++) {
+    int dx = p[i].x - p[i - 1].x, dy = p[i].y - p[i - 1].y;
+    if (rs_abs(dx) >= rs_abs(dy)) rs_slab(c, p[i - 1].x, p[i - 1].y, p[i].x, p[i].y, w, col, opa, 0, i + 1 < n);
+    else rs_slab(c, p[i - 1].y, p[i - 1].x, p[i].y, p[i].x, w, col, opa, 1, i + 1 < n);
+  }
+  if (round && w >= 3) {
+    rs_dot_aa(c, p[0].x, p[0].y, w, col, opa);
+    for (i = 1; i + 1 < n; i++) if (rs_turn(p[i - 1], p[i], p[i + 1])) rs_dot_aa(c, p[i].x, p[i].y, w, col, opa);
+    rs_dot_aa(c, p[n - 1].x, p[n - 1].y, w, col, opa);
+  }
 }
 
 uint32_t rs_work(const pt_t *p, uint32_t n, int w) {

@@ -14,6 +14,9 @@ typedef void (*proj_cb_t)(const float *latlon, uint32_t n);  // the stock projec
 #define F_OWN   1u                   /* map and way-back lines with the raster module, not LVGL */
 #define F_TEXT  2u                   /* test text: map time (cc_iter), adapter time and reads */
 #define F_ROUTE 4u                   /* the adapter opens the route file on the route (elevation, text) */
+#define F_AA     8u                  /* cc28: with F_OWN, map lines smooth (rs_line_aa) */
+#define F_CYC   16u                  /* cc28: cycleway 5 px dark edge, 3 px light core */
+#define F_NODRAW 32u                 /* cc28 test: project every entry, draw no map pixel (time of the projection) */
 static __attribute__((unused)) uint32_t blk_flags(const ent_t *E, uint32_t cnt) {
   const ent_t *e;
   if (!E || !cnt) return 0;

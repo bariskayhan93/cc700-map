@@ -14,6 +14,11 @@ void rs_fill(const rs_canvas *c, const pt_t *p, uint32_t n, uint16_t col);
  * span of w' = ceil(w * len / major) pixels across the minor axis. round and w >= 3 and opa == 255: a disk of diameter
  * w at each point. opa < 255: each pixel is blended. */
 void rs_line(const rs_canvas *c, const pt_t *p, uint32_t n, int w, uint16_t col, uint8_t opa, int round);
+/* cc28 smooth polyline of exact width w: per column (x-major) or row (y-major) the slab of height w * len / major
+ * around the centre; each pixel gets its coverage (pixel (x, y) spans x +- 1/2, y +- 1/2); full pixels as rs_line, edge
+ * pixels blended. Segments are half-open (the last one closed), so a straight joint is drawn once. round and w >= 3:
+ * a smooth disk at both ends and at each turn over about 10 degrees. n == 1: a smooth disk. */
+void rs_line_aa(const rs_canvas *c, const pt_t *p, uint32_t n, int w, uint16_t col, uint8_t opa, int round);
 /* Disk of diameter d at (x, y): the pixels (x + i, y + j) with 4i^2 + 4j^2 <= d^2. */
 void rs_disk(const rs_canvas *c, int x, int y, int d, uint16_t col, uint8_t opa);
 /* Rectangle [x0, x1) x [y0, y1). */
