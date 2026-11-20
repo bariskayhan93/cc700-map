@@ -80,3 +80,11 @@ so far, so that the next fix of that kind still fits.
 Sources: `research/adaptive-map-budget-2026-11-14.md`, `reports/map-evaluation-report-2026-11-15.md`,
 `current/map-limits.md`, `mining/map-budget-observation.json`, `research/recovery-package-2026-11-15.md`,
 `research/elevation-study-2026-11-15.md` and the cc22/cc23 build records.
+
+## Deferred elevation progress bar, 20 Nov 2026
+
+Keep the stock progress bar and the existing next-kilometre elevation strip for the current release. The proposed change uses the lower bar for the whole route. Stock code can still draw the casing, remaining distance and position marker. The generator must supply the terrain heights.
+
+The host prototype used a 252 B route section. With both elevation displays linked, the code used 18,224 of 18,404 B before the final display integration. The 180 B margin must also cover the route checks. One test produced a false low point from missing elevation. A second test drew a single leg's profile for a joined route.
+
+Resume when the generator can verify elevation coverage and the display can identify the active route. Use the stock bar whenever either check fails. Keep the existing firmware reserve. Measure the final linked size, peak stack and full frame time before ride acceptance. The offline measurements and reproduction steps are in the owner's local feasibility report.

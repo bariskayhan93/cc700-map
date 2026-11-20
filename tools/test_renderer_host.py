@@ -202,10 +202,16 @@ class RendererHost(unittest.TestCase):
         self.assertEqual((cyc["painted"], cyc["ink"]), (off["painted"], off["ink"]))
         self.assertEqual(self.run_entries("cyc_aa16")["ink"], self.run_entries("cyc_aa")["ink"])
 
-    def test_F_AA_draws_cycleways_one_and_a_half_px(self):  # 2 px in the table, 1.5 px with the smooth drawer
+    def test_F_AA_draws_cycleways_two_px(self):            # cc28d (owner): 2 px in the table, 2.0 px with the smooth drawer
         ratio = self.run_entries("cyc_aa")["ink"] / self.run_entries("cyc_off")["ink"]
-        self.assertGreater(ratio, 0.6)
-        self.assertLess(ratio, 0.9)
+        self.assertGreater(ratio, 0.9)
+        self.assertLess(ratio, 1.15)
+
+    def test_F_AA_keeps_the_plain_area_outline(self):       # cc28d: water and green outlines 1 px plain, as cc26/cc27
+        for cls in ("wat", "grn"):
+            aa, own = self.run_entries(cls + "_aa"), self.run_entries(cls + "_own")
+            self.assertGreater(own["painted"], 0, cls)
+            self.assertEqual((aa["painted"], aa["ink"]), (own["painted"], own["ink"]), cls)
 
     def test_F_PROJ_projects_without_the_stock_callback(self):   # cc28b: only the probes go through the stock projection
         stock, own = self.run_entries("own_aa"), self.run_entries("proj")

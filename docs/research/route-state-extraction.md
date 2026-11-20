@@ -95,10 +95,12 @@ logic is now resolved.
 
 Define the values at the final distance/angle decision:
 
-- `P`: unsigned truncation of distance from current position to the selected
-  center route point, after index arbitration; also written to result `+112`.
-- `Q`: unsigned truncation of distance from current position to the calculated
-  projected position.
+- `P`: unsigned truncation of the distance in metres from the current GPS
+  position to the selected center route point (the matched track point), after
+  index arbitration; also written to result `+112`.
+- `Q`: unsigned truncation of the distance in metres from the current GPS
+  position to the calculated projected position (the foot point on the route
+  segment).
 - `D`: the chosen distance. Initially `Q`; if unsigned `10 * P < Q`, the code
   substitutes that center route-point position and sets `D = P`.
 - `A`: signed truncation of `GPS-derived angle - selected-route angle`,
@@ -110,8 +112,9 @@ helper is `0x4204aa9c`; the multiplication/substitution is
 `0x4204bd9f..bdb6`. The center coordinate pair is stored in the middle iteration
 of the three-neighbor loop at `0x4204bbb8..bbbe`, then read from stack
 `+100/+104`; it must not be confused with the earlier raw nearest-point pair.
-Exact physical units and exceptional floating-point behavior
-remain dependent on the complete geometry/helper contract.
+The helper is a haversine with `R = 6378137.0` (constant at `0x4204abe2`), so
+`P`, `Q` and `D` are metres (D). Exceptional floating-point behavior remains
+open.
 
 | Ordered condition | Candidate off-route value |
 |---|---|
@@ -127,13 +130,18 @@ the original input position; it only forces off-route once `D > 99`.
 For `50 < D <= 99`, it still reaches the angle decision.
 
 This is not the assumed “150 to leave / 60 to rejoin” rule in the older local
-simulator. The committed state also depends on the persistence stage below.
+simulator. The committed state also depends on the persistence stage below, and
+`result[145]` is cleared at each call (D, `0x4204b1f1..204`).
 
 ## Persistence: candidate is not committed state
 
 For an otherwise normal calculation, let `candidate` be the value from the
 table, `previous_candidate = result[147]`, `committed = result[145]`, and
-`count = result.uint16[136]`. The local state update is:
+`count = result.uint16[136]`. At entry the matcher clears result `+60..+146`
+with `memset(a1+92, 0, 87)` (`0x4204b1f1..204`, D; ROM `0x400011e8` = memset,
+I). It carries over only `+128`, `+132`, `+136`, `+147`, `+108` and bytes
+`0..59` (`0x4204b207..22f`, D). So `committed` starts at 0 in every call. The
+local state update is:
 
 ```c
 if (candidate != previous_candidate) {
@@ -154,7 +162,11 @@ evaluations including the change. This describes invocation counts, **not
 seconds**. Dispatcher scheduling, skipped updates and initialization still
 control the elapsed time and initial conditions.
 
-Both transition directions use this code. Search mode 1 has an additional
+Only the change to off-route uses this counter. `committed` becomes 1 only
+after eleven equal candidates of 1; the first candidate of 0 gives
+`committed = 0` in that call, because nothing sets it back to 1 (D). The early
+failure path (`0x4204b29e..2ea`: no route list, position (0, 0), or zero
+points) sets `+145 = 1` for that call only, without the counter (D). Search mode 1 has an additional
 counter reset whenever the committed state is 1 (`0x4204bf8d..98`); that
 exception must be preserved when auditing other callers.
 

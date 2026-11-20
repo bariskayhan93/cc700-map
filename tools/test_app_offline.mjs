@@ -71,7 +71,7 @@ for (const styled of [false,true]) {
     els.push({type: 'way', id: 100 + k, nodes: Array.from({length: 11}, (_, i) => nodeId(i, k)), tags: {highway: 'residential'}});
     els.push({type: 'way', id: 200 + k, nodes: Array.from({length: 11}, (_, j) => nodeId(k, j)), tags: {highway: 'residential'}});
   }
-  const fetchImpl = async () => ({ok: true, status: 200, json: async () => ({osm3s: {timestamp_osm_base: '2026-11-01T00:00:00Z'}, elements: els})});
+  const fetchImpl = async u => ({url: u, ok: true, status: 200, json: async () => ({osm3s: {timestamp_osm_base: '2026-11-01T00:00:00Z'}, elements: els})});
   const gpx = {name: 'cc27', pts: Array.from({length: 11}, (_, i) => [...pt(i * 100, 0), 50 + i])};
   const build = flags => buildRoute(gpx, [], {id: '11120000', nameImage: () => new Uint8Array(42), speedKmh: 18, noF9: true, map: {styled: true, codec: 'd', blockFlags: flags}}).file;
   const flagsOf = file => readFile(file).blocks.map(b => { const e = b.at(-1); return e.style === 15 && !e.points.length && Math.round(e.center[0] / SC) === 0x7F434346 ? Math.round(e.center[1] / SC) : -1; });
@@ -106,7 +106,7 @@ for (const styled of [false,true]) {
     els.push({type: 'way', id: 100 + k, nodes: Array.from({length: N}, (_, i) => nodeId(i, k)), tags: {highway: 'residential'}});
     els.push({type: 'way', id: 200 + k, nodes: Array.from({length: N}, (_, j) => nodeId(k, j)), tags: {highway: 'residential'}});
   }
-  const fetchImpl = async () => ({ok: true, status: 200, json: async () => ({osm3s: {timestamp_osm_base: '2026-11-01T00:00:00Z'}, elements: els})});
+  const fetchImpl = async u => ({url: u, ok: true, status: 200, json: async () => ({osm3s: {timestamp_osm_base: '2026-11-01T00:00:00Z'}, elements: els})});
   const gpx = {name: 'guard', pts: Array.from({length: 11}, (_, i) => [...pt(i * 100, 0), 50 + i])};
   const plain = buildRoute(gpx, [], {id: '11120000', nameImage: () => new Uint8Array(42), speedKmh: 18, noF9: true, map: {styled: true, codec: 'd', blockFlags: 7}}).file;
   const full = await cc27Sections(plain, {fetchImpl, reach: 'line3k'});

@@ -45,7 +45,10 @@ if(process.argv[1]&&path.resolve(process.argv[1])===fileURLToPath(import.meta.ur
   if(a[4]==='--response'&&fs.statSync(a[5]).size>receipt.maxResponseBytes)throw Error('Response exceeds byte limit');
   const raw=a[4]==='--fetch'?await boundedResponse(await fetch(endpoint,{method:'POST',body:new URLSearchParams({data:query}),signal:AbortSignal.timeout(105000)})):fs.readFileSync(a[5]);
   if(raw.length>receipt.maxResponseBytes)throw Error('Response exceeds byte limit');
-  fs.writeFileSync(path.join(a[3],'response.json'),raw);receipt.responseSha256=hash(raw);receipt.responseBytes=raw.length;
+  // The saved answer holds its covered box (key coverBbox, js/wayback.js COVER_KEY) in front of the server bytes; no other data is added.
+  const text=raw.toString('utf8'),open=text.search(/\S/);if(text[open]!=='{')throw Error('Overpass answer is not a JSON object');
+  const stored=Buffer.from(text.slice(0,open+1)+'"coverBbox":'+JSON.stringify(region.bbox)+','+text.slice(open+1),'utf8');
+  fs.writeFileSync(path.join(a[3],'response.json'),stored);receipt.responseSha256=hash(raw);receipt.responseBytes=raw.length;receipt.storedSha256=hash(stored);receipt.coverBbox=region.bbox;
   const snapshot=captureRoutingSnapshot(JSON.parse(raw),{bbox:region.bbox,querySha256});
   fs.writeFileSync(path.join(a[3],'snapshot.json'),JSON.stringify(snapshot)+'\n');
   const adapted=snapshotCandidateSource(snapshot);

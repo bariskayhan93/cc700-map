@@ -141,7 +141,7 @@ void cc_line(const pt_t *pts, uint32_t n, int32_t width, int32_t mode) {
     const op_t *o = &OPS[sel & 0xff];
     int own = sel & OP_OWN ? (sel & OP_AA ? 2 : 1) : 0;
     uint8_t opa = sel & F_TUNNEL ? 115 : 255, op = sel & 0xff;
-    int w2 = o->width * 2 - (own == 2 && (op == 11 || op == 13 || op == 18));   // cc28b smooth: path, cycleway, track 1.5 px
+    int w2 = o->width * 2 - (own == 2 && (op == 11 || op == 18));   // cc28b smooth: path, track 1.5 px; cc28d: cycleway 2.0 px
     if (o->kind == K_TEXT) {
       // Stock callback only frees its projected buffer after cc_line returns.
       // Report the anchor to cc_iter; placement state remains on its stack.
@@ -292,7 +292,7 @@ void cc_iter(proj_cb_t cb) {
       for (uint32_t f = 0; f < N_FILLS; f++)
         for (uint32_t i = ranges[f].first; i < ranges[f].end; i++, COUNT_ENTRY()) if (E[i].style && (E[i].style & 15) == FILLS[f].cls) {
           draw_entry(cb, &E[i], FILLS[f].op | own, buf, P);
-          if ((FILLS[f].cls == C_GREEN || FILLS[f].cls == C_WATER) && !(E[i].style & 0x400)) draw_entry(cb, &E[i], (FILLS[f].cls == C_GREEN ? 24 : 25) | own, buf, P);
+          if ((FILLS[f].cls == C_GREEN || FILLS[f].cls == C_WATER) && !(E[i].style & 0x400)) draw_entry(cb, &E[i], (FILLS[f].cls == C_GREEN ? 24 : 25) | (own & ~OP_AA), buf, P);   // cc28d: plain 1 px outline
         }
       for (int lv = 0; lv <= 4; lv++) {
         STOP(2 + lv)

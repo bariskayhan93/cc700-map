@@ -60,7 +60,10 @@ export function captureRoutingSnapshot(response,metadata){
  // candidate source. Outside restriction members have no restriction closure.
  const [south,west,north,east]=metadata.bbox;
  const selected=validWays.filter(w=>w.pts.some(([lat,lon])=>lat>=south&&lat<=north&&lon>=west&&lon<=east));
- return {version:1,kind:'routing-source-snapshot',integrity:complete?'pass':'incomplete',
+ // coverBbox [S,W,N,E] (20 Nov): the box the street data covers. A replayed answer brings its saved box; a live one covers
+ // the query box. js/wayback.js waybackFromSnapshot checks it against the box of the reach.
+ const cb=response.coverBbox,coverBbox=Array.isArray(cb)&&cb.length===4&&cb.every(Number.isFinite)?[...cb]:[...metadata.bbox];
+ return {version:1,kind:'routing-source-snapshot',coverBbox,integrity:complete?'pass':'incomplete',
   provenance:{bbox:[...metadata.bbox],querySha256:metadata.querySha256,osmBaseTimestamp:typeof base==='string'?base:null},
   nodes,ways,restrictions,issues:all,navigationSource:{version:1,complete,ways:selected,issues:all.map(i=>({...i}))},
   coverage:'requested region and referenced members only; not map completeness or cycling validation'};

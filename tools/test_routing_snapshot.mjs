@@ -82,6 +82,7 @@ test('offline CLI produces reproducible snapshots, refuses overwrite and records
   for(const out of ['a','b']){const r=spawnSync(process.execPath,args(out),{encoding:'utf8'});assert.equal(r.status,0,r.stderr);}
   assert.equal(fs.readFileSync(join(dir,'a','snapshot.json'),'utf8'),fs.readFileSync(join(dir,'b','snapshot.json'),'utf8'));
   const receipt=JSON.parse(fs.readFileSync(join(dir,'a','receipt.json')));assert.equal(receipt.network,false);assert.equal(receipt.status,'pass');assert.match(receipt.responseSha256,/^[a-f0-9]{64}$/);
+  const stored=JSON.parse(fs.readFileSync(join(dir,'a','response.json')));assert.deepEqual(stored.coverBbox,meta.bbox);assert.deepEqual(stored.elements,response(base()).elements);
   assert.notEqual(spawnSync(process.execPath,args('a')).status,0);
   fs.writeFileSync(raw,'{');assert.equal(spawnSync(process.execPath,args('bad')).status,1);
   assert.equal(JSON.parse(fs.readFileSync(join(dir,'bad','receipt.json'))).status,'failed');
@@ -107,4 +108,11 @@ test('an exempt restriction cannot pull an outside reference-only road into the 
  const r=evaluateRecovery({snapshot:s,origins:[1],targets:[{node:4,visit:1}],afterVisit:0,throughVisit:1});
  assert.equal(r.origins[0].status,'unavailable');
  assert(r.sourceExclusions.ways.some(w=>w.way===20&&w.reason==='reference-only-way'));
+});
+
+test('snapshot keeps the covered box: the saved one of a replayed answer, else the query box',()=>{
+ assert.deepEqual(snap(base()).coverBbox,meta.bbox);
+ const cover=[50.9,6.9,51.1,7.1];
+ assert.deepEqual(captureRoutingSnapshot({...response(base()),coverBbox:cover},meta).coverBbox,cover);
+ assert.deepEqual(captureRoutingSnapshot({...response(base()),coverBbox:[1,2]},meta).coverBbox,meta.bbox);
 });
