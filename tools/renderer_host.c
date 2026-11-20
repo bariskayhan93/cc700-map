@@ -154,7 +154,8 @@ int main(int argc, char **argv) {
   else if (!strcmp(which,"failed_projection")) {n=1;failed_projection=1;}
   else if (!strcmp(which,"own") || !strcmp(which,"own_off") || !strcmp(which,"flags_text") || !strcmp(which,"own_aa") || !strcmp(which,"nodraw")
            || !strcmp(which,"cyc") || !strcmp(which,"cyc_off") || !strcmp(which,"cyc_aa") || !strcmp(which,"cyc_aa16")
-           || !strcmp(which,"proj") || !strcmp(which,"proj_text") || !strcmp(which,"proj_badzoom") || !strcmp(which,"proj_far")) {n=40;entry_mode=1;}
+           || !strcmp(which,"proj") || !strcmp(which,"proj_text") || !strcmp(which,"proj_badzoom") || !strcmp(which,"proj_far")
+           || !strcmp(which,"wat_aa") || !strcmp(which,"wat_own") || !strcmp(which,"grn_aa") || !strcmp(which,"grn_own")) {n=40;entry_mode=1;}
   else if (!strcmp(which,"level_stop")) {n=60;entry_mode=1;clock_step=150000;}    /* 150 ms for each clock read */
   else if (!strcmp(which,"level_stop_text")) {n=60;entry_mode=1;clock_step=150000;}
   else if (!strcmp(which,"fill_stop")) {n=20;entry_mode=1;clock_step=250000;}
@@ -206,11 +207,14 @@ int main(int argc, char **argv) {
     for (unsigned i=0;i<n;i++) {
       unsigned style=(5+i%3)|(((i/3)%5)<<4);
       if (!strncmp(which,"cyc",3)) style=10|(2<<4);              /* cycleways (class 10) */
+      if (!strncmp(which,"wat",3)) style=3|(2<<4);               /* cc28d: water areas (class 3): fill and outline */
+      if (!strncmp(which,"grn",3)) style=2|(2<<4);               /* green areas (class 2) */
       if (!strcmp(which,"fill_stop") && i<10) style=1|(2<<4);
       host_ents[i]=(ent_t){i,style,(int32_t)(1000*(i+1)),0,4,shape};
     }
     unsigned flags=!strcmp(which,"own")?1u:!strcmp(which,"flags_text")?2u:!strcmp(which,"own_aa")?1u|8u:!strcmp(which,"nodraw")?1u|32u:
                    !strcmp(which,"cyc")?1u|16u:!strcmp(which,"cyc_off")?1u:!strcmp(which,"cyc_aa")?1u|8u:!strcmp(which,"cyc_aa16")?1u|8u|16u:
+                   !strcmp(which,"wat_aa")||!strcmp(which,"grn_aa")?1u|8u:!strcmp(which,"wat_own")||!strcmp(which,"grn_own")?1u:
                    !strcmp(which,"level_stop_text")?2u:!strcmp(which,"proj_text")?1u|2u|8u|64u:!strncmp(which,"proj",4)?1u|8u|64u:0u;   /* F_PROJ 64 */
     if (!strcmp(which,"proj_badzoom")) host_proj_zoom=0;
     if (!strcmp(which,"proj_far")) probe_far=1;   /* F_OWN 1, F_TEXT 2, F_AA 8, F_CYC 16, F_NODRAW 32 */

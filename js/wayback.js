@@ -53,6 +53,7 @@ export function waybackBbox(route, reach = 'line2k') {
 // true also gives the fitted grey section (grey: bytes or null). The caller puts the sections with embedSections.
 export function waybackFromSnapshot(snapshot, route, routeId, {reach = 'line2k', exceptions = false, maxBytes = 0, format = 1, routeBytes = null, layer = false, caps = GREY_CAPS} = {}) {
   if (format === 2 && !routeBytes) throw new Error('format 2 needs routeBytes: the grey flags come from the map (D0 item 4)');
+  checkCover(snapshot, waybackBbox(route, reach), reach);   // snapshot.json too: no silent cut (20 Nov)
   const graph = buildTransitionGraph(snapshot, {wayPolicy});
   const encode = model => {
     if (format !== 2) return {bytes: encodeWayback(model, routeId), grey: null, greyReport: null};
@@ -81,7 +82,7 @@ async function overpass(query, fetchImpl) {
     try {
       const res = await fetchImpl(API[n % API.length], {method: 'POST', body: new URLSearchParams({data: query}), signal: AbortSignal.timeout(110000)});
       const j = res.ok ? await res.json() : {};
-      if (res.ok && !j.remark) return j;
+      if (res.ok && !j.remark) return {json: j, live: API.includes(res.url)};   // not from a server URL: a replayed file
       err = new Error('Overpass ' + (j.remark || res.status));
     } catch (e) { err = e; }
     if (n === API.length - 1) await new Promise(ok => setTimeout(ok, 5000));
@@ -91,12 +92,29 @@ async function overpass(query, fetchImpl) {
 
 // Loads the streets around the route and returns the routing snapshot. Throws when the data is not complete.
 // The last answer is kept for the page session: a rebuild of the same route (other speed or layer) asks Overpass once.
+// Replay (20 Nov, owner): an answer that does not come from a server URL is a saved file. It must hold its covered box
+// [S, W, N, E] under COVER_KEY (written at save time, tools/routing_snapshot.mjs), and that box must hold the box of the
+// reach (reach + 200 m) on every side. Otherwise the build fails with each short side in metres: no silent cut. Live: no box.
+export const COVER_KEY = 'coverBbox';
 let lastAnswer = null;
+export function coverGaps(cover, bbox) {
+  const mLat = 111320, mLon = mLat * Math.cos((bbox[0] + bbox[2]) / 2 * Math.PI / 180);
+  return [['S', (cover[0] - bbox[0]) * mLat], ['W', (cover[1] - bbox[1]) * mLon], ['N', (bbox[2] - cover[2]) * mLat], ['E', (bbox[3] - cover[3]) * mLon]]
+    .filter(([, m]) => m > 0.5).map(([side, m]) => ({side, m: Math.round(m)}));
+}
+function checkCover(answer, bbox, reach) {
+  const c = answer[COVER_KEY];
+  if (!Array.isArray(c) || c.length !== 4 || !c.every(Number.isFinite)) throw new Error('replayed street data has no covered box');
+  const gaps = coverGaps(c, bbox);
+  if (gaps.length) throw new Error(`street data does not cover ${reach} + ${MARGIN_M} m: ` + gaps.map(g => `${g.side} short by ${g.m} m`).join(', '));
+}
 export async function loadWaybackSnapshot(route, fetchImpl = fetch, reach = 'line2k') {
   const bbox = waybackBbox(route, reach), query = routingQuery(bbox);   // throws when the area exceeds the bounded region
   const querySha256 = hex(await sha256(new TextEncoder().encode(query)));
-  const answer = lastAnswer?.query === query && lastAnswer.fetchImpl === fetchImpl ? lastAnswer.json : await overpass(query, fetchImpl);
-  lastAnswer = {query, fetchImpl, json: answer};
+  const got = lastAnswer?.query === query && lastAnswer.fetchImpl === fetchImpl ? lastAnswer.got : await overpass(query, fetchImpl);
+  lastAnswer = {query, fetchImpl, got};
+  if (!got.live) checkCover(got.json, bbox, reach);
+  const answer = got.json;
   const snapshot = captureRoutingSnapshot(answer, {bbox, querySha256});
   if (snapshot.integrity !== 'pass') throw new Error('street data is not complete: ' + (snapshot.issues[0]?.code ?? 'unknown'));
   return snapshot;

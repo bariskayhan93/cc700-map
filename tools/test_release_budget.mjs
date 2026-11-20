@@ -12,7 +12,7 @@ for (let k = 0; k <= 10; k++) {
   els.push({type: 'way', id: 100 + k, nodes: Array.from({length: 11}, (_, i) => nodeId(i, k)), tags: {highway: 'residential'}});
   els.push({type: 'way', id: 200 + k, nodes: Array.from({length: 11}, (_, j) => nodeId(k, j)), tags: {highway: 'residential'}});
 }
-const fetchImpl = async () => ({ok: true, status: 200, json: async () => ({osm3s: {timestamp_osm_base: '2026-11-01T00:00:00Z'}, elements: els})});
+const fetchImpl = async u => ({url: u, ok: true, status: 200, json: async () => ({osm3s: {timestamp_osm_base: '2026-11-01T00:00:00Z'}, elements: els})});
 const gpx = {name: 'budget', pts: Array.from({length: 11}, (_, i) => [...pt(i * 100, 0), 50 + i])};
 const file = buildRoute(gpx, [], {id: '11120000', nameImage: () => new Uint8Array(42), speedKmh: 18, noF9: true, map: {styled: true, codec: 'd', blockFlags: 7}}).file;
 const ride = Array.from({length: 40}, (_, i) => pt(i * 25, 60));   // 60 m north of the route: off the route

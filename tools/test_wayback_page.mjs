@@ -29,7 +29,9 @@ function elements({drop = 0} = {}) {
 }
 const response = opt => ({osm3s: {timestamp_osm_base: '2026-11-01T00:00:00Z'}, elements: elements(opt)});
 const route = Array.from({length: 11}, (_, i) => ({point: pt(i * 100, 0), progress: i * 10000}));
-const fetchOf = answers => { let n = 0; const f = async () => { const a = answers[Math.min(n++, answers.length - 1)]; return {ok: a.ok ?? true, status: a.status ?? 200, json: async () => a.body}; }; f.calls = () => n; return f; };
+const fetchOf = answers => { let n = 0; const f = async u => { const a = answers[Math.min(n++, answers.length - 1)]; return {url: u, ok: a.ok ?? true, status: a.status ?? 200, json: async () => a.body}; }; f.calls = () => n; return f; };
+// A replay: the answer of a saved file (no server URL), as the build pages give it.
+const replayOf = body => { let n = 0; const f = async () => { n++; return new Response(JSON.stringify(body), {status: 200}); }; f.calls = () => n; return f; };
 
 test('the box holds the route with a margin of at least 2.2 km on each side', () => {
   const [s, w, n, e] = waybackBbox(route);
@@ -110,7 +112,7 @@ test('a route area above the bounded region is refused before any request', asyn
 test('the fetch steps the reach down when the box of the chosen reach is over the bounded area', async () => {
   const gpx = {name: 'Long', pts: Array.from({length: 101}, (_, k) => [51 + k * 1000 / 111320, 7, 0])};
   const plain = buildRoute(gpx, [], {id: '11120000', nameImage: () => new Uint8Array(42), map: {styled: true}, speedKmh: 18}).file;
-  const boxes = [], f = async (url, opt) => { boxes.push(/\(([^)]*)\)/.exec(opt.body.get('data'))[1]); return {ok: true, status: 200, json: async () => response()}; };
+  const boxes = [], f = async (url, opt) => { boxes.push(/\(([^)]*)\)/.exec(opt.body.get('data'))[1]); return {url, ok: true, status: 200, json: async () => response()}; };
   const w = await addWayback(plain, {fetchImpl: f, format: 2, reach: 'line3k'});
   assert.equal(w.reach, 'line2k');
   assert.deepEqual(boxes, [waybackBbox(readNativeRoute(plain), 'line2k').join(',')]);
@@ -232,11 +234,55 @@ test('a grey fit over its removal limit gives no grey section and keeps the way-
 
 // Final review: the 1,536 KB cap is for the way-back section; the grey section has its own section (file guard 4 MB).
 test('the way-back size limit counts the way-back section only, not the grey section', async () => {
-  const snapshot = await loadWaybackSnapshot(route, fetchOf([{body: response()}]));
+  const snapshot = await loadWaybackSnapshot(route, fetchOf([{body: response()}]), 'line3k');
   const id = new Uint8Array(16), none = new Uint8Array(0);
   const full = waybackFromSnapshot(snapshot, route, id, {format: 2, routeBytes: none, layer: true, reach: 'line3k'});
   assert(full.grey && full.grey.length > 0);
   const tight = waybackFromSnapshot(snapshot, route, id, {format: 2, routeBytes: none, layer: true, reach: 'line3k', maxBytes: full.bytes.length});
   assert.equal(tight.reach, 'line3k');
   assert.deepEqual(tight.bytes, full.bytes);
+});
+
+// 20 Nov (owner): a replayed answer (not from a server URL) must hold its covered box [S, W, N, E] (key coverBbox), and the
+// box must hold reach + 200 m on every side. A missing box or a short side fails; the live path needs no box.
+test('a replayed answer that covers the box of the reach is used', async () => {
+  const f = replayOf({...response(), coverBbox: waybackBbox(route, 'line2k')});
+  assert.equal((await loadWaybackSnapshot(route, f, 'line2k')).integrity, 'pass');
+});
+
+test('a replayed answer without its covered box fails', async () => {
+  await assert.rejects(loadWaybackSnapshot(route, replayOf(response()), 'line2k'), /replayed street data has no covered box/);
+  await assert.rejects(loadWaybackSnapshot(route, replayOf({...response(), coverBbox: [1, 2, 3]}), 'line2k'), /no covered box/);
+});
+
+test('a replayed answer short on a side fails with the side and the metres', async () => {
+  const [s, w, n, e] = waybackBbox(route, 'line3k');
+  const f = replayOf({...response(), coverBbox: [s, w + 500 / (111320 * K), n - 953 / 111320, e]});
+  await assert.rejects(loadWaybackSnapshot(route, f, 'line3k'), /does not cover line3k \+ 200 m: W short by (49|50)\d m, N short by 95\d m/);
+});
+
+test('a live answer needs no covered box', async () => {
+  assert.equal((await loadWaybackSnapshot(route, fetchOf([{body: response()}]), 'line3k')).integrity, 'pass');
+});
+
+// 20 Nov (owner): snapshot.json carries the covered box too (captureRoutingSnapshot), and waybackFromSnapshot checks it
+// against the box of the reach, so a host build from snapshot.json (tools/wayback_build.mjs, tools/release_budget.mjs) never cuts silently.
+test('a snapshot without its covered box fails in waybackFromSnapshot', async () => {
+  const snapshot = await loadWaybackSnapshot(route, fetchOf([{body: response()}]), 'line2k'), {coverBbox, ...bare} = snapshot;
+  assert.deepEqual(coverBbox, waybackBbox(route, 'line2k'));
+  assert.throws(() => waybackFromSnapshot(bare, route, new Uint8Array(16)), /replayed street data has no covered box/);
+  assert.throws(() => waybackFromSnapshot({...bare, coverBbox: [1, 2]}, route, new Uint8Array(16)), /no covered box/);
+});
+
+test('a snapshot short on a side fails with the side and the metres; a covering box passes', async () => {
+  const snapshot = await loadWaybackSnapshot(route, fetchOf([{body: response()}]), 'line2k'), [s, w, n, e] = snapshot.coverBbox;
+  const short = {...snapshot, coverBbox: [s + 300 / 111320, w, n, e - 700 / (111320 * K)]};
+  assert.throws(() => waybackFromSnapshot(short, route, new Uint8Array(16)), /does not cover line2k \+ 200 m: S short by 30\d m, E short by (69|70)\d m/);
+  assert.throws(() => waybackFromSnapshot(snapshot, route, new Uint8Array(16), {reach: 'line3k'}), /does not cover line3k \+ 200 m: S short by/);
+  assert(waybackFromSnapshot(snapshot, route, new Uint8Array(16)).bytes.length > 0);
+});
+
+test('a replayed answer gives its own covered box to the snapshot', async () => {
+  const cover = waybackBbox(route, 'line3k');
+  assert.deepEqual((await loadWaybackSnapshot(route, replayOf({...response(), coverBbox: cover}), 'line2k')).coverBbox, cover);
 });
