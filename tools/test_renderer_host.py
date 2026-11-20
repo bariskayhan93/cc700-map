@@ -184,6 +184,21 @@ class RendererHost(unittest.TestCase):
         self.assertEqual(own["draws"], 0)
         self.assertGreater(own["painted"], 0)
 
+    def test_F_AA_draws_smooth_lines_without_lvgl(self):
+        own, aa = self.run_entries("own"), self.run_entries("own_aa")
+        self.assertEqual(aa["draws"], 0)
+        self.assertEqual(aa["callbacks"], own["callbacks"])
+        self.assertGreater(aa["painted"], 0)
+        self.assertNotEqual(aa["painted"], own["painted"])  # even widths give half-covered edge rows
+
+    def test_F_NODRAW_projects_every_entry_and_paints_nothing(self):
+        r = self.run_entries("nodraw")
+        self.assertEqual(r["callbacks"], 2 * 40)
+        self.assertEqual((r["draws"], r["painted"]), (0, 0))
+
+    def test_F_CYC_draws_the_cycleway_wider(self):
+        self.assertGreater(self.run_entries("cyc")["painted"], self.run_entries("cyc_off")["painted"])
+
     def test_level_stop_keeps_each_road_whole(self):
         r = self.run_entries("level_stop")                   # 150 ms for each clock read: the stop comes before level 1
         self.assertEqual(r["whole"], 1)

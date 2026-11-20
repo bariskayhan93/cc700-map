@@ -63,8 +63,8 @@ static int outside(const pt_t *p, uint32_t n) {            // A: the box of the 
   return x1 < -CLIP_M || y1 < -CLIP_M || x0 > FW_CANVAS_W + CLIP_M || y0 > FW_CANVAS_H + CLIP_M;
 }
 static rs_canvas canvas(void) { rs_canvas c = { FW_CANVAS_BUF, (int16_t)FW_CANVAS_W, (int16_t)FW_CANVAS_H }; return c; }
-static void line(const pt_t *p, uint32_t n, uint16_t col, int w, uint8_t opa, int own) {
-  if (own) { rs_canvas c = canvas(); rs_line(&c, p, n, w, col, opa, w >= 3); return; }   // cc27: no LVGL mask
+static void line(const pt_t *p, uint32_t n, uint16_t col, int w, uint8_t opa, int own) {   // own: 0 LVGL, 1 raster, 2 smooth
+  if (own) { rs_canvas c = canvas(); if (own == 2) rs_line_aa(&c, p, n, w, col, opa, w >= 3); else rs_line(&c, p, n, w, col, opa, w >= 3); return; }
   line_dsc_t *d = FW_LINE_DSC;
   d->color = col; d->width = w; d->opa = opa; d->flags = w >= 3 ? 0x0c : 0; d->dash_width = 0; d->dash_gap = 0;
   fw_draw_line(FW_CANVAS, p, n, d);
@@ -134,9 +134,9 @@ void cc_line(const pt_t *pts, uint32_t n, int32_t width, int32_t mode) {
   if (!(sel & OP_PATCH)) {                                    // original: grey edge, white core
     line(pts, n, fw_color_hex(mode == 1 ? 0xc86d : mode == 2 ? 0xc8d0de : 0x1f78ff), width, 255, 0);
     line(pts, n, 0xffff, width - 4, 255, 0);
-  } else {
+  } else if (!(sel & OP_NODRAW)) {                            // cc28 F_NODRAW: projected, not drawn
     const op_t *o = &OPS[sel & 0xff];
-    int own = (sel & OP_OWN) != 0;
+    int own = sel & OP_OWN ? (sel & OP_AA ? 2 : 1) : 0;
     uint8_t opa = sel & F_TUNNEL ? 115 : 255;
     if (o->kind == K_TEXT) {
       // Stock callback only frees its projected buffer after cc_line returns.
@@ -147,6 +147,9 @@ void cc_line(const pt_t *pts, uint32_t n, int32_t width, int32_t mode) {
     else if (o->kind == K_FILL) { rs_canvas c = canvas(); rs_fill(&c, pts, n, fw_color_hex(o->rgb)); }
     else if (o->kind == K_DASH) dash(pts, n, fw_color_hex(o->rgb), o->width, opa, o->on, o->off, own);
     else if (sel & F_BRIDGE) line(pts, n, 0, o->width + 2, 255, own);   // bridge edge: black, wider
+    else if ((sel & 0xff) == 13 && (sel & OP_CYC)) {          // cc28 F_CYC: cycleway dark edge, light core (no table: area 2)
+      line(pts, n, fw_color_hex(0x2a1450), 5, opa, own); line(pts, n, fw_color_hex(0x9a6ce0), 3, opa, own);
+    }
     else if ((sel & F_TUNNEL) && ((sel & 0xff) == 5 || (sel & 0xff) == 7 || (sel & 0xff) == 9)) dash(pts, n, fw_color_hex(o->rgb), o->width, 255, 3, 2, own);   // tunnel edge: dashed
     else line(pts, n, fw_color_hex(o->rgb), o->width, opa, own);
   }
@@ -170,7 +173,7 @@ static const pass_t LEVEL[] = { { C_RAIL, 12 }, { C_PTH, 11 }, { C_CYC, 13 },
 
 // Bounds preserve entry order even for arbitrary unsorted legacy blocks.
 // 4 fills + 7 road classes * 5 levels + interleaved symbols + labels.
-typedef struct { uint16_t first,end; } entry_range_t;   // cc27: 16 bits keep cc_iter at 352 B (512 B frame rule)
+typedef struct { uint16_t first,end; } entry_range_t;   // cc27: 16 bits keep cc_iter at 352 B (cc28: 368 B; 512 B frame rule)
 static int bucket(uint32_t s) {
   unsigned c=s&15,lv=(s>>4)&7;
   if(c>=1 && c<=4) return c-1;
@@ -203,7 +206,7 @@ void cc_iter(proj_cb_t cb) {
   uint32_t cnt = FW_BLK_CNT, t0 = fw_clock(); ent_t *E = FW_BLK_ENTS;
   if (cnt > 0xFFFFu) cnt = 0xFFFFu;                            // the ranges hold 16 bits (a 64 KB block has fewer entries)
   uint32_t flags = blk_flags(E, cnt);                         // cc27: the last entry, 0 without it (cc26)
-  uint16_t own = flags & F_OWN ? OP_OWN : 0;
+  uint16_t own = (flags & F_OWN ? OP_OWN | (flags & F_AA ? OP_AA : 0) : 0) | (flags & F_CYC ? OP_CYC : 0) | (flags & F_NODRAW ? OP_NODRAW : 0);
 #define LATE() (fw_clock() - t0 > MAP_FRAME_US)                  // B: the rest of this frame is not drawn
   label_state_t labels; labels.count=0;
   entry_range_t ranges[41];

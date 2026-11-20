@@ -4,7 +4,7 @@ import {addWayback, waybackSections, REACH_CHAIN} from './wayback.js';
 import {elevationSection} from './elevation_section.js';
 import {SECTION, embedSections} from './wayback_embed.js';
 
-export const F_OWN = 1, F_TEXT = 2, F_ROUTE = 4;     // firmware/common/types.h
+export const F_OWN = 1, F_TEXT = 2, F_ROUTE = 4, F_AA = 8, F_CYC = 16, F_NODRAW = 32;   // firmware/common/types.h
 export const FILE_LIMIT = 4_000_000;                 // page guard of a route file
 
 // The GPX has an elevation other than 0: the route file then gets an elevation section.

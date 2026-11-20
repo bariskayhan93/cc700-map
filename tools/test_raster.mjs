@@ -16,6 +16,7 @@ execFileSync('cc', ['-std=gnu11', '-O1', '-g', '-Wall', '-Wextra', '-Werror', '-
   '-I', path.join(root, 'firmware/raster'), path.join(root, 'tools/raster_host.c'),
   path.join(root, 'firmware/raster/raster.c'), '-o', exe], {stdio: ['ignore', 'pipe', 'pipe']});
 const run = (...a) => JSON.parse(execFileSync(exe, a.map(String), {encoding: 'utf8'}));
+const probe = (x, y, ...a) => JSON.parse(execFileSync(exe, a.map(String), {encoding: 'utf8', env: {...process.env, PROBE: `${x},${y}`}})).probe;
 const WHITE = 0xffff;
 // pixels of a disk of diameter d (rule of rs_disk: 4i^2 + 4j^2 <= d^2) with i < 0: the part beyond a line end
 const halfDisk = d => { let k = 0; for (let i = -d; i < 0; i++) for (let j = -d; j <= d; j++) if (4 * i * i + 4 * j * j <= d * d) k++; return k; };
@@ -77,4 +78,48 @@ test('a disk of diameter 7 at the canvas corner stays in bounds', () => {
   const r = run('disk', 0, 0, 7, WHITE, 255);
   assert.deepEqual([r.box[0], r.box[1]], [0, 0]);
   assert.equal(r.changed, 4 + 4 + 3 + 2);   // the quarter i, j >= 0 of the rule i^2 + j^2 <= 12.25: rows of 4, 4, 3, 2
+});
+
+// cc28 smooth lines (rs_line_aa): exact width, edge pixels blended by their coverage, pixel (x, y) centred at (x, y).
+test('smooth: a horizontal line of width 4 at y = 50 has 3 full rows and 2 half rows (0x7bef) over 101 columns', () => {
+  const r = run('aa', 4, WHITE, 255, 0, 10, 50, 110, 50);
+  assert.equal(r.changed, 101 * 5);
+  assert.equal(r.first, 0x7bef);                 // row 48: coverage 1/2 of white over black (rs_blend rounds down)
+  assert.equal(probe(60, 50, 'aa', 4, WHITE, 255, 0, 10, 50, 110, 50), WHITE);
+  assert.equal(probe(60, 52, 'aa', 4, WHITE, 255, 0, 10, 50, 110, 50), 0x7bef);
+});
+
+test('smooth: a width-1 horizontal line at a whole-pixel y sets exactly one full pixel per column', () => {
+  const r = run('aa', 1, WHITE, 255, 0, 10, 50, 110, 50);
+  assert.equal(r.changed, 101);
+  assert.equal(r.sum, 101 * 63);
+});
+
+test('smooth: a 45 degree line of width 4 covers w * sqrt(2) pixels per column (within 2 %)', () => {
+  const r = run('aa', 4, WHITE, 255, 0, 20, 20, 120, 120), area = 101 * 4 * Math.SQRT2;
+  assert.ok(Math.abs(r.sum / 63 - area) / area < 0.02, `coverage ${r.sum / 63} against ${area}`);
+});
+
+test('smooth: the same pixels in both directions', () => {
+  assert.equal(run('aa', 5, WHITE, 255, 1, 3, 200, 230, 17).hash, run('aa', 5, WHITE, 255, 1, 230, 17, 3, 200).hash);
+});
+
+test('smooth: a straight 3-point line gives the same pixels as the 2-point line (no second blend at the joint)', () => {
+  assert.equal(run('aa', 4, WHITE, 255, 1, 10, 50, 60, 50, 110, 50).hash, run('aa', 4, WHITE, 255, 1, 10, 50, 110, 50).hash);
+  assert.equal(run('aa', 3, WHITE, 255, 1, 10, 10, 60, 40, 110, 70).hash, run('aa', 3, WHITE, 255, 1, 10, 10, 110, 70).hash);
+});
+
+test('smooth: a right-angle corner of width 6 has no gap at the outer corner', () => {
+  assert.ok(probe(102, 102, 'aa', 6, WHITE, 255, 1, 20, 100, 100, 100, 100, 20) > 0);
+});
+
+test('smooth: a line from (-500,-500) to (500,500) of width 13 stays in the canvas; a line outside changes nothing', () => {
+  const r = run('aa', 13, WHITE, 255, 1, -500, -500, 500, 500);
+  assert.ok(r.changed > 0);
+  assert.deepEqual([r.box[0], r.box[1]], [0, 0]);
+  assert.equal(run('aa', 7, WHITE, 255, 1, -300, -50, -100, -60).changed, 0);
+});
+
+test('smooth: opacity 115 scales the coverage (a full pixel of white over black is 0x6b8d, as rs_line)', () => {
+  assert.equal(probe(60, 50, 'aa', 1, WHITE, 115, 0, 10, 50, 110, 50), 0x6b8d);
 });

@@ -52,9 +52,10 @@ int main(int argc, char **argv) {
   for (int i = 2; i < argc && na < 600; i++) a[na++] = atoi(argv[i]);
   pt_t p[290]; uint32_t n = 0, work = 0;
   uint64_t refhash = 0;
-  if (!strcmp(c, "line") || !strcmp(c, "work")) {          /* w col opa round x y x y ... */
+  if (!strcmp(c, "line") || !strcmp(c, "work") || !strcmp(c, "aa")) {   /* w col opa round x y x y ... */
     for (int i = 4; i + 1 < na && n < 290; i += 2) { p[n].x = (int16_t)a[i]; p[n].y = (int16_t)a[i + 1]; n++; }
     if (!strcmp(c, "line")) rs_line(&cv, p, n, a[0], (uint16_t)a[1], (uint8_t)a[2], a[3]);
+    if (!strcmp(c, "aa")) rs_line_aa(&cv, p, n, a[0], (uint16_t)a[1], (uint8_t)a[2], a[3]);
     work = rs_work(p, n, a[0]);
   } else if (!strcmp(c, "fill")) {                         /* col x y x y ... */
     for (int i = 1; i + 1 < na && n < 290; i += 2) { p[n].x = (int16_t)a[i]; p[n].y = (int16_t)a[i + 1]; n++; }
@@ -64,12 +65,16 @@ int main(int argc, char **argv) {
   } else if (!strcmp(c, "disk")) rs_disk(&cv, a[0], a[1], a[2], (uint16_t)a[3], (uint8_t)a[4]);
   else if (!strcmp(c, "rect")) rs_rect(&cv, a[0], a[1], a[2], a[3], (uint16_t)a[4]);
   else return 2;
+  const char *pr = getenv("PROBE"); int probe = -1;                   /* PROBE="x,y": that pixel's value */
+  if (pr) { int px = atoi(pr), py = atoi(strchr(pr, ',') + 1); probe = buf[py * 240 + px]; }
+  unsigned sum = 0;                                                    /* sum of the green channel (0..63) of all pixels */
+  for (int i = 0; i < 240 * 256; i++) sum += (buf[i] >> 5) & 63;
   int changed = 0, x0 = 9999, y0 = 9999, x1 = -1, y1 = -1, first = -1;
   for (int y = 0; y < 256; y++) for (int x = 0; x < 240; x++) if (buf[y * 240 + x]) {
     changed++; if (first < 0) first = buf[y * 240 + x];
     if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
   }
-  printf("{\"hash\":\"%016llx\",\"ref\":\"%016llx\",\"changed\":%d,\"box\":[%d,%d,%d,%d],\"first\":%d,\"work\":%u}\n",
-         (unsigned long long)hash(buf), (unsigned long long)refhash, changed, x0, y0, x1, y1, first, work);
+  printf("{\"hash\":\"%016llx\",\"ref\":\"%016llx\",\"changed\":%d,\"box\":[%d,%d,%d,%d],\"first\":%d,\"work\":%u,\"probe\":%d,\"sum\":%u}\n",
+         (unsigned long long)hash(buf), (unsigned long long)refhash, changed, x0, y0, x1, y1, first, work, probe, sum);
   return 0;
 }
