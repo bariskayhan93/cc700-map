@@ -8,6 +8,7 @@
 #include "fw.h"
 #include "raster.h"
 #include "text.h"
+#include "proj.h"
 #define CLIP_M 16                       // > half of the widest line (13 + 2 px) and of a round cap
 #define MAP_FRAME_US 400000u             // B: far below the stock watchdog, above any normal frame (not measured)
 #ifdef HOST
@@ -63,8 +64,10 @@ static int outside(const pt_t *p, uint32_t n) {            // A: the box of the 
   return x1 < -CLIP_M || y1 < -CLIP_M || x0 > FW_CANVAS_W + CLIP_M || y0 > FW_CANVAS_H + CLIP_M;
 }
 static rs_canvas canvas(void) { rs_canvas c = { FW_CANVAS_BUF, (int16_t)FW_CANVAS_W, (int16_t)FW_CANVAS_H }; return c; }
-static void line(const pt_t *p, uint32_t n, uint16_t col, int w, uint8_t opa, int own) {   // own: 0 LVGL, 1 raster, 2 smooth
-  if (own) { rs_canvas c = canvas(); if (own == 2) rs_line_aa(&c, p, n, w, col, opa, w >= 3); else rs_line(&c, p, n, w, col, opa, w >= 3); return; }
+// w2: width in half pixels (cc28b); only the smooth drawer uses an odd value, the others round it up
+static void line(const pt_t *p, uint32_t n, uint16_t col, int w2, uint8_t opa, int own) {   // own: 0 LVGL, 1 raster, 2 smooth
+  int w = (w2 + 1) >> 1;
+  if (own) { rs_canvas c = canvas(); if (own == 2) rs_line_aa(&c, p, n, w2, col, opa, w2 >= 6); else rs_line(&c, p, n, w, col, opa, w >= 3); return; }
   line_dsc_t *d = FW_LINE_DSC;
   d->color = col; d->width = w; d->opa = opa; d->flags = w >= 3 ? 0x0c : 0; d->dash_width = 0; d->dash_gap = 0;
   fw_draw_line(FW_CANVAS, p, n, d);
@@ -132,26 +135,24 @@ void cc_line(const pt_t *pts, uint32_t n, int32_t width, int32_t mode) {
   n = sane(pts, n);
   if (n && (sel & 0xff) != 23 && outside(pts, n)) { d->opa = 255; d->flags = 0; return; }   // A (23: label anchor)
   if (!(sel & OP_PATCH)) {                                    // original: grey edge, white core
-    line(pts, n, fw_color_hex(mode == 1 ? 0xc86d : mode == 2 ? 0xc8d0de : 0x1f78ff), width, 255, 0);
-    line(pts, n, 0xffff, width - 4, 255, 0);
+    line(pts, n, fw_color_hex(mode == 1 ? 0xc86d : mode == 2 ? 0xc8d0de : 0x1f78ff), width * 2, 255, 0);
+    line(pts, n, 0xffff, (width - 4) * 2, 255, 0);
   } else if (!(sel & OP_NODRAW)) {                            // cc28 F_NODRAW: projected, not drawn
     const op_t *o = &OPS[sel & 0xff];
     int own = sel & OP_OWN ? (sel & OP_AA ? 2 : 1) : 0;
-    uint8_t opa = sel & F_TUNNEL ? 115 : 255;
+    uint8_t opa = sel & F_TUNNEL ? 115 : 255, op = sel & 0xff;
+    int w2 = o->width * 2 - (own == 2 && (op == 11 || op == 13 || op == 18));   // cc28b smooth: path, cycleway, track 1.5 px
     if (o->kind == K_TEXT) {
       // Stock callback only frees its projected buffer after cc_line returns.
       // Report the anchor to cc_iter; placement state remains on its stack.
       if(n) {d->color=(uint16_t)pts[0].x;d->width=pts[0].y;d->dash_gap=1;}
     }
-    else if (o->kind == K_DOT) { if (n) { pt_t q[2] = { pts[0], { (int16_t)(pts[0].x + 1), pts[0].y } }; line(q, 2, fw_color_hex(o->rgb), o->width, 255, own); } }
+    else if (o->kind == K_DOT) { if (n) { pt_t q[2] = { pts[0], { (int16_t)(pts[0].x + 1), pts[0].y } }; line(q, 2, fw_color_hex(o->rgb), w2, 255, own); } }
     else if (o->kind == K_FILL) { rs_canvas c = canvas(); rs_fill(&c, pts, n, fw_color_hex(o->rgb)); }
-    else if (o->kind == K_DASH) dash(pts, n, fw_color_hex(o->rgb), o->width, opa, o->on, o->off, own);
-    else if (sel & F_BRIDGE) line(pts, n, 0, o->width + 2, 255, own);   // bridge edge: black, wider
-    else if ((sel & 0xff) == 13 && (sel & OP_CYC)) {          // cc28 F_CYC: cycleway dark edge, light core (no table: area 2)
-      line(pts, n, fw_color_hex(0x2a1450), 5, opa, own); line(pts, n, fw_color_hex(0x9a6ce0), 3, opa, own);
-    }
-    else if ((sel & F_TUNNEL) && ((sel & 0xff) == 5 || (sel & 0xff) == 7 || (sel & 0xff) == 9)) dash(pts, n, fw_color_hex(o->rgb), o->width, 255, 3, 2, own);   // tunnel edge: dashed
-    else line(pts, n, fw_color_hex(o->rgb), o->width, opa, own);
+    else if (o->kind == K_DASH) dash(pts, n, fw_color_hex(o->rgb), w2, opa, o->on, o->off, own);
+    else if (sel & F_BRIDGE) line(pts, n, 0, w2 + 4, 255, own);   // bridge edge: black, wider
+    else if ((sel & F_TUNNEL) && ((sel & 0xff) == 5 || (sel & 0xff) == 7 || (sel & 0xff) == 9)) dash(pts, n, fw_color_hex(o->rgb), w2, 255, 3, 2, own);   // tunnel edge: dashed
+    else line(pts, n, fw_color_hex(o->rgb), w2, opa, own);
   }
   d->opa = 255; d->flags = 0;                               // as set up by the firmware
 }
@@ -181,17 +182,73 @@ static int bucket(uint32_t s) {
   if(c==C_SIG || c==C_STOP) return 39;
   return c==C_LABEL ? 40 : -1;
 }
-static void draw_entry(proj_cb_t cb, const ent_t *e, uint16_t sel, float *buf) {
+static int16_t rnd(float v) { if (v > 32000.0f) v = 32000.0f; if (v < -32000.0f) v = -32000.0f; return (int16_t)(v >= 0 ? (int)(v + 0.5f) : -(int)(0.5f - v)); }
+// cc28b F_PROJ: the stock screen point of (lat, lon) through the label anchor path of cc_line; 1 = got it
+static int probe(proj_cb_t cb, int32_t lat, int32_t lon, int16_t *x, int16_t *y) {
+  const float k = 180.0f / 2147483648.0f; float b[2] = { (float)lat * k, (float)lon * k };
+  line_dsc_t *d = FW_LINE_DSC; uint16_t oc = d->color; int16_t ow = d->width; int ok;
+  d->dash_width = (int16_t)(OP_PATCH | OP_ANCHOR); d->dash_gap = 0; cb(b, 1);
+  ok = d->dash_gap; *x = (int16_t)d->color; *y = d->width;
+  d->dash_gap = 0; d->color = oc; d->width = ow;
+  return ok;
+}
+// Reference: an entry the stock projection reaches; then the canvas centre from it; 9 probes around the centre at
+// irregular steps (other pixel fractions). 0 = no own projection in this frame (the stock path draws it).
+static __attribute__((noinline)) int own_setup(proj_cb_t cb, const ent_t *E, uint32_t cnt, proj_t *p) {
+  int z = FW_PROJ_ZOOM, rot = FW_PROJ_ROT; int16_t sx[9], sy[9]; int32_t ll[18], u; uint32_t i, j;
+  if (z < 1 || z > 22) return 0;
+  u = 1 << (24 - z);                                                     // map units per pixel
+  for (i = 0, j = 0; j < 8 && i < cnt; j++, i += cnt / 8 + 1) if (probe(cb, E[i].lat, E[i].lon, sx, sy)) break;
+  if (j == 8 || i >= cnt || !proj_setup(p, z, FW_MAP_HEAD, rot, E[i].lat, E[i].lon, sx[0], sy[0])) return 0;
+  {                                                                      // the lat, lon of the canvas centre
+    float det = p->ax * p->by - p->bx * p->ay, dx = (float)FW_CANVAS_W * 0.5f - p->x0, dy = (float)FW_CANVAS_H * 0.5f - p->y0;
+    if (det == 0.0f) return 0;
+    det = proj_recip(det);
+    float dn = (dx * p->by - dy * p->bx) * det, dl = (dy * p->ax - dx * p->ay) * det;
+    if (dn > 1e9f || dn < -1e9f || dl > 1e9f || dl < -1e9f) return 0;
+    proj_setup(p, z, FW_MAP_HEAD, rot, E[i].lat + (int32_t)dl, E[i].lon + (int32_t)dn, 0, 0);
+  }
+  for (i = 0; i < 9; i++) {
+    ll[2 * i] = p->lat0 + ((int32_t)i * 23 - 90) * u * 5 / 8; ll[2 * i + 1] = p->lon0 + ((int32_t)i * 22 - 90) * u;
+    if (!probe(cb, ll[2 * i], ll[2 * i + 1], sx + i, sy + i)) return 0;
+  }
+  proj_fit(p, 9, ll, sx, sy);
+  return 1;
+}
+// F_TEXT with F_PROJ: the largest difference (px, at most 9) to the stock projection at 4 entry points
+static __attribute__((noinline)) int own_check(proj_cb_t cb, const ent_t *E, uint32_t cnt, const proj_t *p) {
+  int m = 0; int16_t x, y; float ox, oy;
+  for (uint32_t j = 0; j < 4; j++) {
+    const ent_t *e = &E[cnt * j / 4];
+    if (!probe(cb, e->lat, e->lon, &x, &y)) continue;
+    proj_xy(p, e->lat, e->lon, &ox, &oy);
+    int d = rnd(ox) - x, f = rnd(oy) - y; if (d < 0) d = -d; if (f < 0) f = -f; if (f > d) d = f; if (d > m) m = d;
+  }
+  return m > 9 ? 9 : m;
+}
+static void draw_entry(proj_cb_t cb, const ent_t *e, uint16_t sel, float *buf, const proj_t *p) {
   const float k = 180.0f / 2147483648.0f;
+  if (p) {                                                               // cc28b F_PROJ: own points, then cc_line directly
+    pt_t *q = (pt_t *)buf; float x, y;
+    proj_xy(p, e->lat, e->lon, &x, &y); q[0].x = rnd(x); q[0].y = rnd(y);
+    for (uint32_t i = 0; i < e->cnt; i++) { proj_xy(p, e->pts[2 * i], e->pts[2 * i + 1], &x, &y); q[1 + i].x = rnd(x); q[1 + i].y = rnd(y); }
+    FW_LINE_DSC->dash_width = (int16_t)(OP_PATCH | sel);
+    cc_line(q, e->cnt + 1, 0, 0);
+    return;
+  }
   buf[0] = (float)e->lat * k; buf[1] = (float)e->lon * k;
   for (uint32_t i = 0; i < e->cnt; i++) { buf[2 + 2 * i] = (float)e->pts[2 * i] * k; buf[3 + 2 * i] = (float)e->pts[2 * i + 1] * k; }
   FW_LINE_DSC->dash_width = (int16_t)(OP_PATCH | sel);
   cb(buf, e->cnt + 1);
 }
 // cc27 F_TEXT: the time of cc_iter in ms at (6, 24), white shadow then black (the adapter text is at (6, 6))
-static void map_time(uint32_t ms) {
-  char s[8], *o = s;
-  *o++ = 'm'; o = tx_num(o, ms); *o = 0;
+// cc28b: " c<k>" when the stop came before pass k (1 fills, 2..6 levels 0..4, 7 signals, 8 names)
+static void map_time(uint32_t ms, uint32_t cut, int pd) {   // pd: F_PROJ check " p<d>", -1 = none
+  char s[16], *o = s;
+  *o++ = 'm'; o = tx_num(o, ms);
+  if (cut) { *o++ = ' '; *o++ = 'c'; *o++ = (char)('0' + cut); }
+  if (pd >= 0) { *o++ = ' '; *o++ = 'p'; *o++ = (char)('0' + pd); }
+  *o = 0;
 #ifdef HOST
   host_text(6, 24, s, 0);
 #else
@@ -206,9 +263,10 @@ void cc_iter(proj_cb_t cb) {
   uint32_t cnt = FW_BLK_CNT, t0 = fw_clock(); ent_t *E = FW_BLK_ENTS;
   if (cnt > 0xFFFFu) cnt = 0xFFFFu;                            // the ranges hold 16 bits (a 64 KB block has fewer entries)
   uint32_t flags = blk_flags(E, cnt);                         // cc27: the last entry, 0 without it (cc26)
-  uint16_t own = (flags & F_OWN ? OP_OWN | (flags & F_AA ? OP_AA : 0) : 0) | (flags & F_CYC ? OP_CYC : 0) | (flags & F_NODRAW ? OP_NODRAW : 0);
+  uint16_t own = (flags & F_OWN ? OP_OWN | (flags & F_AA ? OP_AA : 0) : 0) | (flags & F_NODRAW ? OP_NODRAW : 0);   // F_CYC 16: retired (cc28b)
 #define LATE() (fw_clock() - t0 > MAP_FRAME_US)                  // B: the rest of this frame is not drawn
-  label_state_t labels; labels.count=0;
+#define STOP(k) if (LATE()) { cut = (k); goto done; }
+  label_state_t labels; labels.count=0; uint32_t cut = 0; int pd = -1; proj_t pj; const proj_t *P = 0;
   entry_range_t ranges[41];
   for(unsigned r=0;r<41;r++) {ranges[r].first=cnt;ranges[r].end=0;}
   if (cnt && E) {
@@ -225,17 +283,19 @@ void cc_iter(proj_cb_t cb) {
       }
     }
     float *buf = big && !late ? fw_malloc((big + 1) * 8, CAPS_PSRAM) : 0;
+    if (late) cut = 1;
+    if (buf && (flags & F_PROJ) && own && own_setup(cb, E, cnt, &pj)) { P = &pj; if (flags & F_TEXT) pd = own_check(cb, E, cnt, P); }
     if (buf) {
       // cc27: the stop is checked only between passes (before the fills, each level, the signals, the names), so a
       // road never shows its edge without its core. An outline stays with its fill entry.
-      if (LATE()) goto done;
+      STOP(1)
       for (uint32_t f = 0; f < N_FILLS; f++)
         for (uint32_t i = ranges[f].first; i < ranges[f].end; i++, COUNT_ENTRY()) if (E[i].style && (E[i].style & 15) == FILLS[f].cls) {
-          draw_entry(cb, &E[i], FILLS[f].op | own, buf);
-          if ((FILLS[f].cls == C_GREEN || FILLS[f].cls == C_WATER) && !(E[i].style & 0x400)) draw_entry(cb, &E[i], (FILLS[f].cls == C_GREEN ? 24 : 25) | own, buf);
+          draw_entry(cb, &E[i], FILLS[f].op | own, buf, P);
+          if ((FILLS[f].cls == C_GREEN || FILLS[f].cls == C_WATER) && !(E[i].style & 0x400)) draw_entry(cb, &E[i], (FILLS[f].cls == C_GREEN ? 24 : 25) | own, buf, P);
         }
       for (int lv = 0; lv <= 4; lv++) {
-        if (LATE()) goto done;
+        STOP(2 + lv)
         for (uint32_t f = 0; f < N_LEVEL; f++)
           for (uint32_t i = ranges[4+(LEVEL[f].cls-5)*5+lv].first; i < ranges[4+(LEVEL[f].cls-5)*5+lv].end; i++, COUNT_ENTRY()) {
             uint32_t s = E[i].style;
@@ -246,17 +306,18 @@ void cc_iter(proj_cb_t cb) {
             int edge = LEVEL[f].op == 5 || LEVEL[f].op == 7 || LEVEL[f].op == 9;
             if (edge && (s & 0x80)) sel |= F_BRIDGE;
             uint8_t c = s & 15;                                // F2: a path, cycleway or rail bridge gets a solid base
-            if ((s & 0x80) && (c == C_PTH || c == C_CYC || c == C_RAIL)) { draw_entry(cb, &E[i], 26 | own, buf); draw_entry(cb, &E[i], 27 | own, buf); }
-            draw_entry(cb, &E[i], sel, buf);
+            if ((s & 0x80) && (c == C_PTH || c == C_CYC || c == C_RAIL)) { draw_entry(cb, &E[i], 26 | own, buf, P); draw_entry(cb, &E[i], 27 | own, buf, P); }
+            draw_entry(cb, &E[i], sel, buf, P);
           }
       }
-      if (LATE()) goto done;
+      STOP(7)
       for (uint32_t i = ranges[39].first; i < ranges[39].end; i++, COUNT_ENTRY()) {                    // traffic signals and tram stops: edge, core
         uint32_t c = E[i].style & 15;
-        if (c == C_SIG || c == C_STOP) { draw_entry(cb, &E[i], (c == C_SIG ? 19 : 21) | own, buf); draw_entry(cb, &E[i], (c == C_SIG ? 20 : 22) | own, buf); }
+        if (c == C_SIG || c == C_STOP) { draw_entry(cb, &E[i], (c == C_SIG ? 19 : 21) | own, buf, P); draw_entry(cb, &E[i], (c == C_SIG ? 20 : 22) | own, buf, P); }
       }
-      if (LATE()) goto done;
+      STOP(8)
       for (uint32_t i = ranges[40].first; i < ranges[40].end; i++, COUNT_ENTRY()) if ((E[i].style & 15) == C_LABEL) {   // street names: anchor only, text from the entry
+        if (P) { float x, y; proj_xy(P, E[i].lat, E[i].lon, &x, &y); pt_t q = { rnd(x), rnd(y) }; text(q, i, fw_color_hex(OPS[23].rgb), &labels); continue; }
         buf[0] = (float)E[i].lat * k; buf[1] = (float)E[i].lon * k;
         uint16_t old_color=FW_LINE_DSC->color; int16_t old_width=FW_LINE_DSC->width;
         FW_LINE_DSC->dash_width = (int16_t)(OP_PATCH | OP_ANCHOR); FW_LINE_DSC->dash_gap = 0; cb(buf, 1);
@@ -271,6 +332,6 @@ void cc_iter(proj_cb_t cb) {
     }
     FW_LINE_DSC->dash_width = 0;
   }
-  if (flags & F_TEXT) map_time((fw_clock() - t0) / 1000u);
+  if (flags & F_TEXT) map_time((fw_clock() - t0) / 1000u, cut, pd);
   fw_blk_unlock();
 }

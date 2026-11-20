@@ -13,7 +13,7 @@ export const gpxHasElevation = gpx => gpx.pts.some(p => p[2] != null && Number.i
 // The flags of every map block. F_ROUTE (the unit opens the route file on the route) only when it has work there: the
 // elevation strip, or the test text.
 export function cc27Flags({ownLines = true, testText = true, elevation = true} = {}, elevationPresent = false) {
-  return (ownLines ? F_OWN : 0) | (testText ? F_TEXT : 0) | ((elevation && elevationPresent) || testText ? F_ROUTE : 0);
+  return (ownLines ? F_OWN | F_AA : 0) | (testText ? F_TEXT : 0) | ((elevation && elevationPresent) || testText ? F_ROUTE : 0);   // cc28b: own lines smooth
 }
 
 // The route file with its sections. wayback: way-back and grey (the reach steps down 3 -> 2 -> 1 km when the query area

@@ -15,8 +15,9 @@ typedef void (*proj_cb_t)(const float *latlon, uint32_t n);  // the stock projec
 #define F_TEXT  2u                   /* test text: map time (cc_iter), adapter time and reads */
 #define F_ROUTE 4u                   /* the adapter opens the route file on the route (elevation, text) */
 #define F_AA     8u                  /* cc28: with F_OWN, map lines smooth (rs_line_aa) */
-#define F_CYC   16u                  /* cc28: cycleway 5 px dark edge, 3 px light core */
+#define F_CYC   16u                  /* cc28: cycleway casing; cc28b: ignored (the casing broke the line at entry ends) */
 #define F_NODRAW 32u                 /* cc28 test: project every entry, draw no map pixel (time of the projection) */
+#define F_PROJ  64u                  /* cc28b: own projection (firmware/mapdraw/proj.c); stock probes only */
 static __attribute__((unused)) uint32_t blk_flags(const ent_t *E, uint32_t cnt) {
   const ent_t *e;
   if (!E || !cnt) return 0;

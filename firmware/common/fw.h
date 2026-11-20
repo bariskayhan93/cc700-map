@@ -14,7 +14,7 @@
 #define OP_TUNNEL 0x0200 
 #define OP_OWN    0x4000             /* cc27: draw this op with the raster module (block flag F_OWN) */
 #define OP_AA     0x2000             /* cc28: smooth lines (block flag F_AA) */
-#define OP_CYC    0x1000             /* cc28: cycleway edge and core (block flag F_CYC) */
+/* 0x1000: free (cc28 OP_CYC, removed in cc28b) */
 #define OP_NODRAW 0x0800             /* cc28: no map pixel (block flag F_NODRAW) */
 #define OP_ANCHOR 23                 /* K_TEXT: cc_line returns pts[0] in color/width and sets dash_gap = 1 */
 
@@ -77,6 +77,9 @@ extern uint32_t host_route_left, host_nav_selector; extern float host_route_tota
 #define FW_LABEL_OPA host_label_opa
 #define FW_LABEL_COL host_label_col
 #define FW_MAP_HEAD host_map_head
+extern int host_proj_zoom, host_proj_rot;
+#define FW_PROJ_ZOOM host_proj_zoom
+#define FW_PROJ_ROT host_proj_rot
 #define FW_ROUTE_LEFT host_route_left
 #define FW_ROUTE_TOTAL host_route_total
 #define FW_NAV_SELECTOR host_nav_selector
@@ -122,6 +125,15 @@ extern uint32_t host_route_left, host_nav_selector; extern float host_route_tota
 #define FW_ROUTE_FP  ((void *volatile *)0x3c388418)                       /* route file handles, 6 types */
 #define FW_DASH      (*(volatile int16_t *)(0x3c38a590 + 4))              /* line descriptor: patch operation */
 #define FW_MAP_HEAD  (*(volatile float *)0x3c388d08)                      /* map heading: 450 - course, degrees */
+/* cc28b own projection (firmware/mapdraw/proj.h). Decoded stock chain, 20 Nov: fw_proj 0x4204c1bc, for each point
+ * 0x4204a76c (60 B heap block via 0x4204a498; deg -> rad 0x42055b54; x 0x42055c1c: 2^z * 256 * lon / 2pi + 128 * 2^z;
+ * y 0x42055bb4: 128 * 2^z - 2^z * 256 * atanh(sin lat) / 2pi, double, truncated), minus the origin S[4], S[5] plus the
+ * offset words 2, 3 at 0x3c388d74, then 0x4204c158: if the byte 0x3c388d04, a turn about the centre (0x3c388d44 + 16)
+ * by the angle of 0x4204c120 (heading - 90 or + 270) in 0x4204a68c (double sin, cos), truncated to int16.
+ * State: ctx = *0x3c388cfc, S = *ctx, zoom = S[0]. 0 when the context is not set. */
+static __attribute__((unused)) int fw_proj_zoom(void) { int32_t **ctx = *(int32_t ***)0x3c388cfc; return ctx && *ctx ? (*ctx)[0] : 0; }
+#define FW_PROJ_ZOOM fw_proj_zoom()
+#define FW_PROJ_ROT  (*(volatile uint8_t *)0x3c388d04)
 // Route progress (docs/research/progress-arrival-extraction.md:82, :159). U: remaining distance, m. T: the route total,
 // float, set only by the setter 0x420524b8 (*(float *)0x3c389320 = a2): 0 at route load (call 0x4204d25d), then
 // T += point[+16] (float) for each route point (0x4204d7b9..0x4204d7c8); logged as "sRouteTotalDistance:%lf" (0x42052737,

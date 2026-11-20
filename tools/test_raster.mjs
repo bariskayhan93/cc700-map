@@ -123,3 +123,20 @@ test('smooth: a line from (-500,-500) to (500,500) of width 13 stays in the canv
 test('smooth: opacity 115 scales the coverage (a full pixel of white over black is 0x6b8d, as rs_line)', () => {
   assert.equal(probe(60, 50, 'aa', 1, WHITE, 115, 0, 10, 50, 110, 50), 0x6b8d);
 });
+
+// cc28b: rs_line_aa takes the width in half pixels ('aa2'; 'aa' passes w * 2).
+test('smooth: a width of 8 half pixels equals width 4', () => {
+  assert.equal(run('aa2', 8, WHITE, 255, 1, 10, 10, 200, 90).hash, run('aa', 4, WHITE, 255, 1, 10, 10, 200, 90).hash);
+});
+
+test('smooth: a 1.5 px horizontal line has one full row and two quarter rows', () => {
+  const a = [3, WHITE, 255, 0, 10, 50, 110, 50];
+  assert.equal(probe(60, 50, 'aa2', ...a), WHITE);
+  assert.equal(probe(60, 48, 'aa2', ...a), 0);
+  assert.equal(probe(60, 52, 'aa2', ...a), 0);
+  const q = probe(60, 49, 'aa2', ...a);
+  assert.ok(q > 0 && q < 0x7bef, q.toString(16));
+  assert.equal(probe(60, 51, 'aa2', ...a), q);
+  const r = run('aa2', ...a), want = 1.5 * 101 * 63;
+  assert.ok(Math.abs(r.sum - want) / want < 0.03, `${r.sum} ${want}`);
+});

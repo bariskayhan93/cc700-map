@@ -79,20 +79,20 @@ static void rs_cov(const rs_canvas *c, int x, int y, int swap, uint32_t cov, uin
 }
 /* One segment as a slab of columns along the major axis u; v is the minor axis. Columns u0 .. u1, less the end
  * column when open. Centre v(u) = v0 + (u - u0) * dv / du, exact floor of the magnitude (Q16), so collinear
- * segments give the same centres. Half height hv = w / 2 * len / du (Q16). */
+ * segments give the same centres. w in half pixels. Half height hv = w / 4 * len / du (Q16). */
 static void rs_slab(const rs_canvas *c, int u0, int v0, int u1, int v1, int w, uint16_t col, uint8_t opa, int swap, int open_end) {
   int du = u1 - u0, dv = v1 - v0, sg = dv < 0 ? -1 : 1, adv = dv < 0 ? -dv : dv, ua = u0, ub = u1, umax = swap ? c->h : c->w, vmax = swap ? c->w : c->h;
   uint32_t q, r, ratio, k;
   int32_t hv, vc, rem;
   if (open_end) { if (u1 >= u0) ub--; else ub++; }
   if (du < 0) { int t = ua; ua = ub; ub = t; du = -du; }      /* walk u upwards; the centre stays a function of u */
-  if (!du) { if (!open_end) { hv = w * 32768; for (int v = (v0 * 65536 - hv + 32768) >> 16; v <= ((v0 * 65536 + hv + 32767) >> 16); v++)
+  if (!du) { if (!open_end) { hv = w * 16384; for (int v = (v0 * 65536 - hv + 32768) >> 16; v <= ((v0 * 65536 + hv + 32767) >> 16); v++)
       rs_cov(c, u0, v, swap, 256u, col, opa); } return; }
   {                                                            /* ratio = sqrt(1 + (dv/du)^2), Q12 */
     uint32_t s16 = ((uint32_t)adv << 16) / (uint32_t)du, s4 = s16 >> 4;
     ratio = rs_isqrt((1u << 24) + s4 * s4);
   }
-  hv = (int32_t)((uint32_t)w * ratio * 8u);                    /* w / 2 * ratio, Q16 */
+  hv = (int32_t)((uint32_t)w * ratio * 4u);                    /* w / 4 * ratio, Q16 */
   q = ((uint32_t)adv << 16) / (uint32_t)du; r = ((uint32_t)adv << 16) % (uint32_t)du;
   if (u1 < u0) { int t = u0; u0 = u1; u1 = t; t = v0; v0 = v1; v1 = t; sg = -sg; }   /* centre from the low-u end */
   if (ua < 0) ua = 0;
@@ -116,15 +116,15 @@ static void rs_slab(const rs_canvas *c, int u0, int v0, int u1, int v1, int w, u
     if (rem >= du) { rem -= du; vc += sg; }
   }
 }
-static void rs_dot_aa(const rs_canvas *c, int x, int y, int w, uint16_t col, uint8_t opa) {
-  int R = (w + 2) / 2;
-  int32_t in2 = (w - 1) * (w - 1), out2 = (w + 1) * (w + 1);    /* 4 * d^2 against (w -+ 1)^2 */
+static void rs_dot_aa(const rs_canvas *c, int x, int y, int w, uint16_t col, uint8_t opa) {   /* w in half pixels */
+  int R = (w + 4) / 4;
+  int32_t in2 = (w - 2) * (w - 2), out2 = (w + 2) * (w + 2);    /* 16 * d^2 against (w -+ 2)^2 */
   if (x + R < 0 || y + R < 0 || x - R >= c->w || y - R >= c->h) return;
   for (int j = -R; j <= R; j++) for (int i = -R; i <= R; i++) {
-    int32_t d4 = 4 * (i * i + j * j);
+    int32_t d4 = 16 * (i * i + j * j);
     if (d4 >= out2) continue;
-    if (d4 <= in2) { rs_cov(c, x + i, y + j, 0, 256u, col, opa); continue; }
-    int32_t cv = w * 128 + 128 - (int32_t)rs_isqrt((uint32_t)(i * i + j * j) << 16);   /* r + 1/2 - distance, Q8 */
+    if (w >= 2 && d4 <= in2) { rs_cov(c, x + i, y + j, 0, 256u, col, opa); continue; }
+    int32_t cv = w * 64 + 128 - (int32_t)rs_isqrt((uint32_t)(i * i + j * j) << 16);   /* r + 1/2 - distance, Q8 */
     if (cv > 0) rs_cov(c, x + i, y + j, 0, cv > 256 ? 256u : (uint32_t)cv, col, opa);
   }
 }
@@ -143,7 +143,7 @@ void rs_line_aa(const rs_canvas *c, const pt_t *p, uint32_t n, int w, uint16_t c
     if (rs_abs(dx) >= rs_abs(dy)) rs_slab(c, p[i - 1].x, p[i - 1].y, p[i].x, p[i].y, w, col, opa, 0, i + 1 < n);
     else rs_slab(c, p[i - 1].y, p[i - 1].x, p[i].y, p[i].x, w, col, opa, 1, i + 1 < n);
   }
-  if (round && w >= 3) {
+  if (round && w >= 6) {
     rs_dot_aa(c, p[0].x, p[0].y, w, col, opa);
     for (i = 1; i + 1 < n; i++) if (rs_turn(p[i - 1], p[i], p[i + 1])) rs_dot_aa(c, p[i].x, p[i].y, w, col, opa);
     rs_dot_aa(c, p[n - 1].x, p[n - 1].y, w, col, opa);

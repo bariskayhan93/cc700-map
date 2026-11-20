@@ -31,10 +31,10 @@ HOOK_FRAME = 32
 CALLED = tuple(wdb.CALLED) + (0x403763e0, 0x40376398, 0x420494a4, 0x420494b8)
 # The cc27 tree, copied flat into the build directory: directory under firmware/ -> files.
 TREE = {'common': ('types.h', 'fw.h', 'text.h'), 'raster': ('raster.h', 'raster.c'), 'view': ('view.h', 'view.c'),
-        'elev': ('elev.h', 'elev.c'), 'mapdraw': ('map.c', 'md_tramp.S'),
+        'elev': ('elev.h', 'elev.c'), 'mapdraw': ('map.c', 'md_tramp.S', 'proj.h', 'proj.c'),
         'wayback': ('wayback.h', 'wayback.c', 'wb_grey.h', 'wb_grey.c', 'wb_grey_draw.h', 'wb_grey_draw.c', 'wb_device.c',
                     'wb_tramp.S', 'wb_area2.ld')}
-SOURCES = ('wb_device.c', 'wayback.c', 'wb_grey.c', 'wb_grey_draw.c', 'wb_tramp.S', 'map.c', 'md_tramp.S', 'raster.c', 'view.c', 'elev.c')
+SOURCES = ('wb_device.c', 'wayback.c', 'wb_grey.c', 'wb_grey_draw.c', 'wb_tramp.S', 'map.c', 'md_tramp.S', 'raster.c', 'view.c', 'elev.c', 'proj.c')
 run = c26.run
 
 

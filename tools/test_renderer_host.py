@@ -22,6 +22,7 @@ class RendererHost(unittest.TestCase):
                         "-fno-omit-frame-pointer", "-I", str(SOURCE), "-I", str(ROOT / "firmware/common"),
                         "-I", str(ROOT / "firmware/raster"),
                         str(ROOT / "tools/renderer_host.c"), str(SOURCE / "map.c"), str(ROOT / "firmware/raster/raster.c"),
+                        str(ROOT / "firmware/mapdraw/proj.c"), "-I", str(ROOT / "firmware/mapdraw"),
                         "-o", str(cls.exe)], check=True, capture_output=True)
 
         legacy = Path(cls.tmp.name) / "legacy.c"
@@ -196,8 +197,36 @@ class RendererHost(unittest.TestCase):
         self.assertEqual(r["callbacks"], 2 * 40)
         self.assertEqual((r["draws"], r["painted"]), (0, 0))
 
-    def test_F_CYC_draws_the_cycleway_wider(self):
-        self.assertGreater(self.run_entries("cyc")["painted"], self.run_entries("cyc_off")["painted"])
+    def test_F_CYC_is_ignored(self):                        # cc28b: the casing broke the line at each entry end
+        cyc, off = self.run_entries("cyc"), self.run_entries("cyc_off")
+        self.assertEqual((cyc["painted"], cyc["ink"]), (off["painted"], off["ink"]))
+        self.assertEqual(self.run_entries("cyc_aa16")["ink"], self.run_entries("cyc_aa")["ink"])
+
+    def test_F_AA_draws_cycleways_one_and_a_half_px(self):  # 2 px in the table, 1.5 px with the smooth drawer
+        ratio = self.run_entries("cyc_aa")["ink"] / self.run_entries("cyc_off")["ink"]
+        self.assertGreater(ratio, 0.6)
+        self.assertLess(ratio, 0.9)
+
+    def test_F_PROJ_projects_without_the_stock_callback(self):   # cc28b: only the probes go through the stock projection
+        stock, own = self.run_entries("own_aa"), self.run_entries("proj")
+        self.assertEqual(own["draws"], 0)
+        self.assertGreater(own["painted"], 0)
+        self.assertLessEqual(own["callbacks"], 10)
+        self.assertEqual(stock["callbacks"], 2 * 40)
+
+    def test_F_PROJ_falls_back_to_the_stock_projection(self):
+        for case in ("proj_badzoom", "proj_far"):              # zoom out of range; a stock probe off the canvas limits
+            r = self.run_entries(case)
+            self.assertGreaterEqual(r["callbacks"], 2 * 40, case)
+            self.assertGreater(r["painted"], 0, case)
+
+    def test_F_PROJ_text_shows_the_largest_difference_to_the_stock_projection(self):
+        self.assertRegex(self.run_entries("proj_text")["map_text"], r"^m\d+ p\d$")
+
+    def test_map_text_names_the_pass_where_the_stop_came(self):
+        r = self.run_entries("level_stop_text")             # the stop comes before level 1: pass 3
+        self.assertRegex(r["map_text"], r"^m\d+ c3$")
+        self.assertRegex(self.run_entries("flags_text")["map_text"], r"^m\d+$")
 
     def test_level_stop_keeps_each_road_whole(self):
         r = self.run_entries("level_stop")                   # 150 ms for each clock read: the stop comes before level 1
