@@ -52,10 +52,11 @@ int main(int argc, char **argv) {
   for (int i = 2; i < argc && na < 600; i++) a[na++] = atoi(argv[i]);
   pt_t p[290]; uint32_t n = 0, work = 0;
   uint64_t refhash = 0;
-  if (!strcmp(c, "line") || !strcmp(c, "work") || !strcmp(c, "aa")) {   /* w col opa round x y x y ... */
+  if (!strcmp(c, "line") || !strcmp(c, "work") || !strcmp(c, "aa") || !strcmp(c, "aa2")) {   /* w col opa round x y x y ... */
     for (int i = 4; i + 1 < na && n < 290; i += 2) { p[n].x = (int16_t)a[i]; p[n].y = (int16_t)a[i + 1]; n++; }
     if (!strcmp(c, "line")) rs_line(&cv, p, n, a[0], (uint16_t)a[1], (uint8_t)a[2], a[3]);
-    if (!strcmp(c, "aa")) rs_line_aa(&cv, p, n, a[0], (uint16_t)a[1], (uint8_t)a[2], a[3]);
+    if (!strcmp(c, "aa")) rs_line_aa(&cv, p, n, a[0] * 2, (uint16_t)a[1], (uint8_t)a[2], a[3]);   /* w in px */
+    if (!strcmp(c, "aa2")) rs_line_aa(&cv, p, n, a[0], (uint16_t)a[1], (uint8_t)a[2], a[3]);      /* w in half px */
     work = rs_work(p, n, a[0]);
   } else if (!strcmp(c, "fill")) {                         /* col x y x y ... */
     for (int i = 1; i + 1 < na && n < 290; i += 2) { p[n].x = (int16_t)a[i]; p[n].y = (int16_t)a[i + 1]; n++; }

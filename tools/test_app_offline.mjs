@@ -77,18 +77,18 @@ for (const styled of [false,true]) {
   const flagsOf = file => readFile(file).blocks.map(b => { const e = b.at(-1); return e.style === 15 && !e.points.length && Math.round(e.center[0] / SC) === 0x7F434346 ? Math.round(e.center[1] / SC) : -1; });
   assert(gpxHasElevation(gpx));
   const all = cc27Flags({}, true);
-  assert.equal(all, 7);
+  assert.equal(all, 15);                                         // cc28b: own lines are smooth (F_AA 8)
   const c = await cc27Sections(build(all), {fetchImpl, reach: 'line3k'});
   assert.deepEqual(readSections(c.file).map(s => s.type), [1, 2, 3]);
   assert.deepEqual(c.sections, [1, 2, 3]);
   assert(c.report.reach && c.report.elevationBytes > 0 && !c.report.waybackError, JSON.stringify(c.report));
-  assert(flagsOf(c.file).length > 0 && flagsOf(c.file).every(f => f === 7), flagsOf(c.file).join());
-  console.log('PASS patch27 with all switches gives a file with 3 sections and flags 7 in every block');
+  assert(flagsOf(c.file).length > 0 && flagsOf(c.file).every(f => f === 15), flagsOf(c.file).join());
+  console.log('PASS patch27 with all switches gives a file with 3 sections and flags 15 in every block');
   const noOwn = cc27Flags({ownLines: false}, true);
   assert.equal(noOwn & 1, 0);
   assert(flagsOf(build(noOwn)).every(f => f === 6));
-  assert.equal(cc27Flags({testText: false}, false), 1);          // no strip and no text: the unit stays off the file on the route
-  assert.equal(cc27Flags({testText: false}, true), 5);
+  assert.equal(cc27Flags({testText: false}, false), 9);          // no strip and no text: the unit stays off the file on the route
+  assert.equal(cc27Flags({testText: false}, true), 13);
   const flat = await cc27Sections(build(7), {fetchImpl: async () => { throw Error('offline'); }, reach: 'line2k'});
   assert.deepEqual(flat.sections, [3]);                          // no way-back data: the elevation section stays
   assert.match(flat.report.waybackError, /offline/);

@@ -18,7 +18,8 @@ uint32_t host_cnt, host_selection_checks;
 ent_t *host_ents;
 static unsigned locks, unlocks, held, callbacks, draws, allocations, fail_alloc, projected_points;
 static unsigned live_bytes, peak_bytes;
-static unsigned failed_projection, labels, label_mode;
+static unsigned failed_projection, labels, label_mode, probe_far;
+int host_proj_zoom = 15, host_proj_rot = 1; float host_map_head = 30.0f;
 static pt_t input_anchors[256];
 static int32_t input_names[256][64];
 static unsigned accepted[12];
@@ -101,8 +102,9 @@ static void project(const float *ll, uint32_t n) {
     if(label_mode==6) projected[0]=input_anchors[callbacks];
   }
   if (failed_projection && n>1) projected[1].x=5000;
+  if (probe_far && n==1) projected[0].x=5000;                 /* the stock probe of the own projection fails */
   if (entry_mode) {
-    unsigned op=(uint16_t)host_dsc.dash_width&0xff, i=(unsigned)(ll[0]/(180.0f/2147483648.0f)/1000.0f+0.5f)-1;
+    float fi=ll[0]/(180.0f/2147483648.0f)/1000.0f+0.5f; unsigned op=(uint16_t)host_dsc.dash_width&0xff, i=fi>=1.0f && fi<1e6f?(unsigned)fi-1:999u;   /* probes: other points */
     if (op==1) fills_seen++;
     if (i<64 && seen_n[i]<40) seen_ops[i][seen_n[i]++]=op;
   }
@@ -151,8 +153,10 @@ int main(int argc, char **argv) {
   else if (!strcmp(which,"slow")) {n=1201;frames=2;clock_step=1000;}   /* frame 1: 1 ms for each clock read */
   else if (!strcmp(which,"failed_projection")) {n=1;failed_projection=1;}
   else if (!strcmp(which,"own") || !strcmp(which,"own_off") || !strcmp(which,"flags_text") || !strcmp(which,"own_aa") || !strcmp(which,"nodraw")
-           || !strcmp(which,"cyc") || !strcmp(which,"cyc_off")) {n=40;entry_mode=1;}
+           || !strcmp(which,"cyc") || !strcmp(which,"cyc_off") || !strcmp(which,"cyc_aa") || !strcmp(which,"cyc_aa16")
+           || !strcmp(which,"proj") || !strcmp(which,"proj_text") || !strcmp(which,"proj_badzoom") || !strcmp(which,"proj_far")) {n=40;entry_mode=1;}
   else if (!strcmp(which,"level_stop")) {n=60;entry_mode=1;clock_step=150000;}    /* 150 ms for each clock read */
+  else if (!strcmp(which,"level_stop_text")) {n=60;entry_mode=1;clock_step=150000;}
   else if (!strcmp(which,"fill_stop")) {n=20;entry_mode=1;clock_step=250000;}
   else require(!strcmp(which,"empty") || !strcmp(which,"unloaded") || !strcmp(which,"hole") || !strcmp(which,"hole_reverse"), "unknown case");
   unsigned pixels = host_w * host_h;
@@ -206,7 +210,10 @@ int main(int argc, char **argv) {
       host_ents[i]=(ent_t){i,style,(int32_t)(1000*(i+1)),0,4,shape};
     }
     unsigned flags=!strcmp(which,"own")?1u:!strcmp(which,"flags_text")?2u:!strcmp(which,"own_aa")?1u|8u:!strcmp(which,"nodraw")?1u|32u:
-                   !strcmp(which,"cyc")?1u|16u:!strcmp(which,"cyc_off")?1u:0u;   /* F_OWN 1, F_TEXT 2, F_AA 8, F_CYC 16, F_NODRAW 32 */
+                   !strcmp(which,"cyc")?1u|16u:!strcmp(which,"cyc_off")?1u:!strcmp(which,"cyc_aa")?1u|8u:!strcmp(which,"cyc_aa16")?1u|8u|16u:
+                   !strcmp(which,"level_stop_text")?2u:!strcmp(which,"proj_text")?1u|2u|8u|64u:!strncmp(which,"proj",4)?1u|8u|64u:0u;   /* F_PROJ 64 */
+    if (!strcmp(which,"proj_badzoom")) host_proj_zoom=0;
+    if (!strcmp(which,"proj_far")) probe_far=1;   /* F_OWN 1, F_TEXT 2, F_AA 8, F_CYC 16, F_NODRAW 32 */
     if (flags) {                                             /* the flags entry, last (cc27) */
       ent_t *e=realloc(host_ents,(n+1)*sizeof(ent_t));require(e!=0,"entry allocation");host_ents=e;
       host_ents[n]=(ent_t){n,15,BLK_FLAGS_MAGIC,(int32_t)flags,0,0};host_cnt=++n;
@@ -239,9 +246,9 @@ int main(int argc, char **argv) {
       for (unsigned k=0;k<seen_n[i];k++) {unsigned op=seen_ops[i][k]; if(op==5||op==7||op==9) edge=1; if(op==6||op==8||op==10) core=1;}
       if (c>=5 && c<=7) { if (edge!=core) whole=0; if (edge||core) {drawn++; int lv=(host_ents[i].style>>4)&7; if(lv>maxlv) maxlv=lv;} }
     }
-    unsigned painted=0; for (unsigned i=0;i<pixels;i++) painted += host_buf[i]!=0;
-    printf("{\"whole\":%d,\"max_level\":%d,\"roads_drawn\":%d,\"fills\":%u,\"draws\":%u,\"callbacks\":%u,\"painted\":%u,\"labels\":%u,\"map_text\":\"%s\",\"locks\":%u,\"unlocks\":%u,\"live_bytes\":%u}\n",
-           whole,maxlv,drawn,fills_seen,draws,callbacks,painted,labels,map_text,locks,unlocks,live_bytes);
+    unsigned painted=0, ink=0; for (unsigned i=0;i<pixels;i++) {painted += host_buf[i]!=0; ink += (host_buf[i]>>5)&63;}
+    printf("{\"ink\":%u,\"whole\":%d,\"max_level\":%d,\"roads_drawn\":%d,\"fills\":%u,\"draws\":%u,\"callbacks\":%u,\"painted\":%u,\"labels\":%u,\"map_text\":\"%s\",\"locks\":%u,\"unlocks\":%u,\"live_bytes\":%u}\n",
+           ink,whole,maxlv,drawn,fills_seen,draws,callbacks,painted,labels,map_text,locks,unlocks,live_bytes);
     free(host_ents); free(guarded); require(!held && !live_bytes,"leaked renderer state"); return 0;
   }
   unsigned painted=0;
