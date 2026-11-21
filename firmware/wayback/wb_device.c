@@ -4,18 +4,15 @@
  * from its end, draws and closes. Contract and addresses: firmware/wayback/README.md. */
 #include "wayback.h"
 #include "wb_grey_draw.h"
-#include "elev.h"
 
 #define WBD_POINTS 32u              /* line points for each frame */
 #define WBD_TIME_US 300000u         /* file work for each frame; a later read fails */
 #define WBD_STACK 3968u             /* free stack needed before any file call */
 #define WBD_REC 132u                /* open-file table record: handle, then the name */
 enum { WBD_LOCK = 6, WBD_NODATA = 7, WBD_STACK_LOW = 8, WBD_OPEN = 9, WBD_HEAP = 11 };   /* after the core reasons 1 to 5 (10 retired) */
-enum { WBD_E_DRAWN = 0, WBD_E_NONE = 1, WBD_E_UNTRUSTED = 2, WBD_E_END = 3, WBD_E_READ = 4 };   /* on the route: e<code> */
 
-/* One frame: the file, its time and reads; the grey section (gat, gsize), the heap buffer (nomem: its allocation
- * failed), the grey result, and on the route the elevation code with the stock progress words U and T. */
-typedef struct { void *fp; uint32_t base, t0, late, reads, gat, gsize, glines, gcut, nomem, ecode, u, t; uint8_t *buf; } wbd_ctx;
+/* One frame: file reads, the grey section, its PSRAM buffer and its draw result. */
+typedef struct { void *fp; uint32_t base, t0, late, reads, gat, gsize, glines, gcut, nomem; uint8_t *buf; } wbd_ctx;
 
 #include "fw.h"
 #include "text.h"
@@ -75,7 +72,7 @@ static uint32_t le32(const uint8_t *p) { return p[0] | ((uint32_t)p[1] << 8) | (
 static uint32_t wbd_core(wbd_ctx *, uint32_t, uint8_t *, const float *, float *, uint32_t *, uint32_t *);   /* *n bit 31: the line is cut */
 /* Trailer v2 (cc27), the last 64 bytes: "CCWS", count 1..4, 4 x {type, offset, size}, file length, 0. One read. The
  * sections must lie before the trailer and must not overlap; a type occurs once; types above 3 are ignored. */
-typedef struct { uint32_t at[4], size[4]; } wbd_secs;            /* index = type: 1 way-back, 2 grey, 3 elevation */
+typedef struct { uint32_t at[4], size[4]; } wbd_secs;            /* index = type: 1 way-back, 2 grey, 3 legacy (validated only) */
 static int wbd_secs_read(void *fp, wbd_secs *s) {
   uint8_t t[64]; uint32_t i, j, n, total;
   for (i = 0; i < 4u; i++) { s->at[i] = 0; s->size[i] = 0; }
@@ -90,41 +87,18 @@ static int wbd_secs_read(void *fp, wbd_secs *s) {
   }
   return 1;
 }
-/* The elevation strip of the next 1 km (design 8.7, deviation 8). Progress p = T - U is trusted only on the route (the
- * caller), with selector 0, 0 < U <= T and |T - L| <= max(50 m, L / 100), L the section length. Reads: the header,
- * then at most 900 B of blocks, into the heap buffer. */
-static uint32_t wbd_elev(wbd_ctx *c, uint32_t at, uint32_t size) {
-  el_head h; rs_canvas cv; uint32_t off, bytes, col0, len, tol; float t = FW_ROUTE_TOTAL;
-  uint32_t u = FW_ROUTE_LEFT, sel = FW_NAV_SELECTOR, tm = t >= 0.0f && t < 16777216.0f ? (uint32_t)t : 0u;
-  if (sel != 0u || u == 0u || !(t >= (float)u) || !(t < 16777216.0f)) return WBD_E_UNTRUSTED;   /* NaN fails here */
-  if (size < EL_HEAD || !wbd_file(c, at, c->buf, EL_HEAD)) return WBD_E_READ;
-  if (!el_head_parse(&h, c->buf)) return WBD_E_NONE;
-  len = h.len_cm / 100u; tol = len / 100u > 50u ? len / 100u : 50u;
-  if ((tm > len ? tm - len : len - tm) > tol) return WBD_E_UNTRUSTED;
-  if (!el_window(&h, tm - u, &off, &bytes, &col0)) return WBD_E_END;
-  cv.buf = FW_CANVAS_BUF; cv.w = (int16_t)FW_CANVAS_W; cv.h = (int16_t)FW_CANVAS_H;
-  if (off + bytes > size || !cv.buf || !wbd_file(c, at + off, c->buf, bytes)) return WBD_E_READ;
-  elev_draw(&cv, &h, c->buf, bytes / EL_BLOCK, col0);
-  return WBD_E_DRAWN;
-}
-/* The frame after the open: the section table (one read), then the heap buffer when the frame has a section for it
- * (off the route grey, on the route elevation), then the work, then the buffer goes back. Off the route the result is
- * the line code; on the route it is 0 and c->ecode holds the elevation code. */
-static __attribute__((noinline)) uint32_t wbd_run(wbd_ctx *c, uint32_t off, const float *pos, float *line, uint32_t *n, uint32_t *dm) {
-  uint8_t t[16]; wbd_secs sec; uint32_t code = 0, ok;
+/* Mount the sections. The buffer is shared only by the grey reads and draw. */
+static __attribute__((noinline)) uint32_t wbd_run(wbd_ctx *c, const float *pos, float *line, uint32_t *n, uint32_t *dm) {
+  uint8_t t[16]; wbd_secs sec; uint32_t code;
   if (wb_size() > 128u + 8u * (sizeof(void *) - 4)) return WBD_NODATA;
-  ok = wbd_secs_read(c->fp, &sec);
-  if (off && (!ok || !sec.size[1])) return WBD_NODATA;
+  if (!wbd_secs_read(c->fp, &sec) || !sec.size[1]) return WBD_NODATA;
   c->base = sec.at[1]; c->gat = sec.at[2]; c->gsize = sec.size[2];
-  if (ok && (off ? sec.size[2] : sec.size[3])) { c->buf = (uint8_t *)fw_malloc(GL_BUF, CAPS_PSRAM); c->nomem = !c->buf; }
-  if (off) code = wbd_core(c, sec.size[1], t, pos, line, n, dm);
-  else {                                                     /* the text shows U and T with every elevation code */
-    float total = FW_ROUTE_TOTAL;
-    c->u = FW_ROUTE_LEFT; c->t = total >= 0.0f && total < 16777216.0f ? (uint32_t)total : 0u;
-    c->ecode = !ok || !sec.size[3] ? WBD_E_NONE : c->nomem ? WBD_HEAP : wbd_elev(c, sec.at[3], sec.size[3]);
+  if (sec.size[2]) {
+    c->buf = (uint8_t *)fw_malloc(GL_BUF, CAPS_PSRAM);
+    c->nomem = !c->buf;
   }
+  code = wbd_core(c, sec.size[1], t, pos, line, n, dm);
   if (c->buf) fw_free(c->buf);
-  c->buf = 0;
   return code;
 }
 /* Grey streets (cc27, design 8.5). The view comes from 4 anchors: op 23 through the stock projection, cc_line gives the
@@ -174,28 +148,22 @@ static uint32_t wbd_core(wbd_ctx *cp, uint32_t i, uint8_t *t, const float *pos, 
   return 0;
 }
 
-/* One frame. Order: stack check, block switches, position (off the route), path, open, wbd_run, close, then the way-back
- * line (off the route) and the text. Text off the route: <dist>m[+] or wb<code>; with F_TEXT also w<ms> r<reads> and
- * g<lines>[+] (wb11: no heap buffer). On the route only with F_TEXT: e<code> u<U> t<T> w<ms>, or wb<code> w<ms>. */
-static __attribute__((noinline)) void wbd_frame(uint32_t off) {
+/* Off-route frame: check stack, read switches and position, open the file, draw, close and report. */
+static __attribute__((noinline)) void wbd_frame(void) {
   union { char s[128]; float line[2 * WBD_POINTS]; } u;       /* the path until the open, the line points, then the text */
   float pos[2]; char *o = u.s; uint32_t n = 0, dm = 0, code, flags = 0; int found;
   uint32_t mode = 0x00006272u;                                 /* "rb" */
   wbd_ctx c;
-  c.t0 = fw_clock(); c.late = 0; c.reads = 0; c.glines = 0; c.gcut = 0; c.nomem = 0; c.ecode = WBD_E_NONE; c.u = 0; c.t = 0; c.buf = 0;
-  if (fw_stack() < WBD_STACK) { if (!off) return; code = WBD_STACK_LOW; }   /* before the block lock and any file call */
-  else if (flags = wbd_flags(), !off && !(flags & F_ROUTE)) return;        /* on the route without F_ROUTE: as cc26 */
-  else if (off && !wbd_pos(pos)) code = WB_GPS;
-  else if ((found = wbd_path(u.s)) <= 0) code = found ? WBD_LOCK : WBD_NODATA;
-  else if (!(c.fp = fw_fopen(u.s, (const char *)&mode))) code = WBD_OPEN;
-  else { code = wbd_run(&c, off, pos, u.line, &n, &dm); fw_fclose(c.fp); }
-  if (!off && !(flags & F_TEXT)) return;
-  if (code) { *o++ = 'w'; *o++ = 'b'; o = tx_num(o, code); }
-  else if (!off) {                                             /* e<code> u<U> t<T>: the owner compares U and T with the stock display */
-    *o++ = 'e'; o = tx_num(o, c.ecode);
-    *o++ = ' '; *o++ = 'u'; o = tx_num(o, c.u);
-    *o++ = ' '; *o++ = 't'; o = tx_num(o, c.t);
+  c.t0 = fw_clock(); c.late = 0; c.reads = 0; c.glines = 0; c.gcut = 0; c.nomem = 0; c.buf = 0;
+  if (fw_stack() < WBD_STACK) code = WBD_STACK_LOW;            /* before the block lock and any file call */
+  else {
+    flags = wbd_flags();
+    if (!wbd_pos(pos)) code = WB_GPS;
+    else if ((found = wbd_path(u.s)) <= 0) code = found ? WBD_LOCK : WBD_NODATA;
+    else if (!(c.fp = fw_fopen(u.s, (const char *)&mode))) code = WBD_OPEN;
+    else { code = wbd_run(&c, pos, u.line, &n, &dm); fw_fclose(c.fp); }
   }
+  if (code) { *o++ = 'w'; *o++ = 'b'; o = tx_num(o, code); }
   else {
     int own = flags & F_OWN ? OP_OWN : 0;
     wbd_line(u.line, n & 0xffu, own | 17);                     /* white 7 px, then dark purple 4 px, over the grey */
@@ -207,13 +175,11 @@ static __attribute__((noinline)) void wbd_frame(uint32_t off) {
   if (flags & F_TEXT) {
     *o++ = ' '; *o++ = 'w';
     o = tx_num(o, (fw_clock() - c.t0) / 1000u);               /* file and core time of this frame, ms */
-    if (off) {
-      *o++ = ' '; *o++ = 'r';
-      o = tx_num(o, c.reads);                                 /* file reads of this frame */
-      *o++ = ' ';
-      if (c.nomem) { *o++ = 'w'; *o++ = 'b'; o = tx_num(o, WBD_HEAP); }   /* no heap buffer: no grey */
-      else { *o++ = 'g'; o = tx_num(o, c.glines); if (c.gcut) *o++ = '+'; }   /* grey lines; '+': not all lines */
-    }
+    *o++ = ' '; *o++ = 'r';
+    o = tx_num(o, c.reads);                                 /* file reads of this frame */
+    *o++ = ' ';
+    if (c.nomem) { *o++ = 'w'; *o++ = 'b'; o = tx_num(o, WBD_HEAP); }   /* no heap buffer: no grey */
+    else { *o++ = 'g'; o = tx_num(o, c.glines); if (c.gcut) *o++ = '+'; }   /* grey lines; '+': not all lines */
   }
   *o = 0;
   wbd_text(u.s);
@@ -222,5 +188,5 @@ static __attribute__((noinline)) void wbd_frame(uint32_t off) {
 /* Replaces cc_rt in tramp_rt. The map frame (fw.h) makes one hooked route call for each frame. */
 void wb_rt(uint32_t part) {
   fw_cc_rt(part);
-  wbd_frame(fw_off_route());                                   /* on the route: only with F_ROUTE (D5: wb3 removed) */
+  if (fw_off_route()) wbd_frame();
 }

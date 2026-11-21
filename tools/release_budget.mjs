@@ -10,7 +10,7 @@ import fs from 'node:fs';
 import {pathToFileURL} from 'node:url';
 import {readNativeRoute} from '../js/native_route.js';
 import {auditMapSection, budgetFailures, MAP_BUDGET} from '../js/map_budget.js';
-import {elevationSection} from '../js/elevation_section.js';
+import {cc27Flags, FILE_LIMIT} from '../js/cc27_file.js';
 import {routeIdentity, waybackFromSnapshot, WAYBACK_MAX_BYTES} from '../js/wayback.js';
 import {SECTION, embedSections} from '../js/wayback_embed.js';
 import {readGreyLayer, GREY_CAPS} from '../js/wayback_grey_layer.js';
@@ -18,7 +18,6 @@ import {greyCells} from '../js/screen_proof.js';
 import {decodeBlockD, isBlockD} from '../js/map_codec.js';
 import {hav} from '../js/geo.js';
 
-export const FILE_LIMIT = 4_000_000;
 const pct = (a, q) => { if (!a.length) return null; const s = [...a].sort((x, y) => x - y); return s[Math.min(s.length - 1, Math.floor(q * s.length))]; };
 
 // The last entry of each scheme D block: the cc27 flags (lon), or -1 without the flags entry.
@@ -60,14 +59,13 @@ export async function budgetOf(routeFile, {snapshot = null, reaches = ['line3k',
   const costs = auditMapSection(map), keys = ['serializedBytes', 'decodedBytes', 'projectionCalls', 'projectedPoints', 'fillVertices', 'labelBytes'];
   const blockMax = Object.fromEntries(keys.map(k => [k, [Math.max(0, ...costs.map(c => c[k])), MAP_BUDGET[k]]]));
   const blockFailures = [...new Set(costs.flatMap(c => budgetFailures(c)))];
-  const elevation = elevationSection(routeFile), files = {};
+  const files = {};
   for (const reach of reaches) {
     const made = snapshot ? waybackFromSnapshot(snapshot, route, id, {reach, format: 2, routeBytes: routeFile, layer: true, caps}) : null;
-    const sections = [...(made ? [{type: SECTION.WAYBACK, bytes: made.bytes}] : []), ...(made?.grey ? [{type: SECTION.GREY, bytes: made.grey}] : []),
-      ...(elevation ? [{type: SECTION.ELEV, bytes: elevation}] : [])];
+    const sections = [...(made ? [{type: SECTION.WAYBACK, bytes: made.bytes}] : []), ...(made?.grey ? [{type: SECTION.GREY, bytes: made.grey}] : [])];
     const file = sections.length ? embedSections(routeFile, sections) : routeFile;
     files[reach] = {reachUsed: made ? made.reach : null, fileBytes: file.length, routeAndMapBytes: routeFile.length, mapBytes: routeFile.length - mapAt,
-      waybackBytes: made ? made.bytes.length : 0, greyBytes: made?.grey ? made.grey.length : 0, elevationBytes: elevation ? elevation.length : 0,
+      waybackBytes: made ? made.bytes.length : 0, greyBytes: made?.grey ? made.grey.length : 0,
       grey: made ? made.greyReport : null, greyReads: made?.grey && ride ? greyFrames(made.grey, made.bytes, ride) : null};
   }
   return {routeKm: Number((route.at(-1).progress / 1e5).toFixed(2)), blocks: costs.length, blockMax, blockFailures, flags: blockFlags(map),
@@ -86,7 +84,7 @@ export function gate(report) {
   return out;
 }
 
-// A route file from local map cells, with the cc27 page options (scheme D, flags 7, names). No network.
+// A route file from local map cells, with the cc27 page options (scheme D, default flags, names). No network.
 async function buildFromCells(src, dir) {
   const {buildCell, loadOSM} = await import('../js/osm.js');
   const {buildRoute} = await import('../js/route.js');
@@ -113,7 +111,7 @@ async function buildFromCells(src, dir) {
   const nameImage = s => new Uint8Array(2 + 40 + Math.ceil(Math.min(400, 7 * s.length + 4) / 4) * 16);   // size model of names.js
   const r = buildRoute(gpx, osm.lines, {speedKmh: 18, id: 'budget', label: gpx.name, title: gpx.name, nameImage, areas: osm.areas, water: osm.water,
     rails: osm.rails, green: osm.green, wlines: osm.wlines, navigationLines: osm.navigationLines, trams: osm.trams, signals: osm.signals, stops: osm.stops,
-    landmarks: osm.landmarks, noF9: true, map: {styled: true, codec: 'd', blockFlags: 7, ground: false, water: false, rails: false, names: true, signals: true,
+    landmarks: osm.landmarks, noF9: true, map: {styled: true, codec: 'd', blockFlags: cc27Flags(), ground: false, water: false, rails: false, names: true, signals: true,
       stops: true, trams: true, rough: true, paths: true, details: true, lanes: true}});
   return {file: r.file, missingCells: osm.coverage.missingCells, lines: osm.lines.length, landmarks: osm.landmarks.length};
 }
@@ -127,7 +125,7 @@ async function main(argv) {
   const report = await budgetOf(built.file, {snapshot: a.snapshot ? JSON.parse(fs.readFileSync(a.snapshot, 'utf8')) : null, reaches,
     ride: a.ride ? JSON.parse(fs.readFileSync(a.ride, 'utf8')).map(p => [p[0], p[1]]) : null, receipt: a.receipt ? JSON.parse(fs.readFileSync(a.receipt, 'utf8')) : null});
   const failures = gate(report);
-  console.log(JSON.stringify({...report, flags: {blocks: report.flags.length, all7: report.flags.every(f => f === 7)}, build: {missingCells: built.missingCells, lines: built.lines, landmarks: built.landmarks},
+  console.log(JSON.stringify({...report, flags: {blocks: report.flags.length, allDefault: report.flags.every(f => f === cc27Flags())}, build: {missingCells: built.missingCells, lines: built.lines, landmarks: built.landmarks},
     gate: failures.length ? failures : 'pass'}, null, 1));
   return failures.length ? 1 : 0;
 }

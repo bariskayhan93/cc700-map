@@ -22,7 +22,7 @@ test('the gate fails for a file over 4,000,000 B and passes for the fixture', as
   const r = await budgetOf(file, {snapshot, reaches: ['line3k', 'line1k'], ride});
   assert.deepEqual(gate(r), []);
   const f = r.files.line3k;
-  assert(f.waybackBytes > 0 && f.greyBytes > 0 && f.elevationBytes > 0 && f.fileBytes % 4096 === 0, JSON.stringify(f));
+  assert(f.waybackBytes > 0 && f.greyBytes > 0 && f.fileBytes % 4096 === 0, JSON.stringify(f));
   assert.equal(f.reachUsed, 'line3k');
   assert.equal(f.grey.over, 0);
   assert(f.greyReads.p50 >= 2 && f.greyReads.p90 >= f.greyReads.p50, JSON.stringify(f.greyReads));
@@ -38,10 +38,10 @@ test('the gate fails for a file over 4,000,000 B and passes for the fixture', as
   assert.match(gate(grey).join(), /line3k: 2 grey screens over a cap/);
 });
 
-test('without a snapshot the report has the map, the flags and the elevation, and no way-back bytes', async () => {
+test('without a snapshot the report has only the native file and map flags', async () => {
   const r = await budgetOf(file, {reaches: ['line2k']});
   assert.deepEqual(gate(r), []);
   assert.deepEqual([r.files.line2k.waybackBytes, r.files.line2k.greyBytes], [0, 0]);
-  assert(r.files.line2k.elevationBytes > 0);
+  assert.equal(r.files.line2k.fileBytes, file.length);
   assert.equal(r.files.line2k.reachUsed, null);
 });

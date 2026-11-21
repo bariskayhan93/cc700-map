@@ -25,8 +25,8 @@ const exe = path.join(work, 'host');
 const F = d => path.join(root, 'firmware', d);
 execFileSync('cc', ['-std=gnu11', '-O1', '-g', '-Wall', '-Wextra', '-Werror', '-DHOST',
   '-fsanitize=address,undefined', '-fno-sanitize-recover=all', '-I', F('wayback'), '-I', F('common'), '-I', F('raster'), '-I', F('view'),
-  '-I', F('elev'), path.join(root, 'tools/wayback_device_host.c'), F('wayback/wb_device.c'), F('wayback/wayback.c'), F('wayback/wb_grey.c'),
-  F('wayback/wb_grey_draw.c'), F('raster/raster.c'), F('view/view.c'), F('elev/elev.c'), '-lm', '-o', exe], {stdio: ['ignore', 'pipe', 'pipe']});
+  path.join(root, 'tools/wayback_device_host.c'), F('wayback/wb_device.c'), F('wayback/wayback.c'), F('wayback/wb_grey.c'),
+  F('wayback/wb_grey_draw.c'), F('raster/raster.c'), F('view/view.c'), '-lm', '-o', exe], {stdio: ['ignore', 'pipe', 'pipe']});
 
 const {graph, route, p} = gridFixture();
 const id = Uint8Array.from({length: 16}, (_, i) => i + 1);
@@ -263,18 +263,6 @@ test('on the route without F_ROUTE: no block-flag text, no file call, no heap ca
     assert.deepEqual([r.rt, r.opens, r.reads, r.texts, r.mallocs, r.lines.length, r.takes], [1, 0, 0, 0, 0, 0, 0], `flags ${flags}`);
   }
 });
-const withElev = fileWith('dense-elev.bin', denseWb, null);
-fs.writeFileSync(withElev, embedSections(routeBytes, [{type: SECTION.WAYBACK, bytes: denseWb}, {type: SECTION.ELEV, bytes: new Uint8Array(912).fill(1)}]));
-test('on the route with F_ROUTE: one open, one table read, one close; the heap buffer is freed', () => {
-  const r = run({...dense, file: withElev, off: 0, flags: F_ROUTE | F_TEXT});
-  assert.deepEqual([r.opens, r.reads, r.closes, r.mallocs, r.frees, r.lines.length, r.anchors], [1, 1, 1, 1, 1, 0, 0]);
-  assert.match(r.text, /^e\d+ u\d+ t\d+ w\d+$/);
-  const quiet = run({...dense, file: withElev, off: 0, flags: F_ROUTE});
-  assert.deepEqual([quiet.opens, quiet.closes, quiet.texts, quiet.mallocs, quiet.frees], [1, 1, 0, 1, 1]);   // no F_TEXT: no text
-  const noElev = run({...dense, off: 0, flags: F_ROUTE | F_TEXT});
-  assert.deepEqual([noElev.opens, noElev.closes, noElev.mallocs], [1, 1, 0]);
-  assert.match(noElev.text, /^e1 u0 t0 w\d+$/);               // e1: no elevation section (U and T are 0 in this run)
-});
 test('off the route without F_TEXT the text is only the distance; with F_TEXT it has w and r', () => {
   assert.match(run({...dense, flags: 0}).text, /^\d+m$/);
   assert.match(run({...dense, flags: -1}).text, /^\d+m$/);     // a block without the flags entry: cc26 switches
@@ -307,43 +295,27 @@ test('without F_OWN the way-back line goes through LVGL (no OP_OWN), with F_OWN 
   assert.equal(own.hash, lv.hash);                             // the grey is the raster in both
 });
 
-// ---- cc27 Task 10: the elevation strip on the route (progress p = T - U, trusted only through the gates) ----
-const elevBytes = elevationFromPoints(Array.from({length: 501}, (_, i) => ({distance: i * 10, elevation: 100 + i / 10})), 500000);   // 5 km
+// Legacy type 3 can accompany both retained sections.
+const elevBytes = elevationFromPoints(Array.from({length: 501}, (_, i) => ({distance: i * 10, elevation: 100 + i / 10})), 500000);
 const elevFile = path.join(work, 'route-elev5.bin');
-fs.writeFileSync(elevFile, embedSections(routeBytes, [{type: SECTION.WAYBACK, bytes: denseWb}, {type: SECTION.ELEV, bytes: elevBytes}]));
-const onRoute = o => run({...dense, file: elevFile, off: 0, flags: F_ROUTE | F_TEXT, U: 3000, T: 5000, sel: 0, ...o});
-test('on the route with trusted progress the strip is drawn: e0 with u and t, 3 reads, the heap buffer freed', () => {
-  const r = onRoute({});
-  assert.match(r.text, /^e0 u3000 t5000 w\d+$/);
-  assert(r.greyPx >= 232 * 32, String(r.greyPx));              // the white strip and the profile
-  assert.deepEqual([r.reads, r.mallocs, r.frees, r.lines.length, r.anchors], [3, 1, 1, 0, 0]);
-  assert.equal(run({...dense, file: elevFile, off: 0, flags: F_ROUTE, U: 3000, T: 5000}).hash, r.hash);   // no text: the same strip
-});
-test('progress gates: off route, selector 1, U 0, U > T, |T - L| > max(50, L/100) draw nothing and give e2', () => {
-  for (const o of [{sel: 1}, {U: 0}, {U: 5001}, {T: 5051}, {T: 4949}, {T: 'nan'}]) {
-    const r = onRoute(o);
-    assert.match(r.text, /^e2 /, JSON.stringify(o));
-    assert.equal(r.greyPx, 0, JSON.stringify(o));
-    assert.equal(r.mallocs, r.frees);
+const retainedFile = fs.readFileSync(dense.file);
+const retained = readSections(retainedFile).map(s => ({
+  type: s.type, bytes: retainedFile.subarray(s.offset, s.offset + s.size),
+}));
+assert.deepEqual(retained.map(s => s.type), [SECTION.WAYBACK, SECTION.GREY]);
+fs.writeFileSync(elevFile, embedSections(routeBytes, [...retained, {type: SECTION.ELEV, bytes: elevBytes}]));
+
+test('on-route frames forward the stock draw and skip the legacy strip, file, heap and text', () => {
+  for (const file of [elevFile, dense.file]) {
+    const r = run({...dense, file, off: 0, flags: F_ROUTE | F_TEXT, U: 2999, T: 5000, sel: 0});
+    assert.deepEqual([r.rt, r.opens, r.reads, r.closes, r.mallocs, r.frees, r.texts, r.greyPx, r.anchors, r.lines.length],
+      [1, 0, 0, 0, 0, 0, 0, 0, 0, 0]);
   }
-  assert.match(onRoute({T: 5050}).text, /^e0 /);                 // |T - L| = 50: inside the gate
-  const off = run({...dense, file: elevFile, flags: F_ROUTE | F_TEXT, U: 3000, T: 5000});
-  assert.match(off.text, /^\d+m w\d+ r\d+ g0$/);                // off the route: the way-back text, no strip
-  assert.equal(off.greyPx, 0);
 });
-test('no elevation section gives e1 and no strip', () => {
-  const r = run({...dense, file: densePlain, off: 0, flags: F_ROUTE | F_TEXT, U: 3000, T: 5000});
-  assert.match(r.text, /^e1 u3000 t5000 w\d+$/);
-  assert.deepEqual([r.greyPx, r.mallocs], [0, 0]);
-});
-test('past the end gives e3; a read error gives e4; no strip in both', () => {
-  const end = onRoute({U: 1, T: 5050});                         // p = 5,049 m of a 5,000 m section
-  assert.match(end.text, /^e3 /);
-  for (const failAt of [2, 3]) {                                // the header read, the window read
-    const r = onRoute({failAt});
-    assert.match(r.text, /^e4 /, `failAt ${failAt}`);
-    assert.equal(r.greyPx, 0);
-    assert.equal(r.mallocs, r.frees);
-  }
-  assert.match(onRoute({mallocOk: 0}).text, /^e11 /);
+test('legacy type 3 leaves off-route way-back and grey identical', () => {
+  const {opened, ...legacy} = run({...dense, file: elevFile});
+  const {opened: currentPath, ...current} = run(dense);
+  assert.equal(opened, elevFile);
+  assert.equal(currentPath, dense.file);
+  assert.deepEqual(legacy, current);
 });

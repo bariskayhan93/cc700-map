@@ -327,7 +327,7 @@ function lentry(c, name) {                               // the map font has ASC
   return [...fu(2, S.LABEL | (2 << 4)), ...fs(3, sc(c[0])), ...fs(4, sc(c[1])), ...fu(5, v.length / 2), ...Array.from({ length: v.length / 2 }, (_, i) => fb(6, [...fs(1, v[2 * i]), ...fs(2, v[2 * i + 1])])).flat()];
 }
 // cc27 block switches (firmware/common/types.h): the last entry of each block, class 15, no points, lat = 0x7F434346 (above
-// 2^30: never a latitude), lon = the flags (F_OWN 1, F_TEXT 2, F_ROUTE 4). cc26 and the stock code skip it.
+// 2^30: never a latitude), lon = the flags (F_OWN 1, F_TEXT 2, legacy strip flag 4). cc26 and the stock code skip it.
 export const BLK_FLAGS_MAGIC = 0x7F434346;
 export function flagsEntry(flags) { return [...fu(2, 15), ...fs(3, BLK_FLAGS_MAGIC), ...fs(4, flags | 0), ...fu(5, 0)]; }
 function sentry(style, pts) {

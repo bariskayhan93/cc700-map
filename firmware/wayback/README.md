@@ -83,17 +83,17 @@ The core writes nothing. It changes no stock state.
 
 `wb_device.c` replaces one word: the literal of `tramp_rt` at `0x420496b8` (was `cc_rt`, `0x421dd920`). `wb_rt` calls `cc_rt` first.
 The map frame (`0x4204da24`) makes one hooked route call for each frame, so the adapter runs one time for each frame.
-It has no stored state. The switches come from the flags entry of the current map block (`firmware/common/types.h`):
-`F_OWN` (bit 0) draws the way-back line with the raster module, `F_TEXT` (bit 1) adds the test text, `F_ROUTE` (bit 2)
-lets the adapter open the route file on the route. A block without the flags entry has flags 0: cc26 behaviour.
+On route, the hook returns after the stock call. Off route, the adapter has no stored state. It reads the flags
+of the current map block (`firmware/common/types.h`). Bit 0 (`F_OWN`) draws the way-back line with the raster module.
+Bit 1 (`F_TEXT`) adds test text. A block without a flags entry has flags 0.
 
-1. Checks the free stack of the task (3,968 B or more), as `loop_start.c` does. Low stack: off the route `wb8`, on the route nothing.
-2. Reads the switches under the block lock (`0x420494a4`, `0x420494b8`), the lock of `cc_iter`. On the route without `F_ROUTE`: stops (cc26).
-3. Off the route: takes the position through `cc_pos` with a zero-wait navigation lock, as `cc_rt` does.
+1. Checks the free stack of the task (3,968 B or more), as `loop_start.c` does. Low stack gives `wb8`.
+2. Reads the switches under the block lock (`0x420494a4`, `0x420494b8`), the lock of `cc_iter`.
+3. Takes the position through `cc_pos` with a zero-wait navigation lock, as `cc_rt` does.
 4. Finds the path of the first open route file in the open-file table of the firmware (zero-wait lock).
 5. Opens that file a second time for reading. It never moves the position of the firmware's own handle.
-6. Reads the section table (last 64 B, one read). Takes one heap buffer of 4,096 B (`heap_caps_malloc`, PSRAM) when the
-   frame has a section for it: off the route the grey layer (type 2), on the route the elevation (type 3, Task 10).
+6. Reads the section table (last 64 B, one read). The grey layer (type 2) uses one 4,096 B PSRAM buffer
+   from `heap_caps_malloc`. Legacy files with type 3 still pass the same table checks. The adapter skips its payload.
 7. Off the route: mounts the way-back data (type 1), runs one tick, reads at most 32 line points, then the grey: 4 anchors
    (op 23 through the projection), the view, and every line of the screen cells with the raster under the page caps.
    A read later than 300 ms after the frame start fails (raw timer `0x403779f4`). A line of more than 32 points is cut:
@@ -116,7 +116,6 @@ lets the adapter open the route file on the route. A block without the flags ent
 | `wb7` | No open route file, no way-back section, or the data is refused by `wb_mount` (also a cc26 file). |
 | `wb8` | Less than 3,968 B of stack are free. No lock and no file call is made. |
 | `wb9` | The second open of the route file failed. |
-| `e1 w12` | On the route with `F_ROUTE` and `F_TEXT`: no elevation section (Task 10 adds the other codes). |
 
 With `F_TEXT` each `wb<code>` off the route also has the tail ` w<ms> r<reads> g<lines>`.
 

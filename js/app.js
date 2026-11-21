@@ -1,12 +1,12 @@
 import { loadOSM } from './osm.js';
 import { parseGPX, buildRoute } from './route.js';
-import { nameImage } from './names.js';
+import { nameImage, nameImageWidth } from './names.js';
 import { readFile, draw } from './preview.js';
 import { CC700 } from './ble.js';
 import { previewGuidance } from './preview_guidance.js';
 import {auditMapSection,budgetFailures,transitionPeak,TRANSITION_BUDGET} from './map_budget.js';
 import { checkWayback } from './wayback.js';
-import { cc27Flags, cc27Sections, gpxHasElevation } from './cc27_file.js';
+import { cc27Flags, cc27Sections } from './cc27_file.js';
 const $ = id => document.getElementById(id);
 function say(id, text) {
   const node = $(id);
@@ -35,7 +35,7 @@ function updateFirmware() {
   $('fwOriginal').hidden = patched;
   $('fw').setAttribute('aria-describedby', patched ? 'fwWarning' : 'fwOriginal');
 }
-// Default: cc27 (patch27) with way-back, grey streets and elevation. cc26 (patch25) stays for a unit on cc26: the map
+// Default: cc27 (patch27) with way-back and grey streets. cc26 (patch25) stays for a unit on cc26: the map
 // only, its way-back formats are gone. New keys (18 Nov), so a choice saved under the old defaults does not stay.
 try {
   const savedFw = localStorage.getItem('cc700-fw2');
@@ -55,8 +55,8 @@ $('gpx').onchange = () => {
   requestBuild();
 };
 $('speed').onchange = requestBuild;
-// cc27 switches, each saved: way-back and grey (wayback), own lines (F_OWN), test text (F_TEXT), elevation (section, F_ROUTE).
-for (const [k, key] of [['wayback', 'cc700-wb2'], ['ownLines', 'cc700-own'], ['testText', 'cc700-text'], ['elevation', 'cc700-elev']]) {
+// cc27 switches, each saved: way-back and grey (wayback), own lines (F_OWN), test text (F_TEXT).
+for (const [k, key] of [['wayback', 'cc700-wb2'], ['ownLines', 'cc700-own'], ['testText', 'cc700-text']]) {
   $(k).checked = true;   // default on
   try { if (localStorage.getItem(key) === '0') $(k).checked = false; } catch {}
   $(k).onchange = () => {
@@ -93,7 +93,7 @@ async function build() {
   building = true;
   const t0 = performance.now();
   const file = gpxFile, fwChoice = $('fw').value, styled = fwChoice !== 'orig', codec = fwChoice === 'patch25' || fwChoice === 'patch27' ? 'd' : undefined;
-  const cc27 = fwChoice === 'patch27', sw = { ownLines: $('ownLines').checked, testText: $('testText').checked, elevation: $('elevation').checked };
+  const cc27 = fwChoice === 'patch27', sw = { ownLines: $('ownLines').checked, testText: $('testText').checked };
   const speedKmh = Math.max(8, Math.min(45, +$('speed').value || 18));
   const layers = Object.fromEntries(LAYERS.map(k => [k, $(k).checked]));
   try {
@@ -111,29 +111,29 @@ async function build() {
     const d = new Date(), z = n => String(n).padStart(2, '0');
     const id = z(d.getMonth() + 1) + z(d.getDate()) + z(d.getHours()) + z(d.getMinutes());
     const r = buildRoute(gpx, lines, {
-      speedKmh, id, label: gpx.name, title: gpx.name, nameImage, areas, water, rails, green, wlines, navigationLines,
+      speedKmh, id, label: gpx.name, title: gpx.name, nameImage, measureName: nameImageWidth, areas, water, rails, green, wlines, navigationLines,
       trams: layers.trams ? trams : [], signals: layers.signals ? signals : [], stops: layers.stops ? stops : [],
       landmarks: layers.names ? landmarks || [] : [],                                // cc27: three landmark types, with the names
       noF9: styled,   // patched firmware: field 9 off, as tested on the device
-      map: { styled, ...layers, ...(codec ? { codec } : {}), ...(cc27 ? { blockFlags: cc27Flags(sw, gpxHasElevation(gpx)) } : {}),
+      map: { styled, ...layers, ...(codec ? { codec } : {}), ...(cc27 ? { blockFlags: cc27Flags(sw) } : {}),
         ...(LIMIT > 1200 ? { cap: LIMIT, capMax: LIMIT } : {}) },
     });
     const tRoute = performance.now();
     const model = readFile(r.file), check = verify(r, model, styled);
     if (check) throw new Error('Prüfung fehlgeschlagen: ' + check);
-    // cc27 sections (way-back, grey, elevation): appended after the check, so the route part of the file is the verified one.
+    // cc27 sections (way-back, grey): appended after the check, so the route part of the file is the verified one.
     // Any failure keeps the plain route file.
     let wayback = '';
-    if (cc27 && ($('wayback').checked || sw.elevation)) {
-      if ($('wayback').checked) say('sum', 'Rückweg-Daten werden geladen …');
+    if (cc27 && $('wayback').checked) {
+      say('sum', 'Rückweg-Daten werden geladen …');
       try {
-        const c = await cc27Sections(r.file, { wayback: $('wayback').checked, elevation: sw.elevation, reach: $('waybackReach').value });
+        const c = await cc27Sections(r.file, { reach: $('waybackReach').value });
         if (needsBuild) return;
         r.file = c.file;
         const km = c.report.reach ? (/(\d)k$/.exec(c.report.reach) || [0, '?'])[1] + ' km' : '';
         wayback = (c.report.waybackBytes ? ` · Rückweg-Daten ${((c.report.waybackBytes + c.report.greyBytes) / 1024).toFixed(0)} KB (${km})` : '') +
           (c.report.greyReason ? ' · ohne graue Straßen: ' + c.report.greyReason : '') +
-          (c.report.waybackError ? ' · ohne Rückweg-Daten: ' + c.report.waybackError : '') + (c.report.elevationBytes ? ' · Höhenprofil' : '');
+          (c.report.waybackError ? ' · ohne Rückweg-Daten: ' + c.report.waybackError : '');
         log(JSON.stringify({cc27: c.report}));
       } catch (e) {
         if (needsBuild) return;

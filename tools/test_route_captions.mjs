@@ -7,14 +7,14 @@ import { parse } from '../js/pb.js';
 const encoder = new TextEncoder(), decoder = new TextDecoder('utf-8', {fatal:true});
 const point = ([x,y]) => [y/111320,x/111320,0];
 const road = (name,xy) => ({name,kind:1,pts:xy.map(point)});
-function generate(gap=22,{name='Street',waypoint=false,three=false,roundIndex=-1}={}) {
+function generate(gap=22,{name='Street',waypoint=false,three=false,roundIndex=-1,measureName}={}) {
  const xy=three?[[0,0],[0,100],[gap,100],[gap,125],[120,125]]:[[0,0],[0,100],[gap,100],[gap,200]];
  const names=Array.isArray(name)?name:[name,name,name];
  const lines=[road(names[0],[[0,0],[0,170]]),road(names[1],[[-50,100],[100,100]]),road(names[2],[[gap,40],[gap,200]])];
  if(roundIndex>=0) lines[roundIndex].kind|=128;
  if(three) lines.push(road(name,[[-50,125],[120,125]]));
  return buildRoute({name:'Synthetic captions',pts:xy.map(point),wpts:waypoint?[{lat:point([0,100])[0],lon:point([0,100])[1],name:'Water'}]:[]},lines,
-  {id:'test',nameImage:text=>encoder.encode(text),map:{}});
+  {id:'test',nameImage:text=>encoder.encode(text),measureName,map:{}});
 }
 function records(result) {
  const f=result.file,v=new DataView(f.buffer,f.byteOffset,f.byteLength),out=[];
@@ -45,8 +45,24 @@ test('ordinary unrelated record names retain their own native caption',()=>{
 test('UTF-8 native caption stays within stock 63-byte limit on a character boundary',()=>{
  const r=generate(22,{name:'界'.repeat(48)}),rows=records(r);
  assert.equal(rows[0].caption,'界'.repeat(21));
- assert.equal(rows[1].caption,'then left · '+'界'.repeat(16));
+ assert.equal(rows[1].caption,'then left');
  for(const row of rows) assert(row.bytes.length<=63);
+});
+test('stock chained caption keeps the full direction and fits only the road name',()=>{
+ const measureName = text => 4 + 10 * [...text].length;
+ const name = 'A'.repeat(10);
+ for (const [options, expected] of [
+  [{name}, ['then left · ' + name]],
+  [{name:'Alpha Beta With Long Text',three:true}, ['then left · Alpha...', 'then right · Alpha...']],
+  [{name:''}, ['then left']],
+ ]) {
+  const r = generate(22, {...options,measureName}), rows = records(r);
+  assert.deepEqual(rows.filter(row=>row.caption.startsWith('then ')).map(row=>row.caption), expected);
+  for (const [i, row] of rows.entries()) if (row.caption.startsWith('then ')) {
+   assert(measureName(row.caption) <= 224);
+   assert.equal(bitmapText(r,rows,i), row.caption);
+  }
+ }
 });
 test('waypoint state belongs to its own outgoing record and clears on the next',()=>{
  const r=generate(22,{waypoint:true}),rows=records(r);

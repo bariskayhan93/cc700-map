@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Build the cc27 image (Task 13): the cc27 tree (firmware/common, raster, view, elev, mapdraw, wayback) in the second
+"""Build the cc27 image (Task 13): the cc27 tree (firmware/common, raster, view, mapdraw, wayback) in the second
 code area of the C4 image, with the 3 hook literals (wb_rt, cc_iter, cc_line) and the version text. Base: only the C4
 image (ac48ba3d). The cc26 record (tools/cc26_build.py) stays; this builder imports its checks. Writes files only.
 Never flashes: the receipt says device_written false."""
@@ -31,10 +31,10 @@ HOOK_FRAME = 32
 CALLED = tuple(wdb.CALLED) + (0x403763e0, 0x40376398, 0x420494a4, 0x420494b8)
 # The cc27 tree, copied flat into the build directory: directory under firmware/ -> files.
 TREE = {'common': ('types.h', 'fw.h', 'text.h'), 'raster': ('raster.h', 'raster.c'), 'view': ('view.h', 'view.c'),
-        'elev': ('elev.h', 'elev.c'), 'mapdraw': ('map.c', 'md_tramp.S', 'proj.h', 'proj.c'),
+        'mapdraw': ('map.c', 'md_tramp.S', 'proj.h', 'proj.c'),
         'wayback': ('wayback.h', 'wayback.c', 'wb_grey.h', 'wb_grey.c', 'wb_grey_draw.h', 'wb_grey_draw.c', 'wb_device.c',
                     'wb_tramp.S', 'wb_area2.ld')}
-SOURCES = ('wb_device.c', 'wayback.c', 'wb_grey.c', 'wb_grey_draw.c', 'wb_tramp.S', 'map.c', 'md_tramp.S', 'raster.c', 'view.c', 'elev.c', 'proj.c')
+SOURCES = ('wb_device.c', 'wayback.c', 'wb_grey.c', 'wb_grey_draw.c', 'wb_tramp.S', 'map.c', 'md_tramp.S', 'raster.c', 'view.c', 'proj.c')
 run = c26.run
 
 
@@ -46,7 +46,26 @@ def check_called(base):
             raise ValueError('called function drift: ' + hex(address))
 
 
-def build(base, outdir, prefix=PREFIX):
+def apply_cc28g_line(irom, code):
+    """Apply the two pinned line changes to IROM built from the verified C4 base."""
+    if hashlib.sha256(code).hexdigest() != '121dd6d312ec38113092bb8638756adb160d628ba4a74a7b3dde685218224107':
+        raise ValueError('expected exact cc28g cc_seg code')
+    old_body = bytes.fromhex(
+        '366100721501820509b21500809723a1fbff62150489119921b9018153fbe00800b80188119821a79b17a2a00'
+        'ca0882082450982afff824508a6590582c7fe825501dd05cd04bd03ad02815cfae008006255047255011df0'
+    )
+    patches = ((0x4203f390, bytes.fromhex('ded0c800'), bytes.fromhex('4a4a4a00')),
+               (0x421ddc1c, old_body, code))
+    for address, old, new in patches:
+        offset = address - IROM
+        if len(old) != len(new) or irom[offset:offset + len(old)] != old:
+            raise ValueError(f'cc28g old bytes differ at {address:#x}')
+    for address, old, new in patches:
+        offset = address - IROM
+        irom[offset:offset + len(old)] = new
+
+
+def build(base, outdir, prefix=PREFIX, *, cc28g_line=None):
     """Returns (image bytes, receipt). Refuses any base but the C4 image."""
     if hashlib.sha256(base).hexdigest() != BASE_SHA:
         raise ValueError('expected exact C4 base (ac48ba3d)')
@@ -121,6 +140,8 @@ def build(base, outdir, prefix=PREFIX):
     ir_[HOOK - IROM:HOOK - IROM + 4] = lit
     for address, map_word in map_lits.items():
         ir_[address - IROM:address - IROM + 4] = map_word
+    if cc28g_line is not None:
+        apply_cc28g_line(ir_, cc28g_line)
     image = a2.add_area2(esp.build(header, new), code)
     h, s, _ = esp.read(image)
     if esp.build(h, s) != image or len(image) > 0x420000:
@@ -129,7 +150,7 @@ def build(base, outdir, prefix=PREFIX):
                 'tools/area2_image.py').strip()
     receipt = {'version': version.decode(), 'source_commit': version[-7:].decode(), 'source_dirty': bool(dirty),
                'base_sha256': BASE_SHA, 'image_sha256': hashlib.sha256(image).hexdigest(), 'image_bytes': len(image),
-               'code_bytes': len(code), 'code_sha256': hashlib.sha256(code).hexdigest(), 'code_limit': CODE_LIMIT,
+               'cc28g_line': cc28g_line is not None, 'code_bytes': len(code), 'code_sha256': hashlib.sha256(code).hexdigest(), 'code_limit': CODE_LIMIT,
                'area_bytes': a2.AREA_LIMIT, 'hook_target': hex(word), 'hook_word_hex': lit.hex(), 'hook_frame': frame,
                'undefined_symbols': undefined, 'incoming': {'hook': hook_refs}, 'map_hooks': map_refs, 'dead_spans_ok': spans_ok is None,
                'stack_usage': stack, 'max_frame': max_frame, 'sources': list(SOURCES), 'symbols': symbols, 'device_written': False}
@@ -141,8 +162,10 @@ def main():
     p.add_argument('--base', type=Path, default=ROOT / '.local/cc25/ota_1_cc25.bin')
     p.add_argument('--output', type=Path, default=ROOT / '.local/cc27')
     p.add_argument('--prefix', default=PREFIX)
+    p.add_argument('--cc28g-line', type=Path, help='pinned 88-byte cc28g cc_seg code input')
     a = p.parse_args()
-    image, receipt = build(a.base.read_bytes(), a.output, a.prefix)
+    line = a.cc28g_line.read_bytes() if a.cc28g_line else None
+    image, receipt = build(a.base.read_bytes(), a.output, a.prefix, cc28g_line=line)
     a.output.mkdir(parents=True, exist_ok=True)
     (a.output / 'ota_1_cc27.bin').write_bytes(image)
     (a.output / 'manifest.json').write_text(json.dumps(receipt, indent=1) + '\n')
