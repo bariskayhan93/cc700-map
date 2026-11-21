@@ -40,18 +40,28 @@ const lengthOf = l => l.slice(1).reduce((s, p, k) => s + Math.hypot(p[0] - l[k][
 
 // Rider positions of the proof: a step grid (1,024 units = 64 m) over the layer cells and their 8 neighbours, each at
 // `headings` courses. Fixed order: cells by key, then rows, columns, headings.
-function screensOf(cells, step, headings) {
+function forEachScreen(cells, step, headings, visit) {
   const keys = new Set();
   for (const {key} of cells) {
     const cx = key & 0xFFFF, cy = key >>> 16;
     for (let j = -1; j <= 1; j++) for (let i = -1; i <= 1; i++) if (cx + i >= 0 && cy + j >= 0) keys.add((((cy + j) << 16) | (cx + i)) >>> 0);
   }
-  const out = [];
+  // Interior cells repeat the same headings and offsets. Four cells of margin
+  // cover the furthest screen corner. At a frame edge use the clipped selection.
+  const interior = [];
   for (const key of [...keys].sort((a, b) => a - b)) {
-    const x0 = (key & 0xFFFF) * CELL, y0 = (key >>> 16) * CELL;
-    for (let y = 0; y < CELL; y += step) for (let x = 0; x < CELL; x += step) for (let h = 0; h < headings; h++) out.push({x: x0 + x, y: y0 + y, course: Math.round(h * 360 / headings) % 360});
+    const cx = key & 0xFFFF, cy = key >>> 16;
+    const reuse = cx >= 4 && cy >= 4 && cx < 65532 && cy < 65532;
+    let i = 0;
+    for (let y = 0; y < CELL; y += step) for (let x = 0; x < CELL; x += step) for (let h = 0; h < headings; h++, i++) {
+      const course = Math.round(h * 360 / headings) % 360, px = cx * CELL + x, py = cy * CELL + y;
+      if (!reuse) visit(px, py, course, 0, greyCells(px, py, course));
+      else {
+        interior[i] ??= greyCells(px, py, course).map(k => k - key);
+        visit(px, py, course, key, interior[i]);
+      }
+    }
   }
-  return out;
 }
 const costOf = lines => ({work: lines.reduce((s, l) => s + lineWorkBound(l), 0), points: lines.reduce((s, l) => s + l.length, 0)});
 
@@ -59,13 +69,13 @@ const costOf = lines => ({work: lines.reduce((s, l) => s + lineWorkBound(l), 0),
 export function proveGreyLayer(cells, {pixCap = GREY_CAPS.pixCap, ptCap = GREY_CAPS.ptCap, step = 1024, headings = 16} = {}) {
   const cost = new Map(cells.map(c => [c.key, costOf(c.lines)])), over = [];
   let screens = 0, worstWork = 0, worstPoints = 0;
-  for (const s of screensOf(cells, step, headings)) {
+  forEachScreen(cells, step, headings, (x, y, course, key, offsets) => {
     let work = 0, points = 0;
-    for (const k of greyCells(s.x, s.y, s.course)) { const c = cost.get(k); if (c) { work += c.work; points += c.points; } }
+    for (const offset of offsets) { const c = cost.get(key + offset); if (c) { work += c.work; points += c.points; } }
     screens++;
     worstWork = Math.max(worstWork, work); worstPoints = Math.max(worstPoints, points);
-    if (work > pixCap || points > ptCap) over.push(s);
-  }
+    if (work > pixCap || points > ptCap) over.push({x, y, course});
+  });
   return {screens, over, worstWork, worstPoints};
 }
 
@@ -82,11 +92,15 @@ export function fitGreyLayer(parts, {pixCap = GREY_CAPS.pixCap, ptCap = GREY_CAP
   const dead = l => [l[0], l[l.length - 1]].some(p => ends.get(pk(p)) === own(l, p));
   for (const c of cells) for (const l of c.lines) count(l, 1);
   let removedLines = 0, removedUnits = 0;
-  for (const s of screensOf(cells, 1024, 16)) {
+  forEachScreen(cells, 1024, 16, (_x, _y, _course, key, offsets) => {
     for (;;) {
-      const sel = greyCells(s.x, s.y, s.course).filter(k => byKey.has(k));
-      const sum = sel.reduce((t, k) => ({work: t.work + cost.get(k).work, points: t.points + cost.get(k).points}), {work: 0, points: 0});
-      if (sum.work <= pixCap && sum.points <= ptCap) break;
+      let work = 0, points = 0;
+      for (const offset of offsets) {
+        const c = cost.get(key + offset);
+        if (c) { work += c.work; points += c.points; }
+      }
+      if (work <= pixCap && points <= ptCap) break;
+      const sel = offsets.map(offset => key + offset).filter(k => byKey.has(k));
       if (++removedLines > maxRemovals) throw new Error(`grey fit: more than ${maxRemovals} removals`);
       let best = null;
       for (const k of sel.sort((a, b) => a - b)) byKey.get(k).lines.forEach((l, i) => {
@@ -98,7 +112,7 @@ export function fitGreyLayer(parts, {pixCap = GREY_CAPS.pixCap, ptCap = GREY_CAP
       removedUnits += best.len;
       cost.set(best.k, costOf(c.lines));
     }
-  }
+  });
   const left = cells.filter(c => c.lines.length);
   return {bytes: encodeGreyLayer(left, {pixCap, ptCap}), removedKm: removedUnits / 16000, removedLines, proof: proveGreyLayer(left, {pixCap, ptCap})};
 }

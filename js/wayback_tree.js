@@ -237,20 +237,22 @@ export function buildWaybackModel(graph, route, {reach = 'line2k', exceptions = 
     }
   }
 
-  // Straight-line distance to the route (route samples every 25 m), computed on demand.
-  const airSamples = routeSamples(route, AIR_SAMPLE_M);
-  const airX = airSamples.map(s => xy(s.point)[0]), airY = airSamples.map(s => xy(s.point)[1]);
-  const airCache = new Float64Array(N).fill(-1);
-  const airOf = i => {
-    if (airCache[i] >= 0) return airCache[i];
-    const [x, y] = xy(pts[i]);
-    let best = Infinity;
-    for (let j = 0; j < airX.length; j++) {
-      const dx = airX[j] - x, dy = airY[j] - y, d2 = dx * dx + dy * dy;
-      if (d2 < best) best = d2;
+  // Only membership in the air radius matters. A matching sample must be in
+  // the same radius-wide cell or one of its eight neighbours.
+  const airGrid = new Map();
+  for (const sample of routeSamples(route, AIR_SAMPLE_M)) {
+    const point = xy(sample.point);
+    const key = cellKey(Math.floor(point[0] / AIR), Math.floor(point[1] / AIR));
+    if (!airGrid.has(key)) airGrid.set(key, []);
+    airGrid.get(key).push(point);
+  }
+  const withinAir = i => {
+    const [x, y] = xy(pts[i]), cx = Math.floor(x / AIR), cy = Math.floor(y / AIR);
+    for (let dx = -1; dx <= 1; dx++) for (let dy = -1; dy <= 1; dy++) {
+      const samples = airGrid.get(cellKey(cx + dx, cy + dy));
+      if (samples?.some(([sx, sy]) => (sx - x) ** 2 + (sy - y) ** 2 <= AIR * AIR)) return true;
     }
-    airCache[i] = Math.sqrt(best);
-    return airCache[i];
+    return false;
   };
 
   // Stored set, then the next chain of each stored node.
@@ -258,7 +260,7 @@ export function buildWaybackModel(graph, route, {reach = 'line2k', exceptions = 
   for (let i = 0; i < N; i++) {
     if (dist[i] === Infinity) continue;
     if (reach === 'ride1500') { if (dist[i] <= R) keep[i] = 1; }
-    else if (dist[i] <= R && airOf(i) <= AIR) keep[i] = 1;
+    else if (dist[i] <= R && withinAir(i)) keep[i] = 1;
   }
   const seeds = Array.from(keep);
   const chainDone = new Uint8Array(N);
@@ -297,7 +299,7 @@ export function buildWaybackModel(graph, route, {reach = 'line2k', exceptions = 
   extras.sort((p, q) => p.a - q.a || p.b - q.b);
 
   const stats = {graphNodes, splitNodes: N - graphNodes, routeNodes, stored: kept.length, extras: extras.length, noWay: 0, noWayInside2km: 0};
-  for (let i = 0; i < graphNodes; i++) if (dist[i] === Infinity) { stats.noWay++; if (airOf(i) <= AIR) stats.noWayInside2km++; }
+  for (let i = 0; i < graphNodes; i++) if (dist[i] === Infinity) { stats.noWay++; if (withinAir(i)) stats.noWayInside2km++; }
 
   const model = {nodes, extras, chunks: [], stats};
   if (exceptions) {
