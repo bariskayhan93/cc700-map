@@ -87,10 +87,11 @@ class Cc27BuildTests(unittest.TestCase):
         cb.check_called(self.base)
 
     def test_the_cc27_tree_is_built_from_the_working_tree(self):
-        for n in ('raster.c', 'view.c', 'elev.c', 'wb_grey_draw.c', 'map.c', 'wb_device.c'):
+        for n in ('raster.c', 'view.c', 'wb_grey_draw.c', 'map.c', 'wb_device.c'):
             self.assertIn(n, self.receipt['sources'])
         self.assertIn('rs_line', self.receipt['symbols'])
-        self.assertIn('elev_draw', self.receipt['symbols'])
+        self.assertNotIn('elev.c', self.receipt['sources'])
+        self.assertNotIn('elev_draw', self.receipt['symbols'])
 
 
 if __name__ == '__main__':

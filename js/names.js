@@ -1,9 +1,14 @@
 // Street-name image as the CC700 stores it: u16 len | LVGL INDEXED_2BIT (cf 8), 16 px high, 4-colour palette.
 const PAL = [[16, 15, 16], [156, 156, 156], [96, 97, 96], [249, 250, 249]];   // 0 black, 2 dark, 1 light, 3 white
 const FONT = '14px "Noto Sans", "Source Han Sans", Arial, sans-serif';
+let measureContext;
+export function nameImageWidth(text, g = (measureContext ??= document.createElement('canvas').getContext('2d'))) {
+  g.font = FONT;
+  return Math.ceil(g.measureText(text).width) + 4;
+}
 export function nameImage(text, maxW = 400) {
-  const c = document.createElement('canvas'), g = c.getContext('2d'); g.font = FONT;
-  const w = Math.min(maxW, Math.ceil(g.measureText(text).width) + 4), h = 16;
+  const c = document.createElement('canvas'), g = c.getContext('2d');
+  const w = Math.min(maxW, nameImageWidth(text, g)), h = 16;
   c.width = w; c.height = h; g.font = FONT; g.fillStyle = '#fff'; g.fillRect(0, 0, w, h);
   g.fillStyle = '#000'; g.textBaseline = 'alphabetic'; g.fillText(text, 2, 12);
   const px = g.getImageData(0, 0, w, h).data, stride = Math.ceil(w / 4), data = new Uint8Array(stride * h);

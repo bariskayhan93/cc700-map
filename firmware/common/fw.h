@@ -39,7 +39,6 @@ extern int32_t host_file_cnt;
 extern uint8_t host_file_tab[], host_label_opa;
 extern uint16_t host_label_col;
 extern float host_map_head;
-extern uint32_t host_route_left, host_nav_selector; extern float host_route_total;
 #define FW_LINE_DSC (&host_dsc)
 #define FW_CANVAS host_canvas
 #define FW_CANVAS_BUF host_buf
@@ -80,9 +79,6 @@ extern uint32_t host_route_left, host_nav_selector; extern float host_route_tota
 extern int host_proj_zoom, host_proj_rot;
 #define FW_PROJ_ZOOM host_proj_zoom
 #define FW_PROJ_ROT host_proj_rot
-#define FW_ROUTE_LEFT host_route_left
-#define FW_ROUTE_TOTAL host_route_total
-#define FW_NAV_SELECTOR host_nav_selector
 #else
 // Map draw (v21 cc_iter and cc_line, firmware/mapdraw)
 #define FW_LINE_DSC   ((line_dsc_t *)0x3c38a590)              // map line descriptor (PSRAM), set up in 0x4205bab4
@@ -134,14 +130,6 @@ extern int host_proj_zoom, host_proj_rot;
 static __attribute__((unused)) int fw_proj_zoom(void) { int32_t **ctx = *(int32_t ***)0x3c388cfc; return ctx && *ctx ? (*ctx)[0] : 0; }
 #define FW_PROJ_ZOOM fw_proj_zoom()
 #define FW_PROJ_ROT  (*(volatile uint8_t *)0x3c388d04)
-// Route progress (docs/research/progress-arrival-extraction.md:82, :159). U: remaining distance, m. T: the route total,
-// float, set only by the setter 0x420524b8 (*(float *)0x3c389320 = a2): 0 at route load (call 0x4204d25d), then
-// T += point[+16] (float) for each route point (0x4204d7b9..0x4204d7c8); logged as "sRouteTotalDistance:%lf" (0x42052737,
-// format 0x3c1ef509). Static check 19 Nov: the unit of T is not proven; the adapter trusts T only within
-// max(50 m, L / 100) of the elevation section length L. Selector 0: the route mode of the route-mode helper 0x42050be4.
-#define FW_ROUTE_LEFT   (*(volatile uint32_t *)0x3c389344)
-#define FW_ROUTE_TOTAL  (*(volatile float *)0x3c389320)
-#define FW_NAV_SELECTOR (*(volatile uint32_t *)0x3fc9fcc4)
 static __attribute__((unused)) uint32_t fw_off_route(void) { return *(volatile uint8_t *)(0x3c3894f0 + 145); }
 static __attribute__((unused)) uint32_t fw_stack(void) {                  /* as loop_start.c */
   uint32_t sp; __asm__ volatile("mov %0,a1" : "=a"(sp));

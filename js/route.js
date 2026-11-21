@@ -189,6 +189,23 @@ export function decisionPoints(P, D, lines, F, grid) {
   return { points, judge, matched, ownerAt, evidence: { unmatchedMeters: unmatched, longestUnmatchedMeters: longestUnmatched } };
 }
 const short = t => t.replace(/straße\b/g, 'str.').replace(/Straße\b/g, 'Str.').replace(/strasse\b/g, 'str.').replace(/Strasse\b/g, 'Str.');
+// The stock reader has a 64-byte buffer and a 224 px caption label.
+const CAPTION_BYTES = 63, CAPTION_WIDTH = 224, captionEncoder = new TextEncoder();
+function fitChainedCaption(direction, road, measureName) {
+  road = road.trim();
+  if (!road) return direction;
+  const prefix = direction + ' · ';
+  const fits = text => captionEncoder.encode(text).length <= CAPTION_BYTES &&
+    (!measureName || measureName(text) <= CAPTION_WIDTH);
+  if (fits(prefix + road)) return prefix + road;
+  let fitted = direction;
+  for (const word of road.matchAll(/\S+/gu)) {
+    const text = prefix + road.slice(0, word.index + word[0].length) + '...';
+    if (!fits(text)) break;
+    fitted = text;
+  }
+  return fitted;
+}
 export function buildRoute(gpx, allLines, opt) {
   const navigationPolicy=opt.navigationPolicy ?? 'legacy';
   if(!['legacy','junction-evidence-v1'].includes(navigationPolicy))throw new RangeError('Unknown navigation policy');
@@ -321,22 +338,28 @@ export function buildRoute(gpx, allLines, opt) {
   // Stock next-point output loads record k + 1 before reading info field 6.
   // Put the close-following-turn hint on that outgoing record, with its own
   // street/waypoint. Keep text above as legacy section/list metadata.
-  const captionBytes = text => { const out = []; for (const c of text) { const b = new TextEncoder().encode(c); if (out.length + b.length > 63) break; out.push(...b); } return out; };
+  const captionBytes = text => { const out = []; for (const c of text) { const b = captionEncoder.encode(c); if (out.length + b.length > CAPTION_BYTES) break; out.push(...b); } return out; };
   const bitmapCaptions = [];
+  const roadName = s => nm[Math.floor((s.i0 + s.i1) / 2)];
   secs.forEach((s, k) => {
     const previous = secs[k - 1];
-    const text = wp[s.i0] ? '▶ ' + wp[s.i0] : s.name; let prefix = '';
+    const waypoint = wp[s.i0], exit = s.round && !waypoint ? secs[k + 1] : null;
+    const text = waypoint ? '▶ ' + waypoint : s.name;
+    let direction = '';
     if (!opt.classic && previous?.type === 1 && previous.dir) {
       let next = k; while (next < secs.length - 1 && secs[next].type === 1 && !secs[next].dir) next++;
       const following = secs[next];
-      if (following?.type === 1 && following.dir && following.dist - previous.dist <= THEN) prefix = 'then ' + THEN_WORD[following.dir] + ' · ';
+      if (following?.type === 1 && following.dir && following.dist - previous.dist <= THEN) direction = 'then ' + THEN_WORD[following.dir];
     }
-    // The stock parser clears a 64-byte buffer and rejects more than 63 bytes.
-    s.caption = new TextDecoder().decode(Uint8Array.from(captionBytes(prefix + text)));
+    if (direction && !waypoint) {
+      s.caption = fitChainedCaption(direction, roadName(s), opt.measureName);
+      bitmapCaptions.push(exit ? fitChainedCaption(direction, roadName(exit), opt.measureName) : s.caption);
+      return;
+    }
+    s.caption = new TextDecoder().decode(Uint8Array.from(captionBytes(direction ? direction + ' · ' + text : text)));
     // Preserve the older bitmap-only roundabout exit-name substitution. Its
     // native field-6 semantics are untraced; ordinary field 6 keeps s.name.
-    const bitmap = s.round && secs[k + 1] && !wp[s.i0] ? prefix + secs[k + 1].name : s.caption;
-    bitmapCaptions.push(bitmap);
+    bitmapCaptions.push(short(exit ? exit.name : s.caption));
   });
   // 4. points (elevation in cm, distance in cm, direction float). As in server route files (read back from the device):
   // field 8 is the direction to the next point as a COMPASS BEARING (0 = north, 90 = east). Checked 2026-11-12 evening:
@@ -351,7 +374,7 @@ export function buildRoute(gpx, allLines, opt) {
   // start points, the turn position never advances and "off route" is measured to those points (ride 2026-11-12).
   const cells = ps => { const runs = []; ps.forEach((q, i) => { const r = runs.at(-1); if (r && r[0] === q.cell) r[2] = i; else runs.push([q.cell, i, i]); });
     return [...fu(1, runs.length), ...runs.flatMap(([c, a, b]) => fb(2, [...fb(1, [...new TextEncoder().encode(c)]), ...fu(2, 2 * a), ...fu(3, 2 * b)]))]; };
-  const imgs = bitmapCaptions.map(text => opt.nameImage(short(text))); let off = 0;
+  const imgs = bitmapCaptions.map(text => opt.nameImage(text)); let off = 0;
   const recs = new Bytes();
   secs.forEach((s, k) => {
     const len = D[s.i1] - D[s.i0];
