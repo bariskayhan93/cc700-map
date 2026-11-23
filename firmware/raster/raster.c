@@ -94,7 +94,7 @@ static void rs_slab(const rs_canvas *c, int u0, int v0, int u1, int v1, int w, u
   }
   hv = (int32_t)((uint32_t)w * ratio * 4u);                    /* w / 4 * ratio, Q16 */
   q = ((uint32_t)adv << 16) / (uint32_t)du; r = ((uint32_t)adv << 16) % (uint32_t)du;
-  if (u1 < u0) { int t = u0; u0 = u1; u1 = t; t = v0; v0 = v1; v1 = t; sg = -sg; }   /* centre from the low-u end */
+  if (u1 < u0) { u0 = u1; v0 = v1; sg = -sg; }                /* centre from the low-u end */
   if (ua < 0) ua = 0;
   if (ub > umax - 1) ub = umax - 1;
   if (ua > ub) return;
