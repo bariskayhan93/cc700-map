@@ -242,11 +242,12 @@ static void draw_entry(proj_cb_t cb, const ent_t *e, uint16_t sel, float *buf, c
 }
 // cc27 F_TEXT: the time of cc_iter in ms at (6, 24), white shadow then black (the adapter text is at (6, 6))
 // cc28b: " c<k>" when the stop came before pass k (1 fills, 2..6 levels 0..4, 7 signals, 8 names)
-static void map_time(uint32_t ms, uint32_t cut, int pd) {   // pd: F_PROJ check " p<d>", -1 = none
-  char s[16], *o = s;
+static void map_time(uint32_t ms, uint32_t cut, int pd, int far, uint32_t fms) {   // pd: F_PROJ check " p<d>", -1 = none; far: wb_far result
+  char s[24], *o = s;
   *o++ = 'm'; o = tx_num(o, ms);
   if (cut) { *o++ = ' '; *o++ = 'c'; *o++ = (char)('0' + cut); }
   if (pd >= 0) { *o++ = ' '; *o++ = 'p'; *o++ = (char)('0' + pd); }
+  if (far >= 0) { *o++ = ' '; *o++ = 'f'; o = tx_num(o, fms); if (far) *o++ = '+'; }   // far map ms; '+': it stopped
   *o = 0;
 #ifdef HOST
   host_text(6, 24, s, 0);
@@ -313,7 +314,18 @@ static void draw_names(proj_cb_t cb, const ent_t *E, const entry_range_t *r, con
     pt_t q; if (probe(cb, E[i].lat, E[i].lon, &q.x, &q.y)) text(q, i, fw_color_hex(OPS[23].rgb), &labels);
   }
 }
+// Far map (23 Nov, firmware/wayback/wb_far.c): drawn first, under the detail map, before the block lock.
+#ifdef HOST
+static int far_map(proj_cb_t cb, uint32_t *ms) { (void)cb; *ms = 0; return -1; }
+#else
+int wb_far(int (*anchor)(void *, const int32_t *, pt_t *), void *actx, uint32_t *ms);
+// ll: E7; probe takes the map unit (2^31 = 180 degrees): x 2^31 / 1.8e9 = 1.1930465 = 5,004,011 / 2^22.
+static int32_t far_mu(int32_t e7) { return (int32_t)(((int64_t)e7 * 5004011) >> 22); }
+static int far_anchor(void *ctx, const int32_t *ll, pt_t *s) { return probe((proj_cb_t)ctx, far_mu(ll[0]), far_mu(ll[1]), &s->x, &s->y); }
+static int far_map(proj_cb_t cb, uint32_t *ms) { return wb_far(far_anchor, (void *)cb, ms); }
+#endif
 void cc_iter(proj_cb_t cb) {
+  uint32_t fms; int far = far_map(cb, &fms);
   fw_blk_lock();
   uint32_t cnt = FW_BLK_CNT, t0 = fw_clock(); ent_t *E = FW_BLK_ENTS;
   if (cnt > 0xFFFFu) cnt = 0xFFFFu;                            // the ranges hold 16 bits (a 64 KB block has fewer entries)
@@ -340,6 +352,6 @@ void cc_iter(proj_cb_t cb) {
     }
     FW_LINE_DSC->dash_width = 0;
   }
-  if (flags & F_TEXT) map_time((fw_clock() - t0) / 1000u, cut, pd);
+  if (flags & F_TEXT) map_time((fw_clock() - t0) / 1000u, cut, pd, far, fms);
   fw_blk_unlock();
 }

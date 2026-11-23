@@ -13,7 +13,9 @@
 #define GL_CELLS 20u                 /* cells of one screen */
 #define GL_POINTS 32u                /* points of one line */
 
-typedef struct { wb_reader rd; void *ctx; uint32_t at, size, n, body, pix_cap, pt_cap, stride, m; uint8_t *buf; } gl_layer;
+/* head: header bytes before the directory (grey 28, far map 48, 23 Nov); the buffer parts follow it: records at
+ * head + 1024, one body at head + 1600, line points at head + 3648. */
+typedef struct { wb_reader rd; void *ctx; uint32_t at, size, n, body, pix_cap, pt_cap, stride, m, head; uint8_t *buf; } gl_layer;
 
 /* Reads the header and the directory of the layer at [at, at + size) of the reader (one read) into buf (GL_BUF bytes).
  * 1 = a version 2 layer; 0 = a read error or a bad layer. */
@@ -30,3 +32,11 @@ typedef int (*gl_fn)(void *ctx, const int32_t *xy, uint32_t n);
 /* The lines of the cells (gl_cells order: nearest first; lines in body order). First one record read for each row,
  * then one body read for each cell. 1 = all lines given or fn stopped; 0 = a read error or a bad record or body. */
 int gl_lines(gl_layer *l, const uint32_t *cells, uint32_t n, gl_fn fn, void *ctx);
+
+/* The table and body reads of gl_lines with an own body parser (far map). body: the cell body at p (len bytes) in the
+ * buffer; returns 0 = next cell, 1 = stop (all done), -1 = a bad body. 1 = all cells or stopped; 0 = a read error. */
+typedef int (*gl_body_fn)(void *ctx, uint32_t key, const uint8_t *p, uint32_t len);
+int gl_bodies(gl_layer *l, const uint32_t *cells, uint32_t n, gl_body_fn body, void *ctx);
+/* One varint of [*p, end): 0 = past the end or above 32 bits. */
+int gl_var(const uint8_t **p, const uint8_t *end, uint32_t *v);
+int32_t gl_unzig(uint32_t z);

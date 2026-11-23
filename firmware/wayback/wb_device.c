@@ -4,6 +4,7 @@
  * from its end, draws and closes. Contract and addresses: firmware/wayback/README.md. */
 #include "wayback.h"
 #include "wb_grey_draw.h"
+#include "wb_far.h"
 #include "elev.h"
 #include "elev_font.h"
 
@@ -73,11 +74,11 @@ static int wbd_file(void *vctx, uint32_t off, void *dst, uint32_t n) { return wb
 /* Mounts the data at the file end, runs one tick and reads the line. Returns 0 with n points, or a code. */
 static uint32_t wbd_core(wbd_ctx *, uint32_t, uint8_t *, const float *, float *, uint32_t *, uint32_t *);   /* *n bit 31: the line is cut */
 /* Trailer v2 (cc27), the last 64 bytes: "CCWS", count 1..4, 4 x {type, offset, size}, file length, 0. One read. The
- * sections must lie before the trailer and must not overlap; a type occurs once; types above 3 are ignored. */
-typedef struct { uint32_t at[4], size[4]; } wbd_secs;            /* index = type: 1 way-back, 2 grey, 3 elevation (the chart) */
+ * sections must lie before the trailer and must not overlap; a type occurs once; types above 4 are ignored. */
+typedef struct { uint32_t at[5], size[5]; } wbd_secs;            /* index = type: 1 way-back, 2 grey, 3 elevation (the chart), 4 far map */
 static int wbd_secs_read(void *fp, wbd_secs *s) {
   uint8_t t[64]; uint32_t i, j, n, total;
-  for (i = 0; i < 4u; i++) { s->at[i] = 0; s->size[i] = 0; }
+  for (i = 0; i < 5u; i++) { s->at[i] = 0; s->size[i] = 0; }
   if (fw_fseek(fp, -64, 2) != 0 || fw_fread(t, 1u, 64u, fp) != 64u || wb_u32(t) != 0x53574343u) return 0;
   n = wb_u32(t + 4); total = wb_u32(t + 56);
   if (n < 1u || n > 4u || total < 64u) return 0;
@@ -85,7 +86,7 @@ static int wbd_secs_read(void *fp, wbd_secs *s) {
     uint32_t ty = wb_u32(t + 8 + 12 * i), at = wb_u32(t + 12 + 12 * i), sz = wb_u32(t + 16 + 12 * i);
     if (!sz || at > total - 64u || sz > total - 64u - at) return 0;
     for (j = 0; j < i; j++) { uint32_t a2 = wb_u32(t + 12 + 12 * j), s2 = wb_u32(t + 16 + 12 * j); if (at < a2 + s2 && a2 < at + sz) return 0; }
-    if (ty >= 1u && ty <= 3u) { if (s->size[ty]) return 0; s->at[ty] = at; s->size[ty] = sz; }
+    if (ty >= 1u && ty <= 4u) { if (s->size[ty]) return 0; s->at[ty] = at; s->size[ty] = sz; }
   }
   return 1;
 }
@@ -95,7 +96,7 @@ static __attribute__((noinline)) uint32_t wbd_run(wbd_ctx *c, const float *pos, 
   if (wb_size() > 128u + 8u * (sizeof(void *) - 4)) return WBD_NODATA;
   if (!wbd_secs_read(c->fp, &sec) || !sec.size[1]) return WBD_NODATA;
   c->base = sec.at[1]; c->gat = sec.at[2]; c->gsize = sec.size[2];
-  if (sec.size[2]) {
+  if (sec.size[2] && !sec.size[4]) {                         /* far map (23 Nov): it draws the far streets in cc_iter */
     c->buf = (uint8_t *)fw_malloc(GL_BUF, CAPS_PSRAM);
     c->nomem = !c->buf;
   }
@@ -148,6 +149,38 @@ static uint32_t wbd_core(wbd_ctx *cp, uint32_t i, uint8_t *t, const float *pos, 
   if (i == WBD_POINTS && wb_read_point(e, WBD_POINTS, p)) *n |= 0x80000000u;   /* more points: the first 32 from the rider, text '+' */
   wbd_grey(cp, e, in.lat_e7, in.lon_e7);                       /* after the line points: a slow grey never costs the line */
   return 0;
+}
+
+/* Far map (23 Nov): called at the start of cc_iter, before the block lock, in every map frame. Opens the route file,
+ * draws section 4 under the detail map, closes. anchor: the screen point of (lat, lon) E7 through the map projection.
+ * Returns -1 = no far map (no section, no position, busy lock, low stack), else the fm_stat stop (0 = all drawn). *ms:
+ * the time of this call. */
+#define FAR_US 60000u
+typedef int (*wbd_anchor_fn)(void *ctx, const int32_t ll[2], pt_t *s);
+static uint32_t wbd_clock(void) { return fw_clock(); }
+int wb_far(wbd_anchor_fn anchor, void *actx, uint32_t *ms) {
+  char name[128]; float pos[2]; wbd_ctx c; wbd_secs sec; fm_layer f; fm_stat st; vw_t v; pt_t s[4]; rs_canvas cv;
+  uint32_t x, y, i, mode = 0x00006272u; int rc = -1, found; float head = FW_MAP_HEAD;
+  c.t0 = fw_clock(); c.late = 0; c.reads = 0; c.buf = 0; *ms = 0;
+  if (fw_stack() < WBD_STACK || !wbd_pos(pos) || (found = wbd_path(name)) <= 0) return -1;
+  if (!(c.fp = fw_fopen(name, (const char *)&mode))) return -1;
+  if (wbd_secs_read(c.fp, &sec) && sec.size[4] && head >= -360.0f && head <= 720.0f && (c.buf = (uint8_t *)fw_malloc(GL_BUF, CAPS_PSRAM)) &&
+      fm_open(&f, wbd_file, &c, sec.at[4], sec.size[4], c.buf) && fm_units(&f, (int32_t)(pos[0] * 1e7f), (int32_t)(pos[1] * 1e7f), &x, &y)) {
+    for (i = 0; i < 4u; i++) {
+      int32_t ll[2];
+      fm_point(&f, (int32_t)(x + (i & 1u) * (uint32_t)VW_REF), (int32_t)(y + (i >> 1) * (uint32_t)VW_REF), ll);
+      if (!anchor(actx, ll, &s[i])) break;
+    }
+    cv.buf = FW_CANVAS_BUF; cv.w = (int16_t)FW_CANVAS_W; cv.h = (int16_t)FW_CANVAS_H;
+    if (i == 4u && cv.buf && vw_fit(&v, (int32_t)x, (int32_t)y, s)) {
+      fm_draw(&f, &cv, &v, x, y, (uint32_t)(int32_t)(810.5f - head) % 360u, wbd_clock, c.t0, FAR_US, &st);
+      rc = (int)st.stop;
+    }
+  }
+  if (c.buf) fw_free(c.buf);
+  fw_fclose(c.fp);
+  *ms = (fw_clock() - c.t0) / 1000u;
+  return rc;
 }
 
 /* Off-route frame: check stack, read switches and position, open the file, draw, close and report. */
