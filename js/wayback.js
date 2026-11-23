@@ -4,7 +4,7 @@
 // Test feature: only the way-back test firmware reads the trailer. No trailer is written when any step fails.
 import {routingQuery, captureRoutingSnapshot} from './routing_snapshot.js';
 import {buildTransitionGraph} from './recovery_transitions.js';
-import {conservativeWayPolicy} from './recovery_graph.js';
+import {exitWayPolicy} from './recovery_graph.js';
 import {buildWaybackModel, REACH} from './wayback_tree.js';
 import {encodeWayback, encodeWaybackV3, decodeWayback, makeFrame} from './wayback_format.js';
 import {greyFlags} from './wayback_grey.js';
@@ -35,7 +35,7 @@ function greyOf(bare, caps) {
 
 const sha256 = async bytes => new Uint8Array(await crypto.subtle.digest('SHA-256', bytes));
 const hex = bytes => [...bytes].map(b => b.toString(16).padStart(2, '0')).join('');
-const wayPolicy = t => t.motorroad && t.motorroad !== 'no' ? {reason: 'motorroad-not-admitted'} : conservativeWayPolicy(t);
+const wayPolicy = t => t.motorroad && t.motorroad !== 'no' ? {reason: 'motorroad-not-admitted'} : exitWayPolicy(t);
 
 // Route identity of the way-back file: the first 16 bytes of the SHA-256 of the route file.
 export async function routeIdentity(routeBytes) { return (await sha256(routeBytes)).subarray(0, 16); }

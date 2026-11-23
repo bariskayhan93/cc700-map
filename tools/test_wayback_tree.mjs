@@ -91,3 +91,27 @@ test('line3k keeps a street 2,900 m from the route and line2k does not; line1k s
   assert.ok(!has(buildWaybackModel(g, r, {reach: 'line2k'}), 2900));
   assert.ok(has(buildWaybackModel(g, r, {reach: 'line1k'}), 1000) && !has(buildWaybackModel(g, r, {reach: 'line1k'}), 1100));
 });
+
+// Exit edges (far map design, 23 Nov): a track with no bicycle tag leads out, never in.
+test('exit policy: an untagged track or path is an exit edge, an explicit no stays out', async () => {
+  const {exitWayPolicy} = await import('../js/recovery_graph.js');
+  assert.equal(exitWayPolicy({highway: 'track'}).exit, true);
+  assert.equal(exitWayPolicy({highway: 'path'}).exit, true);
+  assert.equal(exitWayPolicy({highway: 'bridleway'}).exit, true);
+  assert.equal(exitWayPolicy({highway: 'track', bicycle: 'no'}).reason, 'bicycle-access-not-admitted');
+  assert.equal(exitWayPolicy({highway: 'track', access: 'private'}).reason, 'access-not-admitted');
+  assert.equal(exitWayPolicy({highway: 'footway'}).reason, 'highway-needs-explicit-bicycle-access');
+  assert.equal(exitWayPolicy({highway: 'residential'}).exit, undefined);
+});
+test('a street node never takes its next over an exit edge; a track node leads out along the track', async () => {
+  const {makeGraph} = await import('./wayback_fixture.mjs');
+  // route y = 0 from x -500 to 500; street A(0,500) -> (-300,500) -> (-300,0): 800 m; track A -> (0,0): 500 m
+  const g = makeGraph([[-500, 0], [0, 0], [500, 0], [-300, 0], [0, 500], [-300, 500], [300, 500]], [[0, 3], [3, 1], [1, 2], [4, 5], [5, 3]]);
+  const ex = (i, j) => { for (const [a, b] of [[i, j], [j, i]]) g.edges.push({from: a, to: b, meters: hav(g.nodes[a].point, g.nodes[b].point), exit: true}); };
+  ex(4, 1); ex(6, 4);                                               // track A-(0,0), track (300,500)-A
+  const r = [{point: p(-500, 0), progress: 0}, {point: p(500, 0), progress: 100000}];
+  const m = buildWaybackModel(g, r, {reach: 'line2k'});
+  assert.equal(m.nodes[at(m, 0, 500)].next, at(m, -100, 500), 'street node A keeps the street');
+  assert.equal(m.nodes[at(m, 0, 200)].next, at(m, 0, 100), 'track node leads out along the track');
+  assert.equal(m.nodes[at(m, 300, 500)].next, at(m, 200, 500), 'track-only node leads to the street node');
+});

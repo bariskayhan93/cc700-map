@@ -17,6 +17,12 @@ export function conservativeWayPolicy(t){
  if(!['yes','1','true','-1','no','0','false'].includes(direction))return {reason:'unknown-direction'};
  return {forward:direction!=='-1',backward:['no','0','false','-1'].includes(direction)};
 }
+// Way-back data (far map design, 23 Nov): a track, path or bridleway whose only failure is the missing explicit bicycle
+// access is an exit edge. The tree uses it only to lead a rider out of such a way, never into it.
+export function exitWayPolicy(t){
+ const p=conservativeWayPolicy(t);
+ return p.reason==='highway-needs-explicit-bicycle-access'&&['track','path','bridleway'].includes(t.highway)?{forward:true,backward:true,exit:true}:p;
+}
 export function buildCandidateGraph(source,{wayPolicy=conservativeWayPolicy}={}){
  const s=mergeNavigationSources([{key:'input',source}]),badNodes=new Set(s.issues.filter(i=>i.code==='conflicting-node').map(i=>i.node));
  const nodes=new Map(),edges=[],excluded=[];
@@ -27,8 +33,9 @@ export function buildCandidateGraph(source,{wayPolicy=conservativeWayPolicy}={})
   for(let i=1;i<w.nodes.length;i++){
    const a=w.nodes[i-1],b=w.nodes[i];if(a===b)continue;
    const meters=hav(w.pts[i-1],w.pts[i]);
-   if(p.forward)edges.push({from:a,to:b,way:w.id,meters});
-   if(p.backward)edges.push({from:b,to:a,way:w.id,meters});
+   const x=p.exit?{exit:true}:{};
+   if(p.forward)edges.push({from:a,to:b,way:w.id,meters,...x});
+   if(p.backward)edges.push({from:b,to:a,way:w.id,meters,...x});
   }
  }
  edges.sort((a,b)=>a.from-b.from||a.to-b.to||a.way-b.way);

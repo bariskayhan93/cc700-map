@@ -78,7 +78,8 @@ function splitGraph(graph, pts) {
     if (iu === undefined || iv === undefined) throw new Error('edge names a missing node');
     if (iu === iv) continue;
     const m = e.meters;
-    if (m <= SPLIT_M) { edges.push({u: iu, v: iv, m}); continue; }
+    const x = e.exit ? {exit: true} : {};
+    if (m <= SPLIT_M) { edges.push({u: iu, v: iv, m, ...x}); continue; }
     const lo = Math.min(iu, iv), hi = Math.max(iu, iv), key = lo + '|' + hi;
     let chain = chains.get(key);
     if (!chain) {
@@ -94,7 +95,7 @@ function splitGraph(graph, pts) {
     }
     const seq = iu === lo ? chain : [...chain].reverse();
     const piece = m / (chain.length - 1);
-    for (let j = 0; j + 1 < seq.length; j++) edges.push({u: seq[j], v: seq[j + 1], m: piece});
+    for (let j = 0; j + 1 < seq.length; j++) edges.push({u: seq[j], v: seq[j + 1], m: piece, ...x});
   }
   return {edges, index};
 }
@@ -227,11 +228,15 @@ export function buildWaybackModel(graph, route, {reach = 'line2k', exceptions = 
   for (const e of edges) { outAdj[e.u].push(e); inAdj[e.v].push(e); }
   const dist = new Float64Array(N).fill(Infinity), next = new Int32Array(N).fill(-1);
   const heap = new MinHeap();
+  // Exit edges (23 Nov): a node with an admitted edge never takes its next over an exit edge.
+  const admitted = new Uint8Array(N);
+  for (const e of edges) if (!e.exit) admitted[e.u] = admitted[e.v] = 1;
   for (let i = 0; i < N; i++) if (onRoute[i]) { dist[i] = 0; heap.push(0, i); }
   while (heap.size) {
     const [d, v] = heap.pop();
     if (d > dist[v]) continue;
     for (const e of inAdj[v]) {
+      if (e.exit && admitted[e.u]) continue;
       const nd = d + e.m;
       if (nd < dist[e.u]) { dist[e.u] = nd; next[e.u] = v; heap.push(nd, e.u); }
     }
