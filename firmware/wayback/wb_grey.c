@@ -14,9 +14,6 @@
 #define GL_HALF_L 4960                /* half the screen length: (520 m ahead + 100 m behind) / 2 */
 #define GL_MID 3360                   /* the screen centre is 210 m ahead of the rider */
 
-static uint32_t gl_u32(const uint8_t *p) {
-  return (uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
-}
 static int32_t gl_abs(int32_t v) { return v < 0 ? -v : v; }
 
 /* sin(d degrees) x 4096, Bhaskara I approximation: error below 0.2%, integer only. */
@@ -29,10 +26,10 @@ int gl_open(gl_layer *l, wb_reader rd, void *ctx, uint32_t at, uint32_t size, ui
   const uint8_t *h = buf;
   uint32_t shift;
   if (!buf || size < GL_HEAD || !rd(ctx, at, buf, size < GL_DIR_END ? size : GL_DIR_END)) return 0;
-  if (gl_u32(h) != 0x4C474343u || h[4] != 12u || h[5] != 3u || h[6] != 2u || h[7] < 4u || h[7] > 6u) return 0;   /* "CCGL" */
+  if (wb_u32(h) != 0x4C474343u || h[4] != 12u || h[5] != 3u || h[6] != 2u || h[7] < 4u || h[7] > 6u) return 0;   /* "CCGL" */
   shift = h[7];
   l->rd = rd; l->ctx = ctx; l->at = at; l->size = size; l->buf = buf;
-  l->n = gl_u32(h + 8); l->body = gl_u32(h + 12); l->pix_cap = gl_u32(h + 16); l->pt_cap = gl_u32(h + 20); l->m = gl_u32(h + 24);
+  l->n = wb_u32(h + 8); l->body = wb_u32(h + 12); l->pix_cap = wb_u32(h + 16); l->pt_cap = wb_u32(h + 20); l->m = wb_u32(h + 24);
   l->stride = 1u << shift;
   if (!l->n || l->n > (256u << shift) || l->m != (l->n + l->stride - 1u) >> shift) return 0;
   return l->body <= size && size - l->body == GL_HEAD + 4u * l->m + 8u * (l->n + 1u);
@@ -117,20 +114,20 @@ int gl_lines(gl_layer *l, const uint32_t *cells, uint32_t n, gl_fn fn, void *ctx
     for (t = 0u; t < i && (cells[t] >> 16) != cy; t++) {}
     if (t < i) continue;
     for (t = i + 1u; t < n; t++) if ((cells[t] >> 16) == cy && cells[t] < lo) lo = cells[t];
-    for (j = 0u; j + 1u < l->m && gl_u32(l->buf + GL_HEAD + 4u * (j + 1u)) <= lo; j++) {}
+    for (j = 0u; j + 1u < l->m && wb_u32(l->buf + GL_HEAD + 4u * (j + 1u)) <= lo; j++) {}
     start = j * l->stride;
     cnt = l->n + 1u - start;
     if (cnt > GL_RECS) cnt = GL_RECS;
     if (!l->rd(l->ctx, l->at + tab + 8u * start, l->buf + GL_REC_AT, 8u * cnt)) return 0;
     for (t = i; t < n; t++) {
       if ((cells[t] >> 16) != cy) continue;
-      for (r = 0u; r < cnt && gl_u32(rec + 8u * r) != cells[t]; r++) {}
+      for (r = 0u; r < cnt && wb_u32(rec + 8u * r) != cells[t]; r++) {}
       if (r == cnt) {                                /* no body; unknown when the read stopped before the key */
-        if (gl_u32(rec + 8u * (cnt - 1u)) < cells[t]) return 0;
+        if (wb_u32(rec + 8u * (cnt - 1u)) < cells[t]) return 0;
         continue;
       }
       if (r + 1u == cnt) return 0;                    /* the end record is not read */
-      o = gl_u32(rec + 8u * r + 4u); e = gl_u32(rec + 8u * r + 12u);
+      o = wb_u32(rec + 8u * r + 4u); e = wb_u32(rec + 8u * r + 12u);
       if (e < o || e > l->body || e - o > GL_BODY) return 0;
       off[t] = o; len[t] = e - o;
     }

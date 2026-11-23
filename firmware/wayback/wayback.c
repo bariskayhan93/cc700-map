@@ -52,7 +52,7 @@ static uint32_t rd_u24(const uint8_t *p) {
   return (uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16);
 }
 
-static uint32_t rd_u32(const uint8_t *p) {
+uint32_t wb_u32(const uint8_t *p) {
   return (uint32_t)p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24);
 }
 
@@ -100,7 +100,7 @@ void wb_point(const wb_grid *g, uint32_t x, uint32_t y, int32_t point_e7[2]) {
  * caller (load_node). */
 typedef struct { uint32_t x, y, next, dist, grey; } wb_node;
 static void node_parse(uint32_t n, const uint8_t *r, wb_node *o) {
-  uint32_t lo = rd_u32(r), hi = rd_u32(r + 4), d = (hi >> 6) & 0x1FFFu;
+  uint32_t lo = wb_u32(r), hi = wb_u32(r + 4), d = (hi >> 6) & 0x1FFFu;
   o->x = 2u * (lo & 0x7FFFFu);
   o->y = 2u * ((lo >> 19) | ((hi & 0x3Fu) << 13));
   o->next = d == 0u ? WB_NIL : (uint32_t)((int32_t)n + (d >= 4096u ? (int32_t)d - 8192 : (int32_t)d));
@@ -123,7 +123,7 @@ static int find_row(const wb_engine *e, uint32_t key, uint32_t *at) {
   while (lo < hi) {
     uint32_t mid = lo + (hi - lo) / 2u;
     if (!rd(e, WB_HEADER_BYTES + mid * WB_CELL_BYTES, r, 4u)) return 0;
-    if (rd_u32(r) < key) lo = mid + 1u;
+    if (wb_u32(r) < key) lo = mid + 1u;
     else hi = mid;
   }
   *at = lo;
@@ -176,11 +176,11 @@ int wb_mount(wb_engine *e, wb_reader r, void *ctx, uint32_t file_bytes, const ui
   flags = rd_u16(h + 6);
   if (flags & 1u) return 0;                              /* version 2 has no exception lists */
   for (i = 0; i < 16u; i++) if (h[8 + i] != route_id[i]) return 0;
-  if (rd_u32(h + 32) == 0u || rd_u32(h + 36) == 0u || rd_u32(h + 40) == 0u || rd_u32(h + 44) == 0u) return 0;
-  node_count = rd_u32(h + 48);
-  cell_count = rd_u32(h + 52);
-  extra_count = rd_u32(h + 56);
-  chunk_count = rd_u32(h + 60);
+  if (wb_u32(h + 32) == 0u || wb_u32(h + 36) == 0u || wb_u32(h + 40) == 0u || wb_u32(h + 44) == 0u) return 0;
+  node_count = wb_u32(h + 48);
+  cell_count = wb_u32(h + 52);
+  extra_count = wb_u32(h + 56);
+  chunk_count = wb_u32(h + 60);
   if (chunk_count != 0u) return 0;                       /* version 2 has no exception lists */
   if (node_count >= 0xFFFFFFu || extra_count >= 0xFFFFFFu || cell_count > node_count) return 0;
 
@@ -192,14 +192,14 @@ int wb_mount(wb_engine *e, wb_reader r, void *ctx, uint32_t file_bytes, const ui
 
   /* The sentinel cell record must follow the last cell: key, node count and extra count. */
   if (!rd(e, off_cells + cell_count * WB_CELL_BYTES, s, WB_CELL_BYTES)) return 0;
-  if (rd_u32(s) != 0xFFFFFFFFu || rd_u32(s + 4) != node_count || rd_u32(s + 8) != extra_count) return 0;
+  if (wb_u32(s) != 0xFFFFFFFFu || wb_u32(s + 4) != node_count || wb_u32(s + 8) != extra_count) return 0;
 
-  e->lat0_e7 = (int32_t)rd_u32(h + 24);
-  e->lon0_e7 = (int32_t)rd_u32(h + 28);
-  e->lat_u = rd_u32(h + 32);
-  e->lon_u = rd_u32(h + 36);
-  e->lat_e = rd_u32(h + 40);
-  e->lon_e = rd_u32(h + 44);
+  e->lat0_e7 = (int32_t)wb_u32(h + 24);
+  e->lon0_e7 = (int32_t)wb_u32(h + 28);
+  e->lat_u = wb_u32(h + 32);
+  e->lon_u = wb_u32(h + 36);
+  e->lat_e = wb_u32(h + 40);
+  e->lon_e = wb_u32(h + 44);
   e->node_count = node_count;
   e->cell_count = cell_count;
   e->extra_count = extra_count;
@@ -227,9 +227,9 @@ int wb_scan(wb_engine *e, uint32_t cx0, uint32_t cy0, uint32_t cx1, uint32_t cy1
     cnt = e->cell_count + 1u - at;
     if (cnt > WB_ROW_CELLS) cnt = WB_ROW_CELLS;
     if (!rd(e, WB_HEADER_BYTES + at * WB_CELL_BYTES, cb, cnt * WB_CELL_BYTES)) return 0;
-    for (c = 0u; c + 1u < cnt && rd_u32(cb + c * WB_CELL_BYTES) <= khi; c++) {
+    for (c = 0u; c + 1u < cnt && wb_u32(cb + c * WB_CELL_BYTES) <= khi; c++) {
       const uint8_t *q = cb + c * WB_CELL_BYTES;
-      uint32_t n0 = rd_u32(q + 4), n1 = rd_u32(q + 16), x0c = rd_u32(q + 8), x1c = rd_u32(q + 20), i, k, m;
+      uint32_t n0 = wb_u32(q + 4), n1 = wb_u32(q + 16), x0c = wb_u32(q + 8), x1c = wb_u32(q + 20), i, k, m;
       if (n1 > e->node_count || x1c > e->extra_count) return 0;
       for (i = n0; i < n1; i += m) {
         m = n1 - i;

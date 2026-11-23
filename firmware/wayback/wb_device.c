@@ -66,7 +66,6 @@ static int wbd_at(wbd_ctx *c, uint32_t off, void *dst, uint32_t n) {
 }
 static int wbd_read(void *vctx, uint32_t off, void *dst, uint32_t n) { wbd_ctx *c = (wbd_ctx *)vctx; return wbd_at(c, c->base + off, dst, n); }
 static int wbd_file(void *vctx, uint32_t off, void *dst, uint32_t n) { return wbd_at((wbd_ctx *)vctx, off, dst, n); }
-static uint32_t le32(const uint8_t *p) { return p[0] | ((uint32_t)p[1] << 8) | ((uint32_t)p[2] << 16) | ((uint32_t)p[3] << 24); }
 
 /* Mounts the data at the file end, runs one tick and reads the line. Returns 0 with n points, or a code. */
 static uint32_t wbd_core(wbd_ctx *, uint32_t, uint8_t *, const float *, float *, uint32_t *, uint32_t *);   /* *n bit 31: the line is cut */
@@ -76,13 +75,13 @@ typedef struct { uint32_t at[4], size[4]; } wbd_secs;            /* index = type
 static int wbd_secs_read(void *fp, wbd_secs *s) {
   uint8_t t[64]; uint32_t i, j, n, total;
   for (i = 0; i < 4u; i++) { s->at[i] = 0; s->size[i] = 0; }
-  if (fw_fseek(fp, -64, 2) != 0 || fw_fread(t, 1u, 64u, fp) != 64u || le32(t) != 0x53574343u) return 0;
-  n = le32(t + 4); total = le32(t + 56);
+  if (fw_fseek(fp, -64, 2) != 0 || fw_fread(t, 1u, 64u, fp) != 64u || wb_u32(t) != 0x53574343u) return 0;
+  n = wb_u32(t + 4); total = wb_u32(t + 56);
   if (n < 1u || n > 4u || total < 64u) return 0;
   for (i = 0; i < n; i++) {
-    uint32_t ty = le32(t + 8 + 12 * i), at = le32(t + 12 + 12 * i), sz = le32(t + 16 + 12 * i);
+    uint32_t ty = wb_u32(t + 8 + 12 * i), at = wb_u32(t + 12 + 12 * i), sz = wb_u32(t + 16 + 12 * i);
     if (!sz || at > total - 64u || sz > total - 64u - at) return 0;
-    for (j = 0; j < i; j++) { uint32_t a2 = le32(t + 12 + 12 * j), s2 = le32(t + 16 + 12 * j); if (at < a2 + s2 && a2 < at + sz) return 0; }
+    for (j = 0; j < i; j++) { uint32_t a2 = wb_u32(t + 12 + 12 * j), s2 = wb_u32(t + 16 + 12 * j); if (at < a2 + s2 && a2 < at + sz) return 0; }
     if (ty >= 1u && ty <= 3u) { if (s->size[ty]) return 0; s->at[ty] = at; s->size[ty] = sz; }
   }
   return 1;

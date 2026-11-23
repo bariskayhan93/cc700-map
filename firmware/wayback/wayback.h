@@ -1,6 +1,7 @@
 #pragma once
 #include <stdint.h>
 #include <stddef.h>
+uint32_t wb_u32(const uint8_t *p);                                          /* little-endian 32-bit word */
 typedef int (*wb_reader)(void *ctx, uint32_t offset, void *dst, uint32_t bytes); /* 1 = ok, 0 = failed */
 typedef struct wb_engine wb_engine;
 enum { WB_NONE = 0, WB_LINE = 1 };                                             /* state */

@@ -18,7 +18,7 @@ const exe = path.join(work, 'grey');
 const W = d => path.join(root, 'firmware', d);
 execFileSync('cc', ['-std=gnu11', '-O1', '-g', '-Wall', '-Wextra', '-Werror', '-DHOST', '-fsanitize=address,undefined',
   '-fno-sanitize-recover=all', '-I', W('common'), '-I', W('raster'), '-I', W('view'), '-I', W('wayback'),
-  path.join(root, 'tools/grey_host.c'), W('wayback/wb_grey.c'), W('wayback/wb_grey_draw.c'), W('raster/raster.c'),
+  path.join(root, 'tools/grey_host.c'), W('wayback/wb_grey.c'), W('wayback/wayback.c'), W('wayback/wb_grey_draw.c'), W('raster/raster.c'),
   W('view/view.c'), '-lm', '-o', exe], {stdio: ['ignore', 'pipe', 'pipe']});
 
 // A 60 m street grid of 21 x 21 crossings with its corner at (40000, 40000) units; the layer starts 100 B into its file.
