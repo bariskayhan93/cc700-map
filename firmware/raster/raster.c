@@ -14,12 +14,16 @@ static uint16_t rs_blend(uint16_t s, uint16_t d, uint32_t a) {
   uint32_t b = rs_div255(((uint32_t)s & 31u) * a + ((uint32_t)d & 31u) * (255u - a));
   return (uint16_t)((r << 11) | (g << 5) | b);
 }
-static void rs_put(const rs_canvas *c, int x, int y, uint16_t col, uint8_t opa) {
+/* pixel (x, y) (or (y, x) when swap) with coverage cov of 256 */
+static void rs_cov(const rs_canvas *c, int x, int y, int swap, uint32_t cov, uint16_t col, uint8_t opa) {
   uint16_t *q;
-  if (x < 0 || y < 0 || x >= c->w || y >= c->h) return;
+  if (swap) { int t = x; x = y; y = t; }
+  if (!cov || x < 0 || y < 0 || x >= c->w || y >= c->h) return;
   q = c->buf + y * c->w + x;
-  *q = opa == 255 ? col : rs_blend(col, *q, opa);
+  if (cov >= 256u) *q = opa == 255 ? col : rs_blend(col, *q, opa);
+  else *q = rs_blend(col, *q, (cov * opa + 128u) >> 8);
 }
+static void rs_put(const rs_canvas *c, int x, int y, uint16_t col, uint8_t opa) { rs_cov(c, x, y, 0, 256u, col, opa); }
 static int rs_abs(int v) { return v < 0 ? -v : v; }
 /* span width across the minor axis for a segment of width w (see raster.h) */
 static int rs_span(int dx, int dy, int w) {
@@ -68,15 +72,6 @@ void rs_line(const rs_canvas *c, const pt_t *p, uint32_t n, int w, uint16_t col,
 }
 
 /* ---------- cc28 smooth lines ---------- */
-/* pixel (x, y) (or (y, x) when swap) with coverage cov of 256 */
-static void rs_cov(const rs_canvas *c, int x, int y, int swap, uint32_t cov, uint16_t col, uint8_t opa) {
-  uint16_t *q;
-  if (swap) { int t = x; x = y; y = t; }
-  if (!cov || x < 0 || y < 0 || x >= c->w || y >= c->h) return;
-  q = c->buf + y * c->w + x;
-  if (cov >= 256u) *q = opa == 255 ? col : rs_blend(col, *q, opa);
-  else *q = rs_blend(col, *q, (cov * opa + 128u) >> 8);
-}
 /* One segment as a slab of columns along the major axis u; v is the minor axis. Columns u0 .. u1, less the end
  * column when open. Centre v(u) = v0 + (u - u0) * dv / du, exact floor of the magnitude (Q16), so collinear
  * segments give the same centres. w in half pixels. Half height hv = w / 4 * len / du (Q16). */
