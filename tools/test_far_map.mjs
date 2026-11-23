@@ -81,3 +81,16 @@ assert(fit.removedLines > 0);
 const kept = c => fit.cells.flatMap(x => x.items).filter(i => i.cls === c).length;
 assert(kept(FAR.MAIN) > kept(FAR.PATH), 'paths go before main roads');
 ok('fit to the caps');
+
+// 7. owner decision 23 Nov (option 1): the far map reach is at most 2 km; the violet line keeps 3 km
+{
+  const {FAR_REACH_MAX} = await import('../js/far_map.js');
+  assert.equal(FAR_REACH_MAX, 2000);
+  const w = {snapshot: {nodes: [{id: 1, point: P(1000, 2500)}, {id: 2, point: P(1200, 2500)}, {id: 3, point: P(1000, 1500)}, {id: 4, point: P(1200, 1500)}],
+    ways: [{tags: {highway: 'residential'}, nodes: [1, 2]}, {tags: {highway: 'residential'}, nodes: [3, 4]}]},
+    bbox: [P(0, -3200)[0], P(-3200, 0)[1], P(0, 3200)[0], P(7200, 0)[1]], route: route.map(p => ({point: p})), reach: 'line3k'};
+  const {farSection: fs} = await import('../js/far_map.js'), out = readFar(fs(w, {areas: [], waterLines: []}).bytes);
+  const ys = out.cells.flatMap(c => c.items.flatMap(i => i.pts.map(p => p[1]))), y0 = (Math.round(route[0][0] * 1e7) - out.frame.lat0E7) * out.frame.latU / 65536;
+  assert(ys.length && ys.every(y => (y - y0) / U <= 2050), 'nothing beyond 2 km');
+  ok('far reach at most 2 km');
+}

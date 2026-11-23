@@ -8,6 +8,7 @@ import {REACH} from './wayback_tree.js';
 
 export const FAR = {MAIN: 0, MINOR: 1, CYCLE: 2, TRACK: 3, PATH: 4, WATERLINE: 5, WATER: 8, FOREST: 9, GREEN: 10};
 export const FAR_CAPS = {pixCap: 60000, ptCap: 2048, fillCap: 61440};
+export const FAR_REACH_MAX = 2000;   // owner, 23 Nov (option 1): the far map stays inside 2 km; the violet line keeps 3 km
 const MAGIC = [0x43, 0x43, 0x46, 0x4D];          // "CCFM"
 const VERSION = 1, CELL_SHIFT = 12, Q_SHIFT = 3, CELL = 1 << CELL_SHIFT, Q = 1 << Q_SHIFT, U_M = 16;
 const MAX_POINTS = 32, MAX_RING = 64, MAX_BODY = 2048, MAX_CELLS = 16384, MAX_KEYS = 256, HEADER = 48, ENTRY = 8, SENTINEL = 0xFFFFFFFF;
@@ -253,7 +254,7 @@ export function farSection(w, src, caps = FAR_CAPS) {
   const [s, wl, n, e] = w.bbox, frame = makeFrame([[s, wl], [n, e]]), node = new Map(w.snapshot.nodes.map(x => [x.id, x.point]));
   const ways = w.snapshot.ways.map(x => ({tags: x.tags, pts: x.nodes.map(id => node.get(id)).filter(Boolean)}));
   for (const l of src.waterLines) ways.push({tags: l.tags, pts: l.pts});
-  const cells = buildFarCells({ways, areas: src.areas, route: w.route.map(r => r.point), frame, reachM: REACH[w.reach].air});
+  const cells = buildFarCells({ways, areas: src.areas, route: w.route.map(r => r.point), frame, reachM: Math.min(FAR_REACH_MAX, REACH[w.reach].air)});
   if (!cells.length) return null;
   const fit = fitFar(cells, caps);
   return fit.cells.length ? {bytes: encodeFar(fit.cells, caps, frame), removedLines: fit.removedLines, cells: fit.cells.length} : null;
