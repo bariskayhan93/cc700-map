@@ -40,7 +40,7 @@ const lengthOf = l => l.slice(1).reduce((s, p, k) => s + Math.hypot(p[0] - l[k][
 
 // Rider positions of the proof: a step grid (1,024 units = 64 m) over the layer cells and their 8 neighbours, each at
 // `headings` courses. Fixed order: cells by key, then rows, columns, headings.
-function forEachScreen(cells, step, headings, visit) {
+export function forEachScreen(cells, step, headings, visit) {
   const keys = new Set();
   for (const {key} of cells) {
     const cx = key & 0xFFFF, cy = key >>> 16;
