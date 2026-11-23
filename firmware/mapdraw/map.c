@@ -257,68 +257,84 @@ static void map_time(uint32_t ms, uint32_t cut, int pd) {   // pd: F_PROJ check 
   FW_LABEL_COL = old;
 #endif
 }
+// Pass 0: the range of each bucket and the largest point count; the original star lines (style 0) until the stop.
+// *late = 1 when the stop came in this pass.
+static uint32_t scan(proj_cb_t cb, const ent_t *E, uint32_t cnt, entry_range_t ranges[41], uint32_t t0, uint32_t *late) {
+  const float k = 180.0f / 2147483648.0f; uint32_t big = 0;
+  for (uint32_t i = 0; i < cnt; i++, COUNT_ENTRY()) {
+    const ent_t *e = &E[i];
+    int b = bucket(e->style);
+    if (b >= 0) { if (ranges[b].first == cnt) ranges[b].first = i; ranges[b].end = i + 1; }
+    if (e->style) { if (e->cnt > big) big = e->cnt; continue; }
+    if (!*late && fw_clock() - t0 > MAP_FRAME_US) *late = 1;
+    for (uint32_t j = 0; j < e->cnt && !*late; j++) {      // original star line: centre -> point j
+      float l[4] = { (float)e->lat * k, (float)e->lon * k, (float)e->pts[2 * j] * k, (float)e->pts[2 * j + 1] * k };
+      FW_LINE_DSC->dash_width = 0; cb(l, 2);
+    }
+  }
+  return big;
+}
+// Pass 1: the area fills. An outline stays with its fill entry.
+static void draw_fills(proj_cb_t cb, const ent_t *E, const entry_range_t *ranges, uint16_t own, float *buf, const proj_t *P) {
+  for (uint32_t f = 0; f < N_FILLS; f++)
+    for (uint32_t i = ranges[f].first; i < ranges[f].end; i++, COUNT_ENTRY()) if (E[i].style && (E[i].style & 15) == FILLS[f].cls) {
+      draw_entry(cb, &E[i], FILLS[f].op | own, buf, P);
+      if ((FILLS[f].cls == C_GREEN || FILLS[f].cls == C_WATER) && !(E[i].style & 0x400)) draw_entry(cb, &E[i], (FILLS[f].cls == C_GREEN ? 24 : 25) | (own & ~OP_AA), buf, P);   // cc28d: plain 1 px outline
+    }
+}
+// Passes 2..6: the roads, rails and paths of level lv (edges of all roads first, so junctions merge).
+static void draw_level(proj_cb_t cb, const ent_t *E, const entry_range_t *ranges, uint16_t own, float *buf, const proj_t *P, int lv) {
+  for (uint32_t f = 0; f < N_LEVEL; f++)
+    for (uint32_t i = ranges[4+(LEVEL[f].cls-5)*5+lv].first; i < ranges[4+(LEVEL[f].cls-5)*5+lv].end; i++, COUNT_ENTRY()) {
+      uint32_t s = E[i].style;
+      if (!s || (s & 15) != LEVEL[f].cls || (int)((s >> 4) & 7) != lv) continue;
+      uint8_t op = LEVEL[f].op == 11 && (s & 0x200) ? 18 : LEVEL[f].op;
+      if (s & 0x800) op = op == 7 ? 28 : op == 8 ? 29 : op == 9 ? 30 : op == 10 ? 31 : op;   // A2: far from the route
+      uint16_t sel = op | (s & 0x100 ? F_TUNNEL : 0) | own;
+      int edge = LEVEL[f].op == 5 || LEVEL[f].op == 7 || LEVEL[f].op == 9;
+      if (edge && (s & 0x80)) sel |= F_BRIDGE;
+      uint8_t c = s & 15;                                // F2: a path, cycleway or rail bridge gets a solid base
+      if ((s & 0x80) && (c == C_PTH || c == C_CYC || c == C_RAIL)) { draw_entry(cb, &E[i], 26 | own, buf, P); draw_entry(cb, &E[i], 27 | own, buf, P); }
+      draw_entry(cb, &E[i], sel, buf, P);
+    }
+}
+// Pass 7: traffic signals and tram stops: edge, core.
+static void draw_stops(proj_cb_t cb, const ent_t *E, const entry_range_t *r, uint16_t own, float *buf, const proj_t *P) {
+  for (uint32_t i = r->first; i < r->end; i++, COUNT_ENTRY()) {
+    uint32_t c = E[i].style & 15;
+    if (c == C_SIG || c == C_STOP) { draw_entry(cb, &E[i], (c == C_SIG ? 19 : 21) | own, buf, P); draw_entry(cb, &E[i], (c == C_SIG ? 20 : 22) | own, buf, P); }
+  }
+}
+// Pass 8: street names: anchor only, text from the entry.
+static void draw_names(proj_cb_t cb, const ent_t *E, const entry_range_t *r, const proj_t *P) {
+  label_state_t labels; labels.count = 0;
+  for (uint32_t i = r->first; i < r->end; i++, COUNT_ENTRY()) if ((E[i].style & 15) == C_LABEL) {
+    if (P) { float x, y; proj_xy(P, E[i].lat, E[i].lon, &x, &y); pt_t q = { rnd(x), rnd(y) }; text(q, i, fw_color_hex(OPS[23].rgb), &labels); continue; }
+    pt_t q; if (probe(cb, E[i].lat, E[i].lon, &q.x, &q.y)) text(q, i, fw_color_hex(OPS[23].rgb), &labels);
+  }
+}
 void cc_iter(proj_cb_t cb) {
   fw_blk_lock();
   uint32_t cnt = FW_BLK_CNT, t0 = fw_clock(); ent_t *E = FW_BLK_ENTS;
   if (cnt > 0xFFFFu) cnt = 0xFFFFu;                            // the ranges hold 16 bits (a 64 KB block has fewer entries)
   uint32_t flags = blk_flags(E, cnt);                         // cc27: the last entry, 0 without it (cc26)
   uint16_t own = (flags & F_OWN ? OP_OWN | (flags & F_AA ? OP_AA : 0) : 0);   // F_CYC 16 (cc28b) and 32 (F_NODRAW, 23 Nov): retired
-#define LATE() (fw_clock() - t0 > MAP_FRAME_US)                  // B: the rest of this frame is not drawn
-#define STOP(k) if (LATE()) { cut = (k); goto done; }
-  label_state_t labels; labels.count=0; uint32_t cut = 0; int pd = -1; proj_t pj; const proj_t *P = 0;
+  // cc27: the stop (B, MAP_FRAME_US: the rest of this frame is not drawn) is checked only between passes, so a road
+  // never shows its edge without its core. cut = the pass before which it came.
+#define STOP(k) if (fw_clock() - t0 > MAP_FRAME_US) { cut = (k); goto done; }
+  uint32_t cut = 0; int pd = -1; proj_t pj; const proj_t *P = 0;
   entry_range_t ranges[41];
-  for(unsigned r=0;r<41;r++) {ranges[r].first=cnt;ranges[r].end=0;}
+  for (unsigned r = 0; r < 41; r++) { ranges[r].first = cnt; ranges[r].end = 0; }
   if (cnt && E) {
-    const float k = 180.0f / 2147483648.0f; uint32_t big = 0, late = 0;
-    for (uint32_t i = 0; i < cnt; i++, COUNT_ENTRY()) {
-      const ent_t *e = &E[i];
-      int b=bucket(e->style);
-      if(b>=0) {if(ranges[b].first==cnt) ranges[b].first=i;ranges[b].end=i+1;}
-      if (e->style) { if (e->cnt > big) big = e->cnt; continue; }
-      if (!late && LATE()) late = 1;
-      for (uint32_t j = 0; j < e->cnt && !late; j++) {      // original star line: centre -> point j
-        float l[4] = { (float)e->lat * k, (float)e->lon * k, (float)e->pts[2 * j] * k, (float)e->pts[2 * j + 1] * k };
-        FW_LINE_DSC->dash_width = 0; cb(l, 2);
-      }
-    }
+    uint32_t late = 0, big = scan(cb, E, cnt, ranges, t0, &late);
     float *buf = big && !late ? fw_malloc((big + 1) * 8, CAPS_PSRAM) : 0;
     if (late) cut = 1;
     if (buf && (flags & F_PROJ) && own && own_setup(cb, E, cnt, &pj)) { P = &pj; if (flags & F_TEXT) pd = own_check(cb, E, cnt, P); }
     if (buf) {
-      // cc27: the stop is checked only between passes (before the fills, each level, the signals, the names), so a
-      // road never shows its edge without its core. An outline stays with its fill entry.
-      STOP(1)
-      for (uint32_t f = 0; f < N_FILLS; f++)
-        for (uint32_t i = ranges[f].first; i < ranges[f].end; i++, COUNT_ENTRY()) if (E[i].style && (E[i].style & 15) == FILLS[f].cls) {
-          draw_entry(cb, &E[i], FILLS[f].op | own, buf, P);
-          if ((FILLS[f].cls == C_GREEN || FILLS[f].cls == C_WATER) && !(E[i].style & 0x400)) draw_entry(cb, &E[i], (FILLS[f].cls == C_GREEN ? 24 : 25) | (own & ~OP_AA), buf, P);   // cc28d: plain 1 px outline
-        }
-      for (int lv = 0; lv <= 4; lv++) {
-        STOP(2 + lv)
-        for (uint32_t f = 0; f < N_LEVEL; f++)
-          for (uint32_t i = ranges[4+(LEVEL[f].cls-5)*5+lv].first; i < ranges[4+(LEVEL[f].cls-5)*5+lv].end; i++, COUNT_ENTRY()) {
-            uint32_t s = E[i].style;
-            if (!s || (s & 15) != LEVEL[f].cls || (int)((s >> 4) & 7) != lv) continue;
-            uint8_t op = LEVEL[f].op == 11 && (s & 0x200) ? 18 : LEVEL[f].op;
-            if (s & 0x800) op = op == 7 ? 28 : op == 8 ? 29 : op == 9 ? 30 : op == 10 ? 31 : op;   // A2: far from the route
-            uint16_t sel = op | (s & 0x100 ? F_TUNNEL : 0) | own;
-            int edge = LEVEL[f].op == 5 || LEVEL[f].op == 7 || LEVEL[f].op == 9;
-            if (edge && (s & 0x80)) sel |= F_BRIDGE;
-            uint8_t c = s & 15;                                // F2: a path, cycleway or rail bridge gets a solid base
-            if ((s & 0x80) && (c == C_PTH || c == C_CYC || c == C_RAIL)) { draw_entry(cb, &E[i], 26 | own, buf, P); draw_entry(cb, &E[i], 27 | own, buf, P); }
-            draw_entry(cb, &E[i], sel, buf, P);
-          }
-      }
-      STOP(7)
-      for (uint32_t i = ranges[39].first; i < ranges[39].end; i++, COUNT_ENTRY()) {                    // traffic signals and tram stops: edge, core
-        uint32_t c = E[i].style & 15;
-        if (c == C_SIG || c == C_STOP) { draw_entry(cb, &E[i], (c == C_SIG ? 19 : 21) | own, buf, P); draw_entry(cb, &E[i], (c == C_SIG ? 20 : 22) | own, buf, P); }
-      }
-      STOP(8)
-      for (uint32_t i = ranges[40].first; i < ranges[40].end; i++, COUNT_ENTRY()) if ((E[i].style & 15) == C_LABEL) {   // street names: anchor only, text from the entry
-        if (P) { float x, y; proj_xy(P, E[i].lat, E[i].lon, &x, &y); pt_t q = { rnd(x), rnd(y) }; text(q, i, fw_color_hex(OPS[23].rgb), &labels); continue; }
-        pt_t q; if (probe(cb, E[i].lat, E[i].lon, &q.x, &q.y)) text(q, i, fw_color_hex(OPS[23].rgb), &labels);
-      }
+      STOP(1) draw_fills(cb, E, ranges, own, buf, P);
+      for (int lv = 0; lv <= 4; lv++) { STOP(2 + lv) draw_level(cb, E, ranges, own, buf, P, lv); }
+      STOP(7) draw_stops(cb, E, &ranges[39], own, buf, P);
+      STOP(8) draw_names(cb, E, &ranges[40], P);
     done:
       fw_free(buf);
     }
