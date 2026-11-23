@@ -187,18 +187,21 @@ test('el_draw: rows above 237 stay; lens edge, rider mark and lens end at the de
   const f = fileOf('sin45.bin', elevationFromPoints(profile(45000, d => 100 + 20 * Math.sin(d / 700), 10), 4500000));
   const px = canvas('draw', f, 21000);
   for (let y = 0; y < 237; y++) for (let x = 0; x < 240; x++) if (px(x, y) !== bg(x, y)) assert.fail(`pixel ${x},${y} changed`);
-  assert.equal(px(72, 250), RGB(0x1f6fe0));                           // rider line at lx0 72
-  for (let x = 73; x < 168; x++) assert.equal(px(x, 237), RGB(0x202327), `edge ${x}`);
+  for (const x of [71, 72]) assert.equal(px(x, 250), RGB(0x1f6fe0), `rider line ${x}`);   // 2 px line at lx0 72
+  for (const x of [70, 73]) assert.equal(px(x, 250), 0xffff, `rider edge ${x}`);
+  assert.equal(px(68, 237), RGB(0x1f6fe0)); assert.equal(px(67, 237), 0xffff);   // triangle 9 px with a white edge
+  for (let x = 78; x < 168; x++) assert.equal(px(x, 237), RGB(0x202327), `edge ${x}`);
+  assert.equal(px(200, 237), mix(mix(bg(200, 237), 0xffff, 184), RGB(0x202327), 141));   // the bar top line outside the lens
   let dots = 0; for (let y = 238; y <= 255; y++) dots += px(168, y) === RGB(0x6d7279);
   assert(dots >= 8, `dotted lens end ${dots}`);
-  assert.equal(px(104, 238), RGB(0x202327));                          // km tick at lx0 + 32
+  for (let y = 238; y <= 240; y++) assert.equal(px(104, y), RGB(0x202327));   // 3 px km tick at lx0 + 32
 });
 
-test('el_draw: a 7 % ramp in the lens is red; the rest of the route has no grade colour', () => {
+test('el_draw: a 7 % ramp in the lens is orange-red (6-9 %); the rest of the route has no grade colour', () => {
   const f = fileOf('ramp45.bin', elevationFromPoints(profile(45000, d => (d < 22000 ? 50 : d < 22600 ? 50 + 0.07 * (d - 22000) : 92), 10), 4500000));
   const px = canvas('draw', f, 21000);
   let red = 0, ctxRed = 0;
-  for (let y = 238; y <= 255; y++) { for (let x = 72; x < 168; x++) red += px(x, y) === RGB(0xd0182b); for (let x = 169; x < 240; x++) ctxRed += px(x, y) === RGB(0xd0182b); }
+  for (let y = 238; y <= 255; y++) { for (let x = 72; x < 168; x++) red += px(x, y) === RGB(0xe8541e); for (let x = 169; x < 240; x++) ctxRed += px(x, y) === RGB(0xe8541e); }
   assert(red > 0 && ctxRed === 0, `${red} ${ctxRed}`);
 });
 
@@ -206,15 +209,24 @@ test('el_draw: lens columns with no value show only the lens background', () => 
   const pts = [...profile(5000, () => 120, 25), ...profile(5000, () => 130, 25).map(p => ({...p, distance: p.distance + 15000}))];
   const px = canvas('draw', fileOf('gap20.bin', elevationFromPoints(pts, 2000000)), 8000);   // lx0 67
   for (let x = 75; x <= 95; x++) for (let y = 242; y <= 255; y++)
-    assert.equal(px(x, y), mix(mix(bg(x, y), 0xffff, 128), 0xffff, 128), `${x},${y}`);
+    assert.equal(px(x, y), mix(bg(x, y), 0xffff, 184), `${x},${y}`);
+});
+
+test('el_draw: grade colours in the lens: climbs 3-6 / 6-9 / 9+ %, descents 3-6 / 6+ %, flat', () => {
+  const cases = [[0.04, 0xf2a900], [0.10, 0xb5122e], [-0.04, 0x4aa3e8], [-0.07, 0x1460b8]];
+  for (const [g, c] of cases) {
+    const f = fileOf(`g${Math.round(g * 100)}.bin`, elevationFromPoints(profile(45000, d => (d < 22000 ? 300 : d < 22600 ? 300 + g * (d - 22000) : 300 + g * 600), 10), 4500000));
+    const px = canvas('draw', f, 21000);
+    let n = 0, flat = 0; for (let y = 238; y <= 255; y++) for (let x = 74; x < 168; x++) { n += px(x, y) === RGB(c); flat += px(x, y) === RGB(0x3b4049); }
+    assert(n > 0 && flat > 0, `${g}: ${n} ${flat}`);
+  }
 });
 
 test('el_plain: scrim, ridden line dark, rest light, rider mark at 240 P / L', () => {
   const px = canvas('plain', 45000, 22500);
-  assert.equal(px(100, 246), RGB(0x202327));
-  assert.equal(px(200, 246), RGB(0xb7bac0));
-  assert.equal(px(120, 250), RGB(0x1f6fe0));
-  assert.equal(px(10, 240), mix(bg(10, 240), 0xffff, 128));
+  for (let y = 245; y <= 247; y++) { assert.equal(px(100, y), RGB(0x202327)); assert.equal(px(200, y), RGB(0xb7bac0)); }
+  assert.equal(px(120, 250), RGB(0x1f6fe0)); assert.equal(px(119, 250), RGB(0x1f6fe0)); assert.equal(px(121, 250), 0xffff);
+  assert.equal(px(10, 240), mix(bg(10, 240), 0xffff, 184));
   assert.equal(px(10, 236), bg(10, 236));
 });
 

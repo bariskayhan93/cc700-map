@@ -179,17 +179,32 @@ uint16_t el_mix(uint16_t d, uint16_t s, uint32_t a) {
 
 static void el_px(const rs_canvas *cv, int x, int y, uint16_t c) { if (x >= 0 && x < 240 && y >= EL_Y0 && y <= EL_Y1) cv->buf[y * cv->w + x] = c; }
 
-static void el_whiten(const rs_canvas *cv, int x0, int x1) {
+/* Variant 1 (owner choice, 23 Nov): scrim 72 % white over the whole bar. */
+static void el_whiten(const rs_canvas *cv) {
   int x, y;
-  for (y = EL_Y0; y <= EL_Y1; y++) for (x = x0; x < x1; x++) cv->buf[y * cv->w + x] = el_mix(cv->buf[y * cv->w + x], 0xffffu, 128u);
+  for (y = EL_Y0; y <= EL_Y1; y++) for (x = 0; x < 240; x++) cv->buf[y * cv->w + x] = el_mix(cv->buf[y * cv->w + x], 0xffffu, 184u);
 }
 
-/* The rider mark: a 1 px line over the bar and a triangle (rows 7, 5, 3, 1 px) at y 238..241. */
+/* The rider mark: a 2 px blue line (x - 1, x) with a 1 px white edge over the bar, and a blue triangle (rows 9, 7, 5,
+ * 3, 1 px) with a 1 px white edge at y 237..241. */
 static void el_rider(const rs_canvas *cv, int x) {
   int y, i;
   if (x > 239) x = 239;
-  for (y = EL_Y0; y <= EL_Y1; y++) el_px(cv, x, y, RS_RGB(0x1f6fe0u));
-  for (y = 0; y < 4; y++) for (i = -(3 - y); i <= 3 - y; i++) el_px(cv, x + i, 238 + y, RS_RGB(0x1f6fe0u));
+  if (x < 1) x = 1;
+  for (y = EL_Y0; y <= EL_Y1; y++) for (i = -2; i <= 1; i++) el_px(cv, x + i, y, 0xffffu);
+  for (y = 0; y < 5; y++) for (i = -(5 - y); i <= 5 - y; i++) el_px(cv, x + i, EL_Y0 + y, 0xffffu);
+  for (y = 0; y < 5; y++) for (i = -(4 - y); i <= 4 - y; i++) el_px(cv, x + i, EL_Y0 + y, RS_RGB(0x1f6fe0u));
+  for (y = EL_Y0; y <= EL_Y1; y++) { el_px(cv, x - 1, y, RS_RGB(0x1f6fe0u)); el_px(cv, x, y, RS_RGB(0x1f6fe0u)); }
+}
+
+/* Grade colour of a lens column from its highest and lowest rise in dm per 100 m. Climbs first. */
+static uint16_t el_gcol(int32_t gx, int32_t gn) {
+  if (gx >= 90) return RS_RGB(0xb5122eu);
+  if (gx >= 60) return RS_RGB(0xe8541eu);
+  if (gx >= 30) return RS_RGB(0xf2a900u);
+  if (gn <= -60) return RS_RGB(0x1460b8u);
+  if (gn <= -30) return RS_RGB(0x4aa3e8u);
+  return RS_RGB(0x3b4049u);
 }
 
 static int el_y(int32_t e, int32_t lo, int32_t rng) {
@@ -200,46 +215,47 @@ static int el_y(int32_t e, int32_t lo, int32_t rng) {
 void el_draw(const rs_canvas *cv, const el_view *v) {
   uint32_t L = v->len_m, P = v->prog_m < v->len_m ? v->prog_m : v->len_m, d0, d1, d;
   int lx0 = el_lens_x0(L, P), lx1 = el_lens_x1(L, P), x, y, z, yt, yb, k;
-  int32_t llo, lrng, rlo, rrng, lo, hi, g, gm, s0, sr;
+  int32_t llo, lrng, rlo, rrng, lo, hi, g, gx, gn, s0, sr;
   uint16_t c;
   uint32_t a;
   if (!cv->buf || cv->w < 240 || cv->h < 256) return;
-  el_whiten(cv, 0, 240);
-  if (lx1 > lx0) el_whiten(cv, lx0, lx1);
+  el_whiten(cv);
   el_lens_scale(v, &llo, &lrng); el_route_scale(v, &rlo, &rrng);
   for (x = 0; x < 240; x++) {
     z = el_col_range(L, P, x, &d0, &d1);
     if (z == EL_NONE || !el_span(v, d0, d1, z == EL_LENS, &lo, &hi)) continue;
     if (z == EL_LENS && lrng) { s0 = llo; sr = lrng; } else { s0 = rlo; sr = rrng; }
     if (!sr) continue;
-    if (z == EL_PAST) { c = RS_RGB(0xcdd0d4u); a = 141u; }
-    else if (z == EL_CTX) { c = RS_RGB(0x9a9fa6u); a = 67u; }
+    if (z == EL_PAST) { c = RS_RGB(0xc9ccd1u); a = 230u; }
+    else if (z == EL_CTX) { c = RS_RGB(0x8c9198u); a = 154u; }
     else {
-      for (gm = 0, d = d0; d < d1; d += 25u) if ((g = el_grade(v, d)) > gm) gm = g;
-      c = gm >= 60 ? RS_RGB(0xd0182bu) : gm >= 30 ? RS_RGB(0xe07b00u) : RS_RGB(0x3d4148u); a = 67u;
+      for (gx = 0, gn = 0, d = d0; d < d1; d += 25u) { g = el_grade(v, d); if (g > gx) gx = g; if (g < gn) gn = g; }
+      c = el_gcol(gx, gn); a = 154u;
     }
     yt = el_y(hi, s0, sr); yb = el_y(lo, s0, sr);
+    if (yt > yb - 1) yt = yb - 1 < 238 ? 238 : yb - 1;                  /* the top span is at least 2 px */
     for (y = yb + 1; y <= EL_Y1; y++) cv->buf[y * cv->w + x] = el_mix(cv->buf[y * cv->w + x], c, a);
     for (y = yt; y <= yb; y++) cv->buf[y * cv->w + x] = c;
   }
-  for (x = lx0; x < lx1; x++) el_px(cv, x, EL_Y0, RS_RGB(0x202327u));
+  for (x = 0; x < 240; x++)                                           /* the bar top: dark over the lens, 55 % outside */
+    el_px(cv, x, EL_Y0, x >= lx0 && x < lx1 ? RS_RGB(0x202327u) : el_mix(cv->buf[EL_Y0 * cv->w + x], RS_RGB(0x202327u), 141u));
   if (L > EL_LENS_M && lx1 < 240) {
     if (L - P <= EL_LENS_M) for (y = EL_Y0; y <= EL_Y1; y++) el_px(cv, lx1, y, RS_RGB(0x202327u));   /* the route end */
     else for (y = 238; y <= EL_Y1; y += 2) el_px(cv, lx1, y, RS_RGB(0x6d7279u));
   }
   for (k = 1; k <= 2; k++) {                                          /* 1 km and 2 km ahead of the route start or the rider */
     x = L <= EL_LENS_M ? (int)(240u * 1000u * (uint32_t)k / L) : lx0 + 32 * k;
-    if (x < lx1) { el_px(cv, x, 238, RS_RGB(0x202327u)); el_px(cv, x, 239, RS_RGB(0x202327u)); }
+    if (x < lx1) for (y = 238; y <= 240; y++) el_px(cv, x, y, RS_RGB(0x202327u));
   }
   el_rider(cv, lx0);
 }
 
 void el_plain(const rs_canvas *cv, uint32_t L, uint32_t P) {
-  int px, x;
+  int px, x, y;
   if (!cv->buf || cv->w < 240 || cv->h < 256) return;
   if (P > L) P = L;
   px = L ? (int)(240u * P / L) : 0;
-  el_whiten(cv, 0, 240);
-  for (x = 0; x < 240; x++) { el_px(cv, x, 246, x < px ? RS_RGB(0x202327u) : RS_RGB(0xb7bac0u)); el_px(cv, x, 247, x < px ? RS_RGB(0x202327u) : RS_RGB(0xb7bac0u)); }
+  el_whiten(cv);
+  for (x = 0; x < 240; x++) for (y = 245; y <= 247; y++) el_px(cv, x, y, x < px ? RS_RGB(0x202327u) : RS_RGB(0xb7bac0u));
   el_rider(cv, px);
 }
