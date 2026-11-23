@@ -107,17 +107,18 @@ static void cover_check(wb_engine *e, long *cases, long *errors) {
     long found = 0;
     {
       /* A random node of the file and an offset of up to 200 units (12.5 m): most riders are near a street. */
-      uint32_t nx, ny, nn, nd, ng, ni;
+      uint32_t ni;
+      wb_node o;
       int32_t dx, dy;
       t = t * 1664525u + 1013904223u;
       ni = e->node_count ? (t >> 8) % e->node_count : 0u;
-      if (!load_node(e, ni, &nx, &ny, &nn, &nd, &ng)) { (*errors)++; continue; }
+      if (!load_node(e, ni, &o)) { (*errors)++; continue; }
       t = t * 1664525u + 1013904223u;
       dx = (int32_t)((t >> 8) % 401u) - 200;
       t = t * 1664525u + 1013904223u;
       dy = (int32_t)((t >> 8) % 401u) - 200;
-      X = (uint32_t)((int32_t)nx + dx);
-      Y = (uint32_t)((int32_t)ny + dy);
+      X = (uint32_t)((int32_t)o.x + dx);
+      Y = (uint32_t)((int32_t)o.y + dy);
       if ((int32_t)X < 0) X = 0u;
       if ((int32_t)Y < 0) Y = 0u;
     }

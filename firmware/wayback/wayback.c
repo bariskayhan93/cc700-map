@@ -98,22 +98,21 @@ void wb_point(const wb_grid *g, uint32_t x, uint32_t y, int32_t point_e7[2]) {
  * (WB_NIL on the route: delta 0), the ride distance in dm (bits 51-62, 2 m steps since version 3) and the grey flag
  * (bit 63). The next index is n plus a signed 13-bit delta; a value that names no node is refused by the
  * caller (load_node). */
-static void node_parse(uint32_t n, const uint8_t *r, uint32_t *x, uint32_t *y, uint32_t *next, uint32_t *dist,
-                       uint32_t *grey) {
+typedef struct { uint32_t x, y, next, dist, grey; } wb_node;
+static void node_parse(uint32_t n, const uint8_t *r, wb_node *o) {
   uint32_t lo = rd_u32(r), hi = rd_u32(r + 4), d = (hi >> 6) & 0x1FFFu;
-  *x = 2u * (lo & 0x7FFFFu);
-  *y = 2u * ((lo >> 19) | ((hi & 0x3Fu) << 13));
-  *next = d == 0u ? WB_NIL : (uint32_t)((int32_t)n + (d >= 4096u ? (int32_t)d - 8192 : (int32_t)d));
-  *dist = ((hi >> 19) & 0xFFFu) * 20u;                  /* version 3: 2 m steps (cc27) */
-  *grey = hi >> (WB_NODE_GREY_BIT - 32u);
+  o->x = 2u * (lo & 0x7FFFFu);
+  o->y = 2u * ((lo >> 19) | ((hi & 0x3Fu) << 13));
+  o->next = d == 0u ? WB_NIL : (uint32_t)((int32_t)n + (d >= 4096u ? (int32_t)d - 8192 : (int32_t)d));
+  o->dist = ((hi >> 19) & 0xFFFu) * 20u;                  /* version 3: 2 m steps (cc27) */
+  o->grey = hi >> (WB_NODE_GREY_BIT - 32u);
 }
 
-static int load_node(const wb_engine *e, uint32_t n, uint32_t *x, uint32_t *y, uint32_t *next, uint32_t *dist,
-                     uint32_t *grey) {
+static int load_node(const wb_engine *e, uint32_t n, wb_node *o) {
   uint8_t r[WB_NODE_BYTES];
   if (n >= e->node_count) return 0;
   if (!rd(e, e->off_nodes + n * WB_NODE_BYTES, r, WB_NODE_BYTES)) return 0;
-  node_parse(n, r, x, y, next, dist, grey);
+  node_parse(n, r, o);
   return 1;
 }
 
@@ -237,16 +236,16 @@ int wb_scan(wb_engine *e, uint32_t cx0, uint32_t cy0, uint32_t cx1, uint32_t cy1
         if (m > WB_BLOCK / WB_NODE_BYTES) m = WB_BLOCK / WB_NODE_BYTES;
         if (!rd(e, e->off_nodes + i * WB_NODE_BYTES, buf, m * WB_NODE_BYTES)) return 0;
         for (k = 0u; k < m; k++) {
-          uint32_t ux, uy, un, ud, ug, vx, vy, vn, vd, dg;
+          wb_node u, v;
           wb_cand cc;
-          node_parse(i + k, buf + k * WB_NODE_BYTES, &ux, &uy, &un, &ud, &ug);
-          if (un == WB_NIL || wb_out(ux, x0, x1) || wb_out(uy, y0, y1)) continue;
-          if (un >= i && un < i + m) node_parse(un, buf + (un - i) * WB_NODE_BYTES, &vx, &vy, &vn, &vd, &dg);
-          else if (!load_node(e, un, &vx, &vy, &vn, &vd, &dg)) return 0;
-          if (ud < vd) continue;
-          cc.id = i + k; cc.a = i + k; cc.b = un; cc.da = ud; cc.db = vd; cc.len = ud - vd;
-          cc.bits = ug ? WB_GREY_BITS : 0u; cc.vn = vn;
-          cc.xa = ux; cc.ya = uy; cc.xb = vx; cc.yb = vy;
+          node_parse(i + k, buf + k * WB_NODE_BYTES, &u);
+          if (u.next == WB_NIL || wb_out(u.x, x0, x1) || wb_out(u.y, y0, y1)) continue;
+          if (u.next >= i && u.next < i + m) node_parse(u.next, buf + (u.next - i) * WB_NODE_BYTES, &v);
+          else if (!load_node(e, u.next, &v)) return 0;
+          if (u.dist < v.dist) continue;
+          cc.id = i + k; cc.a = i + k; cc.b = u.next; cc.da = u.dist; cc.db = v.dist; cc.len = u.dist - v.dist;
+          cc.bits = u.grey ? WB_GREY_BITS : 0u; cc.vn = v.next;
+          cc.xa = u.x; cc.ya = u.y; cc.xb = v.x; cc.yb = v.y;
           if (!visit(ctx, &cc)) return 1;
         }
       }
@@ -256,17 +255,18 @@ int wb_scan(wb_engine *e, uint32_t cx0, uint32_t cy0, uint32_t cx1, uint32_t cy1
         if (!rd(e, e->off_extras + i * WB_EXTRA_BYTES, buf, m * WB_EXTRA_BYTES)) return 0;
         for (k = 0u; k < m; k++) {
           const uint8_t *rec = buf + k * WB_EXTRA_BYTES;
-          uint32_t ea = rd_u24(rec), eb = rd_u24(rec + 3), lf = rd_u16(rec + 6), xa, ya, xb, yb, da, db, dn, dg;
+          uint32_t ea = rd_u24(rec), eb = rd_u24(rec + 3), lf = rd_u16(rec + 6);
+          wb_node a, b;
           wb_cand cc;
           if (!(lf & 0xC000u)) continue;
-          if (!load_node(e, ea, &xa, &ya, &dn, &da, &dg)) return 0;
-          if (wb_out(xa, x0, x1) || wb_out(ya, y0, y1)) continue;
-          if (!load_node(e, eb, &xb, &yb, &dn, &db, &dg)) return 0;
-          cc.id = WB_EXTRA_FLAG | (i + k); cc.a = ea; cc.b = eb; cc.da = da; cc.db = db;
+          if (!load_node(e, ea, &a)) return 0;
+          if (wb_out(a.x, x0, x1) || wb_out(a.y, y0, y1)) continue;
+          if (!load_node(e, eb, &b)) return 0;
+          cc.id = WB_EXTRA_FLAG | (i + k); cc.a = ea; cc.b = eb; cc.da = a.dist; cc.db = b.dist;
           cc.len = lf & WB_EXTRA_LEN_MASK;
           cc.bits = ((lf >> 14) & 1u) | (((lf >> 15) & 1u) << 1) | ((lf & WB_EXTRA_GREY) ? WB_GREY_BITS : 0u);
           cc.vn = 0u;
-          cc.xa = xa; cc.ya = ya; cc.xb = xb; cc.yb = yb;
+          cc.xa = a.x; cc.ya = a.y; cc.xb = b.x; cc.yb = b.y;
           if (!visit(ctx, &cc)) return 1;
         }
       }
@@ -392,7 +392,8 @@ void wb_line_info(const wb_engine *e, uint32_t info[3]) {
 }
 
 int wb_read_point(wb_engine *e, uint32_t index, int32_t point_e7[2]) {
-  uint32_t x, y, nx, d, g, n;
+  uint32_t n;
+  wb_node o;
   wb_grid grid;
   if (!e->has_line || index >= WB_MAX_POINTS) return 0;
   if (index == 0u) {
@@ -409,10 +410,10 @@ int wb_read_point(wb_engine *e, uint32_t index, int32_t point_e7[2]) {
     if (e->npts != index - 1u || e->cur_next == WB_NIL) return 0;
     n = e->cur_next;
   }
-  if (!load_node(e, n, &x, &y, &nx, &d, &g)) { e->has_line = 0; return 0; }
-  e->cur_next = nx;
+  if (!load_node(e, n, &o)) { e->has_line = 0; return 0; }
+  e->cur_next = o.next;
   wb_grid_get(e, &grid);
-  wb_point(&grid, x, y, point_e7);
+  wb_point(&grid, o.x, o.y, point_e7);
   e->npts = index;
   return 1;
 }
