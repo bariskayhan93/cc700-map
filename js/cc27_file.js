@@ -4,12 +4,12 @@ import {addWayback, waybackSections, REACH_CHAIN} from './wayback.js';
 import {elevationSection} from './elevation_section.js';
 import {SECTION, embedSections} from './wayback_embed.js';
 
-export const F_OWN = 1, F_TEXT = 2, F_AA = 8, F_CYC = 16;   // firmware/common/types.h
+export const F_OWN = 1, F_TEXT = 2, F_AA = 8, F_CYC = 16, F_PROJ = 64;   // firmware/common/types.h
 export const FILE_LIMIT = 4_000_000;                 // page guard of a route file
 
 // The flags of every map block.
 export function cc27Flags({ownLines = true, testText = true} = {}) {
-  return (ownLines ? F_OWN | F_AA : 0) | (testText ? F_TEXT : 0);   // cc28b: own lines smooth
+  return (ownLines ? F_OWN | F_AA | F_PROJ : 0) | (testText ? F_TEXT : 0);   // cc28b: own lines smooth; 23 Nov: own projection (map.c needs F_OWN)
 }
 
 // The route file with its sections. wayback: way-back and grey (the reach steps down 3 -> 2 -> 1 km when the query area

@@ -77,7 +77,7 @@ for (const styled of [false,true]) {
   const build = flags => buildRoute(gpx, [], {id: '11120000', nameImage: () => new Uint8Array(42), speedKmh: 18, noF9: true, map: {styled: true, codec: 'd', blockFlags: flags}}).file;
   const flagsOf = file => readFile(file).blocks.map(b => { const e = b.at(-1); return e.style === 15 && !e.points.length && Math.round(e.center[0] / SC) === 0x7F434346 ? Math.round(e.center[1] / SC) : -1; });
   const all = cc27Flags();
-  assert.equal(all, 11);
+  assert.equal(all, 75);   // 23 Nov: F_OWN | F_TEXT | F_AA | F_PROJ (own projection on page routes)
   const plain = build(all);
   const c = await cc27Sections(plain, {fetchImpl, reach: 'line3k'});
   assert.deepEqual(c.sections, [1, 2, 3]);   // cc29: the corner chart section stays in every case
@@ -90,11 +90,11 @@ for (const styled of [false,true]) {
   assert.deepEqual(native, readRouteElevations(legacy));
   assert(native.some(point => point.elevation === 55));
   assert(c.report.reach && !c.report.waybackError, JSON.stringify(c.report));
-  assert(flagsOf(c.file).length > 0 && flagsOf(c.file).every(f => f === 11));
+  assert(flagsOf(c.file).length > 0 && flagsOf(c.file).every(f => f === 75));
   const noOwn = cc27Flags({ownLines: false});
   assert.equal(noOwn, 2);
   assert(flagsOf(build(noOwn)).every(f => f === 2));
-  assert.equal(cc27Flags({testText: false}), 9);
+  assert.equal(cc27Flags({testText: false}), 73);
   const flat = await cc27Sections(plain, {fetchImpl: async () => { throw Error('offline'); }, reach: 'line2k'});
   assert.deepEqual(flat.sections, [3]);   // no way-back offline, but the chart section stays
   assert.notEqual(flat.file.length, plain.length);
