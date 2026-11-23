@@ -1,7 +1,7 @@
 import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import { buildRoute } from '../js/route.js';
-import { draw, readFile, rgb565 } from '../js/preview.js';
+import { draw, readFile, replayMapSection, rgb565 } from '../js/preview.js';
 import { dashSegments, scanlineSpans } from '../js/device_draw.js';
 
 const start = [51.22, 6.78];
@@ -292,4 +292,20 @@ test('the preview of a block with the flags entry is the same as without it', ()
   const plain = render(readFile(generate(true, {codec: 'd'}).file)), flagged = readFile(generate(true, {codec: 'd', blockFlags: 7}).file);
   assert(flagged.blocks.every(b => b.at(-1).style === 15 && b.at(-1).points.length === 0), 'every block ends with the flags entry');
   assert.deepEqual(render(flagged), plain);
+});
+
+test('replay keeps a nearby preferred block and changes to the closer block outside the preference', () => {
+  const section = east => [at(east, 0), at(east, 100)];
+  const sections = [section(0), section(100)];
+  assert.equal(replayMapSection(sections, at(60, 50), 0), 0);
+  assert.equal(replayMapSection(sections, at(80, 50), 0), 1);
+});
+
+test('a c5 frame finishes green fills and skips road levels 3/4, signals and names', () => {
+  const model = readFile(generate(true).file);
+  const result = render(model, 40, true, { mapCut: 5 });
+  assert(result.rectangles.some(([color]) => color === rgb565('#a2d683')));
+  assert(!result.stroke.includes(rgb565('#ffb300')));
+  assert.deepEqual(result.labels, []);
+  assert(result.stroke.includes(rgb565('#d62828')));
 });

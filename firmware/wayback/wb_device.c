@@ -4,6 +4,8 @@
  * from its end, draws and closes. Contract and addresses: firmware/wayback/README.md. */
 #include "wayback.h"
 #include "wb_grey_draw.h"
+#include "elev.h"
+#include "elev_font.h"
 
 #define WBD_POINTS 32u              /* line points for each frame */
 #define WBD_TIME_US 300000u         /* file work for each frame; a later read fails */
@@ -71,7 +73,7 @@ static int wbd_file(void *vctx, uint32_t off, void *dst, uint32_t n) { return wb
 static uint32_t wbd_core(wbd_ctx *, uint32_t, uint8_t *, const float *, float *, uint32_t *, uint32_t *);   /* *n bit 31: the line is cut */
 /* Trailer v2 (cc27), the last 64 bytes: "CCWS", count 1..4, 4 x {type, offset, size}, file length, 0. One read. The
  * sections must lie before the trailer and must not overlap; a type occurs once; types above 3 are ignored. */
-typedef struct { uint32_t at[4], size[4]; } wbd_secs;            /* index = type: 1 way-back, 2 grey, 3 legacy (validated only) */
+typedef struct { uint32_t at[4], size[4]; } wbd_secs;            /* index = type: 1 way-back, 2 grey, 3 elevation (the chart) */
 static int wbd_secs_read(void *fp, wbd_secs *s) {
   uint8_t t[64]; uint32_t i, j, n, total;
   for (i = 0; i < 4u; i++) { s->at[i] = 0; s->size[i] = 0; }
@@ -182,6 +184,78 @@ static __attribute__((noinline)) void wbd_frame(void) {
   }
   *o = 0;
   wbd_text(u.s);
+}
+
+/* Stock progress admission (design section 7): selector 0, a finite total below 2^24 m, 0 < U <= T + 50 m (U clamped
+ * to T: the start-of-ride gap), own map blocks. *u = remaining m, *t = total m. */
+static int wbd_trusted(uint32_t *u, uint32_t *t) {
+  float total = FW_ROUTE_TOTAL; uint32_t left = FW_ROUTE_LEFT;
+  if (FW_NAV_SELECTOR != 0u || !(total >= 0.0f && total < 16777216.0f) || left == 0u) return 0;   /* NaN fails */
+  *t = (uint32_t)total;
+  if (left > *t + 50u) return 0;
+  *u = left > *t ? *t : left;
+  return (wbd_flags() & F_OWN) != 0u;
+}
+
+/* One text in the font f, right-aligned at r, with a 1 px white halo (4 draws) and the dark text on top. Returns
+ * the right edge for the next text: its left edge less the gap g. Offsets (dx, dy) + 1 packed 2 bits each. */
+static __attribute__((noinline)) int32_t wbd_put(void *cv, void *f, int32_t y, int32_t r, int32_t g, const char *s) {
+  uint32_t k, o = 0x59164u;                                               /* (0,1) (2,1) (1,0) (1,2) (1,1) */
+  FW_LABEL_FONT = f;
+  for (k = 0; k < 5u; k++, o >>= 4) {
+    FW_LABEL_COL = k < 4u ? 0xffffu : RS_RGB(0x111316u);
+    fw_canvas_text(cv, (int32_t)(o & 3u) - 1, y + (int32_t)((o >> 2) & 3u) - 1, r, FW_LABEL_DSC, s);
+  }
+  return r - el_text_w(f == FW_FONT_NUM, s) - g;
+}
+
+/* Remaining distance and climb ahead (design 5): unit right edge x 232, number 3 px left of it; the climb on its own
+ * line above, right edge x 232, top y 197. The label descriptor is restored. */
+static void wbd_km_text(void *cv, uint32_t rem, uint32_t climb) {
+  char num[8], unit[3], cl[8];
+  void *font = FW_LABEL_FONT; uint16_t col = FW_LABEL_COL; uint8_t opa = FW_LABEL_OPA, align = FW_LABEL_ALIGN;
+  int32_t r;
+  el_fmt_dist(num, unit, rem); el_fmt_climb(cl, climb);
+  FW_LABEL_OPA = 255; FW_LABEL_ALIGN = 3;
+  r = wbd_put(cv, FW_FONT_UNIT, 217, 232, 3, unit);
+  wbd_put(cv, FW_FONT_NUM, 215, r, 0, num);
+  if (cl[0]) wbd_put(cv, FW_FONT_UNIT, 197, 232, 0, cl);
+  FW_LABEL_FONT = font; FW_LABEL_COL = col; FW_LABEL_OPA = opa; FW_LABEL_ALIGN = align;
+}
+
+/* The target of the trampoline km_tramp (firmware/wayback/km_tramp.S): the map frame calls it in place of the
+ * stock remaining-distance overlay fw_km_overlay (fw.h), with the same 4 arguments. Normal: the lens chart (firmware/elev) and
+ * the text. Trusted progress but no usable elevation section: the plain progress line and the text. Any other state
+ * (the stock second mode show_text 0, low stack, untrusted progress, no canvas): the stock overlay, unchanged. */
+void wb_km(int32_t left, int32_t total, int32_t bar_w, int32_t show_text) {
+  char path[128]; wbd_secs sec; el_head h; el_view v; rs_canvas cv; wbd_ctx c;
+  uint32_t u = 0, tm = 0, len, tol, k0 = 0, nb, climb = 0, mode = 0x00006272u;   /* "rb" */
+  void *canvas = FW_CANVAS;
+  int drawn = 0;
+  cv.buf = FW_CANVAS_BUF; cv.w = (int16_t)FW_CANVAS_W; cv.h = (int16_t)FW_CANVAS_H;
+  if (!show_text || fw_stack() < WBD_STACK || !canvas || !cv.buf || cv.w < 240 || cv.h < 256 || !wbd_trusted(&u, &tm)) {
+    fw_km_overlay(left, total, bar_w, show_text);
+    return;
+  }
+  c.buf = 0; c.fp = 0;
+  if (wbd_path(path) > 0 && (c.fp = fw_fopen(path, (const char *)&mode)) != 0) {
+    c.t0 = fw_clock(); c.late = 0; c.reads = 0;
+    if (wbd_secs_read(c.fp, &sec) && sec.size[3] >= EL_HEAD2 && (c.buf = (uint8_t *)fw_malloc(GL_BUF, CAPS_PSRAM)) != 0 &&
+        wbd_file(&c, sec.at[3], c.buf, EL_HEAD2) && el_head_parse(&h, c.buf)) {
+      len = h.len_cm / 100u; tol = len / 100u > 50u ? len / 100u : 50u;
+      v.h = &h; v.coarse = c.buf + 16; v.blk = c.buf + EL_HEAD2; v.len_m = len; v.prog_m = len > u ? len - u : 0u;
+      nb = el_blocks_for(&h, v.prog_m, &k0);
+      v.k0 = k0; v.nblk = nb;
+      if ((tm > len ? tm - len : len - tm) <= tol && nb && EL_HEAD2 + (k0 + nb) * EL_BLOCK <= sec.size[3] &&
+          wbd_file(&c, sec.at[3] + EL_HEAD2 + k0 * EL_BLOCK, c.buf + EL_HEAD2, nb * EL_BLOCK)) {
+        el_draw(&cv, &v); climb = el_climb(&v); drawn = 1;
+      }
+    }
+  }
+  if (!drawn) el_plain(&cv, tm, tm - u);
+  wbd_km_text(canvas, u, climb);
+  if (c.buf) fw_free(c.buf);
+  if (c.fp) fw_fclose(c.fp);
 }
 
 /* Replaces cc_rt in tramp_rt. The map frame (fw.h) makes one hooked route call for each frame. */

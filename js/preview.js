@@ -9,7 +9,8 @@ import { placeLabels } from './map_labels.js';
 import { isBlockD, decodeBlockD } from './map_codec.js';
 export { rgb565 } from './map_style.js';
 
-const W = 240, H = 256, MPP = 2.5, POSY = 0.85, PIXEL_RATIO = 1;
+export const DEFAULT_METRES_PER_PIXEL = 2.5;
+const W = 240, H = 256, POSY = 0.85, PIXEL_RATIO = 1;
 const ORIGINAL_ROUTE = '#1f6fe0', PATCH_ROUTE = '#d62828', ROAD_EDGE = '#c8d0de';
 const decoder = new TextDecoder();
 
@@ -125,10 +126,13 @@ const PASSES = [
   [C.TRAM, '#3b1f6e', 4], [C.TRAM, '#ffffff', 2],
 ];
 
-function drawStyled(g, entries, project, study = false, corrected = false, waterCycle = false) {
+function drawStyled(g, entries, project, study = false, corrected = false, waterCycle = false, mapCut = 0) {
   const layers = new Map();
   for (const { style, center, points, label } of entries) {
     const kind = style & 15;
+    // Firmware checks its time limit before fills, each road level, signals, and names.
+    const pass = kind <= C.WLINE ? 1 : kind <= C.TRAM ? 2 + ((style >> 4) & 7) : kind === C.LABEL ? 8 : 7;
+    if (mapCut && pass >= mapCut) continue;
     const layer = layers.get(kind) ?? [];
     layer.push({ style, points: [center, ...(points ?? [])].map(project), label });
     layers.set(kind, layer);
@@ -223,6 +227,24 @@ function drawTurns(g, entries, section, project, position) {
   }
 }
 
+// cc_map_road compares GPS-to-segment distances and prefers the supplied section within 25 m.
+export function replayMapSection(sections, position, preferred) {
+  const c = position[0] * 0.01745329, kx = 111195 * (1 - c*c/2 + c**4/24);
+  let best = Infinity, current = Infinity, selected = preferred;
+  sections.forEach((points, index) => {
+    for (let i = 1; i < points.length; i++) {
+      const a = points[i-1], b = points[i];
+      const x = (a[1] - position[1]) * kx, y = (a[0] - position[0]) * 111195;
+      const dx = (b[1] - a[1]) * kx, dy = (b[0] - a[0]) * 111195, length2 = dx*dx + dy*dy;
+      const t = length2 ? Math.max(0, Math.min(1, -(x*dx + y*dy)/length2)) : 0;
+      const d = (x+t*dx)**2 + (y+t*dy)**2;
+      if (d < best) { best = d; selected = index; }
+      if (index === preferred) current = Math.min(current, d);
+    }
+  });
+  return Math.sqrt(current) <= Math.sqrt(best) + 25 ? preferred : selected;
+}
+
 export function draw(canvas, model, distM, styled = model.styled, options = {}) {
   const { secs, blocks } = model, all = secs.flat();
   canvas.width = W * PIXEL_RATIO;
@@ -236,20 +258,22 @@ export function draw(canvas, model, distM, styled = model.styled, options = {}) 
 
   let section = 0;
   secs.forEach((points, i) => { if (points[0]?.[2] <= distM * 100) section = i; });
-  const { point: me, next } = sample(all, distM);
+  const { point: routePoint, next } = sample(all, distM);
+  const me = options.riderPosition ?? routePoint;
   const heading = Number.isFinite(options.headingDegrees) ? ((options.headingDegrees % 360) + 360) % 360 : brg(sample(all, distM - 30).point, sample(all, distM + 30).point);
-  const mpp = Number.isFinite(options.metresPerPixel) && options.metresPerPixel >= 0.25 && options.metresPerPixel <= 20 ? options.metresPerPixel : MPP;
+  const mpp = Number.isFinite(options.metresPerPixel) && options.metresPerPixel >= 0.25 && options.metresPerPixel <= 20 ? options.metresPerPixel : DEFAULT_METRES_PER_PIXEL;
   const radians = heading * Math.PI / 180, k = Math.cos(me[0] * Math.PI / 180);
   const sin = Math.sin(radians), cos = Math.cos(radians);
   const project = p => {
     const e = (p[1] - me[1]) * 111320 * k / mpp, n = (p[0] - me[0]) * 111320 / mpp;
-    return [Math.trunc(W / 2 + e * cos - n * sin), Math.trunc(H * POSY - e * sin - n * cos)];
+    return [Math.trunc(W / 2 + e * cos - n * sin), Math.trunc((options.greySpans ? 216 : H * POSY) - e * sin - n * cos)];
   };
 
+  if (options.riderPosition) section = replayMapSection(secs, me, section);
   const entries = blocks[section] ?? [];
   const original = entries.filter(entry => !entry.style);
   drawOriginal(g, original, project);
-  const labels = styled ? drawStyled(g, entries.filter(entry => entry.style), project, options.profile === 'cycling', ['v19','v20','v21'].includes(options.profile), ['v20','v21'].includes(options.profile)) : [];
+  const labels = styled ? drawStyled(g, entries.filter(entry => entry.style), project, options.profile === 'cycling', ['v19','v20','v21'].includes(options.profile), ['v20','v21'].includes(options.profile), options.mapCut) : [];
   drawLabels(g, labels, ['v19','v20','v21','cycling'].includes(options.profile)); // Map labels precede the firmware route and turn overlays.
   const routeColor = styled ? PATCH_ROUTE : ORIGINAL_ROUTE;
   g.lineCap = g.lineJoin = 'round';
@@ -260,13 +284,14 @@ export function draw(canvas, model, distM, styled = model.styled, options = {}) 
   // casing (device photos of the original software). Every mode shows small white
   // chevrons along the route ahead, spaced ~63 px (owner reference: 1.75x the
   // earlier 36 px trial).
-  if (styled) stroke(g, [...all.slice(0, next), me].map(project), '#140b08', 10);
-  else stroke(g, [...all.slice(0, next), me].map(project), ROAD_EDGE, 8);
+  if (options.modeledRouteThreshold) stroke(g, [...all.slice(0, next), routePoint].map(project), ROAD_EDGE, 8);
+  else if (styled) stroke(g, [...all.slice(0, next), routePoint].map(project), '#140b08', 10);
+  else stroke(g, [...all.slice(0, next), routePoint].map(project), ROAD_EDGE, 8);
   if (styled) g.globalAlpha = ['cycling','v21'].includes(options.profile) ? 1 : 180 / 255;                // v18–v20: 180/255; v21 is opaque
-  stroke(g, [me, ...all.slice(next)].map(project), routeColor, styled ? 8 : 6);
+  stroke(g, [routePoint, ...all.slice(next)].map(project), routeColor, styled ? 8 : 6);
   g.globalAlpha = 1;
   {                                               // small chevrons on the route, as on the device
-    const ahead = [me, ...all.slice(next)].map(project);
+    const ahead = [routePoint, ...all.slice(next)].map(project);
     let walked = 0, nextChevron = 63;
     for (let i = 1; i < ahead.length; i++) {
       const [ax, ay] = ahead[i - 1], [bx, by] = ahead[i];
@@ -289,6 +314,17 @@ export function draw(canvas, model, distM, styled = model.styled, options = {}) 
     for (const { style, points } of entries) if ((style & 15) === 15 && (style & 0x8000) && points?.length >= 2 && points.length <= 24) stroke(g, points.map(project), '#3a2410', 3, [2, 4]);
   }
   if (styled) drawTurns(g, entries, section, project, me);
+
+  if (options.greySpans) {
+    g.fillStyle = rgb565('#9a9ea3');
+    const spans = options.greySpans;
+    for (let i = 0; i < spans.length; i += 3) g.fillRect(spans[i + 1], spans[i], spans[i + 2], 1);
+  }
+  if (options.recoveryPath?.length) {
+    const line = options.recoveryPath.map(project);
+    stroke(g, line, '#ffffff', 7);
+    stroke(g, line, '#471568', 4);
+  }
 
   // UI reconstruction: circular rider marker (about 34 px disc + ring, measured on
   // the supplied OnelapFit reference). Fonts and raster are illustrative, not

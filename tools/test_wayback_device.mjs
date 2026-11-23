@@ -24,9 +24,9 @@ process.on('exit', () => { try { fs.rmSync(work, {recursive: true, force: true})
 const exe = path.join(work, 'host');
 const F = d => path.join(root, 'firmware', d);
 execFileSync('cc', ['-std=gnu11', '-O1', '-g', '-Wall', '-Wextra', '-Werror', '-DHOST',
-  '-fsanitize=address,undefined', '-fno-sanitize-recover=all', '-I', F('wayback'), '-I', F('common'), '-I', F('raster'), '-I', F('view'),
+  '-fsanitize=address,undefined', '-fno-sanitize-recover=all', '-I', F('wayback'), '-I', F('common'), '-I', F('raster'), '-I', F('view'), '-I', F('elev'),
   path.join(root, 'tools/wayback_device_host.c'), F('wayback/wb_device.c'), F('wayback/wayback.c'), F('wayback/wb_grey.c'),
-  F('wayback/wb_grey_draw.c'), F('raster/raster.c'), F('view/view.c'), '-lm', '-o', exe], {stdio: ['ignore', 'pipe', 'pipe']});
+  F('wayback/wb_grey_draw.c'), F('raster/raster.c'), F('view/view.c'), F('elev/elev.c'), '-lm', '-o', exe], {stdio: ['ignore', 'pipe', 'pipe']});
 
 const {graph, route, p} = gridFixture();
 const id = Uint8Array.from({length: 16}, (_, i) => i + 1);
@@ -42,6 +42,7 @@ function run(o) {
   args.push(String(o.failAt ?? 0), String(o.head ?? 90), String(o.scale ?? 2.5));   // the failAt-th read fails; map heading 90 = course 0; m/px
   args.push(String(o.flags ?? F_TEXT), String(o.mallocOk ?? 1));   // block flags (-1: no flags entry, cc26 block); 0: the heap allocation fails
   args.push(String(o.U ?? 0), String(o.T ?? 0), String(o.sel ?? 0));   // stock progress: remaining U (u32 m), total T (float), selector
+  if (o.km) args.push(...o.km.map(String));                         // KM mode: wb_km(left, total, bar_w, show_text)
   if (o.exe) return JSON.parse(execFileSync(o.exe, args, {encoding: 'utf8'}));
   return JSON.parse(execFileSync(exe, args, {encoding: 'utf8'}));
 }
@@ -333,4 +334,55 @@ test('legacy type 3 leaves off-route way-back and grey identical', () => {
   assert.equal(opened, elevFile);
   assert.equal(currentPath, dense.file);
   assert.deepEqual(legacy, current);
+});
+
+// ---- the lens chart (design 2026-11-23): wb_km in place of the stock remaining-distance overlay ----
+const v1 = elevBytes.slice(); v1[11] = 1;
+const elevV1File = path.join(work, 'route-elev-v1.bin');
+fs.writeFileSync(elevV1File, embedSections(routeBytes, [...retained, {type: SECTION.ELEV, bytes: v1}]));
+const km = o => run({file: elevFile, off: 0, flags: F_OWN, U: 2999, T: 5000, sel: 0, ...o, km: o.km ?? [2999, 5000, 10, 1]});
+const RGB = h => ((h >> 8) & 0xf800) | ((h >> 5) & 0x07e0) | ((h >> 3) & 0x001f);
+
+test('lens: the stock second mode (show_text 0) calls the stock overlay with the same arguments', () => {
+  const r = km({km: [2999, 5000, 10, 0]});
+  assert.deepEqual([r.km, r.kmArgs, r.greyPx, r.texts, r.opens], [1, [2999, 5000, 10, 0], 0, 0, 0]);
+});
+test('lens: untrusted progress or low stack calls the stock overlay, nothing else', () => {
+  for (const o of [{sel: 1}, {T: NaN}, {U: 5051}, {U: 0}, {flags: F_TEXT}, {flags: 0}, {stack: 3967}]) {
+    const r = km(o);
+    assert.deepEqual([r.km, r.kmArgs, r.greyPx, r.texts, r.opens], [1, [2999, 5000, 10, 1], 0, 0, 0], JSON.stringify(o));
+  }
+});
+test('lens: trusted progress and a version 2 section draw the chart and the text, not the stock overlay', () => {
+  const r = km({});
+  assert.deepEqual([r.km, r.opens, r.closes, r.mallocs, r.frees], [0, 1, 1, 1, 1]);
+  assert.ok(r.greyPx > 240 * 10, `chart pixels ${r.greyPx}`);
+  const t = r.textCalls;
+  assert.deepEqual(t.filter((_, i) => i % 5 === 4).map(c => c.s), ['km', '3.0', '+29 m']);   // the climb: its own line
+  assert.deepEqual(t.map(c => c.font), [2, 2, 2, 2, 2, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2]);
+  assert(t.every(c => c.align === 3));
+  assert.deepEqual(t.slice(0, 10).map(c => c.col), [0xffff, 0xffff, 0xffff, 0xffff, RGB(0x111316), 0xffff, 0xffff, 0xffff, 0xffff, RGB(0x111316)]);
+  assert.deepEqual([t[14].x, t[14].y, t[14].w], [0, 197, 232]);      // right edge x 232, top y 197, above the number
+  assert.deepEqual([t[4].x, t[4].y, t[4].w, t[9].y, t[9].w], [0, 217, 232, 215, 232 - 21 - 3]);   // "km" = 8 + 13 px
+  assert.deepEqual(r.after, [7, 0x1234, 0, 1]);                       // font, colour, opacity, alignment restored
+});
+test('lens: the climb line is drawn for every distance and is not drawn below 5 m', () => {
+  const t = km({U: 850, km: [850, 5000, 10, 1]}).textCalls;
+  assert.deepEqual(t.filter((_, i) => i % 5 === 4).map(c => c.s), ['m', '850', '+8 m']);
+  const flat = km({U: 30, km: [30, 5000, 10, 1]}).textCalls;      // 30 m left: no full 100 m window, no climb
+  assert.deepEqual(flat.filter((_, i) => i % 5 === 4).map(c => c.s), ['m', '30']);
+});
+test('lens: version 1 section, size mismatch, heap failure: the plain progress line and the text', () => {
+  for (const o of [{file: elevV1File}, {T: 5100, km: [2999, 5100, 10, 1]}, {mallocOk: 0}, {file: dense.file}]) {
+    const r = km(o);
+    assert.equal(r.km, 0, JSON.stringify(o));
+    assert.ok(r.greyPx > 240 * 10, `plain pixels ${r.greyPx} ${JSON.stringify(o)}`);
+    assert.equal(r.texts, 10, JSON.stringify(o));
+    assert.equal(r.frees, o.mallocOk === 0 ? 0 : r.mallocs);           // a failed allocation counts as a malloc
+    assert.equal(r.opens, r.closes);
+  }
+});
+test('lens: wb_rt on the route draws nothing (the chart moved to wb_km)', () => {
+  const r = run({file: elevFile, off: 0, flags: F_OWN, U: 2999, T: 5000, sel: 0});
+  assert.deepEqual([r.rt, r.opens, r.greyPx, r.texts], [1, 0, 0, 0]);
 });

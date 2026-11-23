@@ -36,3 +36,9 @@ test('every piece is grey when the route file has no map section', () => {
   const flagOf = greyFlags(bytes, frame);
   assert.equal(flagOf(unitsOf(onMap[0]), unitsOf(onMap[1])), 1);
 });
+
+test('cc29: a piece on the route corridor is never grey, 30 m off it is', () => {
+  const flagOf = greyFlags(build([mapRoad]), frame);   // no written street at the route itself (a hidden driveway)
+  assert.equal(flagOf(unitsOf(at(0, 500)), unitsOf(at(0, 700))), 0);   // on the route: known ground
+  assert.equal(flagOf(unitsOf(at(30, 500)), unitsOf(at(30, 700))), 1); // beyond the 15 m corridor: grey
+});

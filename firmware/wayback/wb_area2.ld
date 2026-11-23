@@ -1,18 +1,24 @@
 /* Second code area of cc26 and cc27 (D5, E8; cc27: tools/cc27_build.py, code limit 18,404 B with the 1,768 B reserve).
  * The code runs in the second code area: IROM alias 0x4237b134 up to 0x42380000 (20,172 B). The image builder loads it at 0x3c37b134 (DROM, after the constants). One literal is
  * replaced: the cc_rt word of tramp_rt (0x420496b8), which now holds wb_rt. Since bbd323b+1 also the cc_iter and cc_line
- * words of tramp_iter (0x42049678) and tramp_line (0x4205bd98): firmware/mapdraw. No writable globals. */
+ * words of tramp_iter (0x42049678) and tramp_line (0x4205bd98): firmware/mapdraw. The lens chart: the trampoline
+ * km_tramp (km_tramp.S) at 0x4205bdd0, 0x1c B. The lens chart module elev.o runs in the IROM tail after the C4 code
+ * (0x421debac, up to the page end 0x421e0000, the cc25 method; the 1,768 B reserve stays free there). No writable globals. */
 MEMORY {
  area2(rx): ORIGIN = 0x4237b134, LENGTH = 0x42380000 - 0x4237b134
+ tail(rx): ORIGIN = 0x421debac, LENGTH = 0x421e0000 - 0x421debac
  lit(rx): ORIGIN = 0x420496b8, LENGTH = 4
  lit_iter(rx): ORIGIN = 0x42049678, LENGTH = 4
  lit_line(rx): ORIGIN = 0x4205bd98, LENGTH = 4
+ tramp_km(rx): ORIGIN = 0x4205bdd0, LENGTH = 0x1c
 }
 SECTIONS {
+ .tail_text : { *elev.o(.literal .text .literal.* .text.*) . = ALIGN(4); } > tail
  .text : { *(.literal .text .literal.* .text.*) . = ALIGN(4); } > area2
  .lit_wb_rt : { KEEP(*(.lit_wb_rt)) } > lit
  .lit_cc_iter : { KEEP(*(.lit_cc_iter)) } > lit_iter
  .lit_cc_line : { KEEP(*(.lit_cc_line)) } > lit_line
+ .tramp_km : { KEEP(*(.tramp_km)) } > tramp_km
  .data : { *(.data .data.* .sdata.*) } > area2
  .bss : { *(.bss .bss.* .sbss.* COMMON) } > area2
  .rodata : { *(.rodata .rodata.* .srodata.*) } > area2

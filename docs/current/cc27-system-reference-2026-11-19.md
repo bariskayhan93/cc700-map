@@ -15,7 +15,7 @@ with no measurement; **?** not known.
 | 2 | GUI task | `tramp_iter` (literal `0x42049678`) → `cc_iter` (`firmware/mapdraw/map.c:201`) | Draws one map block: star lines, fills, levels 0 to 4, signals, names | 400 ms for each block call (`MAP_FRAME_US`, `map.c:12`), checked only between passes (`map.c:228`, `:235`, `:250`, `:255`) | D |
 | 3 | GUI task | stock projection → `tramp_line` (literal `0x4205bd98`) → `cc_line` (`map.c:127`) | Draws one entry: own raster (`rs_line`, `rs_fill`) when the block has `F_OWN`, else LVGL | entries whose box misses the canvas + 16 px are skipped (`CLIP_M`, `map.c:11`) | D |
 | 4 | GUI task | `tramp_rt` (literal `0x420496b8`) → `wb_rt` → stock `cc_rt` (`firmware/wayback/wb_device.c:223`) | Stock route line, turn arrows, route dots (LVGL) | — | D |
-| 5 | GUI task | `wbd_frame` (`wb_device.c:180`) | Off the route: way-back line, grey streets, text. On the route: elevation strip, text | see section 2 | D |
+| 5 | GUI task | `wbd_frame` (`wb_device.c:180`) | Off the route: way-back line, grey streets, text. On the route: nothing (the lens chart runs from the stock overlay call, section 2.6) | see section 2 | D |
 
 How often step 1 runs (frames per second), and how many `cc_iter` calls one frame makes: **?**
 
@@ -86,14 +86,21 @@ straight into the canvas. The stock route line, arrows and dots stay with LVGL. 
 | Unit | reads the cells of the screen (`GL_CELLS` 20) into a 4,096 B heap buffer (PSRAM) for each frame; line width 4 px; drawn only when a way-back line is found; under the line | `wb_grey.h:12-14`, `wb_grey_draw.c:4`, `wb_device.c:149-158`, `:173` | D |
 | Size | about 3.8 B per point | section 4 | H |
 
-### 2.6 Elevation strip (section type 3)
+### 2.6 Elevation lens chart (section type 3, version 2; 2026-11-23)
+
+Design: `docs/superpowers/specs/2026-11-23-elevation-bar-design.md`. Replaces the cc29 corner chart and its IROM patch.
 
 | Parameter | Value | Source | Status |
 |---|---|---|---|
-| Place | (4, 68), 232 x 32 px | `firmware/elev/elev.h:10-13` | D |
-| Content | the next 1,000 m: 224 columns, 450 B per block, at most 900 B read | `elev.h:7-8`, `wb_device.c:93-108` | D |
-| Gates | on the route only; progress `T − U` trusted only with selector 0, `0 < U <= T`, `|T − L| <= max(50 m, L / 100)` | `wb_device.c:93-104` | D |
-| Codes | `e0` drawn, `e1` no section, `e2` progress not trusted, `e3` past the end, `e4` read failed, `wb11` no heap | `wb_device.c:14` | D |
+| Place | map rows y 237..255, full width; text right edge x 232, top y 215 / 217 | `firmware/elev/elev.c` (`el_draw`), `wb_device.c` (`wbd_km_text`) | H |
+| Content | one chart of the route; a 96 px lens over the next 3 km at the rider; coarse table (576 cells) for the rest | `elev.h`, `js/elevation_section.js` | H |
+| Entry | stock call `0x4204ca2e` → `km_tramp` (`0x4205bdd0`, 0x1c B) → `wb_km`; fallback `fw_km_overlay` (`0x4205bf0c`) | `km_tramp.S`, `tools/cc27_build.py` | B |
+| Gates | show_text 1, stack, canvas, selector 0, finite T < 2^24, `0 < U <= T + 50`, own blocks; else the stock overlay | `wb_device.c` (`wbd_trusted`, `wb_km`) | H |
+| No elevation | trusted progress, but no v2 section, size mismatch, read or heap failure: plain progress line and text | `el_plain` | H |
+| Reads per frame | header and coarse table 1,168 B, then at most 5 blocks (2,250 B), one 4,096 B buffer | `wb_km` | H |
+| Code | `elev.o` in the IROM tail from `0x421debac` (2,704 B; 2,500 B free, reserve 1,768 B kept); area 2 17,488 B | build receipt `.local/cc27-lens/manifest.json` | B |
+
+Status H = host tests, B = build checks. No device evidence yet.
 
 ### 2.7 File and storage
 

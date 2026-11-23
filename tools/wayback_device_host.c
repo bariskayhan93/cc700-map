@@ -5,7 +5,8 @@
  * FAIL_AT: the k-th read fails (1-based), 0 = none. MAP_HEAD: the stock map heading, 450 - course (degrees).
  * SCALE: m/px of the fake projection (heading-up, rider at screen (120, 216)); op 23 gives the anchor back as cc_line.
  * PATH_MODE: 1 = the route file is the second open file, 0 = no route handle, -1 = table lock busy,
- * 2 = navigation lock busy. Prints one JSON object. The stubs stand for the firmware calls only. */
+ * 2 = navigation lock busy. Prints one JSON object. The stubs stand for the firmware calls only.
+ * KM mode: 4 more arguments LEFT TOTAL BAR_W SHOW_TEXT: calls wb_km (the lens chart) in place of wb_rt. */
 #include <math.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -14,12 +15,18 @@
 
 #include "types.h"
 void wb_rt(uint32_t part);
+void wb_km(int32_t left, int32_t total, int32_t bar_w, int32_t show_text);
 
 void *host_nav_sem = &host_nav_sem, *host_file_sem = &host_file_sem, *host_fps[6], *host_canvas = &host_canvas;
 int32_t host_file_cnt;
 uint8_t host_file_tab[20 * 132], host_label_opa;
 line_dsc_t host_dsc = { 0x5555, 7, 0, 0, 255, 0 };
 uint16_t host_label_col = 0x1234;
+void *host_label_font = (void *)7; uint8_t host_label_align = 1;
+static int n_km, km_args[4];
+void host_km_overlay(int32_t a, int32_t b, int32_t c, int32_t d) { n_km++; km_args[0] = a; km_args[1] = b; km_args[2] = c; km_args[3] = d; }
+#define MAX_TEXTS 32
+static struct { int font, align, x, y, w; unsigned col; char s[12]; } texts[MAX_TEXTS];
 float host_map_head;
 uint32_t host_route_left, host_nav_selector;
 float host_route_total;
@@ -95,7 +102,11 @@ void host_proj(const float *p, uint32_t n) {
   n_lines++;
 }
 void host_canvas_text(void *cv, int32_t x, int32_t y, int32_t w, void *dsc, const char *s) {
-  (void)cv; (void)x; (void)y; (void)w; (void)dsc;
+  (void)cv; (void)dsc;
+  if (n_text < MAX_TEXTS) {
+    texts[n_text].font = (int)(intptr_t)host_label_font; texts[n_text].align = host_label_align; texts[n_text].x = x; texts[n_text].y = y;
+    texts[n_text].w = w; texts[n_text].col = host_label_col; strncpy(texts[n_text].s, s, sizeof texts[n_text].s - 1);
+  }
   n_text++; strncpy(text, s, sizeof text - 1);
 }
 
@@ -104,7 +115,7 @@ int main(int argc, char **argv) {
   void *route = &route, *other = &other;
   uint32_t k, hash = 2166136261u, px = 0;
   int flags;
-  if (argc != 19) return 2;
+  if (argc != 19 && argc != 23) return 2;
   host_route_left = (uint32_t)strtoul(argv[16], 0, 10); host_route_total = strtof(argv[17], 0); host_nav_selector = (uint32_t)strtoul(argv[18], 0, 10);
   g_fail_at = (uint32_t)atoi(argv[11]); host_map_head = strtof(argv[12], 0); g_scale = strtod(argv[13], 0);
   flags = atoi(argv[14]); g_malloc_ok = atoi(argv[15]);
@@ -122,12 +133,19 @@ int main(int argc, char **argv) {
   memcpy(host_file_tab + 132, &route, sizeof route); strncpy((char *)host_file_tab + 132 + sizeof route, argv[1], 120);
   host_file_cnt = 2;
   if (mode != 0) host_fps[2] = route;                          /* a route handle of type 2 */
-  wb_rt((uint32_t)atoi(argv[6]));
+  if (argc == 23) wb_km(atoi(argv[19]), atoi(argv[20]), atoi(argv[21]), atoi(argv[22]));
+  else wb_rt((uint32_t)atoi(argv[6]));
   for (k = 0; k < 240u * 256u; k++) { hash = (hash ^ host_buf[k]) * 16777619u; px += host_buf[k] != 0; }
   printf("{\"rt\":%d,\"opens\":%d,\"closes\":%d,\"reads\":%d,\"texts\":%d,\"text\":\"%s\",\"opened\":\"%s\",", n_rt, n_open, n_close, n_reads, n_text, text, opened);
   printf("\"takes\":%d,\"gives\":%d,\"dashAfter\":%d,\"badDash\":%d,\"labelCol\":%u,", n_take, n_give, host_dsc.dash_width, bad_dash, host_label_col);
   printf("\"anchors\":%d,\"anchorReads\":%d,\"mallocs\":%d,\"frees\":%d,\"hash\":%u,\"greyPx\":%u,\"dsc\":[%u,%d,%d],",
          n_anchor, anchor_reads, n_malloc, n_free, hash, px, host_dsc.color, host_dsc.width, host_dsc.dash_gap);
+  printf("\"km\":%d,\"kmArgs\":[%d,%d,%d,%d],\"after\":[%d,%u,%u,%u],\"textCalls\":[", n_km, km_args[0], km_args[1], km_args[2], km_args[3],
+         (int)(intptr_t)host_label_font, host_label_col, host_label_opa, host_label_align);
+  for (i = 0; i < n_text && i < MAX_TEXTS; i++)
+    printf("%s{\"font\":%d,\"align\":%d,\"x\":%d,\"y\":%d,\"w\":%d,\"col\":%u,\"s\":\"%s\"}", i ? "," : "", texts[i].font, texts[i].align,
+           texts[i].x, texts[i].y, texts[i].w, texts[i].col, texts[i].s);
+  printf("],");
   printf("\"blockLocks\":%d,\"fileUnderBlockLock\":%d,\"lines\":[", n_blk, file_under_blk);
   for (i = 0; i < n_lines && i < MAX_LINES; i++)
     printf("%s{\"op\":%u,\"own\":%u,\"n\":%u,\"first\":[%.7f,%.7f],\"last\":[%.7f,%.7f]}", i ? "," : "", line_op[i], line_own[i], line_n[i],

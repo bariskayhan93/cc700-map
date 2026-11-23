@@ -55,8 +55,8 @@ $('gpx').onchange = () => {
   requestBuild();
 };
 $('speed').onchange = requestBuild;
-// cc27 switches, each saved: way-back and grey (wayback), own lines (F_OWN), test text (F_TEXT).
-for (const [k, key] of [['wayback', 'cc700-wb2'], ['ownLines', 'cc700-own'], ['testText', 'cc700-text']]) {
+// cc27 switches, each saved: way-back and grey (wayback), own lines (F_OWN), test text (F_TEXT), corner chart (type 3).
+for (const [k, key] of [['wayback', 'cc700-wb2'], ['ownLines', 'cc700-own'], ['testText', 'cc700-text'], ['elevation', 'cc700-elev']]) {
   $(k).checked = true;   // default on
   try { if (localStorage.getItem(key) === '0') $(k).checked = false; } catch {}
   $(k).onchange = () => {
@@ -93,7 +93,7 @@ async function build() {
   building = true;
   const t0 = performance.now();
   const file = gpxFile, fwChoice = $('fw').value, styled = fwChoice !== 'orig', codec = fwChoice === 'patch25' || fwChoice === 'patch27' ? 'd' : undefined;
-  const cc27 = fwChoice === 'patch27', sw = { ownLines: $('ownLines').checked, testText: $('testText').checked };
+  const cc27 = fwChoice === 'patch27', sw = { ownLines: $('ownLines').checked, testText: $('testText').checked, elevation: $('elevation').checked };
   const speedKmh = Math.max(8, Math.min(45, +$('speed').value || 18));
   const layers = Object.fromEntries(LAYERS.map(k => [k, $(k).checked]));
   try {
@@ -121,17 +121,18 @@ async function build() {
     const tRoute = performance.now();
     const model = readFile(r.file), check = verify(r, model, styled);
     if (check) throw new Error('Prüfung fehlgeschlagen: ' + check);
-    // cc27 sections (way-back, grey): appended after the check, so the route part of the file is the verified one.
-    // Any failure keeps the plain route file.
+    // cc27 sections (way-back, grey, corner chart): appended after the check, so the route part of the file is the
+    // verified one. Any failure keeps the plain route file.
     let wayback = '';
-    if (cc27 && $('wayback').checked) {
+    if (cc27 && ($('wayback').checked || sw.elevation)) {
       say('sum', 'Rückweg-Daten werden geladen …');
       try {
-        const c = await cc27Sections(r.file, { reach: $('waybackReach').value });
+        const c = await cc27Sections(r.file, { wayback: $('wayback').checked, elevation: sw.elevation, reach: $('waybackReach').value });
         if (needsBuild) return;
         r.file = c.file;
         const km = c.report.reach ? (/(\d)k$/.exec(c.report.reach) || [0, '?'])[1] + ' km' : '';
         wayback = (c.report.waybackBytes ? ` · Rückweg-Daten ${((c.report.waybackBytes + c.report.greyBytes) / 1024).toFixed(0)} KB (${km})` : '') +
+          (c.report.elevationBytes ? ' · Höhenprofil' : '') +
           (c.report.greyReason ? ' · ohne graue Straßen: ' + c.report.greyReason : '') +
           (c.report.waybackError ? ' · ohne Rückweg-Daten: ' + c.report.waybackError : '');
         log(JSON.stringify({cc27: c.report}));

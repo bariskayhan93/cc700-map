@@ -43,8 +43,7 @@ for (const styled of [false,true]) {
   assert.match(html, /<option value="patch27" selected>Patch cc27 \(eigene Linien, graue Straßen\)<\/option>/);
   assert.match(html, /<option value="patch25">/);
   assert.match(html, /<select id="waybackReach"><option value="line1k">1 km<\/option><option value="line2k">2 km<\/option><option value="line3k" selected>3 km<\/option><\/select>/);
-  for (const id of ['wayback', 'ownLines', 'testText']) assert.match(html, new RegExp(`<input id="${id}" type="checkbox">`));
-  assert.doesNotMatch(html, /id="elevation"/);
+  for (const id of ['wayback', 'ownLines', 'testText', 'elevation']) assert.match(html, new RegExp(`<input id="${id}" type="checkbox">`));   // cc29: the corner chart is back
   assert.doesNotMatch(html, /id="arrows"/);   // the turn-arrow layer is removed (18 Nov)
   assert.match(app, /\$\(k\)\.checked = true;   \/\/ default on/);
   assert.match(app, /launchQueue\.setConsumer/);   // a .gpx opened with the installed app
@@ -52,7 +51,7 @@ for (const styled of [false,true]) {
   assert.match(app, /codec = fwChoice === 'patch25' \|\| fwChoice === 'patch27' \? 'd' : undefined/);
   assert.match(app, /blockFlags: cc27Flags\(sw\)/);
   assert.match(app, /localStorage\.setItem\('cc700-fw2', \$\('fw'\)\.value\)/);
-  assert.match(app, /cc27Sections\(r\.file, \{ reach: \$\('waybackReach'\)\.value \}\)/);
+  assert.match(app, /cc27Sections\(r\.file, \{ wayback: \$\('wayback'\)\.checked, elevation: sw\.elevation, reach: \$\('waybackReach'\)\.value \}\)/);
   assert.doesNotMatch(app, /addWayback/);           // only cc27 writes way-back data (cc26 formats are gone)
   assert.match(cc27, /addWayback\(routeFile, \{format: 2, reach: r, fetchImpl\}\)/);
   assert.match(app, /ohne graue Straßen: ' \+ c\.report\.greyReason/);   // review finding 4: the summary says why
@@ -81,10 +80,10 @@ for (const styled of [false,true]) {
   assert.equal(all, 11);
   const plain = build(all);
   const c = await cc27Sections(plain, {fetchImpl, reach: 'line3k'});
-  assert.deepEqual(c.sections, [1, 2]);
+  assert.deepEqual(c.sections, [1, 2, 3]);   // cc29: the corner chart section stays in every case
   const retained = readSections(c.file).map(({type, offset, size}) => ({type, bytes: c.file.slice(offset, offset + size)}));
-  assert.deepEqual(retained.map(s => s.type), [1, 2]);
-  const legacy = embedSections(plain, [...retained, {type: 3, bytes: elevationSection(plain)}]);
+  assert.deepEqual(retained.map(s => s.type), [1, 2, 3]);
+  const legacy = embedSections(plain, retained);
   assert.deepEqual(routePart(c.file), routePart(legacy));
   assert.deepEqual(routePart(c.file), plain);
   const native = readRouteElevations(c.file);
@@ -97,8 +96,8 @@ for (const styled of [false,true]) {
   assert(flagsOf(build(noOwn)).every(f => f === 2));
   assert.equal(cc27Flags({testText: false}), 9);
   const flat = await cc27Sections(plain, {fetchImpl: async () => { throw Error('offline'); }, reach: 'line2k'});
-  assert.deepEqual(flat.sections, []);
-  assert.deepEqual(flat.file, plain);
+  assert.deepEqual(flat.sections, [3]);   // no way-back offline, but the chart section stays
+  assert.notEqual(flat.file.length, plain.length);
   assert.match(flat.report.waybackError, /offline/);
   console.log('PASS retained sections, native elevation, block switches and plain-route fallback');
 }
@@ -116,20 +115,26 @@ for (const styled of [false,true]) {
   const fetchImpl = async u => ({url: u, ok: true, status: 200, json: async () => ({osm3s: {timestamp_osm_base: '2026-11-01T00:00:00Z'}, elements: els})});
   const gpx = {name: 'guard', pts: Array.from({length: 11}, (_, i) => [...pt(i * 100, 0), 50 + i])};
   const plain = buildRoute(gpx, [], {id: '11120000', nameImage: () => new Uint8Array(42), speedKmh: 18, noF9: true, map: {styled: true, codec: 'd', blockFlags: 11}}).file;
-  const full = await cc27Sections(plain, {fetchImpl, reach: 'line3k'});
+  const full = await cc27Sections(plain, {fetchImpl, reach: 'line3k', elevation: false});
   assert.deepEqual(full.sections, [1, 2]);
   const sec = t => { const s = readSections(full.file).find(x => x.type === t); return full.file.slice(s.offset, s.offset + s.size); };
   const noGreySize = embedSections(plain, [{type: 1, bytes: sec(1)}]).length;
   assert(noGreySize < full.file.length && plain.length < noGreySize);
-  const noGrey = await cc27Sections(plain, {fetchImpl, reach: 'line3k', fileLimit: noGreySize});
+  const noGrey = await cc27Sections(plain, {fetchImpl, reach: 'line3k', fileLimit: noGreySize, elevation: false});
   assert.deepEqual([noGrey.sections, noGrey.report.reach], [[1], 'line3k']);
   assert.match(noGrey.report.greyReason, /Datei über/);
-  const smaller = await cc27Sections(plain, {fetchImpl, reach: 'line3k', fileLimit: noGreySize - 1});
+  const smaller = await cc27Sections(plain, {fetchImpl, reach: 'line3k', fileLimit: noGreySize - 1, elevation: false});
   assert(smaller.file.length <= noGreySize - 1, JSON.stringify(smaller.sections));
   assert(smaller.sections[0] !== 1 || ['line2k', 'line1k'].includes(smaller.report.reach), smaller.report.reach);
-  const onlyNative = await cc27Sections(plain, {fetchImpl, reach: 'line3k', fileLimit: plain.length});
+  const onlyNative = await cc27Sections(plain, {fetchImpl, reach: 'line3k', fileLimit: plain.length, elevation: false});
   assert.deepEqual(onlyNative.sections, []);
   assert.match(onlyNative.report.waybackError, /Datei über/);
-  await assert.rejects(cc27Sections(plain, {fetchImpl, reach: 'line3k', fileLimit: plain.length - 1}), /zu groß/);
+  await assert.rejects(cc27Sections(plain, {fetchImpl, reach: 'line3k', fileLimit: plain.length - 1, elevation: false}), /zu groß/);
+  const {elevationSection} = await import('../js/elevation_section.js');   // cc29: the chart section is the floor
+  const elevFloor = embedSections(plain, [{type: 3, bytes: elevationSection(plain)}]).length;
+  const withElev = await cc27Sections(plain, {fetchImpl, reach: 'line3k', fileLimit: elevFloor});
+  assert.deepEqual(withElev.sections, [3]);
+  assert.match(withElev.report.waybackError, /Datei über/);
+  await assert.rejects(cc27Sections(plain, {fetchImpl, reach: 'line3k', fileLimit: elevFloor - 1}), /zu groß/);
   console.log('PASS at the file guard the grey goes first, then the reach steps down before the plain-route fallback');
 }

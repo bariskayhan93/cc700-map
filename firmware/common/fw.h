@@ -37,6 +37,8 @@ extern void *host_nav_sem, *host_file_sem, *host_fps[6];
 extern int32_t host_file_cnt;
 extern uint8_t host_file_tab[], host_label_opa;
 extern uint16_t host_label_col;
+extern void *host_label_font; extern uint8_t host_label_align;
+void host_km_overlay(int32_t, int32_t, int32_t, int32_t);
 extern float host_map_head;
 #define FW_LINE_DSC (&host_dsc)
 #define FW_CANVAS host_canvas
@@ -74,7 +76,16 @@ extern float host_map_head;
 #define FW_LABEL_DSC ((void *)0)
 #define FW_LABEL_OPA host_label_opa
 #define FW_LABEL_COL host_label_col
+#define FW_LABEL_FONT host_label_font
+#define FW_LABEL_ALIGN host_label_align
+#define FW_FONT_NUM ((void *)1)
+#define FW_FONT_UNIT ((void *)2)
+#define fw_km_overlay host_km_overlay
 #define FW_MAP_HEAD host_map_head
+extern uint32_t host_route_left, host_nav_selector; extern float host_route_total;
+#define FW_ROUTE_LEFT host_route_left
+#define FW_ROUTE_TOTAL host_route_total
+#define FW_NAV_SELECTOR host_nav_selector
 extern int host_proj_zoom, host_proj_rot;
 #define FW_PROJ_ZOOM host_proj_zoom
 #define FW_PROJ_ROT host_proj_rot
@@ -98,6 +109,11 @@ extern int host_proj_zoom, host_proj_rot;
 #define FW_LABEL_DSC ((void *)0x3c38a570)
 #define FW_LABEL_OPA (*(volatile uint8_t *)(0x3c38a570 + 26))
 #define FW_LABEL_COL (*(volatile uint16_t *)(0x3c38a570 + 12))
+#define FW_LABEL_FONT (*(void *volatile *)(0x3c38a570 + 0))     // label descriptor: font
+#define FW_LABEL_ALIGN (*(volatile uint8_t *)(0x3c38a570 + 28))   // alignment, 3 = right
+#define FW_FONT_NUM   ((void *)0x3c2a54d8)                    // stock map font, line 20 (the remaining-distance number)
+#define FW_FONT_UNIT  ((void *)0x3c29188c)                    // stock map font, line 18 ("(km)")
+#define fw_km_overlay ((void (*)(int32_t, int32_t, int32_t, int32_t))0x4205bf0c)   // stock remaining-distance overlay (left, total, bar_w, show_text)
 // v21 tables that the second code area reads from the base (no data in the second code area)
 #define FW_V21_OPS    0x3c1ddf40
 #define FW_V21_FILLS  0x3c1ddf36
@@ -120,6 +136,9 @@ extern int host_proj_zoom, host_proj_rot;
 #define FW_ROUTE_FP  ((void *volatile *)0x3c388418)                       /* route file handles, 6 types */
 #define FW_DASH      (*(volatile int16_t *)(0x3c38a590 + 4))              /* line descriptor: patch operation */
 #define FW_MAP_HEAD  (*(volatile float *)0x3c388d08)                      /* map heading: 450 - course, degrees */
+#define FW_ROUTE_LEFT   (*(volatile uint32_t *)0x3c389344)                /* remaining route distance, m (progress words) */
+#define FW_ROUTE_TOTAL  (*(volatile float *)0x3c389320)                   /* total route distance, m */
+#define FW_NAV_SELECTOR (*(volatile uint32_t *)0x3fc9fcc4)                /* nav source: 0 = the route file */
 /* cc28b own projection (firmware/mapdraw/proj.h). Decoded stock chain, 20 Nov: fw_proj 0x4204c1bc, for each point
  * 0x4204a76c (60 B heap block via 0x4204a498; deg -> rad 0x42055b54; x 0x42055c1c: 2^z * 256 * lon / 2pi + 128 * 2^z;
  * y 0x42055bb4: 128 * 2^z - 2^z * 256 * atanh(sin lat) / 2pi, double, truncated), minus the origin S[4], S[5] plus the

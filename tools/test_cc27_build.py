@@ -3,6 +3,7 @@ Real C4 base and the device toolchain. Run: python3 -I -m unittest discover -s t
 import hashlib
 import importlib.util
 import re
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -62,6 +63,8 @@ class Cc27BuildTests(unittest.TestCase):
         word = set()
         for lit in (0x420496b8, 0x42049678, 0x4205bd98):   # wb_rt, cc_iter, cc_line: the 3 literals
             word |= set(range(lit - 0x42000020, lit + 4 - 0x42000020))
+        word |= set(range(0x4204ca2e - 0x42000020, 0x4204ca31 - 0x42000020))   # the call8 of the stock km overlay
+        word |= set(range(0x4205bdd0 - 0x42000020, 0x4205bdec - 0x42000020))   # km_tramp, 0x1c B
         self.assertTrue(diff and set(diff) <= word, diff)
 
     def test_version_is_cc27_with_the_build_mark(self):
@@ -82,16 +85,47 @@ class Cc27BuildTests(unittest.TestCase):
         self.assertEqual(sorted(self.receipt['map_hooks']), ['0x42049678', '0x4205bd98'])
 
     def test_called_firmware_entries_begin_with_entry_also_the_new_calls(self):
-        for a in (0x403763e0, 0x40376398, 0x420494a4, 0x420494b8):
+        for a in (0x403763e0, 0x40376398, 0x420494a4, 0x420494b8, 0x4205bf0c):
             self.assertIn(a, cb.CALLED)
         cb.check_called(self.base)
 
     def test_the_cc27_tree_is_built_from_the_working_tree(self):
-        for n in ('raster.c', 'view.c', 'wb_grey_draw.c', 'map.c', 'wb_device.c'):
+        for n in ('raster.c', 'view.c', 'wb_grey_draw.c', 'map.c', 'wb_device.c', 'elev.c'):
             self.assertIn(n, self.receipt['sources'])
         self.assertIn('rs_line', self.receipt['symbols'])
-        self.assertNotIn('elev.c', self.receipt['sources'])
-        self.assertNotIn('elev_draw', self.receipt['symbols'])
+        for n in ('wb_km', 'el_draw', 'el_plain'):                 # the lens chart
+            self.assertIn(n, self.receipt['symbols'])
+        self.assertNotIn('elev_chart', self.receipt['symbols'])
+        self.assertIn('km_tramp.S', self.receipt['sources'])
+
+    def test_the_km_overlay_call_goes_to_km_tramp_and_km_tramp_to_wb_km(self):
+        irom = segments(self.image)[0x42000020]
+        at = lambda a, n: irom[a - 0x42000020:a - 0x42000020 + n]
+        self.assertEqual(at(0x4204ca2e, 3), bytes.fromhex('253a0f'))            # call8 0x4205bdd0
+        tramp = at(0x4205bdd0, 0x1c)
+        self.assertEqual(tramp[:3], bytes.fromhex('364100'))                    # entry a1, 32
+        self.assertEqual(tramp[0x17:0x1c], bytes.fromhex('e008001df0'))       # callx8 a8; retw.n
+        word = int.from_bytes(tramp[8:12], 'little')
+        self.assertEqual(hex(word), self.receipt['km_target'])
+        self.assertTrue(0x4237b134 <= word < 0x42380000, hex(word))
+        self.assertEqual(self.receipt['km_call'], {'at': '0x4204ca2e', 'old': 'e54d0f', 'new': '253a0f'})
+        self.assertEqual(self.receipt['incoming']['km']['outside'], 0)
+
+    def test_the_lens_module_runs_in_the_irom_tail_and_keeps_the_reserve(self):
+        b, o = segments(self.base)[0x42000020], segments(self.image)[0x42000020]
+        self.assertEqual(0x42000020 + len(b), 0x421debac)
+        self.assertEqual(len(o) - len(b), self.receipt['tail_bytes'])
+        self.assertGreater(self.receipt['tail_bytes'], 0)
+        self.assertGreaterEqual(0x421e0000 - (0x42000020 + len(o)), 1768)
+        self.assertEqual(self.receipt['tail_free'], 0x421e0000 - 0x42000020 - len(o))
+        f = Path(self.tmp.name) / 'call.bin'
+        f.write_bytes(o[0x4204ca2c - 0x42000020:0x4204ca34 - 0x42000020])
+        dis = subprocess.run([str(PREFIX) + 'objdump', '-D', '-b', 'binary', '-m', 'xtensa', '--adjust-vma=0x4204ca2c', str(f)],
+                             capture_output=True, check=True, text=True).stdout
+        self.assertRegex(dis, r'4204ca2e:\s+253a0f\s+call8\s+0x4205bdd0')
+
+    def test_the_cc29_label_patch_is_gone(self):
+        self.assertNotIn('0x420949e3', open(ROOT / 'tools/cc27_build.py').read())
 
     def test_functions_that_the_unit_never_calls_are_not_in_the_image(self):   # -ffunction-sections: gc per function
         for name in ('wb_unmount', 'wb_line_info', 'rs_rect', '__divdi3'):

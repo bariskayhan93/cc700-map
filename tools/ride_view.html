@@ -1,0 +1,70 @@
+<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CC700 ride replay</title><!--STYLE-->
+<style>body{max-width:60rem;margin:auto;padding:1rem}.device-screen{width:240px;border:0;margin:0}input[type=range]{width:100%}button,select{width:auto;margin:.3rem}p{max-width:65ch}#recoveryCaption{position:absolute;left:6px;top:6px;color:black;text-shadow:1px 1px white;font:14px sans-serif;pointer-events:none}.turn-card[hidden]{display:none}.device-map .map-compass {box-sizing:border-box;left:calc(8 * var(--device-pixel));top:calc(173 * var(--device-pixel));bottom:auto;width:calc(32 * var(--device-pixel));height:calc(32 * var(--device-pixel))}
+.device-map .map-scale {bottom:calc(20 * var(--device-pixel))}
+</style>
+<h1>CC700 ride replay</h1>
+<p>Choose the candidate course for the leg you want to inspect. Switching courses keeps your GPS position and time. The active route revision and device matcher state were not recorded.</p>
+<label>Candidate course <select id="course"></select></label>
+
+<label><input type="checkbox" id="cut"> Model the photographed c5 map cutoff</label>
+<main aria-label="Simulated navigation"><!--SCREEN--></main>
+<p><button id="play">Play</button><button id="prev">Previous fix</button><button id="next">Next fix</button>
+<select id="rate" aria-label="Playback rate"><option>1</option><option>4</option><option>16</option></select> ×
+<select id="episodes" aria-label="Jump to detour"><option value="">Jump to detour</option></select></p>
+<input id="slider" type="range" min="0" value="0" step="1" aria-label="Ride position"><output id="status"></output>
+<script type="importmap">/*IMPORTS*/</script><script type="module">
+import {draw,readFile} from 'preview.js';
+import {previewGuidance} from 'preview_guidance.js';
+const {routes,frames,metresPerPixel}=/*RIDE*/;
+const bytes=s=>Uint8Array.from(atob(s),c=>c.charCodeAt(0));
+for(const r of routes)r.model=readFile(bytes(r.binary));
+const $=id=>document.getElementById(id), text=(id,v)=>$(id).textContent=v;
+const recoveryCaption=document.createElement('span');
+recoveryCaption.id='recoveryCaption';
+$('cv').after(recoveryCaption);
+const compassPoints=['N','NE','E','SE','S','SW','W','NW'];
+const reference = new URLSearchParams(location.hash.slice(1));
+$('cut').checked = reference.get('cut') === '5';
+let index = Math.max(0, Math.min(frames.length-1, (Number(reference.get('fix')) || 1) - 1)) | 0, timer;
+function pause(){clearTimeout(timer);timer=null;text('play','Play')}
+function show(i){
+  index=Math.max(0,Math.min(frames.length-1,i)); $('slider').value=index;
+  const [t,p,h,travel]=frames[index], prior=frames[index-1];
+  const {model,matches,recovery,sections,total}=routes[$('course').selectedIndex];
+  const [m,reason]=matches[index];
+  const [recoveryPath,caption,mask,pixels]=recovery[index]??[null,'','',0];
+  recoveryCaption.textContent=caption;
+  const {heading,section}=draw($('cv'),model,m,model.styled,{profile:'v21',riderPosition:p,headingDegrees:h,metresPerPixel,recoveryPath,
+    mapCut:$('cut').checked ? 5 : 0,greySpans:bytes(mask),modeledRouteThreshold:true});
+  const cue=previewGuidance(sections,m,total), near=['single-pass','heading','continuity'].includes(reason);
+  document.querySelector('.turn-card').hidden=!near;
+  $('turnArrow').dataset.dir=cue.dir; text('turnCaption',cue.caption);
+  text('turnDistance',cue.remaining>=1000?(cue.remaining/1000).toFixed(1):Math.round(cue.remaining));text('turnUnit',cue.remaining>=1000?'km':'m');
+  text('rideRemaining',near?((total-m)/1000).toFixed(1):'—');
+  text('rideSpeed',prior?((travel-prior[3])*3.6/(t-prior[0])).toFixed(1):'—');
+  text('rideHeading',Number.isFinite(h)?compassPoints[Math.round(((h%360)+360)%360/45)%8]:'—');
+  $('rideCompass').style.transform='rotate('+(-heading)+'deg)';
+  $('rideProgress').style.transform='scaleX('+m/total+')';
+  $('rideProgress').parentNode.style.setProperty('--ride-progress',100*m/total+'%');
+  text('status',new Date(t*1000).toISOString().slice(11,19)+' UTC · Fix '+(index+1)+' / '+frames.length+' · map block '+section+' · '+reason+(reason==='off-route'?(recoveryPath?.length?' · modeled way-back · '+pixels+' grey pixels before overlays':' · recovery unavailable'):''));
+}
+function advance(){if(index===frames.length-1)return pause();timer=setTimeout(()=>{show(index+1);advance()},1000*(frames[index+1][0]-frames[index][0])/Number($('rate').value))}
+$('play').onclick=()=>{if(timer)return pause();if(index===frames.length-1)show(0);text('play','Pause');advance()};
+$('slider').max=frames.length-1;
+$('slider').oninput=()=>{pause();show(+$('slider').value)};
+for(const [key,step] of [['prev',-1],['next',1]])$(key).onclick=()=>{pause();show(index+step)};
+$('rate').onchange=()=>{if(timer){clearTimeout(timer);advance()}};
+function selectCourse(){
+  pause();
+  $('episodes').length=1;
+  routes[$('course').selectedIndex].episodes.forEach((t,i)=>$('episodes').add(new Option('Detour '+(i+1),frames.findIndex(f=>f[0]>=t))));
+  show(index);
+}
+routes.forEach(r=>$('course').add(new Option((r.total/1000).toFixed(2)+' km')));
+$('course').onchange=selectCourse;
+$('episodes').onchange=()=>{if($('episodes').value!==''){pause();show(+$('episodes').value)}};
+$('cut').onchange=()=>show(index);
+selectCourse();
+window.addEventListener('pagehide',pause);
+</script></html>
