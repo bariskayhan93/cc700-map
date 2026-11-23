@@ -53,8 +53,8 @@ for (const styled of [false,true]) {
   assert.match(app, /localStorage\.setItem\('cc700-fw2', \$\('fw'\)\.value\)/);
   assert.match(app, /cc27Sections\(r\.file, \{ wayback: \$\('wayback'\)\.checked, elevation: sw\.elevation, reach: \$\('waybackReach'\)\.value \}\)/);
   assert.doesNotMatch(app, /addWayback/);           // only cc27 writes way-back data (cc26 formats are gone)
-  assert.match(cc27, /addWayback\(routeFile, \{format: 2, reach: r, fetchImpl\}\)/);
-  assert.match(app, /ohne graue Straßen: ' \+ c\.report\.greyReason/);   // review finding 4: the summary says why
+  assert.match(cc27, /addWayback\(routeFile, \{format: 2, reach: r, fetchImpl, layer: false\}\)/);
+  assert.match(app, /ohne Fernkarte: ' \+ c\.report\.farReason/);   // review finding 4: the summary says why (far map, 23 Nov)
   assert.match(app, /checkWayback\(file\)/);   // the identity is checked before the file is sent (owner ruling, 18 Nov)
   console.log('PASS page defaults to patch27 with way-back, grey streets, keeps patch25, saves the choice');
 }
@@ -80,9 +80,9 @@ for (const styled of [false,true]) {
   assert.equal(all, 75);   // 23 Nov: F_OWN | F_TEXT | F_AA | F_PROJ (own projection on page routes)
   const plain = build(all);
   const c = await cc27Sections(plain, {fetchImpl, reach: 'line3k'});
-  assert.deepEqual(c.sections, [1, 2, 3]);   // cc29: the corner chart section stays in every case
+  assert.deepEqual(c.sections, [1, 4, 3]);   // far map (23 Nov) replaces grey 2; the corner chart section stays in every case
   const retained = readSections(c.file).map(({type, offset, size}) => ({type, bytes: c.file.slice(offset, offset + size)}));
-  assert.deepEqual(retained.map(s => s.type), [1, 2, 3]);
+  assert.deepEqual(retained.map(s => s.type), [1, 4, 3]);
   const legacy = embedSections(plain, retained);
   assert.deepEqual(routePart(c.file), routePart(legacy));
   assert.deepEqual(routePart(c.file), plain);
@@ -116,13 +116,13 @@ for (const styled of [false,true]) {
   const gpx = {name: 'guard', pts: Array.from({length: 11}, (_, i) => [...pt(i * 100, 0), 50 + i])};
   const plain = buildRoute(gpx, [], {id: '11120000', nameImage: () => new Uint8Array(42), speedKmh: 18, noF9: true, map: {styled: true, codec: 'd', blockFlags: 11}}).file;
   const full = await cc27Sections(plain, {fetchImpl, reach: 'line3k', elevation: false});
-  assert.deepEqual(full.sections, [1, 2]);
+  assert.deepEqual(full.sections, [1, 4]);
   const sec = t => { const s = readSections(full.file).find(x => x.type === t); return full.file.slice(s.offset, s.offset + s.size); };
   const noGreySize = embedSections(plain, [{type: 1, bytes: sec(1)}]).length;
   assert(noGreySize < full.file.length && plain.length < noGreySize);
   const noGrey = await cc27Sections(plain, {fetchImpl, reach: 'line3k', fileLimit: noGreySize, elevation: false});
   assert.deepEqual([noGrey.sections, noGrey.report.reach], [[1], 'line3k']);
-  assert.match(noGrey.report.greyReason, /Datei über/);
+  assert.match(noGrey.report.farReason, /Datei über/);
   const smaller = await cc27Sections(plain, {fetchImpl, reach: 'line3k', fileLimit: noGreySize - 1, elevation: false});
   assert(smaller.file.length <= noGreySize - 1, JSON.stringify(smaller.sections));
   assert(smaller.sections[0] !== 1 || ['line2k', 'line1k'].includes(smaller.report.reach), smaller.report.reach);

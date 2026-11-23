@@ -56,8 +56,9 @@ ok('areas clipped per cell, concave kept, small dropped');
 // 4. encode -> read round trip
 const both = buildFarCells({ways: [zig, {tags: {highway: 'track'}, pts: [P(500, 1200), P(900, 1700), P(1500, 1650)]}],
   areas: [{tags: {landuse: 'forest'}, rings: [sq(2500, 1500, 600)]}], route, frame, reachM: 3000});
-const bytes = encodeFar(both, FAR_CAPS), back = readFar(bytes);
+const bytes = encodeFar(both, FAR_CAPS, frame), back = readFar(bytes);
 assert.deepEqual(back.caps, FAR_CAPS);
+assert.deepEqual(back.frame, {lat0E7: frame.lat0E7, lon0E7: frame.lon0E7, latU: frame.latU, lonU: frame.lonU}, 'own frame in the header');
 assert.deepEqual(back.cells.map(c => c.key), both.map(c => c.key));
 const norm = cs => cs.map(c => c.items.map(i => i.cls + ':' + i.pts.map(p => p.join(',')).join(';')).sort());
 assert.deepEqual(norm(back.cells), norm(both));
@@ -65,7 +66,7 @@ ok('encode and read round trip');
 
 // 5. a cell body over 2,048 B throws
 const many = Array.from({length: 120}, (_, k) => ({tags: {highway: 'track'}, pts: Array.from({length: 30}, (_, j) => P(2010 + j * 7, 1510 + k * 2 + (j % 2) * 3))}));
-assert.throws(() => encodeFar(buildFarCells({ways: many, areas: [], route, frame, reachM: 3000}), FAR_CAPS), /far cell over 2048 B/);
+assert.throws(() => encodeFar(buildFarCells({ways: many, areas: [], route, frame, reachM: 3000}), FAR_CAPS, frame), /far cell over 2048 B/);
 ok('cell body limit');
 
 // 6. fit: lines are removed until no screen is over the caps; low classes go first

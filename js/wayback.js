@@ -95,7 +95,7 @@ export function waybackFromSnapshot(snapshot, route, routeId, {reach = 'line2k',
   return null;
 }
 
-async function overpass(query, fetchImpl) {
+export async function overpass(query, fetchImpl) {
   let err;
   for (let n = 0; n < 2 * API.length; n++) {
     try {
@@ -163,7 +163,9 @@ export async function addWayback(routeBytes, {fetchImpl = fetch, maxBytes = WAYB
   const made = waybackFromSnapshot(snapshot, route, await routeIdentity(routeBytes), {maxBytes, format, routeBytes, layer, reach: r, caps});
   if (!made) throw new Error('way-back data exceeds ' + maxBytes + ' bytes');
   if (!made.model.stats.stored) throw new Error('no stored street');
-  return {wayback: made.bytes, grey: made.grey, greyReport: made.greyReport, bytes: made.bytes.length + (made.grey ? made.grey.length : 0), reach: made.reach, stats: made.model.stats};
+  const q = waybackQuery(route, r);
+  return {wayback: made.bytes, grey: made.grey, greyReport: made.greyReport, bytes: made.bytes.length + (made.grey ? made.grey.length : 0), reach: made.reach, stats: made.model.stats,
+    snapshot, boxes: q.boxes || [q.bbox], bbox: q.bbox, route};
 }
 
 // The sections of addWayback for embedSections: the way-back section, then the grey section when there is one.

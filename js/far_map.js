@@ -3,12 +3,14 @@
 // 0.5 m grid of the way-back frame. The unit draws it in every map frame under the detail map (firmware/wayback/wb_far.c).
 // Pure code: the page and the host tools use it.
 import {forEachScreen, lineWorkBound} from './screen_proof.js';
+import {makeFrame} from './wayback_format.js';
+import {REACH} from './wayback_tree.js';
 
 export const FAR = {MAIN: 0, MINOR: 1, CYCLE: 2, TRACK: 3, PATH: 4, WATERLINE: 5, WATER: 8, FOREST: 9, GREEN: 10};
 export const FAR_CAPS = {pixCap: 60000, ptCap: 2048, fillCap: 61440};
 const MAGIC = [0x43, 0x43, 0x46, 0x4D];          // "CCFM"
 const VERSION = 1, CELL_SHIFT = 12, Q_SHIFT = 3, CELL = 1 << CELL_SHIFT, Q = 1 << Q_SHIFT, U_M = 16;
-const MAX_POINTS = 32, MAX_RING = 64, MAX_BODY = 2048, MAX_CELLS = 16384, MAX_KEYS = 256, HEADER = 32, ENTRY = 8, SENTINEL = 0xFFFFFFFF;
+const MAX_POINTS = 32, MAX_RING = 64, MAX_BODY = 2048, MAX_CELLS = 16384, MAX_KEYS = 256, HEADER = 48, ENTRY = 8, SENTINEL = 0xFFFFFFFF;
 const LINE_TOL = 40, AREA_TOL = 12 * U_M, AREA_MIN = 5000, STEP_M = 20;
 // detail reach of each line class (js/mapsec.js:311 SR); the far line starts where the detail map stops
 export const DETAIL_REACH = {[FAR.MAIN]: 1000, [FAR.MINOR]: 550, [FAR.CYCLE]: 350, [FAR.TRACK]: 300, [FAR.PATH]: 300, [FAR.WATERLINE]: 600};
@@ -176,15 +178,18 @@ function body(cell) {
   if (out.length > MAX_BODY) throw new Error('far cell over 2048 B');
   return out;
 }
-// Header (32 B): "CCFM", cell shift, quantum shift, version, stride shift; u32 cells, body bytes, pixCap, ptCap, fillCap,
-// directory keys. Then the directory (every stride-th key), the table (key, body offset; sentinel), the bodies.
-export function encodeFar(cells, caps = FAR_CAPS) {
+// Header (48 B): "CCFM", cell shift, quantum shift, version, stride shift; u32 cells, body bytes, pixCap, ptCap, fillCap,
+// directory keys; the unit frame i32 lat0E7, i32 lon0E7, u32 latU, u32 lonU (as the way-back header): the far map works
+// without way-back data. Then the directory (every stride-th key), the table (key, body offset; sentinel), the bodies.
+export function encodeFar(cells, caps = FAR_CAPS, frame) {
+  if (!frame) throw new Error('far map: no frame');
   const n = cells.length; if (!n) return null; if (n > MAX_CELLS) throw new Error('far map over 16,384 cells');
   const bodies = cells.map(body); let shift = 4; while (Math.ceil(n / (1 << shift)) > MAX_KEYS) shift++;
   const stride = 1 << shift, m = Math.ceil(n / stride), total = bodies.reduce((t, b) => t + b.length, 0);
   const bytes = new Uint8Array(HEADER + 4 * m + (n + 1) * ENTRY + total), dv = new DataView(bytes.buffer);
   bytes.set(MAGIC, 0); bytes[4] = CELL_SHIFT; bytes[5] = Q_SHIFT; bytes[6] = VERSION; bytes[7] = shift;
   [n, total, caps.pixCap, caps.ptCap, caps.fillCap, m].forEach((v, i) => dv.setUint32(8 + 4 * i, v, true));
+  dv.setInt32(32, frame.lat0E7, true); dv.setInt32(36, frame.lon0E7, true); dv.setUint32(40, frame.latU, true); dv.setUint32(44, frame.lonU, true);
   for (let j = 0; j < m; j++) dv.setUint32(HEADER + 4 * j, cells[stride * j].key, true);
   let at = HEADER + 4 * m, off = 0;
   cells.forEach((c, i) => { dv.setUint32(at, c.key, true); dv.setUint32(at + 4, off, true); at += ENTRY; off += bodies[i].length; });
@@ -208,7 +213,7 @@ export function readFar(bytes) {
     if (p !== end) throw new Error('far map: body length');
     cells.push({key, items});
   }
-  return {caps: {pixCap, ptCap, fillCap}, cells};
+  return {caps: {pixCap, ptCap, fillCap}, frame: {lat0E7: dv.getInt32(32, true), lon0E7: dv.getInt32(36, true), latU: dv.getUint32(40, true), lonU: dv.getUint32(44, true)}, cells};
 }
 
 // Line work and points of the items of one cell (areas: their ring points; the fill is bounded by the canvas).
@@ -240,4 +245,16 @@ export function fitFar(cells, caps = FAR_CAPS, maxRemovals = 20000) {
   });
   const out = work.filter(c => c.items.length);
   return {cells: out, removedLines, proof: proveFar(out, caps)};
+}
+
+// The section bytes of one route file (null: no far cell). w: the result of addWayback (snapshot, bbox, route, reach);
+// src: captureFarSource. The frame covers the query box, so every far point has non-negative units.
+export function farSection(w, src, caps = FAR_CAPS) {
+  const [s, wl, n, e] = w.bbox, frame = makeFrame([[s, wl], [n, e]]), node = new Map(w.snapshot.nodes.map(x => [x.id, x.point]));
+  const ways = w.snapshot.ways.map(x => ({tags: x.tags, pts: x.nodes.map(id => node.get(id)).filter(Boolean)}));
+  for (const l of src.waterLines) ways.push({tags: l.tags, pts: l.pts});
+  const cells = buildFarCells({ways, areas: src.areas, route: w.route.map(r => r.point), frame, reachM: REACH[w.reach].air});
+  if (!cells.length) return null;
+  const fit = fitFar(cells, caps);
+  return fit.cells.length ? {bytes: encodeFar(fit.cells, caps, frame), removedLines: fit.removedLines, cells: fit.cells.length} : null;
 }

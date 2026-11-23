@@ -4,6 +4,7 @@ const AREA = 'landuse~"^(forest|grass|meadow|recreation_ground|village_green|all
 const NAT = 'natural~"^(water|wood|scrub|heath|grassland|wetland)$"', LEIS = 'leisure~"^(park|garden|golf_course|nature_reserve)$"';
 const WATER = 'waterway~"^(river|stream|canal|riverbank)$"';
 import {unionArea} from './routing_snapshot.js';
+import {overpass} from './wayback.js';
 export function farQuery(boxes) {
   if (!Array.isArray(boxes) || !boxes.length) throw new Error('Invalid box');
   for (const b of boxes) if (!Array.isArray(b) || b.length !== 4 || !b.every(Number.isFinite) || b[0] >= b[2] || b[1] >= b[3] || b[2] - b[0] > 1 || b[3] - b[1] > 1) throw new Error('Invalid box');
@@ -43,3 +44,6 @@ export function captureFarSource(json) {
   }
   return {areas, waterLines};
 }
+
+// The far source of the boxes of a way-back fetch (one request).
+export async function loadFarSource(boxes, fetchImpl) { return captureFarSource((await overpass(farQuery(boxes), fetchImpl)).json); }

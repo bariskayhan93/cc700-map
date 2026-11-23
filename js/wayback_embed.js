@@ -4,7 +4,7 @@
 // u32 file length, u32 0. Each section is inside [0, file length - 64), no two overlap, a type occurs once.
 // An unknown type is kept in the table and ignored by the unit.
 const PAGE = 4096, TRAILER = 64, MAGIC = 0x53574343, MAX = 4;   // "CCWS"
-export const SECTION = {WAYBACK: 1, GREY: 2, ELEV: 3};
+export const SECTION = {WAYBACK: 1, GREY: 2, ELEV: 3, FAR: 4};   // FAR: the far map (js/far_map.js, 23 Nov); 2 is not written any more
 
 export function readSections(bytes) {
   if (!bytes || bytes.length < TRAILER) return null;
