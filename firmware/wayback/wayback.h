@@ -29,5 +29,4 @@ void wb_point(const wb_grid *, uint32_t x, uint32_t y, int32_t point_e7[2]);
 int wb_scan(wb_engine *, uint32_t cx0, uint32_t cy0, uint32_t cx1, uint32_t cy1,
             uint32_t x0, uint32_t y0, uint32_t x1, uint32_t y1, wb_visit, void *ctx);
 /* The line of one piece by its id (the id of wb_output.piece), for the rider position in input. */
-void wb_tick_piece(wb_engine *, const wb_input *, uint32_t id, wb_output *);
 void wb_line_info(const wb_engine *, uint32_t info[3]);   /* end_dm, len, end_first of the current line */

@@ -24,6 +24,7 @@ static pt_t input_anchors[256];
 static int32_t input_names[256][64];
 static unsigned accepted[12];
 static int accepted_boxes[12][4];
+static unsigned long long label_trace = 1469598103934665603ULL;   /* placed labels: x, y and the entry */
 static uint64_t trace=1469598103934665603ULL, visible_trace=1469598103934665603ULL;
 static unsigned visible_draws, first_frame_callbacks;
 static uint32_t clock_now, clock_step;
@@ -36,6 +37,8 @@ void host_text(int x,int y,const char *t,uint16_t col) {
   unsigned nc=0;
   for(const unsigned char *q=(const unsigned char *)t;*q;q++) if((*q&0xc0)!=0x80) nc++;
   for(unsigned i=0;i<host_cnt;i++) if((const char *)host_ents[i].pts==t) {accepted[slot]=i;break;}
+  label_trace=(label_trace^(unsigned)x)*1099511628211ULL; label_trace=(label_trace^(unsigned)y)*1099511628211ULL;
+  label_trace=(label_trace^accepted[slot])*1099511628211ULL;
   accepted_boxes[slot][0]=x-3;accepted_boxes[slot][1]=y-3;
   accepted_boxes[slot][2]=x+(int)nc*7+7;accepted_boxes[slot][3]=y+19;
   labels++;
@@ -127,6 +130,24 @@ int main(int argc, char **argv) {
     for(unsigned i=0;i<w*h;i++) putchar(host_buf[i]?'1':'0');
     printf("\"}\n");free(host_buf);return 0;
   }
+  if(!strcmp(which,"dash_pieces")) {   /* every dash op (LVGL path: one draw call per piece) on fixed random polylines */
+    const uint16_t ops[] = { 0x800b, 0x800c, 0x8012, 0x8020, 0x8005 | 0x0200 };   /* path, rail, track, A5, tunnel edge */
+    uint32_t r = 12345u; pt_t p[6];
+    host_buf = calloc(host_w * host_h, sizeof(uint16_t)); require(host_buf != 0, "canvas");
+    host_nop();
+    for (unsigned it = 0; it < 20000u; it++) {
+      unsigned n = 2u + it % 5u, big = it % 3u == 0u;
+      for (unsigned k = 0; k < n; k++) {
+        r = r * 1103515245u + 12345u; p[k].x = (int16_t)((int)((r >> 8) % (big ? 8001u : 600u)) - (big ? 4000 : 180));
+        r = r * 1103515245u + 12345u; p[k].y = (int16_t)((int)((r >> 8) % (big ? 8001u : 600u)) - (big ? 4000 : 180));
+      }
+      if (it % 97u == 0u) { p[0].x = -4000; p[0].y = -4000; p[1].x = 4000; p[1].y = 4000; }
+      host_dsc.dash_width = (int16_t)ops[it % 5u]; cc_line(p, n, 0, 0);
+    }
+    host_nop(); free(host_buf);
+    printf("{\"draws\":%u,\"trace\":%llu}\n", draws, (unsigned long long)trace);
+    return 0;
+  }
   unsigned frames = 1, n = 0;
   if(!strcmp(which,"labels_json")) {
     label_mode=6;require(scanf("%u",&n)==1 && n<=256,"labels input");
@@ -217,7 +238,7 @@ int main(int argc, char **argv) {
                    !strcmp(which,"wat_aa")||!strcmp(which,"grn_aa")?1u|8u:!strcmp(which,"wat_own")||!strcmp(which,"grn_own")?1u:
                    !strcmp(which,"level_stop_text")?2u:!strcmp(which,"proj_text")?1u|2u|8u|64u:!strncmp(which,"proj",4)?1u|8u|64u:0u;   /* F_PROJ 64 */
     if (!strcmp(which,"proj_badzoom")) host_proj_zoom=0;
-    if (!strcmp(which,"proj_far")) probe_far=1;   /* F_OWN 1, F_TEXT 2, F_AA 8, F_CYC 16, F_NODRAW 32 */
+    if (!strcmp(which,"proj_far")) probe_far=1;   /* F_OWN 1, F_TEXT 2, F_AA 8, F_CYC 16 and 32 (retired) */
     if (flags) {                                             /* the flags entry, last (cc27) */
       ent_t *e=realloc(host_ents,(n+1)*sizeof(ent_t));require(e!=0,"entry allocation");host_ents=e;
       host_ents[n]=(ent_t){n,15,BLK_FLAGS_MAGIC,(int32_t)flags,0,0};host_cnt=++n;
@@ -259,8 +280,8 @@ int main(int argc, char **argv) {
   for (unsigned i=0;i<pixels;i++) painted += host_buf[i]!=0;
   printf("{\"locks\":%u,\"unlocks\":%u,\"callbacks\":%u,\"draws\":%u,"
          "\"allocations\":%u,\"peak_bytes\":%u,\"live_bytes\":%u,"
-         "\"selection_checks\":%u,\"labels\":%u,\"trace\":%llu,\"visible_trace\":%llu,\"visible_draws\":%u,\"first_frame_callbacks\":%u,\"guard_changed\":%u,\"painted\":%u,\"projected_points\":%u}\n",locks,unlocks,callbacks,draws,
-         allocations,peak_bytes,live_bytes,host_selection_checks,labels,(unsigned long long)trace,(unsigned long long)visible_trace,visible_draws,first_frame_callbacks,
+         "\"selection_checks\":%u,\"labels\":%u,\"label_trace\":%llu,\"trace\":%llu,\"visible_trace\":%llu,\"visible_draws\":%u,\"first_frame_callbacks\":%u,\"guard_changed\":%u,\"painted\":%u,\"projected_points\":%u}\n",locks,unlocks,callbacks,draws,
+         allocations,peak_bytes,live_bytes,host_selection_checks,labels,label_trace,(unsigned long long)trace,(unsigned long long)visible_trace,visible_draws,first_frame_callbacks,
          guarded[0]!=0xbeef || guarded[pixels+1]!=0xbeef,painted,projected_points);
   free(host_ents); free(guarded);
   require(!held && !live_bytes,"leaked renderer state");

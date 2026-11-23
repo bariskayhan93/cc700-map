@@ -72,21 +72,20 @@ static void line(const pt_t *p, uint32_t n, uint16_t col, int w2, uint8_t opa, i
   d->color = col; d->width = w; d->opa = opa; d->flags = w >= 3 ? 0x0c : 0; d->dash_width = 0; d->dash_gap = 0;
   fw_draw_line(FW_CANVAS, p, n, d);
 }
-static uint32_t isqrt(uint32_t v) { uint32_t r = 0, b = 1u << 30; while (b > v) b >>= 2;
-  while (b) { if (v >= r + b) { v -= r + b; r = (r >> 1) + b; } else r >>= 1; b >>= 2; } return r; }
 static void dash(const pt_t *p, uint32_t n, uint16_t col, int w, uint8_t opa, int on, int off, int own) {
-  // LVGL 8 dashes only horizontal and vertical lines: cut the polyline into pieces here (16.16 fixed point)
-  int32_t ph = 0, per = (on + off) << 16;
+  // LVGL 8 dashes only horizontal and vertical lines: cut the polyline into pieces here (whole pixels).
+  // 32 bits are exact: cc_line calls sane() first, so |dx|, |dy| <= 8,000, len <= 11,314 and dx * s < 2^27.
+  int32_t ph = 0, per = on + off;
   for (uint32_t i = 1; i < n; i++) {
-    int32_t dx = p[i].x - p[i - 1].x, dy = p[i].y - p[i - 1].y; int32_t len = isqrt(dx * dx + dy * dy) << 16;
+    int32_t dx = p[i].x - p[i - 1].x, dy = p[i].y - p[i - 1].y, len = (int32_t)rs_isqrt((uint32_t)(dx * dx + dy * dy));
     if (!len) continue;
-    if (outside(p + i - 1, 2)) { ph = (int32_t)(((uint32_t)ph + (uint32_t)len) % (uint32_t)per); continue; }   // A: same phase, no draw
+    if (outside(p + i - 1, 2)) { ph = (ph + len) % per; continue; }   // A: same phase, no draw
     for (int32_t s = 0; s < len;) {
       int32_t d;
-      if (ph < (on << 16)) {
-        d = (on << 16) - ph; if (d > len - s) d = len - s;
-        pt_t q[2] = { { p[i - 1].x + (int16_t)(((int64_t)dx * s) / len), p[i - 1].y + (int16_t)(((int64_t)dy * s) / len) },
-                      { p[i - 1].x + (int16_t)(((int64_t)dx * (s + d)) / len), p[i - 1].y + (int16_t)(((int64_t)dy * (s + d)) / len) } };
+      if (ph < on) {
+        d = on - ph; if (d > len - s) d = len - s;
+        pt_t q[2] = { { p[i - 1].x + (int16_t)(dx * s / len), p[i - 1].y + (int16_t)(dy * s / len) },
+                      { p[i - 1].x + (int16_t)(dx * (s + d) / len), p[i - 1].y + (int16_t)(dy * (s + d) / len) } };
         if (!outside(q, 2)) line(q, 2, col, w, opa, own);   // A
       } else { d = per - ph; if (d > len - s) d = len - s; }
       s += d; ph += d; if (ph >= per) ph -= per;
@@ -137,7 +136,7 @@ void cc_line(const pt_t *pts, uint32_t n, int32_t width, int32_t mode) {
   if (!(sel & OP_PATCH)) {                                    // original: grey edge, white core
     line(pts, n, fw_color_hex(mode == 1 ? 0xc86d : mode == 2 ? 0xc8d0de : 0x1f78ff), width * 2, 255, 0);
     line(pts, n, 0xffff, (width - 4) * 2, 255, 0);
-  } else if (!(sel & OP_NODRAW)) {                            // cc28 F_NODRAW: projected, not drawn
+  } else {
     const op_t *o = &OPS[sel & 0xff];
     int own = sel & OP_OWN ? (sel & OP_AA ? 2 : 1) : 0;
     uint8_t opa = sel & F_TUNNEL ? 115 : 255, op = sel & 0xff;
@@ -263,7 +262,7 @@ void cc_iter(proj_cb_t cb) {
   uint32_t cnt = FW_BLK_CNT, t0 = fw_clock(); ent_t *E = FW_BLK_ENTS;
   if (cnt > 0xFFFFu) cnt = 0xFFFFu;                            // the ranges hold 16 bits (a 64 KB block has fewer entries)
   uint32_t flags = blk_flags(E, cnt);                         // cc27: the last entry, 0 without it (cc26)
-  uint16_t own = (flags & F_OWN ? OP_OWN | (flags & F_AA ? OP_AA : 0) : 0) | (flags & F_NODRAW ? OP_NODRAW : 0);   // F_CYC 16: retired (cc28b)
+  uint16_t own = (flags & F_OWN ? OP_OWN | (flags & F_AA ? OP_AA : 0) : 0);   // F_CYC 16 (cc28b) and 32 (F_NODRAW, 23 Nov): retired
 #define LATE() (fw_clock() - t0 > MAP_FRAME_US)                  // B: the rest of this frame is not drawn
 #define STOP(k) if (LATE()) { cut = (k); goto done; }
   label_state_t labels; labels.count=0; uint32_t cut = 0; int pd = -1; proj_t pj; const proj_t *P = 0;
@@ -318,14 +317,7 @@ void cc_iter(proj_cb_t cb) {
       STOP(8)
       for (uint32_t i = ranges[40].first; i < ranges[40].end; i++, COUNT_ENTRY()) if ((E[i].style & 15) == C_LABEL) {   // street names: anchor only, text from the entry
         if (P) { float x, y; proj_xy(P, E[i].lat, E[i].lon, &x, &y); pt_t q = { rnd(x), rnd(y) }; text(q, i, fw_color_hex(OPS[23].rgb), &labels); continue; }
-        buf[0] = (float)E[i].lat * k; buf[1] = (float)E[i].lon * k;
-        uint16_t old_color=FW_LINE_DSC->color; int16_t old_width=FW_LINE_DSC->width;
-        FW_LINE_DSC->dash_width = (int16_t)(OP_PATCH | OP_ANCHOR); FW_LINE_DSC->dash_gap = 0; cb(buf, 1);
-        if(FW_LINE_DSC->dash_gap) {
-          pt_t p={(int16_t)FW_LINE_DSC->color,FW_LINE_DSC->width};
-          FW_LINE_DSC->dash_gap=0;text(p,i,fw_color_hex(OPS[23].rgb),&labels);
-        }
-        FW_LINE_DSC->color=old_color;FW_LINE_DSC->width=old_width;
+        pt_t q; if (probe(cb, E[i].lat, E[i].lon, &q.x, &q.y)) text(q, i, fw_color_hex(OPS[23].rgb), &labels);
       }
     done:
       fw_free(buf);

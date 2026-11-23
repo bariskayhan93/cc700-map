@@ -25,3 +25,5 @@ void rs_disk(const rs_canvas *c, int x, int y, int d, uint16_t col, uint8_t opa)
 void rs_rect(const rs_canvas *c, int x0, int y0, int x1, int y1, uint16_t col);
 /* Pixel work of rs_line, not clipped: sum over the segments of (major + 1) * w', plus n * w * w when w >= 3. */
 uint32_t rs_work(const pt_t *p, uint32_t n, int w);
+/* floor(sqrt(v)); map.c dash uses it too */
+uint32_t rs_isqrt(uint32_t v);

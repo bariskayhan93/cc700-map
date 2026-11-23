@@ -23,13 +23,13 @@ function binary() {
 }
 
 // lines: [{latE7, lonE7, exitCm = 0, flags, maxPoints = 64, failReadAfter = -1}]
-// Returns one object per line: {mounted, state, reason, distanceDm, forward, changed, reads, points, piece, pieceAt}.
+// Returns one object per line: {mounted, state, reason, distanceDm, forward, changed, reads, points, piece}.
 export function runCore(fileBytes, routeId, lines) {
   const dir = fs.mkdtempSync(path.join(work, 'run-'));
   const file = path.join(dir, 'file.ccwb');
   fs.writeFileSync(file, Buffer.from(fileBytes));
   const hex = Buffer.from(routeId).toString('hex');
-  const input = lines.map(l => [l.latE7, l.lonE7, l.exitCm ?? 0, l.flags, l.maxPoints ?? 64, l.failReadAfter ?? -1, l.pieceId ?? -1].join(' ')).join('\n') + '\n';
+  const input = lines.map(l => [l.latE7, l.lonE7, l.exitCm ?? 0, l.flags, l.maxPoints ?? 64, l.failReadAfter ?? -1].join(' ')).join('\n') + '\n';
   let text;
   try {
     text = execFileSync(binary(), [file, hex], {input, maxBuffer: 1 << 30, encoding: 'utf8'});
@@ -41,7 +41,7 @@ export function runCore(fileBytes, routeId, lines) {
     return {
       mounted: r.mounted, state: r.state ?? 0, reason: r.reason ?? 0, distanceDm: r.distanceDm ?? 0,
       forward: r.forward ?? 0, changed: r.changed ?? 0, reads: r.reads ?? 0, points: r.points ?? [],
-      piece: r.piece ?? 0xFFFFFFFF, pieceAt: r.pieceAt,
+      piece: r.piece ?? 0xFFFFFFFF,
     };
   });
 }

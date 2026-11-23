@@ -3,7 +3,7 @@
 import {addWayback, waybackSections, REACH_CHAIN} from './wayback.js';
 import {embedSections} from './wayback_embed.js';
 
-export const F_OWN = 1, F_TEXT = 2, F_AA = 8, F_CYC = 16, F_NODRAW = 32;   // firmware/common/types.h
+export const F_OWN = 1, F_TEXT = 2, F_AA = 8, F_CYC = 16;   // firmware/common/types.h
 export const FILE_LIMIT = 4_000_000;                 // page guard of a route file
 
 // The flags of every map block.

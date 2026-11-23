@@ -93,6 +93,10 @@ class Cc27BuildTests(unittest.TestCase):
         self.assertNotIn('elev.c', self.receipt['sources'])
         self.assertNotIn('elev_draw', self.receipt['symbols'])
 
+    def test_functions_that_the_unit_never_calls_are_not_in_the_image(self):   # -ffunction-sections: gc per function
+        for name in ('wb_unmount', 'wb_line_info', 'rs_rect', '__divdi3'):
+            self.assertNotIn(name, self.receipt['symbols'])
+
 
 if __name__ == '__main__':
     unittest.main()

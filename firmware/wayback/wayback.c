@@ -188,10 +188,8 @@ int wb_mount(wb_engine *e, wb_reader r, void *ctx, uint32_t file_bytes, const ui
   off_cells = WB_HEADER_BYTES;
   e->off_nodes = off_cells + (cell_count + 1u) * WB_CELL_BYTES;
   e->off_extras = e->off_nodes + node_count * WB_NODE_BYTES;
-  if (e->off_extras > file_bytes) return 0;
   total = e->off_extras + extra_count * WB_EXTRA_BYTES;
-  if (total > file_bytes) return 0;
-  if (total != file_bytes) return 0;                     /* cc27: grey is its own section (type 2), no tail */
+  if (total != file_bytes) return 0;                     /* cc27: grey is its own section (type 2), no tail; counts < 2^24: no overflow */
 
   /* The sentinel cell record must follow the last cell: key, node count and extra count. */
   if (!rd(e, off_cells + cell_count * WB_CELL_BYTES, s, WB_CELL_BYTES)) return 0;
@@ -385,58 +383,6 @@ void wb_tick(wb_engine *e, const wb_input *in, wb_output *out) {
   }
   if (!pk.have || pk.d2 > WB_D2_LIMIT) { out->reason = WB_NO_STREET; return; }
   wb_commit(e, &pk.cand, pk.t, &pr, out);
-}
-
-/* Loads the piece with id: tree piece (node id and its next) or extra piece (record id and both nodes). Returns 1
- * loaded, 0 when no piece has this id, -1 on a read failure. */
-static int piece_load(wb_engine *e, uint32_t id, wb_cand *c) {
-  uint8_t r[WB_EXTRA_BYTES];
-  uint32_t ux, uy, un, ud, ug, vx, vy, vn, vd, dg, dn;
-  if (id & WB_EXTRA_FLAG) {
-    uint32_t i = id & ~WB_EXTRA_FLAG, ea, eb, lf, xa, ya, xb, yb, da, db;
-    if (i >= e->extra_count) return 0;
-    if (!rd(e, e->off_extras + i * WB_EXTRA_BYTES, r, WB_EXTRA_BYTES)) return -1;
-    ea = rd_u24(r);
-    eb = rd_u24(r + 3);
-    lf = rd_u16(r + 6);
-    if (!(lf & 0xC000u)) return 0;
-    if (!load_node(e, ea, &xa, &ya, &dn, &da, &dg)) return -1;
-    if (!load_node(e, eb, &xb, &yb, &dn, &db, &dg)) return -1;
-    c->id = id; c->a = ea; c->b = eb; c->da = da; c->db = db; c->len = lf & WB_EXTRA_LEN_MASK;
-    c->bits = ((lf >> 14) & 1u) | (((lf >> 15) & 1u) << 1) | ((lf & WB_EXTRA_GREY) ? WB_GREY_BITS : 0u);
-    c->vn = 0u; c->xa = xa; c->ya = ya; c->xb = xb; c->yb = yb;
-    return 1;
-  }
-  if (id >= e->node_count) return 0;
-  if (!load_node(e, id, &ux, &uy, &un, &ud, &ug)) return -1;
-  if (un == WB_NIL) return 0;
-  if (!load_node(e, un, &vx, &vy, &vn, &vd, &dg)) return -1;
-  if (ud < vd) return 0;
-  c->id = id; c->a = id; c->b = un; c->da = ud; c->db = vd; c->len = ud - vd;
-  c->bits = ug ? WB_GREY_BITS : 0u; c->vn = vn; c->xa = ux; c->ya = uy; c->xb = vx; c->yb = vy;
-  return 1;
-}
-
-void wb_tick_piece(wb_engine *e, const wb_input *in, uint32_t id, wb_output *out) {
-  wb_grid g;
-  wb_cand c;
-  wb_prev pr;
-  uint32_t X, Y, d2 = 0u, t = 0u;
-  int ok;
-  out_reset(out);
-  prev_take(e, &pr);
-  if (!e->mounted) { out->reason = WB_NO_FILE; return; }
-  if (!(in->flags & WB_GPS_VALID)) { out->reason = WB_GPS; return; }
-  if (!(in->flags & WB_OFF_ROUTE)) { out->reason = WB_ON_ROUTE; return; }
-  wb_grid_get(e, &g);
-  if (!wb_units(&g, in->lat_e7, in->lon_e7, &X, &Y)) { out->reason = WB_NO_STREET; return; }
-  ok = piece_load(e, id, &c);
-  if (ok < 0) { out->reason = WB_READ; return; }
-  if (!ok) { out->reason = WB_NO_STREET; return; }
-  if (!wb_measure((int32_t)c.xa - (int32_t)X, (int32_t)c.ya - (int32_t)Y,
-                  (int32_t)c.xb - (int32_t)X, (int32_t)c.yb - (int32_t)Y, &d2, &t)) { out->reason = WB_NO_STREET; return; }
-  if (d2 > WB_D2_LIMIT) { out->reason = WB_NO_STREET; return; }
-  wb_commit(e, &c, t, &pr, out);
 }
 
 void wb_line_info(const wb_engine *e, uint32_t info[3]) {

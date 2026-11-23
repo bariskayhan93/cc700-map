@@ -86,7 +86,8 @@ def build(base, outdir, prefix=PREFIX, *, cc28g_line=None):
                 (t / n).write_bytes((ROOT / 'firmware' / d / n).read_bytes())
         c26.check_map_tables(segs, t, prefix)
         elf = t / 'cc27.elf'
-        run(prefix + 'gcc', *c26.CFLAGS, '-Wl,-T,' + str(t / 'wb_area2.ld'), '-Wl,--gc-sections', '-Wl,-e,wb_rt',
+        # -ffunction-sections: gc-sections drops each function that the unit never calls, not only whole files
+        run(prefix + 'gcc', *c26.CFLAGS, '-ffunction-sections', '-Wl,-T,' + str(t / 'wb_area2.ld'), '-Wl,--gc-sections', '-Wl,-e,wb_rt',
             '-DCC26_AREA2', '-o', elf, *(t / s for s in SOURCES), '-lgcc', cwd=t)
         undefined = run(prefix + 'nm', '-u', elf).strip()
         if undefined:

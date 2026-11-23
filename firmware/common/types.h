@@ -16,7 +16,7 @@ typedef void (*proj_cb_t)(const float *latlon, uint32_t n);  // the stock projec
 #define F_ROUTE 4u                   /* legacy strip flag in old files */
 #define F_AA     8u                  /* cc28: with F_OWN, map lines smooth (rs_line_aa) */
 #define F_CYC   16u                  /* cc28: cycleway casing; cc28b: ignored (the casing broke the line at entry ends) */
-#define F_NODRAW 32u                 /* cc28 test: project every entry, draw no map pixel (time of the projection) */
+                                     /* 32: F_NODRAW, a cc28 test switch, retired (23 Nov): ignored */
 #define F_PROJ  64u                  /* cc28b: own projection (firmware/mapdraw/proj.c); stock probes only */
 static __attribute__((unused)) uint32_t blk_flags(const ent_t *E, uint32_t cnt) {
   const ent_t *e;

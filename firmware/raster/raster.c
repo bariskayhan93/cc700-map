@@ -1,7 +1,7 @@
 /* Raster module (cc27 Task 2). See raster.h. */
 #include "raster.h"
 
-static uint32_t rs_isqrt(uint32_t v) {
+uint32_t rs_isqrt(uint32_t v) {
   uint32_t r = 0, b = 1u << 30;
   while (b > v) b >>= 2;
   while (b) { if (v >= r + b) { v -= r + b; r = (r >> 1) + b; } else r >>= 1; b >>= 2; }

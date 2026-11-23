@@ -213,7 +213,6 @@ A version 2 file of a route with a 3 km way-back reach does not fit (the distanc
 
 - `wb_scan` visits the street pieces of a rectangle of cells (at most 7 across), rows up, then cells in x order, then the tree pieces and the extra pieces of each cell in index order. A piece is visited when its start node lies in the box `x0..x1`, `y0..y1` (`wb_out`, the same test as the old far test when the box is one point).
 - `wb_tick` is `wb_scan` of the 3 x 3 cells around the rider with the box of the rider point, then the commit of the best piece. Its output is unchanged from version 1 within the precision below.
-- `wb_tick_piece(id)` gives the line of one piece by its id. The id of `wb_output.piece` (E10): bits 0 to 22 node index of a tree piece or extra index, bit 23 extra piece. A piece farther than 15 m gives `WB_NO_STREET`.
 - `wb_units`, `wb_point` and `wb_grid_get` convert between E7 and units with the frame of the file. `wb_line_info` gives the end distance, the length and the end side of the line.
 
 **Precision of version 2 against version 1 (R-PREC).** The stored node positions are halved, so:

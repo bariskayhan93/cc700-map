@@ -1,9 +1,8 @@
 /* Host command for the way-back core. Usage:
  *   wayback_host FILE ROUTE_ID_HEX32 < lines      (one JSON object per input line)
  *   wayback_host --selftest FILE ROUTE_ID_HEX32   (one JSON object: wb_out and scan checks)
- * Each input line: lat_e7 lon_e7 exit_cm flags max_points fail_read_after [piece_id]
- * A second engine on the same file gives pieceAt: wb_tick_piece of piece_id, or of the tick's piece when piece_id
- * is absent. Used by tools/wayback_core_host.mjs. */
+ * Each input line: lat_e7 lon_e7 exit_cm flags max_points fail_read_after
+ * Used by tools/wayback_core_host.mjs. */
 #include "wayback.c"
 #include <inttypes.h>
 #include <stdio.h>
@@ -176,14 +175,13 @@ int main(int argc, char **argv) {
   FILE *f;
   uint8_t route[16];
   host_ctx c;
-  wb_engine *eng, *eng2;
-  long size, lat, lon, exit_cm, flags, max_points, fail_after, piece_id;
+  wb_engine *eng;
+  long size, lat, lon, exit_cm, flags, max_points, fail_after;
   char line[256];
   const char *file, *hex;
-  int mounted, mounted2, selftest;
+  int mounted, selftest;
   wb_input in;
-  wb_output out, out2;
-  int linked;
+  wb_output out;
 
   selftest = argc == 4 && strcmp(argv[1], "--selftest") == 0;
   if (!selftest && argc != 3) return 2;
@@ -196,8 +194,7 @@ int main(int argc, char **argv) {
   size = ftell(f);
   if (size < 0 || fseek(f, 0, SEEK_SET) != 0) return 2;
   eng = malloc(wb_size());
-  eng2 = malloc(wb_size());
-  if (!eng || !eng2) return 2;
+  if (!eng) return 2;
   c.f = f;
   c.reads = 0;
   c.in_points = 0;
@@ -207,20 +204,17 @@ int main(int argc, char **argv) {
   c.grey_reads = 0;
   c.grey_fail = -1;
   mounted = wb_mount(eng, host_reader, &c, (uint32_t)size, route);
-  mounted2 = wb_mount(eng2, host_reader, &c, (uint32_t)size, route);
   if (selftest) {
     if (mounted) run_selftest(eng);
     else printf("{\"mounted\":0}\n");
     free(eng);
-    free(eng2);
     fclose(f);
     return 0;
   }
 
   while (fgets(line, sizeof line, stdin)) {
     long reads_tick;
-    piece_id = -1;
-    if (sscanf(line, "%ld %ld %ld %ld %ld %ld %ld", &lat, &lon, &exit_cm, &flags, &max_points, &fail_after, &piece_id) < 6) break;
+    if (sscanf(line, "%ld %ld %ld %ld %ld %ld", &lat, &lon, &exit_cm, &flags, &max_points, &fail_after) < 6) break;
     if (!mounted) {
       printf("{\"mounted\":0}\n");
       continue;
@@ -240,23 +234,10 @@ int main(int argc, char **argv) {
     if (out.state == WB_LINE) print_points(eng, &c, max_points);
     printf("]");
     reads_tick = c.reads;
-    linked = mounted2 && (piece_id >= 0 || out.state == WB_LINE);
-    if (linked) {
-      uint32_t pid = piece_id >= 0 ? (uint32_t)piece_id : out.piece;
-      c.fail_after = -1;
-      c.reads = 0;
-      wb_tick_piece(eng2, &in, pid, &out2);
-      printf(",\"pieceAt\":{\"state\":%" PRIu32 ",\"reason\":%" PRIu32 ",\"distanceDm\":%" PRIu32 ",\"points\":[",
-             out2.state, out2.reason, out2.distance_dm);
-      if (out2.state == WB_LINE) print_points(eng2, &c, max_points);
-      printf("]}");
-    }
     printf(",\"reads\":%ld}\n", reads_tick);
   }
   wb_unmount(eng);
-  wb_unmount(eng2);
   free(eng);
-  free(eng2);
   fclose(f);
   return 0;
 }

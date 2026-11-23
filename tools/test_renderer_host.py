@@ -97,6 +97,15 @@ class RendererHost(unittest.TestCase):
             with self.subTest(case=case):
                 self.assertEqual(self.run_case(case)["labels"],count)
 
+    def test_label_positions_and_anchor_calls_are_pinned(self):   # the name pass through probe() must keep them
+        pins = {"labels": (1, 30, 7539542452286131571, 6405724306347016936),
+                "labels_cap": (36, 60, 10825711339495925603, 16073837979451276507),
+                "labels_touch": (2, 2, 9125550091580677779, 2434597354675110236)}
+        for case, pin in pins.items():
+            with self.subTest(case=case):
+                d = self.run_case(case)
+                self.assertEqual((d["labels"], d["callbacks"], d["trace"], d["label_trace"]), pin)
+
     def test_shared_label_placement_rejects_collisions(self):
         self.assertEqual(self.run_case("labels")["labels"],1)
 
@@ -192,10 +201,15 @@ class RendererHost(unittest.TestCase):
         self.assertGreater(aa["painted"], 0)
         self.assertNotEqual(aa["painted"], own["painted"])  # even widths give half-covered edge rows
 
-    def test_F_NODRAW_projects_every_entry_and_paints_nothing(self):
-        r = self.run_entries("nodraw")
-        self.assertEqual(r["callbacks"], 2 * 40)
-        self.assertEqual((r["draws"], r["painted"]), (0, 0))
+    def test_dash_pieces_are_pinned(self):                  # 32-bit dash math must give the pieces of the 16.16/int64 code
+        r = subprocess.run([str(self.exe), "dash_pieces"], capture_output=True, text=True)
+        self.assertEqual(r.returncode, 0, r.stderr)
+        self.assertEqual(json.loads(r.stdout), {"draws": 911034, "trace": 6584379539263830308})
+
+    def test_flag_32_is_ignored(self):                      # F_NODRAW (cc28 test switch) is retired: as F_OWN alone
+        r, own = self.run_entries("nodraw"), self.run_entries("own")
+        self.assertEqual({k: r[k] for k in ("callbacks", "draws", "painted", "ink", "roads_drawn")},
+                         {k: own[k] for k in ("callbacks", "draws", "painted", "ink", "roads_drawn")})
 
     def test_F_CYC_is_ignored(self):                        # cc28b: the casing broke the line at each entry end
         cyc, off = self.run_entries("cyc"), self.run_entries("cyc_off")

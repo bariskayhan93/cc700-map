@@ -118,7 +118,7 @@ test('mount refuses a sentinel cell record whose first extra index is wrong', ()
   assert.equal(runCore(bad, id, [{...e7(5, 120), flags: ON}])[0].mounted, 0);
 });
 
-// cc26 (D2): version 2 mounts; version 1 does not; the piece id and the piece entry (wb_tick_piece).
+// cc26 (D2): version 2 mounts; version 1 does not; the piece id.
 test('a version 1 file is refused: the core mounts version 2 only', () => {
   const [r] = runCore(v1file, id, [{...e7(5, 120), flags: ON}]);
   assert.equal(r.mounted, 0);
@@ -134,19 +134,9 @@ test('a next value that names no node gives WB_READ (reason 5)', () => {
   assert.equal(r.reason, 5);
   assert.equal(r.state, 0);
 });
-test('wb_tick_piece on the piece of a tick gives the same state, reason, distance and points', () => {
+test('the piece id of a tick is bits 0-23 of a stored piece', () => {
   const [r] = runCore(file, id, [{...e7(5, 120), flags: ON}]);
-  assert(r.piece > 0 && r.piece < 0x1000000, 'the piece id is bits 0-23 of a stored piece');
-  assert.equal(r.pieceAt.state, r.state);
-  assert.equal(r.pieceAt.reason, r.reason);
-  assert.equal(r.pieceAt.distanceDm, r.distanceDm);
-  assert.deepEqual(r.pieceAt.points, r.points);
-});
-test('a piece farther than 15 m from the rider gives WB_NO_STREET (reason 4)', () => {
-  const [a] = runCore(file, id, [{...e7(5, 120), flags: ON}]);
-  const [b] = runCore(file, id, [{...e7(300, 400), flags: ON, pieceId: a.piece}]);
-  assert.equal(b.pieceAt.reason, 4);
-  assert.equal(b.pieceAt.state, 0);
+  assert(r.piece > 0 && r.piece < 0x1000000);
 });
 test('the self test: wb_out equals the old near test for 100,000 random pairs and the edges; scan order holds', () => {
   const t = runSelfTest(file, id);
@@ -159,6 +149,13 @@ test('the self test: wb_out equals the old near test for 100,000 random pairs an
 });
 
 // ---- cc27: the grey layer is its own section (type 2); its reader is tested in tools/test_grey_reader.mjs ----
+test('a node or extra count that ends past the file refuses the mount (the size equality alone)', () => {
+  for (const at of [48, 56]) {                           // header node count, extra count
+    const bad = file.slice(), dv = new DataView(bad.buffer);
+    dv.setUint32(at, dv.getUint32(at, true) + 100000, true);
+    assert.equal(runCore(bad, id, [{...e7(5, 120), flags: ON}])[0].mounted, 0, `count at ${at}`);
+  }
+});
 test('bytes after the extras refuse the mount (no grey tail since cc27)', () => {
   const tail = new Uint8Array(file.length + 16); tail.set(file);
   const q = gridFixture().p(300, 400);
