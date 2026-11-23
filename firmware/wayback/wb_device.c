@@ -49,14 +49,15 @@ static int wbd_path(char *name) {
 static void wbd_line(const float *p, uint32_t n, int op) { FW_DASH = (int16_t)(OP_PATCH | op); fw_proj(p, n); FW_DASH = 0; }
 /* The switches of the current map block (types.h): read under the block lock, the lock of cc_iter. */
 static uint32_t wbd_flags(void) { uint32_t f; fw_blk_lock(); f = blk_flags(FW_BLK_ENTS, FW_BLK_CNT); fw_blk_unlock(); return f; }
-static void wbd_text(const char *s) {
+static void wbd_text_at(const char *s, int32_t y) {
   uint16_t col = FW_LABEL_COL; void *cv = FW_CANVAS;
   if (!cv) return;
   FW_LABEL_OPA = 255;
-  FW_LABEL_COL = 0xffff; fw_canvas_text(cv, 7, 7, 400, FW_LABEL_DSC, s);
-  FW_LABEL_COL = 0; fw_canvas_text(cv, 6, 6, 400, FW_LABEL_DSC, s);
+  FW_LABEL_COL = 0xffff; fw_canvas_text(cv, 7, y + 1, 400, FW_LABEL_DSC, s);
+  FW_LABEL_COL = 0; fw_canvas_text(cv, 6, y, 400, FW_LABEL_DSC, s);
   FW_LABEL_COL = col;
 }
+static void wbd_text(const char *s) { wbd_text_at(s, 6); }
 
 /* All file reads of a frame: one time limit, one read count. wbd_read: offsets in the way-back section (the engine);
  * wbd_file: offsets in the file (the grey layer). */
@@ -187,14 +188,28 @@ static __attribute__((noinline)) void wbd_frame(void) {
 }
 
 /* Stock progress admission (design section 7): selector 0, a finite total below 2^24 m, 0 < U <= T + 50 m (U clamped
- * to T: the start-of-ride gap), own map blocks. *u = remaining m, *t = total m. */
-static int wbd_trusted(uint32_t *u, uint32_t *t) {
+ * to T: the start-of-ride gap), own map blocks. *u = remaining m, *t = total m. Returns 0 = trusted, else the first
+ * failed check (the km reason code): 4 selector, 5 total, 6 U = 0, 7 U > T + 50 m, 8 no F_OWN. *f = the block flags. */
+static int wbd_why(uint32_t *u, uint32_t *t, uint32_t *f) {
   float total = FW_ROUTE_TOTAL; uint32_t left = FW_ROUTE_LEFT;
-  if (FW_NAV_SELECTOR != 0u || !(total >= 0.0f && total < 16777216.0f) || left == 0u) return 0;   /* NaN fails */
+  *f = wbd_flags();
+  if (FW_NAV_SELECTOR != 0u) return 4;
+  if (!(total >= 0.0f && total < 16777216.0f)) return 5;   /* NaN fails */
   *t = (uint32_t)total;
-  if (left > *t + 50u) return 0;
+  if (left == 0u) return 6;
+  if (left > *t + 50u) return 7;
   *u = left > *t ? *t : left;
-  return (wbd_flags() & F_OWN) != 0u;
+  return (*f & F_OWN) ? 0 : 8;
+}
+
+/* F_TEXT test text of the stock fallback (one row below the map time): "k<code> u<U> t<T>", the raw stock values. */
+static __attribute__((noinline)) void wbd_km_why(int why, uint32_t t) {
+  char s[40], *o = s;
+  *o++ = 'k'; o = tx_num(o, (uint32_t)why);
+  *o++ = ' '; *o++ = 'u'; o = tx_num(o, FW_ROUTE_LEFT);
+  *o++ = ' '; *o++ = 't'; if (why == 4 || why == 5) *o++ = '?'; else o = tx_num(o, t);
+  *o = 0;
+  wbd_text_at(s, 42);
 }
 
 /* One text in the font f, right-aligned at r, with a 1 px white halo (4 draws) and the dark text on top. Returns
@@ -229,12 +244,13 @@ static void wbd_km_text(void *cv, uint32_t rem, uint32_t climb) {
  * (the stock second mode show_text 0, low stack, untrusted progress, no canvas): the stock overlay, unchanged. */
 void wb_km(int32_t left, int32_t total, int32_t bar_w, int32_t show_text) {
   char path[128]; wbd_secs sec; el_head h; el_view v; rs_canvas cv; wbd_ctx c;
-  uint32_t u = 0, tm = 0, len, tol, k0 = 0, nb, climb = 0, mode = 0x00006272u;   /* "rb" */
+  uint32_t u = 0, tm = 0, len, tol, k0 = 0, nb, climb = 0, fl = 0, mode = 0x00006272u;   /* "rb" */
   void *canvas = FW_CANVAS;
-  int drawn = 0;
+  int drawn = 0, why = 0;
   cv.buf = FW_CANVAS_BUF; cv.w = (int16_t)FW_CANVAS_W; cv.h = (int16_t)FW_CANVAS_H;
-  if (!show_text || fw_stack() < WBD_STACK || !canvas || !cv.buf || cv.w < 240 || cv.h < 256 || !wbd_trusted(&u, &tm)) {
+  if (!show_text || fw_stack() < WBD_STACK || !canvas || !cv.buf || cv.w < 240 || cv.h < 256 || (why = wbd_why(&u, &tm, &fl)) != 0) {
     fw_km_overlay(left, total, bar_w, show_text);
+    if (fl & F_TEXT) wbd_km_why(why, tm);                     /* fl is set only when the admission ran */
     return;
   }
   c.buf = 0; c.fp = 0;

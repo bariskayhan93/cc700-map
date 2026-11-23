@@ -26,7 +26,7 @@ void *host_label_font = (void *)7; uint8_t host_label_align = 1;
 static int n_km, km_args[4];
 void host_km_overlay(int32_t a, int32_t b, int32_t c, int32_t d) { n_km++; km_args[0] = a; km_args[1] = b; km_args[2] = c; km_args[3] = d; }
 #define MAX_TEXTS 32
-static struct { int font, align, x, y, w; unsigned col; char s[12]; } texts[MAX_TEXTS];
+static struct { int font, align, x, y, w; unsigned col; char s[24]; } texts[MAX_TEXTS];
 float host_map_head;
 uint32_t host_route_left, host_nav_selector;
 float host_route_total;

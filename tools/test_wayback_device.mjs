@@ -348,10 +348,20 @@ test('lens: the stock second mode (show_text 0) calls the stock overlay with the
   assert.deepEqual([r.km, r.kmArgs, r.greyPx, r.texts, r.opens], [1, [2999, 5000, 10, 0], 0, 0, 0]);
 });
 test('lens: untrusted progress or low stack calls the stock overlay, nothing else', () => {
-  for (const o of [{sel: 1}, {T: NaN}, {U: 5051}, {U: 0}, {flags: F_TEXT}, {flags: 0}, {stack: 3967}]) {
+  for (const o of [{sel: 1}, {T: NaN}, {U: 5051}, {U: 0}, {flags: 0}, {stack: 3967}]) {   // no F_TEXT: no reason text
     const r = km(o);
     assert.deepEqual([r.km, r.kmArgs, r.greyPx, r.texts, r.opens], [1, [2999, 5000, 10, 1], 0, 0, 0], JSON.stringify(o));
   }
+});
+test('lens: with F_TEXT the stock fallback writes the reason code and the raw stock values at (6, 42)', () => {
+  const ft = F_OWN | F_TEXT;
+  for (const [o, s] of [[{sel: 1}, 'k4 u2999 t?'], [{T: NaN}, 'k5 u2999 t?'], [{U: 0}, 'k6 u0 t5000'], [{U: 5051}, 'k7 u5051 t5000'],
+    [{flags: F_TEXT}, 'k8 u2999 t5000']]) {
+    const r = km({flags: ft, ...o});
+    assert.deepEqual([r.km, r.kmArgs, r.greyPx, r.opens], [1, [2999, 5000, 10, 1], 0, 0], JSON.stringify(o));
+    assert.deepEqual(r.textCalls.map(c => [c.x, c.y, c.s]), [[7, 43, s], [6, 42, s]], JSON.stringify(o));
+  }
+  for (const o of [{km: [2999, 5000, 10, 0]}, {stack: 3967}]) assert.equal(km({flags: ft, ...o}).texts, 0, JSON.stringify(o));
 });
 test('lens: trusted progress and a version 2 section draw the chart and the text, not the stock overlay', () => {
   const r = km({});
