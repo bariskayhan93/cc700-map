@@ -5,16 +5,33 @@ const tagsOK=t=>t&&typeof t==='object'&&!Array.isArray(t)&&Object.values(t).ever
 const tags=t=>Object.fromEntries(Object.entries(t??{}).sort(([a],[b])=>a.localeCompare(b)));
 const sorted=a=>a.sort((a,b)=>a.id-b.id);
 const issueSort=a=>[...new Map(a.map(i=>[JSON.stringify(i),i])).values()].sort((a,b)=>JSON.stringify(a).localeCompare(JSON.stringify(b)));
-export function routingQuery(bbox){
- if(!Array.isArray(bbox)||bbox.length!==4||!bbox.every(Number.isFinite))throw Error('Invalid bbox');
- const [s,w,n,e]=bbox;
- if(s< -90||n>90||w< -180||e>180||s>=n||w>=e)throw Error('Invalid bbox');
- const area=(n-s)*111.32*(e-w)*111.32*Math.cos((s+n)/2*Math.PI/180);
- if(n-s>1||e-w>1||area>600)throw Error('Region exceeds bounded study area');
- return `[out:json][timeout:90][maxsize:134217728];\nway[highway](${bbox.join(',')})->.roads;\nrel(bw.roads)[type=restriction]->.restrictions;\nway(r.restrictions)->.members;\n(.roads;.members;)->.allways;\n(node(w.allways);node(r.restrictions);)->.nodes;\n(.allways;.nodes;.restrictions;);out body qt;\n`;
+const boxArea=([s,w,n,e])=>(n-s)*111.32*(e-w)*111.32*Math.cos((s+n)/2*Math.PI/180);
+// Area of the union of boxes (km²), counted on a 0.01 degree grid (cells whose centre is inside a box).
+export function unionArea(boxes){
+ const G=0.01,cells=new Set();let a=0;
+ for(const[s,w,n,e]of boxes)for(let i=Math.floor(s/G);i*G<n;i++)for(let j=Math.floor(w/G);j*G<e;j++){
+  const la=(i+.5)*G,lo=(j+.5)*G,k=i+','+j;if(la<s||la>n||lo<w||lo>e||cells.has(k))continue;cells.add(k);a+=boxArea([i*G,j*G,(i+1)*G,(j+1)*G]);}
+ return a;
+}
+function checkBox(b,msg){
+ if(!Array.isArray(b)||b.length!==4||!b.every(Number.isFinite))throw Error(msg);
+ const [s,w,n,e]=b;
+ if(s< -90||n>90||w< -180||e>180||s>=n||w>=e)throw Error(msg);
+ if(n-s>1||e-w>1)throw Error('Region exceeds bounded study area');
+}
+// bbox: the region of the snapshot (provenance). boxes (far map, 23 Nov): a corridor of smaller boxes inside it; then the
+// 600 km² bound applies to their summed area, and the query takes the union of the boxes.
+export function routingQuery(bbox,boxes){
+ checkBox(bbox,'Invalid bbox');
+ const parts=boxes===undefined?[bbox]:boxes;
+ if(!Array.isArray(parts)||!parts.length)throw Error('Invalid box');
+ for(const b of parts)checkBox(b,'Invalid box');
+ if((parts.length===1?boxArea(parts[0]):unionArea(parts))>600)throw Error('Region exceeds bounded study area');
+ const roads=parts.length===1?`way[highway](${parts[0].join(',')})->.roads;`:`(${parts.map(b=>`way[highway](${b.join(',')});`).join('')})->.roads;`;
+ return `[out:json][timeout:90][maxsize:134217728];\n${roads}\nrel(bw.roads)[type=restriction]->.restrictions;\nway(r.restrictions)->.members;\n(.roads;.members;)->.allways;\n(node(w.allways);node(r.restrictions);)->.nodes;\n(.allways;.nodes;.restrictions;);out body qt;\n`;
 }
 export function captureRoutingSnapshot(response,metadata){
- routingQuery(metadata?.bbox);
+ routingQuery(metadata?.bbox,metadata?.boxes);
  if(!/^[a-f0-9]{64}$/.test(metadata.querySha256??''))throw Error('Invalid query identity');
  const issues=[],maps={node:new Map(),way:new Map(),relation:new Map()},bad={node:new Set(),way:new Set(),relation:new Set()};
  if(!response||typeof response!=='object'||!Array.isArray(response.elements))throw Error('Invalid Overpass response');
@@ -64,7 +81,7 @@ export function captureRoutingSnapshot(response,metadata){
  // the query box. js/wayback.js waybackFromSnapshot checks it against the box of the reach.
  const cb=response.coverBbox,coverBbox=Array.isArray(cb)&&cb.length===4&&cb.every(Number.isFinite)?[...cb]:[...metadata.bbox];
  return {version:1,kind:'routing-source-snapshot',coverBbox,integrity:complete?'pass':'incomplete',
-  provenance:{bbox:[...metadata.bbox],querySha256:metadata.querySha256,osmBaseTimestamp:typeof base==='string'?base:null},
+  provenance:{bbox:[...metadata.bbox],...(metadata.boxes?{boxes:metadata.boxes.map(b=>[...b])}:{}),querySha256:metadata.querySha256,osmBaseTimestamp:typeof base==='string'?base:null},
   nodes,ways,restrictions,issues:all,navigationSource:{version:1,complete,ways:selected,issues:all.map(i=>({...i}))},
   coverage:'requested region and referenced members only; not map completeness or cycling validation'};
 }

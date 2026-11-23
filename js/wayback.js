@@ -12,6 +12,7 @@ import {fitGreyLayer} from './screen_proof.js';
 import {GREY_CAPS} from './wayback_grey_layer.js';
 import {SECTION, readSections, routePart} from './wayback_embed.js';
 import {readNativeRoute} from './native_route.js';
+import {hav} from './geo.js';
 
 export const WAYBACK_MAX_BYTES = 1536 * 1024;   // test limit for the way-back bytes of one route file
 const MARGIN_M = 200;                           // margin over the reach: the longest piece (cc27: reach 1, 2 or 3 km)
@@ -46,6 +47,24 @@ export function waybackBbox(route, reach = 'line2k') {
   const dLat = ((REACH[reach] || REACH.line2k).air + MARGIN_M) / 111320, dLon = dLat / Math.cos(Math.max(Math.abs(s), Math.abs(n)) * Math.PI / 180);
   const down = v => Math.floor(v * 1e4) / 1e4, up = v => Math.ceil(v * 1e4) / 1e4;
   return [down(s - dLat), down(w - dLon), up(n + dLat), up(e + dLon)];
+}
+
+// A corridor of boxes along the route (far map, 23 Nov): the route in pieces of about 5 km, each piece's box plus the
+// reach margin, 4 decimals outward. Their summed area is much less than the bounding box of a long route, so a 70 km
+// route keeps the 3 km reach under the 600 km² query bound.
+export function corridorBoxes(route, reach = 'line2k', pieceM = 5000) {
+  const boxes = []; let start = 0, run = 0;
+  for (let i = 1; i <= route.length; i++) {
+    if (i < route.length) run += hav(route[i - 1].point, route[i].point);
+    if (i === route.length || run >= pieceM) { boxes.push(waybackBbox(route.slice(start, Math.min(i + 1, route.length)), reach)); start = i; run = 0; }
+  }
+  return boxes;
+}
+// The query of a reach: the bounding box when it is under the bound, else the corridor boxes. Throws when neither fits.
+export function waybackQuery(route, reach) {
+  const bbox = waybackBbox(route, reach);
+  try { return {bbox, query: routingQuery(bbox)}; }
+  catch (e) { if (!/exceeds/.test(e.message)) throw e; const boxes = corridorBoxes(route, reach); return {bbox, boxes, query: routingQuery(bbox, boxes)}; }
 }
 
 // Pure step. Returns {bytes, grey, greyReport, reach, model}, or null when the way-back bytes exceed maxBytes in every
@@ -109,13 +128,13 @@ function checkCover(answer, bbox, reach) {
   if (gaps.length) throw new Error(`street data does not cover ${reach} + ${MARGIN_M} m: ` + gaps.map(g => `${g.side} short by ${g.m} m`).join(', '));
 }
 export async function loadWaybackSnapshot(route, fetchImpl = fetch, reach = 'line2k') {
-  const bbox = waybackBbox(route, reach), query = routingQuery(bbox);   // throws when the area exceeds the bounded region
+  const {bbox, boxes, query} = waybackQuery(route, reach);   // throws when even the corridor exceeds the bounded region
   const querySha256 = hex(await sha256(new TextEncoder().encode(query)));
   const got = lastAnswer?.query === query && lastAnswer.fetchImpl === fetchImpl ? lastAnswer.got : await overpass(query, fetchImpl);
   lastAnswer = {query, fetchImpl, got};
   if (!got.live) checkCover(got.json, bbox, reach);
   const answer = got.json;
-  const snapshot = captureRoutingSnapshot(answer, {bbox, querySha256});
+  const snapshot = captureRoutingSnapshot(answer, {bbox, ...(boxes ? {boxes} : {}), querySha256});
   if (snapshot.integrity !== 'pass') throw new Error('street data is not complete: ' + (snapshot.issues[0]?.code ?? 'unknown'));
   return snapshot;
 }
@@ -124,7 +143,7 @@ export async function loadWaybackSnapshot(route, fetchImpl = fetch, reach = 'lin
 // 19 Nov). The last reach of the chain stays as it is: its fetch then refuses the area.
 function fetchReach(route, reach) {
   const start = REACH_CHAIN.indexOf(reach), chain = start < 0 ? [reach] : REACH_CHAIN.slice(start);
-  return chain.find(r => { try { routingQuery(waybackBbox(route, r)); return true; } catch { return false; } }) ?? chain.at(-1);
+  return chain.find(r => { try { waybackQuery(route, r); return true; } catch { return false; } }) ?? chain.at(-1);
 }
 
 // Owner ruling (18 Nov, option a): the way-back data stays only when its route identity equals the identity of the route

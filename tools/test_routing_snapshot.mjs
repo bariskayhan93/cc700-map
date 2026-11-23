@@ -116,3 +116,18 @@ test('snapshot keeps the covered box: the saved one of a replayed answer, else t
  assert.deepEqual(captureRoutingSnapshot({...response(base()),coverBbox:cover},meta).coverBbox,cover);
  assert.deepEqual(captureRoutingSnapshot({...response(base()),coverBbox:[1,2]},meta).coverBbox,meta.bbox);
 });
+
+// Far map (23 Nov): corridor boxes keep the 3 km reach on a 70 km route under the 600 km² bound.
+test('corridor boxes: union query, bound on the summed area, provenance keeps the boxes',async()=>{
+ const {corridorBoxes}=await import('../js/wayback.js');
+ const line=[...Array.from({length:36},(_,i)=>({point:[51,7+i*0.01428]})),...Array.from({length:35},(_,i)=>({point:[51+(i+1)*0.009,7.5]}))];   // 35 km east, then 35 km north
+ const {waybackBbox}=await import('../js/wayback.js');
+ assert.throws(()=>routingQuery(waybackBbox(line,'line3k')),/exceeds/);
+ const boxes=corridorBoxes(line,'line3k');
+ assert(boxes.length>1);
+ const q=routingQuery(waybackBbox(line,'line3k'),boxes);
+ assert.equal((q.match(/way\[highway\]\(/g)||[]).length,boxes.length);
+ const s=captureRoutingSnapshot(response(base()),{...meta,boxes:[[51,7,51.005,7.01],[51.005,7,51.01,7.01]]});
+ assert.deepEqual(s.provenance.boxes,[[51,7,51.005,7.01],[51.005,7,51.01,7.01]]);
+ assert.throws(()=>routingQuery([51,7,51.01,7.01],[[51,7,52.5,7.01]]),/Invalid box|exceeds/);
+});

@@ -118,7 +118,11 @@ test('the fetch steps the reach down when the box of the chosen reach is over th
   assert.deepEqual(boxes, [waybackBbox(readNativeRoute(plain), 'line2k').join(',')]);
   const far = {name: 'Far', pts: [[51, 7, 0], [51.6, 7.9, 0]]}, g = fetchOf([{body: response()}]);
   const wide = buildRoute(far, [], {id: '11120000', nameImage: () => new Uint8Array(42), map: {styled: true}, speedKmh: 18}).file;
-  await assert.rejects(addWayback(wide, {fetchImpl: g, format: 2, reach: 'line3k'}), /bounded/);   // too large at 1 km too
+  // far map (23 Nov): the corridor boxes along the diagonal fit where the bounding box does not; one union query
+  const bodies = [], h = async (url, opt) => { bodies.push(opt.body.get('data')); return {url, ok: true, status: 200, json: async () => response()}; };
+  const ww = await addWayback(wide, {fetchImpl: h, format: 2, reach: 'line3k'}).catch(e => e);
+  assert(bodies.length >= 1 && (bodies[0].match(/way\[highway\]\(/g) || []).length > 1, 'one query with several boxes');
+  assert(!(ww instanceof Error) || !/bounded/.test(ww.message), 'not refused for the area');
   assert.equal(g.calls(), 0);
 });
 
