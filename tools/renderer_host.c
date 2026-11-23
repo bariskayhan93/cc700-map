@@ -271,9 +271,10 @@ int main(int argc, char **argv) {
       for (unsigned k=0;k<seen_n[i];k++) {unsigned op=seen_ops[i][k]; if(op==5||op==7||op==9) edge=1; if(op==6||op==8||op==10) core=1;}
       if (c>=5 && c<=7) { if (edge!=core) whole=0; if (edge||core) {drawn++; int lv=(host_ents[i].style>>4)&7; if(lv>maxlv) maxlv=lv;} }
     }
-    unsigned painted=0, ink=0; for (unsigned i=0;i<pixels;i++) {painted += host_buf[i]!=0; ink += (host_buf[i]>>5)&63;}
-    printf("{\"ink\":%u,\"whole\":%d,\"max_level\":%d,\"roads_drawn\":%d,\"fills\":%u,\"draws\":%u,\"callbacks\":%u,\"painted\":%u,\"labels\":%u,\"map_text\":\"%s\",\"locks\":%u,\"unlocks\":%u,\"live_bytes\":%u}\n",
-           ink,whole,maxlv,drawn,fills_seen,draws,callbacks,painted,labels,map_text,locks,unlocks,live_bytes);
+    unsigned painted=0, ink=0; uint32_t px=2166136261u;       // px: FNV-1a of every canvas pixel (pinned frames)
+    for (unsigned i=0;i<pixels;i++) {painted += host_buf[i]!=0; ink += (host_buf[i]>>5)&63; px=(px^host_buf[i])*16777619u;}
+    printf("{\"px\":%u,\"ink\":%u,\"whole\":%d,\"max_level\":%d,\"roads_drawn\":%d,\"fills\":%u,\"draws\":%u,\"callbacks\":%u,\"painted\":%u,\"labels\":%u,\"map_text\":\"%s\",\"locks\":%u,\"unlocks\":%u,\"live_bytes\":%u}\n",
+           px,ink,whole,maxlv,drawn,fills_seen,draws,callbacks,painted,labels,map_text,locks,unlocks,live_bytes);
     free(host_ents); free(guarded); require(!held && !live_bytes,"leaked renderer state"); return 0;
   }
   unsigned painted=0;

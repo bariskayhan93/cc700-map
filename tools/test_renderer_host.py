@@ -206,6 +206,14 @@ class RendererHost(unittest.TestCase):
         self.assertEqual(r.returncode, 0, r.stderr)
         self.assertEqual(json.loads(r.stdout), {"draws": 911034, "trace": 6584379539263830308})
 
+    def test_own_raster_frames_are_pinned(self):          # S5 (23 Nov): px = FNV-1a of the canvas; the same on 6b9dea5
+        pinned = {"own": (3995191648, 6878), "own_aa": (2748214721, 6994), "cyc_aa": (2822971559, 4366),
+                  "cyc_off": (3927102805, 4176), "wat_aa": (1968064241, 7081), "wat_own": (1968064241, 7081),
+                  "grn_aa": (2381880997, 7081), "grn_own": (2381880997, 7081), "proj": (2428428057, 1596)}
+        for case, want in pinned.items():
+            d = self.run_entries(case)
+            self.assertEqual((d["px"], d["painted"]), want, case)
+
     def test_flag_32_is_ignored(self):                      # F_NODRAW (cc28 test switch) is retired: as F_OWN alone
         r, own = self.run_entries("nodraw"), self.run_entries("own")
         self.assertEqual({k: r[k] for k in ("callbacks", "draws", "painted", "ink", "roads_drawn")},

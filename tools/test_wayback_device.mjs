@@ -193,6 +193,21 @@ test('the same position and heading give the same canvas hash with a fast and a 
   assert.equal(slow.hash, fast.hash);
   assert.equal(gOf(slow), gOf(fast));
 });
+// S5 (23 Nov): fixed frames. hash = the canvas (the grey layer; the host records the way-back line in lines and does
+// not draw it), greyPx, and each line record. A change of a grey pixel or a line point shows here; same on 6b9dea5.
+const PINNED = [                                               // [run options, hash, greyPx, [op, own, n, first, last] per line]
+  [{...dense, head: 0, flags: F_OWN}, 322481757, 13414, [[17, 1, 3, [51.0008087, 7], [51, 7]], [14, 1, 3, [51.0008087, 7], [51, 7]]]],
+  [{...dense, head: 90, flags: F_OWN}, 1923005861, 11598, [[17, 1, 3, [51.0008087, 7], [51, 7]], [14, 1, 3, [51.0008087, 7], [51, 7]]]],
+  [{...dense, head: 200, flags: F_OWN}, 1071876485, 17120, [[17, 1, 3, [51.0008087, 7], [51, 7]], [14, 1, 3, [51.0008087, 7], [51, 7]]]],
+  [{...dense, head: 90, flags: 0}, 1923005861, 11598, [[17, 0, 3, [51.0008087, 7], [51, 7]], [14, 0, 3, [51.0008087, 7], [51, 7]]]],
+  [{flags: F_OWN}, 3095223749, 0, [[17, 1, 4, [51.0010796, 7], [51, 7]], [14, 1, 4, [51.0010796, 7], [51, 7]]]],
+  [{x: 130, y: 203, flags: F_OWN}, 3095223749, 0, [[17, 1, 5, [51.0017967, 7.0018554], [51, 7.00314]], [14, 1, 5, [51.0017967, 7.0018554], [51, 7.00314]]]]];
+test('6 fixed frames are pinned: canvas hash, grey pixels and the way-back line records', () => {
+  for (const [o, hash, greyPx, lines] of PINNED) {
+    const r = run(o);
+    assert.deepEqual([r.hash, r.greyPx, r.lines.map(l => [l.op, l.own, l.n, l.first, l.last])], [hash, greyPx, lines], JSON.stringify(o));
+  }
+});
 test('reads for grey are at most 1 + rows + cells', () => {
   for (const head of [90, 0]) {
     const r = run({...dense, head}), plainRun = run({...dense, head, file: densePlain}), ref = reference({...dense, head});
