@@ -245,3 +245,11 @@ between frames (WP 4) is the largest lever.
 
 Finding: the end seek + `ftell` was the setup (33-35 ms), not the reads. With the size from the kept cache, the far
 map is now draw-bound: `d` is about 80 % of `f`. The lazy open is not necessary (`o` 3 ms).
+
+### 12.2 Far street variants (host, 7 frames from a 441-frame grid around N4)
+
+Estimate: fill 0.16 µs/px + 0.28 µs per line pixel write (home frame, today = 13 ms line time). Mean draw:
+A today (edge 6 + core 3, round) 19.6 ms, B no round joins 16.4, C one line 2 px 11.8, D edge 4 + core 2 15.6,
+E one line 3 px round 13.1. Fill is the same in all (7-15 ms; areas overlap: one built-up frame paints 112 % of the
+canvas, see WP 6 step 2). Pictures: artifact "Far Street Variants". Same-pixel speed work (line span writes, 32-bit
+fill stores) is not in these numbers.
