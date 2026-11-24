@@ -249,7 +249,7 @@ map is now draw-bound: `d` is about 80 % of `f`. The lazy open is not necessary 
 ### 12.2 Far street variants (host, 7 frames from a 441-frame grid around N4)
 
 Estimate: fill 0.16 µs/px + 0.28 µs per line pixel write (home frame, today = 13 ms line time). Mean draw:
-A today (edge 6 + core 3, round) 19.6 ms, B no round joins 16.4, C one line 2 px 11.8, D edge 4 + core 2 15.6,
-E one line 3 px round 13.1. Fill is the same in all (7-15 ms; areas overlap: one built-up frame paints 112 % of the
+A today (edge 6 + core 3, round) 21.8 ms, B no round joins 19.0, C one line 2 px 14.1, D edge 4 + core 2 18.0,
+E one line 3 px round 15.3 (worst frame, 45° town: 28.5 / 24.1 / 17.0 / 22.9 / 18.9). Fill is the same in all (7-15 ms; areas overlap: one built-up frame paints 112 % of the
 canvas, see WP 6 step 2). Pictures: artifact "Far Street Variants". Same-pixel speed work (line span writes, 32-bit
 fill stores) is not in these numbers.
