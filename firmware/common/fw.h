@@ -1,6 +1,11 @@
 // Firmware CC700_V1.414 addresses (from the own-device dump, see FINDINGS.md). The only file with stock addresses
 // (cc27, G8). Called through pointers: the patch lives 1.6 MB away from the firmware code, beyond the call8 range.
 #pragma once
+// Route-exit guard (firmware/wayback/guard_tramp.S includes this file from assembly): the navigation state word and the
+// stock position handler. Only these two names are visible to the assembler.
+#define FW_NAV_STATE   0x3fc9fc34
+#define FW_POS_HANDLER 0x42054684
+#ifndef __ASSEMBLER__
 #include <stdint.h>
 #include "types.h"
 
@@ -174,3 +179,4 @@ static __attribute__((unused)) uint32_t fw_stack(void) {                  /* as 
 }
 #endif
 #define CAPS_PSRAM    0x404                                   // MALLOC_CAP_SPIRAM | MALLOC_CAP_8BIT, as the firmware uses
+#endif /* __ASSEMBLER__ */
