@@ -251,7 +251,10 @@ static void map_time(uint32_t ms, uint32_t cut, int pd, int far, const uint32_t 
   if (cut) { *o++ = ' '; *o++ = 'c'; *o++ = (char)('0' + cut); }
   if (pd >= 0) { *o++ = ' '; *o++ = 'p'; *o++ = (char)('0' + pd); }
   if (far >= 0) {                                             // far map ms; '+': it stopped. WP 1: setup, reads, file, draw
-    for (int i = 0; i < 5; i++) { *o++ = ' '; *o++ = (char)(0x6469727366ull >> (8 * i));   // 'f' 's' 'r' 'i' 'd', no rodata o = tx_num(o, fs[i]); if (!i && far) *o++ = '+'; }
+    for (int i = 0; i < 5; i++) {                             // 'f' 's' 'r' 'i' 'd' from one literal: no rodata
+      *o++ = ' '; *o++ = (char)(0x6469727366ull >> (8 * i)); o = tx_num(o, fs[i]);
+      if (!i && far) *o++ = '+';
+    }
   }
   *o = 0;
 #ifdef HOST
