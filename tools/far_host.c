@@ -24,7 +24,7 @@ static pt_t fake(double dx, double dy, double course, double scale) {
 }
 int main(int argc, char **argv) {
   FILE *f; fm_layer l; fm_stat st; vw_t v; pt_t a[4]; rs_canvas cv = { canvas_buf, 240, 256 };
-  uint8_t *buf; uint32_t at, size, x = 0, y = 0, course, i, forest = 0, street = 0; double scale; int open, done = 0, ok = 0, units = 0;
+  uint8_t *buf; uint32_t at, size, x = 0, y = 0, course, i, forest = 0, street = 0, core = 0; double scale; int open, done = 0, ok = 0, units = 0;
   if (argc != 13 || strcmp(argv[1], "draw")) return 2;
   at = (uint32_t)strtoul(argv[3], 0, 10); size = (uint32_t)strtoul(argv[4], 0, 10);
   course = (uint32_t)strtoul(argv[7], 0, 10); scale = strtod(argv[8], 0); fail_at = atoi(argv[9]);
@@ -39,9 +39,9 @@ int main(int argc, char **argv) {
     ok = units && vw_fit(&v, (int32_t)x, (int32_t)y, a);
     if (ok) done = fm_draw(&l, &cv, &v, x, y, course, clock0, 0u, (uint32_t)strtoul(argv[12], 0, 10), &st);
   }
-  for (i = 0; i < 240u * 256u; i++) { forest += canvas_buf[i] == RS_RGB(0xa2d683u); street += canvas_buf[i] == RS_RGB(0x7a7e83u); }
-  printf("{\"open\":%d,\"view\":%d,\"x\":%u,\"y\":%u,\"done\":%d,\"lines\":%u,\"areas\":%u,\"points\":%u,\"work\":%u,\"stop\":%u,\"reads\":%d,\"forestPx\":%u,\"streetPx\":%u}\n",
-         open, ok, x, y, done, st.lines, st.areas, st.points, st.work, st.stop, n_reads, forest, street);
+  for (i = 0; i < 240u * 256u; i++) { forest += canvas_buf[i] == RS_RGB(0xa2d683u); street += canvas_buf[i] == RS_RGB(0x7a7e83u); core += canvas_buf[i] == RS_RGB(0xffffffu); }
+  printf("{\"open\":%d,\"view\":%d,\"x\":%u,\"y\":%u,\"done\":%d,\"lines\":%u,\"areas\":%u,\"points\":%u,\"work\":%u,\"stop\":%u,\"reads\":%d,\"forestPx\":%u,\"streetPx\":%u,\"corePx\":%u}\n",
+         open, ok, x, y, done, st.lines, st.areas, st.points, st.work, st.stop, n_reads, forest, street, core);
   free(buf); fclose(f);
   return 0;
 }

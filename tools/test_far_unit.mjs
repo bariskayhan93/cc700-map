@@ -50,6 +50,10 @@ test('the unit draws every item of the screen cells, as the page wrote them', ()
     assert(r.streetPx > 0 && (course !== 0 || r.forestPx > 0), 'areas filled and lines drawn');
   }
 });
+test('far streets: style D of 24 Nov (grey edge 4 px, white core 2 px)', () => {
+  const r = draw();
+  assert(r.streetPx > 0 && r.corePx > 0, 'edge and white core drawn');
+});
 test('a damaged section never crashes and draws no far map past the damage', () => {
   for (let n = 0; n < bytes.length; n += Math.max(1, Math.floor(bytes.length / 300))) {
     const f = put(bytes.slice(0, n), 'cut.bin'), r = draw({file: f, size: n});

@@ -37,7 +37,7 @@ static int fm_style(uint32_t cls, uint32_t pass, uint16_t *col, int *w) {
   else if (cls == FM_PATH) { rgb = 0x66615au; wd = 1; }
   else if (cls == FM_TRACK) { rgb = 0x6b4a2bu; wd = 2; }
   else if (cls == FM_CYCLE) { rgb = 0x7040b0u; wd = 2; }
-  else if (cls == FM_MINOR) { rgb = pass ? 0xf4f4f4u : 0x7a7e83u; wd = pass ? 3 : 6; }   /* the detail map's far street: edge, core */
+  else if (cls == FM_MINOR) { rgb = pass ? 0xffffffu : 0x7a7e83u; wd = pass ? 2 : 4; }   /* style D (owner, 24 Nov): edge 4, white core 2 */
   else if (cls == FM_WATERLINE) { rgb = 0x82cbd5u; wd = 2; }
   else if (cls == FM_MAIN) { rgb = 0xf2c94cu; wd = 4; }            /* one thin line: no motorway in the far map */
   else return 0;
@@ -65,7 +65,7 @@ static int fm_items(fm_ctx *c, uint32_t key, const uint8_t **pp, const uint8_t *
     *pp = p;
     if (!pass) {                                                   /* count an item one time */
       if (c->st->points + m > c->f->l.pt_cap) return 1;
-      if (!area) { wk = rs_work(s, m, w) + (cls == FM_MINOR ? rs_work(s, m, 3) : 0u); if (c->st->work + wk > c->f->l.pix_cap) return 1; c->st->work += wk; c->st->lines++; }
+      if (!area) { wk = rs_work(s, m, w) + (cls == FM_MINOR ? rs_work(s, m, 2) : 0u); if (c->st->work + wk > c->f->l.pix_cap) return 1; c->st->work += wk; c->st->lines++; }
       else c->st->areas++;
       c->st->points += m;
     }
