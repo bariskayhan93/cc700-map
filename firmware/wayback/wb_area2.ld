@@ -11,6 +11,7 @@ MEMORY {
  lit_iter(rx): ORIGIN = 0x42049678, LENGTH = 4
  lit_line(rx): ORIGIN = 0x4205bd98, LENGTH = 4
  tramp_km(rx): ORIGIN = 0x4205bdd0, LENGTH = 0x1c
+ tramp_guard(rx): ORIGIN = 0x42049718, LENGTH = 0x4204976c - 0x42049718
 }
 SECTIONS {
  .tail_text : { *elev.o(.literal .text .literal.* .text.*) *view.o(.literal .text .literal.* .text.*) . = ALIGN(4); } > tail
@@ -19,6 +20,7 @@ SECTIONS {
  .lit_cc_iter : { KEEP(*(.lit_cc_iter)) } > lit_iter
  .lit_cc_line : { KEEP(*(.lit_cc_line)) } > lit_line
  .tramp_km : { KEEP(*(.tramp_km)) } > tramp_km
+ .tramp_guard : { KEEP(*(.tramp_guard)) } > tramp_guard
  .data : { *(.data .data.* .sdata.*) } > area2
  .bss : { *(.bss .bss.* .sbss.* COMMON) } > area2
  .rodata : { *(.rodata .rodata.* .srodata.*) } > area2

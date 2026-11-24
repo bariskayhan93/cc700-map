@@ -33,8 +33,8 @@ CALLED = tuple(wdb.CALLED) + (0x403763e0, 0x40376398, 0x420494a4, 0x420494b8, 0x
 TREE = {'common': ('types.h', 'fw.h', 'text.h'), 'raster': ('raster.h', 'raster.c'), 'view': ('view.h', 'view.c'),
         'mapdraw': ('map.c', 'md_tramp.S', 'proj.h', 'proj.c'),
         'wayback': ('wayback.h', 'wayback.c', 'wb_grey.h', 'wb_grey.c', 'wb_grey_draw.h', 'wb_grey_draw.c', 'wb_far.h', 'wb_far.c', 'wb_cache.h', 'wb_cache.c', 'wb_device.c',
-                    'wb_tramp.S', 'km_tramp.S', 'wb_area2.ld'), 'elev': ('elev.h', 'elev.c', 'elev_font.h')}
-SOURCES = ('wb_device.c', 'wb_cache.c', 'wayback.c', 'wb_grey.c', 'wb_grey_draw.c', 'wb_far.c', 'wb_tramp.S', 'km_tramp.S', 'map.c', 'md_tramp.S', 'raster.c', 'view.c', 'proj.c', 'elev.c')
+                    'wb_tramp.S', 'km_tramp.S', 'guard_tramp.S', 'wb_area2.ld'), 'elev': ('elev.h', 'elev.c', 'elev_font.h')}
+SOURCES = ('wb_device.c', 'wb_cache.c', 'wayback.c', 'wb_grey.c', 'wb_grey_draw.c', 'wb_far.c', 'wb_tramp.S', 'km_tramp.S', 'guard_tramp.S', 'map.c', 'md_tramp.S', 'raster.c', 'view.c', 'proj.c', 'elev.c')
 run = c26.run
 # The IROM tail after the C4 code (the cc25 method, tools/cc25_build.py): the lens chart module elev.o runs there.
 TAIL = 0x421debac
@@ -43,6 +43,8 @@ RESERVE = 1768               # free room kept in the code page (budget-plan-2026
 TAIL_SOURCES = ('elev.c', 'view.c')   # WP 1-3 (24 Nov): view.c moved to the tail for code room
 # The stock remaining-distance overlay call and its trampoline (design 2026-11-23 section 8).
 KM_CALL, KM_CALL_OLD, KM_TRAMP, KM_TRAMP_SIZE = 0x4204ca2e, bytes.fromhex('e54d0f'), 0x4205bdd0, 0x1c
+GUARD_CALL, GUARD_CALL_OLD, GUARD_TRAMP, GUARD_SIZE = 0x4204dad5, bytes.fromhex('e5ba06'), 0x42049718, 0x20
+GUARD_DEAD = (0x42049670, 0x4204976c)  # route-exit guard (guard_tramp.S) in the dead stock body after the L1 range
 KM_DEAD = (0x4205bd90, 0x4205bdf0)  # the dead stock body that holds the trampoline (incoming_refs.DEAD_SPANS)
 
 
@@ -120,6 +122,8 @@ def build(base, outdir, prefix=PREFIX, *, cc28g_line=None):
         run(prefix + 'objcopy', '-O', 'binary', '-j', '.lit_wb_rt', elf, t / 'lit.bin')
         run(prefix + 'objcopy', '-O', 'binary', '-j', '.tail_text', elf, t / 'tail.bin')
         run(prefix + 'objcopy', '-O', 'binary', '-j', '.tramp_km', elf, t / 'km.bin')
+        run(prefix + 'objcopy', '-O', 'binary', '-j', '.tramp_guard', elf, t / 'guard.bin')
+        guard = (t / 'guard.bin').read_bytes()
         code, lit = (t / 'text.bin').read_bytes(), (t / 'lit.bin').read_bytes()
         tail, km_tramp = (t / 'tail.bin').read_bytes(), (t / 'km.bin').read_bytes()
         km_target = int(re.search(r'([0-9a-f]+) [Tt] wb_km$', run(prefix + 'nm', elf), re.M).group(1), 16)
@@ -147,7 +151,14 @@ def build(base, outdir, prefix=PREFIX, *, cc28g_line=None):
         raise ValueError('km_tramp is not the 0x1c B form with the wb_km literal')
     if irom[KM_CALL - IROM:KM_CALL - IROM + 3] != KM_CALL_OLD:
         raise ValueError('the km overlay call drifted')
+    if len(guard) != GUARD_SIZE:
+        raise ValueError(f'guard_tramp is {len(guard)} B, not {GUARD_SIZE} B')
+    if irom[GUARD_CALL - IROM:GUARD_CALL - IROM + 3] != GUARD_CALL_OLD:
+        raise ValueError('the position handler call drifted')
     insts, _ = ir.per_function(irom, IROM, ir.OBJDUMP)
+    guard_refs = [hex(src) for src, _, _ in ir.references(insts, {'g': (GUARD_TRAMP, GUARD_SIZE)})['g']]
+    if any(not GUARD_DEAD[0] <= int(r, 16) < GUARD_DEAD[1] for r in guard_refs):
+        raise ValueError('reference into the guard from outside its dead span: ' + ', '.join(guard_refs))
     hook_refs = c26.literal_outside(insts, HOOK, 4, ir.DEAD_SPANS)
     if hook_refs['outside']:
         raise ValueError('literal reference into the hook word from outside: ' + hook_refs['outside_at'][0])
@@ -178,6 +189,9 @@ def build(base, outdir, prefix=PREFIX, *, cc28g_line=None):
     km_new = call8(KM_CALL, KM_TRAMP)
     ir_[KM_CALL - IROM:KM_CALL - IROM + 3] = km_new
     ir_[KM_TRAMP - IROM:KM_TRAMP - IROM + KM_TRAMP_SIZE] = km_tramp
+    guard_new = call8(GUARD_CALL, GUARD_TRAMP)
+    ir_[GUARD_CALL - IROM:GUARD_CALL - IROM + 3] = guard_new
+    ir_[GUARD_TRAMP - IROM:GUARD_TRAMP - IROM + GUARD_SIZE] = guard
     ir_.extend(tail)
     if cc28g_line is not None:
         apply_cc28g_line(ir_, cc28g_line)
@@ -191,9 +205,10 @@ def build(base, outdir, prefix=PREFIX, *, cc28g_line=None):
                'base_sha256': BASE_SHA, 'image_sha256': hashlib.sha256(image).hexdigest(), 'image_bytes': len(image),
                'cc28g_line': cc28g_line is not None, 'code_bytes': len(code), 'code_sha256': hashlib.sha256(code).hexdigest(), 'code_limit': CODE_LIMIT,
                'area_bytes': a2.AREA_LIMIT, 'hook_target': hex(word), 'hook_word_hex': lit.hex(), 'hook_frame': frame,
-               'undefined_symbols': undefined, 'incoming': {'hook': hook_refs, 'km': {'outside': 0, 'dead': km_refs}}, 'map_hooks': map_refs, 'dead_spans_ok': spans_ok is None,
+               'undefined_symbols': undefined, 'incoming': {'hook': hook_refs, 'km': {'outside': 0, 'dead': km_refs}, 'guard': {'outside': 0, 'dead': guard_refs}}, 'map_hooks': map_refs, 'dead_spans_ok': spans_ok is None,
                'tail_bytes': len(tail), 'tail_free': PAGE_END - TAIL - len(tail), 'km_target': hex(km_target),
                'km_call': {'at': hex(KM_CALL), 'old': KM_CALL_OLD.hex(), 'new': km_new.hex()},
+               'guard_call': {'at': hex(GUARD_CALL), 'old': GUARD_CALL_OLD.hex(), 'new': guard_new.hex()},
                'stack_usage': stack, 'max_frame': max_frame, 'sources': list(SOURCES), 'symbols': symbols, 'device_written': False}
     return image, receipt
 

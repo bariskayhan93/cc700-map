@@ -65,6 +65,8 @@ class Cc27BuildTests(unittest.TestCase):
             word |= set(range(lit - 0x42000020, lit + 4 - 0x42000020))
         word |= set(range(0x4204ca2e - 0x42000020, 0x4204ca31 - 0x42000020))   # the call8 of the stock km overlay
         word |= set(range(0x4205bdd0 - 0x42000020, 0x4205bdec - 0x42000020))   # km_tramp, 0x1c B
+        word |= set(range(0x4204dad5 - 0x42000020, 0x4204dad8 - 0x42000020))   # the call8 of the stock position handler
+        word |= set(range(0x42049718 - 0x42000020, 0x42049718 + cb.GUARD_SIZE - 0x42000020))   # the state guard
         self.assertTrue(diff and set(diff) <= word, diff)
 
     def test_version_is_cc27_with_the_build_mark(self):
@@ -110,6 +112,21 @@ class Cc27BuildTests(unittest.TestCase):
         self.assertTrue(0x4237b134 <= word < 0x42380000, hex(word))
         self.assertEqual(self.receipt['km_call'], {'at': '0x4204ca2e', 'old': 'e54d0f', 'new': '253a0f'})
         self.assertEqual(self.receipt['incoming']['km']['outside'], 0)
+
+    def test_the_position_handler_call_goes_through_the_state_guard(self):
+        # Route-exit crash 24 Nov (docs/research/route-exit-crash-2026-11-24.md): 0x4204dabc reads the navigation
+        # state before the lock. The guard reads it again under the lock and skips the handler when it is below 2.
+        irom = segments(self.image)[0x42000020]
+        at = lambda a, n: irom[a - 0x42000020:a - 0x42000020 + n]
+        self.assertEqual(self.receipt['guard_call'], {'at': '0x4204dad5', 'old': 'e5ba06', 'new': at(0x4204dad5, 3).hex()})
+        self.assertEqual(cb.call8(0x4204dad5, 0x42049718), at(0x4204dad5, 3))
+        g = at(0x42049718, cb.GUARD_SIZE)
+        self.assertEqual(g[:3], bytes.fromhex('364100'))                        # entry a1, 32
+        self.assertEqual(g[-2:], bytes.fromhex('1df0'))                         # retw.n
+        self.assertIn((0x3fc9fc34).to_bytes(4, 'little'), g)                    # the navigation state word
+        self.assertIn((0x42054684).to_bytes(4, 'little'), g)                    # the stock position handler
+        self.assertLessEqual(0x42049718 + cb.GUARD_SIZE, 0x4204976c)            # inside the dead stock body
+        self.assertEqual(self.receipt['incoming']['guard']['outside'], 0)
 
     def test_the_lens_module_runs_in_the_irom_tail_and_keeps_the_reserve(self):
         b, o = segments(self.base)[0x42000020], segments(self.image)[0x42000020]
