@@ -81,8 +81,11 @@ void rs_disk(const rs_canvas *c, int x, int y, int d, uint16_t col, uint8_t opa)
   int r = d / 2, i, j;
   if (d <= 0 || x + r < 0 || y + r < 0 || x - r >= c->w || y - r >= c->h) return;
   for (j = -r; j <= r; j++) {
-    if (opa == 255) { for (i = r; i > 0 && 4 * (i * i + j * j) > d * d; i--) {}
-      if (4 * (i * i + j * j) <= d * d) rs_run(c, x - i, y + j, 2 * i + 1, 0, col); continue; }
+    if (opa == 255) {
+      for (i = r; i > 0 && 4 * (i * i + j * j) > d * d; i--) {}
+      if (4 * (i * i + j * j) <= d * d) rs_run(c, x - i, y + j, 2 * i + 1, 0, col);
+      continue;
+    }
     for (i = -r; i <= r; i++) if (4 * (i * i + j * j) <= d * d) rs_put(c, x + i, y + j, col, opa);
   }
 }
