@@ -27,8 +27,6 @@ typedef struct { void *fp; uint32_t base, t0, late, reads, io, gat, gsize, gline
 extern void *host_keep;
 #endif
 static wc_cache *wbd_keep(void) { wc_cache **k = (wc_cache **)WBD_KEEP; if (!*k) *k = (wc_cache *)fw_malloc(WC_BYTES, CAPS_PSRAM); return *k; }
-#else
-static wc_cache *wbd_keep(void) { return 0; }
 #endif
 
 static uint32_t wbd_pos(float *pos) {                                     /* as cc_rt: never wait for the lock */
@@ -80,7 +78,10 @@ static int wbd_raw(void *vctx, uint32_t off, void *dst, uint32_t n) {   /* one f
 }
 static int wbd_at(wbd_ctx *c, uint32_t off, void *dst, uint32_t n) {
   if (fw_clock() - c->t0 > WBD_TIME_US) { c->late = 1; return 0; }
-  return c->wc ? wc_read(c->wc, wbd_raw, c, off, dst, n) : wbd_raw(c, off, dst, n);
+#ifdef WBD_KEEP
+  if (c->wc) return wc_read(c->wc, wbd_raw, c, off, dst, n);
+#endif
+  return wbd_raw(c, off, dst, n);
 }
 static int wbd_read(void *vctx, uint32_t off, void *dst, uint32_t n) { wbd_ctx *c = (wbd_ctx *)vctx; return wbd_at(c, c->base + off, dst, n); }
 static int wbd_file(void *vctx, uint32_t off, void *dst, uint32_t n) { return wbd_at((wbd_ctx *)vctx, off, dst, n); }
@@ -95,8 +96,10 @@ static int wbd_secs_read(void *fp, wbd_secs *s) {
   for (i = 0; i < 5u; i++) { s->at[i] = 0; s->size[i] = 0; }
   if (fw_fseek(fp, -64, 2) != 0 || fw_fread(t, 1u, 64u, fp) != 64u || wb_u32(t) != 0x53574343u) return 0;
   n = wb_u32(t + 4); total = wb_u32(t + 56);
+#ifdef WBD_KEEP
   for (s->key = 2166136261u, i = 0; i < 64u; i++) s->key = (s->key ^ t[i]) * 16777619u;
   s->key |= 1u; s->total = total;
+#endif
   if (n < 1u || n > 4u || total < 64u) return 0;
   for (i = 0; i < n; i++) {
     uint32_t ty = wb_u32(t + 8 + 12 * i), at = wb_u32(t + 12 + 12 * i), sz = wb_u32(t + 16 + 12 * i);
@@ -111,7 +114,9 @@ static __attribute__((noinline)) uint32_t wbd_run(wbd_ctx *c, const float *pos, 
   uint8_t t[16]; wbd_secs sec; uint32_t code;
   if (wb_size() > 128u + 8u * (sizeof(void *) - 4)) return WBD_NODATA;
   if (!wbd_secs_read(c->fp, &sec) || !sec.size[1]) return WBD_NODATA;
+#ifdef WBD_KEEP
   if ((c->wc = wbd_keep()) != 0) wc_reset(c->wc, sec.key, sec.total);
+#endif
   c->base = sec.at[1]; c->gat = sec.at[2]; c->gsize = sec.size[2];
   if (sec.size[2] && !sec.size[4]) {                         /* far map (23 Nov): it draws the far streets in cc_iter */
     c->buf = (uint8_t *)fw_malloc(GL_BUF, CAPS_PSRAM);
@@ -182,7 +187,11 @@ int wb_far(wbd_anchor_fn anchor, void *actx, uint32_t ms[5]) {
   c.t0 = fw_clock(); c.late = 0; c.reads = 0; c.io = 0; c.buf = 0; c.wc = 0; ms[0] = ms[1] = ms[2] = ms[3] = ms[4] = 0;
   if (fw_stack() < WBD_STACK || !wbd_pos(pos) || (found = wbd_path(name)) <= 0) return -1;
   if (!(c.fp = fw_fopen(name, (const char *)&mode))) return -1;
-  if (wbd_secs_read(c.fp, &sec) && ((c.wc = wbd_keep()) == 0 || (wc_reset(c.wc, sec.key, sec.total), 1)) && sec.size[4] && head >= -360.0f && head <= 720.0f && (c.buf = (uint8_t *)fw_malloc(GL_BUF, CAPS_PSRAM)) &&
+  found = wbd_secs_read(c.fp, &sec);
+#ifdef WBD_KEEP
+  if (found && (c.wc = wbd_keep()) != 0) wc_reset(c.wc, sec.key, sec.total);
+#endif
+  if (found && sec.size[4] && head >= -360.0f && head <= 720.0f && (c.buf = (uint8_t *)fw_malloc(GL_BUF, CAPS_PSRAM)) &&
       fm_open(&f, wbd_file, &c, sec.at[4], sec.size[4], c.buf) && fm_units(&f, (int32_t)(pos[0] * 1e7f), (int32_t)(pos[1] * 1e7f), &x, &y)) {
     for (i = 0; i < 4u; i++) {
       int32_t ll[2];
