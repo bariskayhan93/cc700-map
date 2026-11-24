@@ -39,6 +39,45 @@ static void old_fill(uint16_t *b, int W, int H, const pt_t *p, uint32_t n, uint1
   }
 }
 
+
+/* 24 Nov: the line and disk of raster.c before the span writes, kept as the reference of rs_line and rs_disk */
+static void o_put(uint16_t *b, int x, int y, uint16_t col) { if (x >= 0 && y >= 0 && x < 240 && y < 256) b[y * 240 + x] = col; }
+static int o_abs(int v) { return v < 0 ? -v : v; }
+static int o_span(int dx, int dy, int w) {
+  uint32_t major, len2, len;
+  if (w <= 1) return 1;
+  dx = o_abs(dx); dy = o_abs(dy); major = (uint32_t)(dx > dy ? dx : dy);
+  if (!major) return w;
+  len2 = (uint32_t)dx * (uint32_t)dx + (uint32_t)dy * (uint32_t)dy; len = rs_isqrt(len2);
+  if (len * len < len2) len++;
+  return (int)(((uint32_t)w * len + major - 1u) / major);
+}
+static void o_seg(uint16_t *b, int x0, int y0, int x1, int y1, int w, uint16_t col) {
+  int dx, dy, sx, sy, err, e2, ws, lo, k, xmaj;
+  if (x1 < x0 || (x1 == x0 && y1 < y0)) { int t = x0; x0 = x1; x1 = t; t = y0; y0 = y1; y1 = t; }
+  ws = o_span(x1 - x0, y1 - y0, w);
+  dx = o_abs(x1 - x0); sx = x0 < x1 ? 1 : -1; dy = -o_abs(y1 - y0); sy = y0 < y1 ? 1 : -1;
+  err = dx + dy; xmaj = dx >= -dy; lo = (ws - 1) / 2;
+  for (;;) {
+    for (k = 0; k < ws; k++) { if (xmaj) o_put(b, x0, y0 - lo + k, col); else o_put(b, x0 - lo + k, y0, col); }
+    if (x0 == x1 && y0 == y1) break;
+    e2 = 2 * err;
+    if (e2 >= dy) { err += dy; x0 += sx; }
+    if (e2 <= dx) { err += dx; y0 += sy; }
+  }
+}
+static void o_disk(uint16_t *b, int x, int y, int d, uint16_t col) {
+  int r = d / 2;
+  if (d <= 0) return;
+  for (int j = -r; j <= r; j++) for (int i = -r; i <= r; i++) if (4 * (i * i + j * j) <= d * d) o_put(b, x + i, y + j, col);
+}
+static void old_line(uint16_t *b, const pt_t *p, uint32_t n, int w, uint16_t col, int round) {   /* opa 255 */
+  if (!n || w <= 0) return;
+  if (n == 1) o_seg(b, p[0].x, p[0].y, p[0].x, p[0].y, w, col);
+  for (uint32_t i = 1; i < n; i++) o_seg(b, p[i - 1].x, p[i - 1].y, p[i].x, p[i].y, w, col);
+  if (round && w >= 3) for (uint32_t i = 0; i < n; i++) o_disk(b, p[i].x, p[i].y, w, col);
+}
+
 static uint64_t hash(const uint16_t *b) {
   uint64_t h = 1469598103934665603ULL;
   for (int i = 0; i < 240 * 256; i++) { h ^= b[i]; h *= 1099511628211ULL; }
@@ -54,7 +93,8 @@ int main(int argc, char **argv) {
   uint64_t refhash = 0;
   if (!strcmp(c, "line") || !strcmp(c, "work") || !strcmp(c, "aa") || !strcmp(c, "aa2")) {   /* w col opa round x y x y ... */
     for (int i = 4; i + 1 < na && n < 290; i += 2) { p[n].x = (int16_t)a[i]; p[n].y = (int16_t)a[i + 1]; n++; }
-    if (!strcmp(c, "line")) rs_line(&cv, p, n, a[0], (uint16_t)a[1], (uint8_t)a[2], a[3]);
+    if (!strcmp(c, "line")) { rs_line(&cv, p, n, a[0], (uint16_t)a[1], (uint8_t)a[2], a[3]);
+      if (a[2] == 255) { old_line(ref, p, n, a[0], (uint16_t)a[1], a[3]); refhash = hash(ref); } }
     if (!strcmp(c, "aa")) rs_line_aa(&cv, p, n, a[0] * 2, (uint16_t)a[1], (uint8_t)a[2], a[3]);   /* w in px */
     if (!strcmp(c, "aa2")) rs_line_aa(&cv, p, n, a[0], (uint16_t)a[1], (uint8_t)a[2], a[3]);      /* w in half px */
     work = rs_work(p, n, a[0]);
@@ -63,7 +103,8 @@ int main(int argc, char **argv) {
     rs_fill(&cv, p, n, (uint16_t)a[0]);
     old_fill(ref, 240, 256, p, n, (uint16_t)a[0]);
     refhash = hash(ref);
-  } else if (!strcmp(c, "disk")) rs_disk(&cv, a[0], a[1], a[2], (uint16_t)a[3], (uint8_t)a[4]);
+  } else if (!strcmp(c, "disk")) { rs_disk(&cv, a[0], a[1], a[2], (uint16_t)a[3], (uint8_t)a[4]);
+    if (a[4] == 255) { o_disk(ref, a[0], a[1], a[2], (uint16_t)a[3]); refhash = hash(ref); } }
   else if (!strcmp(c, "rect")) rs_rect(&cv, a[0], a[1], a[2], a[3], (uint16_t)a[4]);
   else return 2;
   const char *pr = getenv("PROBE"); int probe = -1;                   /* PROBE="x,y": that pixel's value */

@@ -151,3 +151,17 @@ test('smooth: a 1.5 px horizontal line has one full row and two quarter rows', (
   const r = run('aa2', ...a), want = 1.5 * 101 * 63;
   assert.ok(Math.abs(r.sum - want) / want < 0.03, `${r.sum} ${want}`);
 });
+
+// 24 Nov: span writes in rs_line and rs_disk (opa 255) give the pixels of the frozen copy in raster_host.c.
+test('span writes: random lines (widths 1-9, round or not, past every canvas edge) give the pixels of the old line', () => {
+  let s = 11; const rnd = k => ((s = (s * 1103515245 + 12345) >>> 0) / 2 ** 32 * k) | 0;
+  for (let t = 0; t < 300; t++) {
+    const n = 1 + rnd(6), pts = Array.from({length: n}, () => [rnd(400) - 80, rnd(420) - 80]).flat();
+    const r = run('line', 1 + rnd(9), 0x7bef, 255, rnd(2), ...pts);
+    assert.equal(r.hash, r.ref, `case ${t}`);
+  }
+});
+test('span writes: disks of diameter 1-14 at the canvas corners and edges give the pixels of the old disk', () => {
+  for (const [x, y] of [[0, 0], [239, 255], [-3, 100], [120, -4], [243, 259], [120, 128]])
+    for (let d = 1; d <= 14; d++) { const r = run('disk', x, y, d, 0xffff, 255); assert.equal(r.hash, r.ref, `${x},${y} d${d}`); }
+});

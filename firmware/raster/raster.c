@@ -24,6 +24,25 @@ static void rs_cov(const rs_canvas *c, int x, int y, int swap, uint32_t cov, uin
   else *q = rs_blend(col, *q, (cov * opa + 128u) >> 8);
 }
 static void rs_put(const rs_canvas *c, int x, int y, uint16_t col, uint8_t opa) { rs_cov(c, x, y, 0, 256u, col, opa); }
+/* 24 Nov: n opaque pixels from q, two per 32-bit store where aligned (PSRAM stores are the fill cost) */
+static void rs_hrun(uint16_t *q, int n, uint16_t col) {
+  if (n > 0 && ((uintptr_t)q & 2u)) { *q++ = col; n--; }
+  uint32_t two = (uint32_t)col | ((uint32_t)col << 16), *w = (uint32_t *)(void *)q;
+  for (; n >= 2; n -= 2) *w++ = two;
+  if (n) *(uint16_t *)(void *)w = col;
+}
+/* ws opaque pixels from (x, y): down a column (vert) or along a row, clipped to the canvas */
+static void rs_run(const rs_canvas *c, int x, int y, int ws, int vert, uint16_t col) {
+  if (vert) {
+    if (x < 0 || x >= c->w) return;
+    int a = y < 0 ? 0 : y, b = y + ws > c->h ? c->h : y + ws;
+    for (uint16_t *q = c->buf + a * c->w + x; a < b; a++, q += c->w) *q = col;
+  } else {
+    if (y < 0 || y >= c->h) return;
+    int a = x < 0 ? 0 : x, b = x + ws > c->w ? c->w : x + ws;
+    if (a < b) rs_hrun(c->buf + y * c->w + a, b - a, col);
+  }
+}
 static int rs_abs(int v) { return v < 0 ? -v : v; }
 /* span width across the minor axis for a segment of width w (see raster.h) */
 static int rs_span(int dx, int dy, int w) {
@@ -48,7 +67,8 @@ static void rs_seg(const rs_canvas *c, int x0, int y0, int x1, int y1, int w, ui
   dx = rs_abs(x1 - x0); sx = x0 < x1 ? 1 : -1; dy = -rs_abs(y1 - y0); sy = y0 < y1 ? 1 : -1;
   err = dx + dy; xmaj = dx >= -dy; lo = (ws - 1) / 2;
   for (;;) {
-    if (ws == 1) rs_put(c, x0, y0, col, opa);
+    if (opa == 255) rs_run(c, xmaj ? x0 : x0 - lo, xmaj ? y0 - lo : y0, ws, xmaj, col);
+    else if (ws == 1) rs_put(c, x0, y0, col, opa);
     else for (k = 0; k < ws; k++) { if (xmaj) rs_put(c, x0, y0 - lo + k, col, opa); else rs_put(c, x0 - lo + k, y0, col, opa); }
     if (x0 == x1 && y0 == y1) break;
     e2 = 2 * err;
@@ -60,7 +80,11 @@ static void rs_seg(const rs_canvas *c, int x0, int y0, int x1, int y1, int w, ui
 void rs_disk(const rs_canvas *c, int x, int y, int d, uint16_t col, uint8_t opa) {
   int r = d / 2, i, j;
   if (d <= 0 || x + r < 0 || y + r < 0 || x - r >= c->w || y - r >= c->h) return;
-  for (j = -r; j <= r; j++) for (i = -r; i <= r; i++) if (4 * (i * i + j * j) <= d * d) rs_put(c, x + i, y + j, col, opa);
+  for (j = -r; j <= r; j++) {
+    if (opa == 255) { for (i = r; i > 0 && 4 * (i * i + j * j) > d * d; i--) {}
+      if (4 * (i * i + j * j) <= d * d) rs_run(c, x - i, y + j, 2 * i + 1, 0, col); continue; }
+    for (i = -r; i <= r; i++) if (4 * (i * i + j * j) <= d * d) rs_put(c, x + i, y + j, col, opa);
+  }
 }
 
 void rs_line(const rs_canvas *c, const pt_t *p, uint32_t n, int w, uint16_t col, uint8_t opa, int round) {
@@ -215,7 +239,7 @@ void rs_fill(const rs_canvas *c, const pt_t *p, uint32_t n, uint16_t col) {   /*
       uint16_t *row = buf + y * W;
       for (m = 0; m + 1 < odd; m += 2) {
         int a = xs[m] < 0 ? 0 : xs[m], b = xs[m + 1] > W ? W : xs[m + 1];
-        for (int x = a; x < b; x++) row[x] = col;
+        if (a < b) rs_hrun(row + a, b - a, col);
       }
     }
     by = be + 1;
