@@ -23,7 +23,7 @@ const work = fs.mkdtempSync(path.join(os.tmpdir(), 'wayback-device-'));
 process.on('exit', () => { try { fs.rmSync(work, {recursive: true, force: true}); } catch {} });
 const exe = path.join(work, 'host');
 const F = d => path.join(root, 'firmware', d);
-execFileSync('cc', ['-std=gnu11', '-O1', '-g', '-Wall', '-Wextra', '-Werror', '-DHOST',
+execFileSync('cc', ['-std=gnu11', '-O1', '-g', '-Wall', '-Wextra', '-Werror', '-DHOST', '-DWBD_KM_WHY',
   '-fsanitize=address,undefined', '-fno-sanitize-recover=all', '-I', F('wayback'), '-I', F('common'), '-I', F('raster'), '-I', F('view'), '-I', F('elev'),
   path.join(root, 'tools/wayback_device_host.c'), F('wayback/wb_device.c'), F('wayback/wayback.c'), F('wayback/wb_grey.c'),
   F('wayback/wb_grey_draw.c'), F('wayback/wb_far.c'), F('wayback/wb_cache.c'), F('raster/raster.c'), F('view/view.c'), F('elev/elev.c'), '-lm', '-o', exe], {stdio: ['ignore', 'pipe', 'pipe']});

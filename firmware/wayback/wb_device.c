@@ -269,7 +269,9 @@ static int wbd_why(uint32_t *u, uint32_t *t, uint32_t *f) {
   return (*f & F_OWN) ? 0 : 8;
 }
 
-/* F_TEXT test text of the stock fallback (one row below the map time): "k<code> u<U> t<T>", the raw stock values. */
+/* F_TEXT test text of the stock fallback (one row below the map time): "k<code> u<U> t<T>", the raw stock values. WBD_KM_WHY only
+ * (24 Nov: off for code room; the km reason study of 23 Nov is done). */
+#ifdef WBD_KM_WHY
 static __attribute__((noinline)) void wbd_km_why(int why, uint32_t t) {
   char s[40], *o = s;
   *o++ = 'k'; o = tx_num(o, (uint32_t)why);
@@ -278,6 +280,7 @@ static __attribute__((noinline)) void wbd_km_why(int why, uint32_t t) {
   *o = 0;
   wbd_text_at(s, 42);
 }
+#endif
 
 /* One text in the font f, right-aligned at r, with a 1 px white halo (4 draws) and the dark text on top. Returns
  * the right edge for the next text: its left edge less the gap g. Offsets (dx, dy) + 1 packed 2 bits each. */
@@ -317,7 +320,9 @@ void wb_km(int32_t left, int32_t total, int32_t bar_w, int32_t show_text) {
   cv.buf = FW_CANVAS_BUF; cv.w = (int16_t)FW_CANVAS_W; cv.h = (int16_t)FW_CANVAS_H;
   if (!show_text || fw_stack() < WBD_STACK || !canvas || !cv.buf || cv.w < 240 || cv.h < 256 || (why = wbd_why(&u, &tm, &fl)) != 0) {
     fw_km_overlay(left, total, bar_w, show_text);
+#ifdef WBD_KM_WHY
     if (fl & F_TEXT) wbd_km_why(why, tm);                     /* fl is set only when the admission ran */
+#endif
     return;
   }
   c.buf = 0; c.fp = 0; c.wc = 0;
