@@ -52,7 +52,8 @@ void host_cc_rt(uint32_t part) { (void)part; n_rt++; }
 uint32_t host_cc_pos(float *p) { if (!g_gps || !held) return 0; p[0] = g_pos[0]; p[1] = g_pos[1]; return 1; }
 uint32_t host_off_route(void) { return g_off; }
 uint32_t host_stack(void) { return g_stack; }
-uint32_t host_clock(void) { g_clock += g_step; return g_clock; }
+static int n_clk;
+uint32_t host_clock(void) { n_clk++; g_clock += g_step; return g_clock; }
 int32_t host_take(void *sem, uint32_t ticks) {
   if (ticks) abort();                                          /* the adapter must never wait */
   if ((sem == host_file_sem && g_busy_file) || (sem == host_nav_sem && g_busy_nav)) return 0;
@@ -161,7 +162,7 @@ int main(int argc, char **argv) {
     free(host_tls); n_free++;
   }
   for (k = 0; k < 240u * 256u; k++) { hash = (hash ^ host_buf[k]) * 16777619u; px += host_buf[k] != 0; }
-  printf("{\"seekEnd\":%d,\"rt\":%d,\"opens\":%d,\"closes\":%d,\"reads\":%d,\"texts\":%d,\"text\":\"%s\",\"opened\":\"%s\",", n_seek_end, n_rt, n_open, n_close, n_reads, n_text, text, opened);
+  printf("{\"clocks\":%d,\"seekEnd\":%d,\"rt\":%d,\"opens\":%d,\"closes\":%d,\"reads\":%d,\"texts\":%d,\"text\":\"%s\",\"opened\":\"%s\",", n_clk, n_seek_end, n_rt, n_open, n_close, n_reads, n_text, text, opened);
   printf("\"takes\":%d,\"gives\":%d,\"dashAfter\":%d,\"badDash\":%d,\"labelCol\":%u,", n_take, n_give, host_dsc.dash_width, bad_dash, host_label_col);
   printf("\"anchors\":%d,\"anchorReads\":%d,\"mallocs\":%d,\"frees\":%d,\"hash\":%u,\"greyPx\":%u,\"dsc\":[%u,%d,%d],",
          n_anchor, anchor_reads, n_malloc, n_free, hash, px, host_dsc.color, host_dsc.width, host_dsc.dash_gap);

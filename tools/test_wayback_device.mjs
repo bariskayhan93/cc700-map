@@ -216,7 +216,7 @@ test('every line of the selected cells is drawn: the drawn line count equals the
   }
 });
 test('the same position and heading give the same canvas hash with a fast and a slow clock (below 300 ms)', () => {
-  const fast = run({...dense, step: 1}), slow = run({...dense, step: Math.floor(250000 / (fast.reads + 4))});   // one clock call per read
+  const fast = run({...dense, step: 1}), slow = run({...dense, step: Math.floor(250000 / (fast.clocks + 4))});   // 24 Nov: the page cache reads less than one time per clock call
   assert.doesNotMatch(slow.text, /^wb/);
   assert(Number(/ w(\d+) /.exec(slow.text)[1]) < 300, slow.text);
   assert.equal(slow.hash, fast.hash);
