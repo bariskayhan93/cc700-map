@@ -5,9 +5,11 @@ Part 1 (correctness) was done on 24 Nov. Sizes are from the cc27 build disassemb
 
 ## Part 2: architecture
 
-1. **The route file opens two times per map frame.** `wb_far` and `wbd_frame` each call `wbd_open`
-   (`firmware/wayback/wb_device.c`). The test text shows the far open at `o4` (4 ms). Fix: open once per frame and
-   give the handle to both. Saving: about 4 ms per frame, no new code room. This belongs to the draw-speed task.
+1. **The route file opens in three hooks, not two times in one function** (corrected 25 Nov). `cc_iter` → `wb_far`
+   (`firmware/mapdraw/map.c:347`), `wb_km` (`firmware/wayback/wb_device.c:366`) and, off the route only, `wb_rt` →
+   `wbd_frame` (`wb_device.c:389`). One shared handle must stay open between hooks. The saving is small: the noseek
+   photos (24 Nov) show `f32 o3 e0 d25`, so the open is 3 ms and the far draw is 25 ms. Fix: none. The draw-speed work
+   starts with the far draw (split photos: fill F10-11, lines L13).
 2. **Two sine functions.** `fsin` (float, `firmware/mapdraw/proj.c:10`, 168 B) and `gl_sin` (integer,
    `firmware/wayback/wb_grey.c:20`, 96 B). Fix: none now. The far-cell path is integer on purpose; a merge saves
    less than 96 B and adds float code to the cell scan.

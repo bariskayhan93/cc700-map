@@ -60,12 +60,21 @@ static void rs_seg(const rs_canvas *c, int x0, int y0, int x1, int y1, int w, ui
   int dx, dy, sx, sy, err, e2, ws, lo, k, xmaj;
   if (x1 < x0 || (x1 == x0 && y1 < y0)) { int t = x0; x0 = x1; x1 = t; t = y0; y0 = y1; y1 = t; }   /* same pixels both ways */
   ws = rs_span(x1 - x0, y1 - y0, w);
-  {                                                          /* the box with the span misses the canvas: no pixel */
-    int bx0 = x0 < x1 ? x0 : x1, bx1 = x0 < x1 ? x1 : x0, by0 = y0 < y1 ? y0 : y1, by1 = y0 < y1 ? y1 : y0;
-    if (bx1 + ws < 0 || by1 + ws < 0 || bx0 - ws >= c->w || by0 - ws >= c->h) return;
-  }
+  int by0 = y0 < y1 ? y0 : y1, by1 = y0 < y1 ? y1 : y0, in;  /* x0 <= x1 after the swap */
+  if (x1 + ws < 0 || by1 + ws < 0 || x0 - ws >= c->w || by0 - ws >= c->h) return;   /* the box with the span misses the canvas */
+  in = x0 - ws >= 0 && by0 - ws >= 0 && x1 + ws < c->w && by1 + ws < c->h;
   dx = rs_abs(x1 - x0); sx = x0 < x1 ? 1 : -1; dy = -rs_abs(y1 - y0); sy = y0 < y1 ? 1 : -1;
   err = dx + dy; xmaj = dx >= -dy; lo = (ws - 1) / 2;
+  if (in && opa == 255) {                                    /* 25 Nov: fully inside, so no clip per step; the same pixels */
+    int W = c->w; uint16_t *q = c->buf + (xmaj ? (y0 - lo) * W + x0 : y0 * W + x0 - lo);
+    for (;;) {
+      if (xmaj) { uint16_t *r = q; for (k = 0; k < ws; k++, r += W) *r = col; } else rs_hrun(q, ws, col);
+      if (x0 == x1 && y0 == y1) return;
+      e2 = 2 * err;
+      if (e2 >= dy) { err += dy; x0 += sx; q += sx; }
+      if (e2 <= dx) { err += dx; y0 += sy; q += sy * W; }
+    }
+  }
   for (;;) {
     if (opa == 255) rs_run(c, xmaj ? x0 : x0 - lo, xmaj ? y0 - lo : y0, ws, xmaj, col);
     else if (ws == 1) rs_put(c, x0, y0, col, opa);
