@@ -253,3 +253,9 @@ A today (edge 6 + core 3, round) 21.8 ms, B no round joins 19.0, C one line 2 px
 E one line 3 px round 15.3 (worst frame, 45° town: 28.5 / 24.1 / 17.0 / 22.9 / 18.9). Fill is the same in all (7-15 ms; areas overlap: one built-up frame paints 112 % of the
 canvas, see WP 6 step 2). Pictures: artifact "Far Street Variants". Same-pixel speed work (line span writes, 32-bit
 fill stores) is not in these numbers.
+
+### 12.3 Style D + span writes on the unit (image 7826c660, dde0b37)
+
+N3 / N4 home: `f` 24 / 25 ms (noseek 32), `d` 17 / 20 (25), `L` 4 / 4 (13), `F` 10 / 12 (10-11), `o` 5 / 4, `e` 0,
+reads 0. The line time fell 3x (estimate: 1.5x): the per-pixel bounds check was most of the line cost. The fill is
+now the largest draw part; overlapping areas (WP 6 step 2) are the next lever.
