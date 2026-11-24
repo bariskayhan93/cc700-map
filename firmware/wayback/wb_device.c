@@ -200,15 +200,16 @@ static uint32_t wbd_core(wbd_ctx *cp, uint32_t i, uint8_t *t, const float *pos, 
 #define FAR_US 150000u                 /* 24 Nov: emergency stop only (WP 1 photos: setup 25-49 ms left too few cells) */
 typedef int (*wbd_anchor_fn)(void *ctx, const int32_t ll[2], pt_t *s);
 static uint32_t wbd_clock(void) { return fw_clock(); }
-int wb_far(wbd_anchor_fn anchor, void *actx, uint32_t ms[9]) {
+int wb_far(wbd_anchor_fn anchor, void *actx, uint32_t ms[11]) {
   char name[128]; float pos[2]; wbd_ctx c; wbd_secs sec; fm_layer f; fm_stat st; vw_t v; pt_t s[4]; rs_canvas cv;
-  uint32_t x, y, i, mode = 0x00006272u, ts = 0, is = 0; int rc = -1, found; float head = FW_MAP_HEAD;
+  uint32_t x, y, i, mode = 0x00006272u, ts = 0, is = 0, to, te; int rc = -1, found; float head = FW_MAP_HEAD;
   c.t0 = fw_clock(); c.late = 0; c.reads = 0; c.io = 0; c.buf = 0; c.wc = 0;
-  for (i = 0; i < 9u; i++) ms[i] = 0;
+  for (i = 0; i < 11u; i++) ms[i] = 0;
   if (fw_stack() < WBD_STACK || !wbd_pos(pos) || (found = wbd_path(name)) <= 0) return -1;
   if (!(c.fp = fw_fopen(name, (const char *)&mode))) return -1;
-  c.nk = wbd_hash(name);
+  c.nk = wbd_hash(name); to = fw_clock();                      /* o: position, path, open */
   found = wbd_secs_read(&c, &sec);                             /* the trailer, through the page cache */
+  te = fw_clock();                                             /* e: seek to the end, ftell, cache, trailer */
   if (found && sec.size[4] && head >= -360.0f && head <= 720.0f && (c.buf = (uint8_t *)fw_malloc(GL_BUF, CAPS_PSRAM)) &&
       fm_open(&f, wbd_file, &c, sec.at[4], sec.size[4], c.buf) && fm_units(&f, (int32_t)(pos[0] * 1e7f), (int32_t)(pos[1] * 1e7f), &x, &y)) {
     for (i = 0; i < 4u; i++) {
@@ -223,13 +224,13 @@ int wb_far(wbd_anchor_fn anchor, void *actx, uint32_t ms[9]) {
       rc = (int)st.stop;
       ms[4] = (fw_clock() - ts - (c.io - is)) / 1000u;         /* d: draw less its file time */
       ms[5] = st.fill_us / 1000u; ms[6] = st.line_us / 1000u; ms[7] = st.areas; ms[8] = st.lines;
-      ms[1] = (ts - c.t0) / 1000u;
+      ms[1] = (to - c.t0) / 1000u; ms[2] = (te - to) / 1000u; ms[3] = (ts - te) / 1000u;   /* h: header, buffer, anchors */
     }
   }
   if (c.buf) fw_free(c.buf);
   fw_fclose(c.fp);
   ms[0] = (fw_clock() - c.t0) / 1000u;
-  ms[2] = c.reads; ms[3] = c.io / 1000u;
+  ms[9] = c.reads; ms[10] = c.io / 1000u;
   return rc;
 }
 

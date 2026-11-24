@@ -264,12 +264,13 @@ static void map_time(uint32_t ms, uint32_t cut, int pd, int far, const uint32_t 
   map_row(24, s);
   if (far < 0) return;
   // Far map, rows at y 42 and 60 (24 Nov). '+': it stopped. f total, o open, t trailer, h header and anchors, r reads,
-  // Now: f total, s setup, r reads, i file ms, d draw ms; F fill ms, L line ms, A areas, N lines.
+  // Now: f total, o open, e end seek and trailer, h header and anchors, d draw ms; F fill ms, L line ms, A areas, N lines,
+  // r reads, i file ms.
   for (int row = 0, i = 0; row < 2; row++) {
     o = s;
-    for (int k = 0; k < (row ? 4 : 5); k++, i++) {            // "fsrid" and "FLAN" from literals: no rodata
+    for (int k = 0; k < (row ? 6 : 5); k++, i++) {            // "foehd" and "FLANri" from literals: no rodata
       if (k) *o++ = ' ';
-      *o++ = (char)((row ? 0x4e414c46ull : 0x6469727366ull) >> (8 * k)); o = tx_num(o, fs[i]);
+      *o++ = (char)((row ? 0x69724e414c46ull : 0x6468656f66ull) >> (8 * k)); o = tx_num(o, fs[i]);
       if (!i && far) *o++ = '+';
     }
     *o = 0;
@@ -336,14 +337,14 @@ static void draw_names(proj_cb_t cb, const ent_t *E, const entry_range_t *r, con
 #ifdef HOST
 static int far_map(proj_cb_t cb, uint32_t *ms) { (void)cb; ms[0] = 0; return -1; }
 #else
-int wb_far(int (*anchor)(void *, const int32_t *, pt_t *), void *actx, uint32_t ms[9]);
+int wb_far(int (*anchor)(void *, const int32_t *, pt_t *), void *actx, uint32_t ms[11]);
 // ll: E7; probe takes the map unit (2^31 = 180 degrees): x 2^31 / 1.8e9 = 1.1930465 = 5,004,011 / 2^22.
 static int32_t far_mu(int32_t e7) { return (int32_t)(((int64_t)e7 * 5004011) >> 22); }
 static int far_anchor(void *ctx, const int32_t *ll, pt_t *s) { return probe((proj_cb_t)ctx, far_mu(ll[0]), far_mu(ll[1]), &s->x, &s->y); }
 static int far_map(proj_cb_t cb, uint32_t *ms) { return wb_far(far_anchor, (void *)cb, ms); }
 #endif
 void cc_iter(proj_cb_t cb) {
-  uint32_t fms[9]; int far = far_map(cb, fms);
+  uint32_t fms[11]; int far = far_map(cb, fms);
   fw_blk_lock();
   uint32_t cnt = FW_BLK_CNT, t0 = fw_clock(); ent_t *E = FW_BLK_ENTS;
   if (cnt > 0xFFFFu) cnt = 0xFFFFu;                            // the ranges hold 16 bits (a 64 KB block has fewer entries)
