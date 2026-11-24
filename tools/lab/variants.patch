@@ -1,0 +1,65 @@
+--- a/js/mapsec.js
++++ b/js/mapsec.js
+@@ -308,8 +308,12 @@
+ // The original firmware would draw these as stars, so this map is only for the patched firmware (opt.styled).
+ const S = { BUILT: 1, GREEN: 2, WATER: 3, WLINE: 4, MAJ: 5, MIN: 6, SRV: 7, PTH: 8, RAIL: 9, CYC: 10, TRAM: 11, LABEL: 12, SIG: 13, STOP: 14 };
+ export { S as MAP_CLASS };
+-const SR = { [S.MAJ]: 1000, [S.MIN]: 550, [S.SRV]: 350, [S.PTH]: 300, [S.CYC]: 350, [S.RAIL]: 450, [S.TRAM]: 450, [S.WLINE]: 600 };   // range from the route (m); WLINE = AREA_R: rivers reach as far as the water fills (20 Nov)
+-const AREA_R = 600, MAXPTS = 60, BLOCK_LEN = 1500;
++const SR = { [S.MAJ]: 1000, [S.MIN]: 550, [S.SRV]: 350, [S.PTH]: 300, [S.CYC]: 350, [S.RAIL]: 450, [S.TRAM]: 450, [S.WLINE]: 600 };
++const HO = +(globalThis.process?.env?.HO || 0), HOMAJ = +(globalThis.process?.env?.HOMAJ || 0);   // lab: handover distance
++if (HO) for (const k of [S.MIN, S.SRV, S.PTH, S.CYC, S.WLINE]) SR[k] = Math.min(SR[k], HO);
++if (HOMAJ) SR[S.MAJ] = HOMAJ;
++const DFILL = globalThis.process?.env?.DFILL ?? '600';   // lab: detail fill radius, 'none' = no fills   // range from the route (m); WLINE = AREA_R: rivers reach as far as the water fills (20 Nov)
++const AREA_R = DFILL === 'none' ? 600 : +DFILL, MAXPTS = 60, BLOCK_LEN = 1500;
+ function lineClass(L) {
+   const k = L.kind & 0x7f;
+   return k === 8 ? S.SRV : k === 1 ? S.MAJ :   // A1: motorways grey and thin, landmarks only
+@@ -363,7 +367,7 @@
+   // Fills use the 600 m window. A block with a context cap below 600 m cuts its fills at the cap (D1, 18 Nov). A cut ring has no outline (bit 10).
+   const areaR = contextRadiusCap < AREA_R ? contextRadiusCap : Math.max(AREA_R, Math.min(contextRadiusCap, coverageFloor));
+   const win = [bx0 - areaR, by0 - areaR, bx1 + areaR, by1 + areaR];
+-  for (const [cls, list] of [[S.BUILT, data.areas], [S.GREEN, data.green], [S.WATER, data.water]]) for (const A of list || []) {
++  for (const [cls, list] of DFILL === 'none' ? [] : [[S.BUILT, data.areas], [S.GREEN, data.green], [S.WATER, data.water]]) for (const A of list || []) {
+     if (!nearBox(A.box, areaR)) continue;
+     const outer = clipRing(A.m[0], win); if (!outer) continue;
+     const rings = [outer, ...A.m.slice(1).map(r => clipRing(r, win)).filter(Boolean)];
+@@ -455,7 +459,7 @@
+   // Geometry inside the protected minimum is never pruned or simplified to fit.
+   // Admit outer context only with spare capacity in every independent budget.
+   for(let n=0;n<groups.length;n++) {
+-    for(const floor of [600,800,1000].filter(r=>r<=groups[n].contextRadiusCap)) {
++    for(const floor of [600,800,1000].filter(r=>r<=groups[n].contextRadiusCap && r<=+(globalThis.process?.env?.FLOORMAX ?? 1000))) {
+       const g=groups[n],candidate=make(g.i,g.j,floor,g.contextRadiusCap),failures=budgetFailures(candidate.cost,limits);
+       const costs=groups.map((b,i)=>i===n?candidate.cost:b.cost);
+       if(transitionPeak(costs)>TRANSITION_BUDGET)failures.push('transitionBytes');
+--- a/js/far_map.js
++++ b/js/far_map.js
+@@ -15,6 +15,9 @@
+ const LINE_TOL = 40, AREA_TOL = 12 * U_M, AREA_MIN = 5000, STEP_M = 20;
+ // detail reach of each line class (js/mapsec.js:311 SR); the far line starts where the detail map stops
+ export const DETAIL_REACH = {[FAR.MAIN]: 1000, [FAR.MINOR]: 550, [FAR.CYCLE]: 350, [FAR.TRACK]: 300, [FAR.PATH]: 300, [FAR.WATERLINE]: 600};
++const HO = +(globalThis.process?.env?.HO || 0), HOMAJ = +(globalThis.process?.env?.HOMAJ || 0), FSKIP = +(globalThis.process?.env?.FSKIP || 0);
++if (HO) for (const k of [FAR.MINOR, FAR.CYCLE, FAR.TRACK, FAR.PATH, FAR.WATERLINE]) DETAIL_REACH[k] = Math.min(DETAIL_REACH[k], HO);
++if (HOMAJ) DETAIL_REACH[FAR.MAIN] = HOMAJ;
+ // unit draw order and widths in pixels (edge, core)
+ // 24 Nov: streets as the detail map draws far streets (edge 6 + core 3), main roads one thin line (no motorway)
+ export const DRAW_ORDER = [FAR.BUILT, FAR.WATER, FAR.FOREST, FAR.GREEN, FAR.WATERLINE, FAR.PATH, FAR.TRACK, FAR.CYCLE, FAR.MINOR, FAR.MAIN];
+@@ -25,7 +28,8 @@
+ export function farClassOf(t = {}) {
+   const h = t.highway;
+   if (!h) return ['river', 'stream', 'canal'].includes(t.waterway) ? FAR.WATERLINE : null;
+-  if (bikeWay(t) !== 'ride') return null;
++  const bw = bikeWay(t); if (bw === 'exit' && globalThis.process?.env?.FEXIT) return h === 'track' ? FAR.TRACK : FAR.PATH;
++  if (bw !== 'ride') return null;
+   if (MAIN.has(h)) return FAR.MAIN;
+   if (h === 'cycleway' || t.bicycle === 'designated') return FAR.CYCLE;
+   if (h === 'track') return FAR.TRACK;
+@@ -148,6 +152,7 @@
+       for (let cy = Math.floor(by0 / CELL); cy <= Math.floor(by1 / CELL); cy++) for (let cx = Math.floor(bx0 / CELL); cx <= Math.floor(bx1 / CELL); cx++) {
+         const X0 = cx * CELL, Y0 = cy * CELL;
+         if (dist([X0 + CELL / 2, Y0 + CELL / 2]) > reachM + 200) continue;
++        if (FSKIP && dist([X0 + CELL / 2, Y0 + CELL / 2]) + 182 <= FSKIP) continue;   // lab: the detail map fills this cell
+         let part = clip(ring, X0, Y0, X0 + CELL, Y0 + CELL);
+         if (part.length < 3 || ringArea(part) < Q * Q) continue;
+         for (let tol = AREA_TOL; part.length > MAX_RING; tol *= 2) part = rdp([...part, part[0]], tol).slice(0, -1);
