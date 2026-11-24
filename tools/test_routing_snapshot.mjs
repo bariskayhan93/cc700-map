@@ -117,7 +117,7 @@ test('snapshot keeps the covered box: the saved one of a replayed answer, else t
  assert.deepEqual(captureRoutingSnapshot({...response(base()),coverBbox:[1,2]},meta).coverBbox,meta.bbox);
 });
 
-// Far map (23 Nov): corridor boxes keep the 3 km reach on a 70 km route under the 600 km² bound.
+// Far map (23 Nov): corridor boxes keep the 3 km reach on a 70 km route under the 700 km² bound.
 test('corridor boxes: union query, bound on the summed area, provenance keeps the boxes',async()=>{
  const {corridorBoxes}=await import('../js/wayback.js');
  const line=[...Array.from({length:36},(_,i)=>({point:[51,7+i*0.01428]})),...Array.from({length:35},(_,i)=>({point:[51+(i+1)*0.009,7.5]}))];   // 35 km east, then 35 km north

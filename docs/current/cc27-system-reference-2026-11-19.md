@@ -62,7 +62,7 @@ straight into the canvas. The stock route line, arrows and dots stay with LVGL. 
 | Parameter | Value | Source | Status |
 |---|---|---|---|
 | Reach | 1 km: air 1,000 m, ride 2,000 m; 2 km: 2,000 / 4,000 m; 3 km: 3,000 / 6,000 m | `js/wayback_tree.js:11` | D |
-| Query box | route box + air reach + 200 m; the page refuses a box over 600 km² or 1° per side and steps down 3 → 2 → 1 km | `js/wayback.js:17`, `:46`, `:105-107` | D |
+| Query box | route box + air reach + 200 m; the page refuses a box over 700 km² (600 until 24 Nov) or 1° per side and steps down 3 → 2 → 1 km | `js/wayback.js:17`, `:46`, `:105-107` | D |
 | Street policy | bicycle-usable ways only: a footway or path without a bicycle tag is mostly not in the data | `js/wayback.js:37` (`wayPolicy`); 19 Nov count near the test place: footway 157 of 621 nodes, path 73 of 292, `path bicycle=designated` 481 of 481 | H |
 | Units | 1/16 m | `js/wayback_format.js:11` | D |
 | Distance to the route | 2 m steps, at most 8,190 m | `js/wayback_format.js:15` | D |

@@ -51,7 +51,7 @@ export function waybackBbox(route, reach = 'line2k') {
 
 // A corridor of boxes along the route (far map, 23 Nov): the route in pieces of about 5 km, each piece's box plus the
 // reach margin, 4 decimals outward. Their summed area is much less than the bounding box of a long route, so a 70 km
-// route keeps the 3 km reach under the 600 km² query bound.
+// route keeps the 3 km reach under the 700 km² query bound.
 export function corridorBoxes(route, reach = 'line2k', pieceM = 5000) {
   const boxes = []; let start = 0, run = 0;
   for (let i = 1; i <= route.length; i++) {

@@ -3,12 +3,12 @@
 const AREA = 'landuse~"^(forest|grass|meadow|recreation_ground|village_green|allotments|cemetery|orchard|reservoir|basin|residential|commercial|industrial|retail)$"';
 const NAT = 'natural~"^(water|wood|scrub|heath|grassland|wetland)$"', LEIS = 'leisure~"^(park|garden|golf_course|nature_reserve)$"';
 const WATER = 'waterway~"^(river|stream|canal|riverbank)$"';
-import {unionArea} from './routing_snapshot.js';
+import {unionArea, MAX_QUERY_KM2} from './routing_snapshot.js';
 import {overpass} from './wayback.js';
 export function farQuery(boxes) {
   if (!Array.isArray(boxes) || !boxes.length) throw new Error('Invalid box');
   for (const b of boxes) if (!Array.isArray(b) || b.length !== 4 || !b.every(Number.isFinite) || b[0] >= b[2] || b[1] >= b[3] || b[2] - b[0] > 1 || b[3] - b[1] > 1) throw new Error('Invalid box');
-  if (unionArea(boxes) > 600) throw new Error('Region exceeds bounded study area');
+  if (unionArea(boxes) > MAX_QUERY_KM2) throw new Error('Region exceeds bounded study area');
   const st = boxes.map(b => { const x = `(${b.join(',')})`; return `way[${AREA}]${x};way[${NAT}]${x};way[${LEIS}]${x};way[${WATER}]${x};rel[type=multipolygon][${AREA}]${x};rel[type=multipolygon][${NAT}]${x};rel[type=multipolygon][${LEIS}]${x};`; });
   return `[out:json][timeout:90][maxsize:134217728];\n(${st.join('')});\nout geom qt;\n`;
 }

@@ -108,9 +108,18 @@ test('a route area above the bounded region is refused before any request', asyn
   assert.equal(f.calls(), 0);
 });
 
-// A 100 km route to the north: its 3 km box is about 680 km2 (over the 600 km2 query bound), its 2 km box about 460 km2.
+// Owner 24 Nov: query bound 700 km2. A 95 km route to the north: its 3 km box is about 650 km2, so 3 km stays.
+test('a 3 km box of about 650 km2 keeps the 3 km reach', async () => {
+  const gpx = {name: 'C2-size', pts: Array.from({length: 96}, (_, k) => [51 + k * 1000 / 111320, 7, 0])};
+  const plain = buildRoute(gpx, [], {id: '11120000', nameImage: () => new Uint8Array(42), map: {styled: true}, speedKmh: 18}).file;
+  const f = async url => ({url, ok: true, status: 200, json: async () => response()});
+  const w = await addWayback(plain, {fetchImpl: f, format: 2, reach: 'line3k'});
+  assert.equal(w.reach, 'line3k');
+});
+
+// A 105 km route to the north: its 3 km box is about 710 km2 (over the 700 km2 query bound), its 2 km box about 480 km2.
 test('the fetch steps the reach down when the box of the chosen reach is over the bounded area', async () => {
-  const gpx = {name: 'Long', pts: Array.from({length: 101}, (_, k) => [51 + k * 1000 / 111320, 7, 0])};
+  const gpx = {name: 'Long', pts: Array.from({length: 106}, (_, k) => [51 + k * 1000 / 111320, 7, 0])};
   const plain = buildRoute(gpx, [], {id: '11120000', nameImage: () => new Uint8Array(42), map: {styled: true}, speedKmh: 18}).file;
   const boxes = [], f = async (url, opt) => { boxes.push(/\(([^)]*)\)/.exec(opt.body.get('data'))[1]); return {url, ok: true, status: 200, json: async () => response()}; };
   const w = await addWayback(plain, {fetchImpl: f, format: 2, reach: 'line3k'});

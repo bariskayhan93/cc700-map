@@ -7,6 +7,8 @@ const sorted=a=>a.sort((a,b)=>a.id-b.id);
 const issueSort=a=>[...new Map(a.map(i=>[JSON.stringify(i),i])).values()].sort((a,b)=>JSON.stringify(a).localeCompare(JSON.stringify(b)));
 const boxArea=([s,w,n,e])=>(n-s)*111.32*(e-w)*111.32*Math.cos((s+n)/2*Math.PI/180);
 // Area of the union of boxes (km²), counted on a 0.01 degree grid (cells whose centre is inside a box).
+// Owner 24 Nov: query bound 700 km² (was 600), so a 70 km route keeps the 3 km reach.
+export const MAX_QUERY_KM2=700;
 export function unionArea(boxes){
  const G=0.01,cells=new Set();let a=0;
  for(const[s,w,n,e]of boxes)for(let i=Math.floor(s/G);i*G<n;i++)for(let j=Math.floor(w/G);j*G<e;j++){
@@ -20,13 +22,13 @@ function checkBox(b,msg){
  if(n-s>1||e-w>1)throw Error('Region exceeds bounded study area');
 }
 // bbox: the region of the snapshot (provenance). boxes (far map, 23 Nov): a corridor of smaller boxes inside it; then the
-// 600 km² bound applies to their summed area, and the query takes the union of the boxes.
+// MAX_QUERY_KM2 bound applies to their summed area, and the query takes the union of the boxes.
 export function routingQuery(bbox,boxes){
  checkBox(bbox,'Invalid bbox');
  const parts=boxes===undefined?[bbox]:boxes;
  if(!Array.isArray(parts)||!parts.length)throw Error('Invalid box');
  for(const b of parts)checkBox(b,'Invalid box');
- if((parts.length===1?boxArea(parts[0]):unionArea(parts))>600)throw Error('Region exceeds bounded study area');
+ if((parts.length===1?boxArea(parts[0]):unionArea(parts))>MAX_QUERY_KM2)throw Error('Region exceeds bounded study area');
  const roads=parts.length===1?`way[highway](${parts[0].join(',')})->.roads;`:`(${parts.map(b=>`way[highway](${b.join(',')});`).join('')})->.roads;`;
  return `[out:json][timeout:90][maxsize:134217728];\n${roads}\nrel(bw.roads)[type=restriction]->.restrictions;\nway(r.restrictions)->.members;\n(.roads;.members;)->.allways;\n(node(w.allways);node(r.restrictions);)->.nodes;\n(.allways;.nodes;.restrictions;);out body qt;\n`;
 }
