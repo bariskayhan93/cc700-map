@@ -28,7 +28,7 @@ FRAME_LIMIT = 512               # no function frame above 512 B (.su)
 # Frame of wb_rt in the first clean cc27 build (19 Nov). A different frame means different compiled code: refused.
 HOOK_FRAME = 32
 # Stock calls of the cc27 tree: the cc26 list, and heap_caps_malloc, free and the block lock and unlock.
-CALLED = tuple(wdb.CALLED) + (0x403763e0, 0x40376398, 0x420494a4, 0x420494b8, 0x4205bf0c, 0x42002890, 0x403835bc, 0x40383590)   # 24 Nov: + pthread_getspecific, TLS get, TLS set
+CALLED = tuple(wdb.CALLED) + (0x403763e0, 0x40376398, 0x420494a4, 0x420494b8, 0x4205bf0c, 0x42002890, 0x403835bc, 0x40383590, 0x421b8c2c)   # 24 Nov: + pthread_getspecific, TLS get, TLS set, ftell
 # The cc27 tree, copied flat into the build directory: directory under firmware/ -> files.
 TREE = {'common': ('types.h', 'fw.h', 'text.h'), 'raster': ('raster.h', 'raster.c'), 'view': ('view.h', 'view.c'),
         'mapdraw': ('map.c', 'md_tramp.S', 'proj.h', 'proj.c'),

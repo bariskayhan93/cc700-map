@@ -67,6 +67,8 @@ void *host_getspecific(uint32_t); void *host_tls_get(void *, int32_t); void host
 #define fw_fclose host_fclose
 #define fw_fseek host_fseek
 #define fw_fread host_fread
+int32_t host_ftell(void *);
+#define fw_ftell host_ftell
 #define fw_take host_take
 #define fw_file_give(sem) host_give(sem)
 #define fw_nav_give() host_give(host_nav_sem)
@@ -137,6 +139,7 @@ extern int host_proj_zoom, host_proj_rot;
 #define fw_fclose  ((int (*)(void *))0x421b7de0)
 #define fw_fseek   ((int (*)(void *, int32_t, int))0x421b8848)
 #define fw_fread   ((uint32_t (*)(void *, uint32_t, uint32_t, void *))0x421b8818)
+#define fw_ftell   ((int32_t (*)(void *))0x421b8c2c)                     // ftell (24 Nov, mined: _ftello_r with SEEK_CUR)
 #define fw_take    ((int32_t (*)(void *, uint32_t))0x40381868)            /* semaphore take, ticks */
 #define fw_file_give(sem) ((int32_t (*)(void *, const void *, uint32_t, int32_t))0x403813c0)(sem, 0, 0, 0)
 #define fw_nav_give ((void (*)(void))0x4204c7a8)

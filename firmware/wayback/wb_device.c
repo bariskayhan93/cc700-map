@@ -16,7 +16,7 @@
 enum { WBD_LOCK = 6, WBD_NODATA = 7, WBD_STACK_LOW = 8, WBD_OPEN = 9, WBD_HEAP = 11 };   /* after the core reasons 1 to 5 (10 retired) */
 
 /* One frame: file reads, the grey section, its PSRAM buffer and its draw result. */
-typedef struct { void *fp; uint32_t base, t0, late, reads, io, gat, gsize, glines, gcut, nomem; uint8_t *buf; wc_cache *wc; } wbd_ctx;
+typedef struct { void *fp; uint32_t nk, base, t0, late, reads, io, gat, gsize, glines, gcut, nomem; uint8_t *buf; wc_cache *wc; } wbd_ctx;
 
 #include "fw.h"
 #include "text.h"
@@ -102,16 +102,20 @@ static int wbd_file(void *vctx, uint32_t off, void *dst, uint32_t n) { return wb
 static uint32_t wbd_core(wbd_ctx *, uint32_t, uint8_t *, const float *, float *, uint32_t *, uint32_t *);   /* *n bit 31: the line is cut */
 /* Trailer v2 (cc27), the last 64 bytes: "CCWS", count 1..4, 4 x {type, offset, size}, file length, 0. One read. The
  * sections must lie before the trailer and must not overlap; a type occurs once; types above 4 are ignored. */
-typedef struct { uint32_t at[5], size[5], key, total; } wbd_secs;   /* key: FNV-1a of the trailer (WP 5 cache key) */            /* index = type: 1 way-back, 2 grey, 3 elevation (the chart), 4 far map */
-static int wbd_secs_read(void *fp, wbd_secs *s) {
-  uint8_t t[64]; uint32_t i, j, n, total;
+typedef struct { uint32_t at[5], size[5]; } wbd_secs;            /* index = type: 1 way-back, 2 grey, 3 elevation (the chart), 4 far map */
+/* FNV-1a of the path: with the file size, the page-cache key (24 Nov). */
+static uint32_t wbd_hash(const char *p) { uint32_t h = 2166136261u; while (*p) h = (h ^ (uint8_t)*p++) * 16777619u; return h; }
+/* The file size comes from a seek to the end (no read); the trailer read then goes through the page cache, so a kept
+ * cache reads nothing (24 Nov: one trailer read cost 11-17 ms). c->nk: wbd_hash of the path. */
+static int wbd_secs_read(wbd_ctx *c, wbd_secs *s) {
+  uint8_t t[64]; uint32_t i, j, n, total; int32_t size;
   for (i = 0; i < 5u; i++) { s->at[i] = 0; s->size[i] = 0; }
-  if (fw_fseek(fp, -64, 2) != 0 || fw_fread(t, 1u, 64u, fp) != 64u || wb_u32(t) != 0x53574343u) return 0;
-  n = wb_u32(t + 4); total = wb_u32(t + 56);
+  if (fw_fseek(c->fp, 0, 2) != 0 || (size = fw_ftell(c->fp)) < 64) return 0;
 #ifdef WBD_KEEP
-  for (s->key = 2166136261u, i = 0; i < 64u; i++) s->key = (s->key ^ t[i]) * 16777619u;
-  s->key |= 1u; s->total = total;
+  if ((c->wc = wbd_keep()) != 0) wc_reset(c->wc, (c->nk ^ (uint32_t)size) | 1u, (uint32_t)size);
 #endif
+  if (!wbd_at(c, (uint32_t)size - 64u, t, 64u) || wb_u32(t) != 0x53574343u) return 0;
+  n = wb_u32(t + 4); total = wb_u32(t + 56);
   if (n < 1u || n > 4u || total < 64u) return 0;
   for (i = 0; i < n; i++) {
     uint32_t ty = wb_u32(t + 8 + 12 * i), at = wb_u32(t + 12 + 12 * i), sz = wb_u32(t + 16 + 12 * i);
@@ -125,10 +129,7 @@ static int wbd_secs_read(void *fp, wbd_secs *s) {
 static __attribute__((noinline)) uint32_t wbd_run(wbd_ctx *c, const float *pos, float *line, uint32_t *n, uint32_t *dm) {
   uint8_t t[16]; wbd_secs sec; uint32_t code;
   if (wb_size() > 128u + 8u * (sizeof(void *) - 4)) return WBD_NODATA;
-  if (!wbd_secs_read(c->fp, &sec) || !sec.size[1]) return WBD_NODATA;
-#ifdef WBD_KEEP
-  if ((c->wc = wbd_keep()) != 0) wc_reset(c->wc, sec.key, sec.total);
-#endif
+  if (!wbd_secs_read(c, &sec) || !sec.size[1]) return WBD_NODATA;
   c->base = sec.at[1]; c->gat = sec.at[2]; c->gsize = sec.size[2];
 #ifdef WBD_GREY
   if (sec.size[2] && !sec.size[4]) {                         /* far map (23 Nov): it draws the far streets in cc_iter */
@@ -206,10 +207,8 @@ int wb_far(wbd_anchor_fn anchor, void *actx, uint32_t ms[9]) {
   for (i = 0; i < 9u; i++) ms[i] = 0;
   if (fw_stack() < WBD_STACK || !wbd_pos(pos) || (found = wbd_path(name)) <= 0) return -1;
   if (!(c.fp = fw_fopen(name, (const char *)&mode))) return -1;
-  found = wbd_secs_read(c.fp, &sec);                          /* the trailer: 11-17 ms (24 Nov probe: a read at the file start costs the same) */
-#ifdef WBD_KEEP
-  if (found && (c.wc = wbd_keep()) != 0) wc_reset(c.wc, sec.key, sec.total);
-#endif
+  c.nk = wbd_hash(name);
+  found = wbd_secs_read(&c, &sec);                             /* the trailer, through the page cache */
   if (found && sec.size[4] && head >= -360.0f && head <= 720.0f && (c.buf = (uint8_t *)fw_malloc(GL_BUF, CAPS_PSRAM)) &&
       fm_open(&f, wbd_file, &c, sec.at[4], sec.size[4], c.buf) && fm_units(&f, (int32_t)(pos[0] * 1e7f), (int32_t)(pos[1] * 1e7f), &x, &y)) {
     for (i = 0; i < 4u; i++) {
@@ -246,7 +245,7 @@ static __attribute__((noinline)) void wbd_frame(void) {
     flags = wbd_flags();
     if (!wbd_pos(pos)) code = WB_GPS;
     else if ((found = wbd_path(u.s)) <= 0) code = found ? WBD_LOCK : WBD_NODATA;
-    else if (!(c.fp = fw_fopen(u.s, (const char *)&mode))) code = WBD_OPEN;
+    else if (c.nk = wbd_hash(u.s), !(c.fp = fw_fopen(u.s, (const char *)&mode))) code = WBD_OPEN;
     else { code = wbd_run(&c, pos, u.line, &n, &dm); fw_fclose(c.fp); }
   }
   if (code) { *o++ = 'w'; *o++ = 'b'; o = tx_num(o, code); }
@@ -345,9 +344,9 @@ void wb_km(int32_t left, int32_t total, int32_t bar_w, int32_t show_text) {
     return;
   }
   c.buf = 0; c.fp = 0; c.wc = 0;
-  if (wbd_path(path) > 0 && (c.fp = fw_fopen(path, (const char *)&mode)) != 0) {
+  if (wbd_path(path) > 0 && (c.nk = wbd_hash(path), c.fp = fw_fopen(path, (const char *)&mode)) != 0) {
     c.t0 = fw_clock(); c.late = 0; c.reads = 0;
-    if (wbd_secs_read(c.fp, &sec) && sec.size[3] >= EL_HEAD2 && (c.buf = (uint8_t *)fw_malloc(GL_BUF, CAPS_PSRAM)) != 0 &&
+    if (wbd_secs_read(&c, &sec) && sec.size[3] >= EL_HEAD2 && (c.buf = (uint8_t *)fw_malloc(GL_BUF, CAPS_PSRAM)) != 0 &&
         wbd_file(&c, sec.at[3], c.buf, EL_HEAD2) && el_head_parse(&h, c.buf)) {
       len = h.len_cm / 100u; tol = len / 100u > 50u ? len / 100u : 50u;
       v.h = &h; v.coarse = c.buf + 16; v.blk = c.buf + EL_HEAD2; v.len_m = len; v.prog_m = len > u ? len - u : 0u;

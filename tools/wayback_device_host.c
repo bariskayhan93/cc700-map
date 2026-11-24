@@ -68,6 +68,7 @@ void *host_fopen(const char *path, const char *mode) {
   f = fopen(path, mode); if (f) n_open++; return f;
 }
 int host_fclose(void *f) { n_close++; return fclose((FILE *)f); }
+int32_t host_ftell(void *f) { return (int32_t)ftell((FILE *)f); }
 int host_fseek(void *f, int32_t off, int whence) { file_under_blk += blk_held; return fseek((FILE *)f, off, whence); }
 uint32_t host_fread(void *dst, uint32_t size, uint32_t n, void *f) {
   n_reads++; file_under_blk += blk_held;

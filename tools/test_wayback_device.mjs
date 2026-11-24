@@ -60,7 +60,7 @@ test('WP 5/7: with the kept page cache the second off-route frame reads almost n
   const plain = twice({}, exe), kept = twice({}, keepExe), one = run({});
   assert.equal(plain.reads, one.reads);                          // no cache: frame 2 reads as frame 1
   assert.ok(one.reads > 20, String(one.reads));
-  assert.ok(kept.reads <= 2, String(kept.reads));
+  assert.equal(kept.reads, 0);                                 // 24 Nov: the trailer goes through the cache too
   assert.equal(kept.hash, plain.hash);
   assert.deepEqual(kept.lines, plain.lines);
   assert.equal(kept.mallocs - kept.frees, plain.mallocs - plain.frees);
