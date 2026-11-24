@@ -211,3 +211,24 @@ C is not possible without a cache. Its cold frame must be spread over frames: li
 - `rs_line_aa` (smooth lines) blends edge pixels; its cost is not in the model.
 - cc27 saw about 10 ms for each read while the stock log turned over. A cache also protects against this.
 - The look of B near the route needs one ride.
+
+## 12. Device calibration (24 Nov, evening)
+
+Images 4f8a07e1 (WP 1-3), 414e987e (`FAR_US` 150 ms), 35602d56 (read probe), 322fb6a3 (draw split); N3/N4 WP 6 files.
+Stationary, N3 home (about 1.1 km off) and N4 home (about 2.7 km off), heading north.
+
+| Value | Simulation (section 8) | Unit |
+|---|---|---|
+| Far total `f` | about 60 ms, stopped | 67-93 ms, complete with the 150 ms stop |
+| Setup `s` (open, trailer, header, anchors) | 25-35 ms, assumed reads | 20-40 ms; one 64 B trailer read 11-17 ms |
+| Read at the file start (probe `z`) | — | 10-12 ms, the same as the trailer read |
+| Reads `r`, file time `i` | 17-20, 1.27 ms each | 13, 1.6-2.4 ms each |
+| Draw `d` | 5-8 ms | 20-27 ms |
+| Fill time `F`, fill pixels (host, same A/N) | — | 10-11 ms, 64-66 k px: 0.16 µs/px |
+| Line time `L`, line pixels (host, same A/N) | — | 13 ms, 22-27 k px: 0.5 µs/px (line work 2 x painted) |
+| Pixels written, far frame (host, 312 frames) | — | about 75 k: built-up 50 %, other green 17 %, forest 6 %, street edge 14 %, core 7 % |
+
+Findings: the first reads after an open are slow anywhere in the file; the setup is paid by each of the three file
+users of a frame (far map, way-back line, km bar). The draw model of section 4.3 counted instructions and missed the
+PSRAM store cost (fill) and the round joins (lines). Setup and reads are about 70 % of the far time: state kept
+between frames (WP 4) is the largest lever.
