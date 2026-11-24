@@ -245,26 +245,34 @@ static void draw_entry(proj_cb_t cb, const ent_t *e, uint16_t sel, float *buf, c
 }
 // cc27 F_TEXT: the time of cc_iter in ms at (6, 24), white shadow then black (the adapter text is at (6, 6))
 // cc28b: " c<k>" when the stop came before pass k (1 fills, 2..6 levels 0..4, 7 signals, 8 names)
+static void map_row(int32_t y, const char *s) {
+#ifdef HOST
+  host_text(6, y, s, 0);
+#else
+  uint16_t old = FW_LABEL_COL;
+  FW_LABEL_COL = 0xffff; fw_text(7, y + 1, s);
+  FW_LABEL_COL = 0; fw_text(6, y, s);
+  FW_LABEL_COL = old;
+#endif
+}
 static void map_time(uint32_t ms, uint32_t cut, int pd, int far, const uint32_t *fs) {   // pd: F_PROJ check " p<d>", -1 = none; far: wb_far result
   char s[64], *o = s;
   *o++ = 'm'; o = tx_num(o, ms);
   if (cut) { *o++ = ' '; *o++ = 'c'; *o++ = (char)('0' + cut); }
   if (pd >= 0) { *o++ = ' '; *o++ = 'p'; *o++ = (char)('0' + pd); }
-  if (far >= 0) {                                             // far map ms; '+': it stopped. WP 1: open, trailer, header, anchors, reads, file, draw
-    for (int i = 0; i < 8; i++) {                             // "fotharid" from one literal: no rodata
-      *o++ = ' '; *o++ = (char)(0x6469726168746f66ull >> (8 * i)); o = tx_num(o, fs[i]);
-      if (!i && far) *o++ = '+';
-    }
+  *o = 0;
+  map_row(24, s);
+  if (far < 0) return;
+  // Far map, own row at y 42 (24 Nov: one row was cut at the screen edge). '+': it stopped. f total, o open, z the
+  // first read (64 B at the file start), t the trailer, h header and anchors, r reads, i file ms, d draw ms.
+  o = s;
+  for (int i = 0; i < 8; i++) {                               // "fozthrid" from one literal: no rodata
+    if (i) *o++ = ' ';
+    *o++ = (char)(0x64697268747a6f66ull >> (8 * i)); o = tx_num(o, fs[i]);
+    if (!i && far) *o++ = '+';
   }
   *o = 0;
-#ifdef HOST
-  host_text(6, 24, s, 0);
-#else
-  uint16_t old = FW_LABEL_COL;
-  FW_LABEL_COL = 0xffff; fw_text(7, 25, s);
-  FW_LABEL_COL = 0; fw_text(6, 24, s);
-  FW_LABEL_COL = old;
-#endif
+  map_row(42, s);
 }
 // Pass 0: the range of each bucket and the largest point count; the original star lines (style 0) until the stop.
 // *late = 1 when the stop came in this pass.
