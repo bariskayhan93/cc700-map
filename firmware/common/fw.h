@@ -53,6 +53,11 @@ extern float host_map_head;
 #define fw_blk_unlock host_nop
 #define fw_malloc host_malloc
 #define fw_free host_free
+void *host_getspecific(uint32_t); void *host_tls_get(void *, int32_t); void host_tls_set(void *, int32_t, void *, void *);
+#define fw_getspecific host_getspecific
+#define fw_tls_get host_tls_get
+#define fw_tls_set host_tls_set
+#define FW_TLS_DEL ((void *)0)
 #define fw_clock() host_clock()
 #define fw_cc_rt host_cc_rt
 #define fw_cc_pos host_cc_pos
@@ -104,6 +109,13 @@ extern int host_proj_zoom, host_proj_rot;
 #define fw_blk_unlock ((void (*)(void))0x420494b8)            // xSemaphoreGive
 #define fw_malloc     ((void *(*)(uint32_t, uint32_t))0x403763e0)   // heap_caps_malloc(size, caps)
 #define fw_free       ((void (*)(void *))0x40376398)
+// WP 4 (24 Nov, mined): the pthread key list of the running task, in its one FreeRTOS TLS slot (TCB + 96). The list
+// head is a 4 B cell that holds the first node {key, value, next}; pthread_getspecific walks it and does not check
+// the key. The patch keeps its cache under the private key WBD_KEY (firmware/wayback/wb_device.c).
+#define fw_getspecific ((void *(*)(uint32_t))0x42002890)                 // pthread_getspecific(key)
+#define fw_tls_get    ((void *(*)(void *, int32_t))0x403835bc)          // pvTaskGetThreadLocalStoragePointer(0 = this task, 0)
+#define fw_tls_set    ((void (*)(void *, int32_t, void *, void *))0x40383590)   // vTaskSetThreadLocalStoragePointerAndDelCallback
+#define FW_TLS_DEL    ((void *)0x420027c0)                               // the pthread list destructor (task deletion)
 #define fw_clock()    ((uint32_t)((uint64_t (*)(void))0x403779f4)())   // esp_timer_get_time, microseconds, low word
 #define fw_canvas_text ((void (*)(void *, int32_t, int32_t, int32_t, void *, const char *))0x420dbcd0)
 #define FW_LABEL_DSC ((void *)0x3c38a570)

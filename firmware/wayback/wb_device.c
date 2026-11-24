@@ -20,13 +20,25 @@ typedef struct { void *fp; uint32_t base, t0, late, reads, io, gat, gsize, gline
 
 #include "fw.h"
 #include "text.h"
-/* WP 5 and WP 7 (24 Nov): the page cache stays across frames behind one RAM word (WP 4, WBD_KEEP: its address). Without
- * WBD_KEEP there is no cache and every read goes to the file, as before. A failed PSRAM allocation: no cache. */
-#ifdef WBD_KEEP
-#ifdef HOST
-extern void *host_keep;
-#endif
-static wc_cache *wbd_keep(void) { wc_cache **k = (wc_cache **)WBD_KEEP; if (!*k) *k = (wc_cache *)fw_malloc(WC_BYTES, CAPS_PSRAM); return *k; }
+/* WP 5 and WP 7 (24 Nov): the page cache stays across frames in the pthread key list of the running task (WP 4,
+ * fw.h): one node {WBD_KEY, cache, next} in front of the list. The task is new at each boot, so a pointer never
+ * outlives a restart. A task that runs a hook gets its own cache (no sharing). A failed allocation: no cache, every
+ * read goes to the file as before. WBD_NO_KEEP: no cache (host comparison builds). */
+#ifndef WBD_NO_KEEP
+#define WBD_KEEP 1
+#define WBD_KEY 0x434d4343u                                    /* "CCMC": far above the sequential pthread keys */
+static wc_cache *wbd_keep(void) {
+  wc_cache *k = (wc_cache *)fw_getspecific(WBD_KEY); uintptr_t *head, *node;   /* 32-bit words on the unit */
+  if (k) return k;
+  if (!(k = (wc_cache *)fw_malloc(WC_BYTES, CAPS_PSRAM))) return 0;
+  k->key = 0; k->size = 0;                                     /* key 0: the first wc_reset empties it */
+  node = (uintptr_t *)fw_malloc(3u * sizeof(uintptr_t), CAPS_PSRAM);
+  head = (uintptr_t *)fw_tls_get(0, 0);
+  if (node && !head && (head = (uintptr_t *)fw_malloc(sizeof(uintptr_t), CAPS_PSRAM)) != 0) { *head = 0; fw_tls_set(0, 0, head, FW_TLS_DEL); }
+  if (!node || !head) { if (node) fw_free(node); fw_free(k); return 0; }
+  node[0] = WBD_KEY; node[1] = (uintptr_t)k; node[2] = *head; *head = (uintptr_t)node;
+  return k;
+}
 #endif
 
 static uint32_t wbd_pos(float *pos) {                                     /* as cc_rt: never wait for the lock */
@@ -118,15 +130,18 @@ static __attribute__((noinline)) uint32_t wbd_run(wbd_ctx *c, const float *pos, 
   if ((c->wc = wbd_keep()) != 0) wc_reset(c->wc, sec.key, sec.total);
 #endif
   c->base = sec.at[1]; c->gat = sec.at[2]; c->gsize = sec.size[2];
+#ifdef WBD_GREY
   if (sec.size[2] && !sec.size[4]) {                         /* far map (23 Nov): it draws the far streets in cc_iter */
     c->buf = (uint8_t *)fw_malloc(GL_BUF, CAPS_PSRAM);
     c->nomem = !c->buf;
   }
+#endif
   code = wbd_core(c, sec.size[1], t, pos, line, n, dm);
   if (c->buf) fw_free(c->buf);
   return code;
 }
-/* Grey streets (cc27, design 8.5). The view comes from 4 anchors: op 23 through the stock projection, cc_line gives the
+#ifdef WBD_GREY
+/* Grey streets (cc27, design 8.5). Retired 24 Nov (owner): only files without a far map used it; WBD_GREY builds it. The view comes from 4 anchors: op 23 through the stock projection, cc_line gives the
  * screen point back in color and width and sets dash_gap = 1 (map.c). Then every line of the screen cells is drawn
  * with the raster, under the way-back line. A failed anchor, a bad heading, a bad layer or a read error: no more grey in
  * this frame; the way-back line stays. */
@@ -155,6 +170,7 @@ static void wbd_grey(wbd_ctx *c, const wb_engine *e, int32_t lat, int32_t lon) {
   c->gcut = !grey_draw(&l, &cv, &v, x, y, (uint32_t)(int32_t)(810.5f - head) % 360u, &st);   /* course + 360, rounded */
   c->glines = st.lines;
 }
+#endif
 static uint32_t wbd_core(wbd_ctx *cp, uint32_t i, uint8_t *t, const float *pos, float *line, uint32_t *n, uint32_t *dm) {
   uint32_t store[32 + 2 * (sizeof(void *) - 4)]; wb_engine *e = (wb_engine *)store;   /* 128 B on the device */
   wb_input in; wb_output out; int32_t p[2]; uint32_t k;
@@ -169,7 +185,9 @@ static uint32_t wbd_core(wbd_ctx *cp, uint32_t i, uint8_t *t, const float *pos, 
   if (i < 2u) return WB_READ;                                  /* a failed read: draw nothing */
   *n = i; *dm = out.distance_dm;
   if (i == WBD_POINTS && wb_read_point(e, WBD_POINTS, p)) *n |= 0x80000000u;   /* more points: the first 32 from the rider, text '+' */
+#ifdef WBD_GREY
   wbd_grey(cp, e, in.lat_e7, in.lon_e7);                       /* after the line points: a slow grey never costs the line */
+#endif
   return 0;
 }
 
@@ -245,9 +263,11 @@ static __attribute__((noinline)) void wbd_frame(void) {
     o = tx_num(o, (fw_clock() - c.t0) / 1000u);               /* file and core time of this frame, ms */
     *o++ = ' '; *o++ = 'r';
     o = tx_num(o, c.reads);                                 /* file reads of this frame */
+#ifdef WBD_GREY
     *o++ = ' ';
     if (c.nomem) { *o++ = 'w'; *o++ = 'b'; o = tx_num(o, WBD_HEAP); }   /* no heap buffer: no grey */
     else { *o++ = 'g'; o = tx_num(o, c.glines); if (c.gcut) *o++ = '+'; }   /* grey lines; '+': not all lines */
+#endif
   }
   *o = 0;
   wbd_text(u.s);

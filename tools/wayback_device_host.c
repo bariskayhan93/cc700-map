@@ -110,9 +110,15 @@ void host_canvas_text(void *cv, int32_t x, int32_t y, int32_t w, void *dsc, cons
   n_text++; strncpy(text, s, sizeof text - 1);
 }
 
-#ifdef WBD_KEEP
-void *host_keep;
-#endif
+/* WP 4: one task's TLS slot and pthread_getspecific over its key list (fw.h). */
+static void *host_tls;
+void *host_tls_get(void *t, int32_t i) { (void)t; (void)i; return host_tls; }
+void host_tls_set(void *t, int32_t i, void *v, void *cb) { (void)t; (void)i; (void)cb; host_tls = v; }
+void *host_getspecific(uint32_t key) {
+  uintptr_t *n = host_tls ? (uintptr_t *)*(uintptr_t *)host_tls : 0;
+  for (; n; n = (uintptr_t *)n[2]) if (n[0] == key) return (void *)n[1];
+  return 0;
+}
 int main(int argc, char **argv) {
   int i, mode;
   void *route = &route, *other = &other;
@@ -136,15 +142,22 @@ int main(int argc, char **argv) {
   memcpy(host_file_tab + 132, &route, sizeof route); strncpy((char *)host_file_tab + 132 + sizeof route, argv[1], 120);
   host_file_cnt = 2;
   if (mode != 0) host_fps[2] = route;                          /* a route handle of type 2 */
+  if (getenv("STOCKKEY")) {                                    /* a stock pthread key 1 already in the task's list */
+    uintptr_t *h = malloc(sizeof(uintptr_t)), *n = malloc(3 * sizeof(uintptr_t));
+    n[0] = 1; n[1] = 0x1234; n[2] = 0; *h = (uintptr_t)n; host_tls = h;
+  }
   if (argc == 23) wb_km(atoi(argv[19]), atoi(argv[20]), atoi(argv[21]), atoi(argv[22]));
   else wb_rt((uint32_t)atoi(argv[6]));
   if (getenv("FRAME2")) {                                      /* WP 5/7: the same frame again; reads of frame 2 only */
     n_reads = 0; memset(host_buf, 0, 240u * 256u * 2u); g_clock = 0xfffffff0u;
     wb_rt((uint32_t)atoi(argv[6]));
   }
-#ifdef WBD_KEEP
-  if (host_keep) { free(host_keep); n_free++; }                /* the cache stays until the unit restarts */
-#endif
+  if (getenv("STOCKKEY") && host_getspecific(1) != (void *)0x1234) return 9;   /* the stock key must survive */
+  if (host_tls) {                                              /* the list stays until the task ends: free it here */
+    uintptr_t *n = (uintptr_t *)*(uintptr_t *)host_tls, *m;
+    for (; n; n = m) { m = (uintptr_t *)n[2]; if (n[0] != 1) { free((void *)n[1]); n_free++; } free(n); n_free++; }
+    free(host_tls); n_free++;
+  }
   for (k = 0; k < 240u * 256u; k++) { hash = (hash ^ host_buf[k]) * 16777619u; px += host_buf[k] != 0; }
   printf("{\"rt\":%d,\"opens\":%d,\"closes\":%d,\"reads\":%d,\"texts\":%d,\"text\":\"%s\",\"opened\":\"%s\",", n_rt, n_open, n_close, n_reads, n_text, text, opened);
   printf("\"takes\":%d,\"gives\":%d,\"dashAfter\":%d,\"badDash\":%d,\"labelCol\":%u,", n_take, n_give, host_dsc.dash_width, bad_dash, host_label_col);
