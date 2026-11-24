@@ -13,7 +13,7 @@ MEMORY {
  tramp_km(rx): ORIGIN = 0x4205bdd0, LENGTH = 0x1c
 }
 SECTIONS {
- .tail_text : { *elev.o(.literal .text .literal.* .text.*) . = ALIGN(4); } > tail
+ .tail_text : { *elev.o(.literal .text .literal.* .text.*) *view.o(.literal .text .literal.* .text.*) . = ALIGN(4); } > tail
  .text : { *(.literal .text .literal.* .text.*) . = ALIGN(4); } > area2
  .lit_wb_rt : { KEEP(*(.lit_wb_rt)) } > lit
  .lit_cc_iter : { KEEP(*(.lit_cc_iter)) } > lit_iter

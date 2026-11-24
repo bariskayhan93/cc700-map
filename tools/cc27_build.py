@@ -40,7 +40,7 @@ run = c26.run
 TAIL = 0x421debac
 PAGE_END = 0x421e0000
 RESERVE = 1768               # free room kept in the code page (budget-plan-2026-11-16.md)
-TAIL_SOURCES = ('elev.c',)
+TAIL_SOURCES = ('elev.c', 'view.c')   # WP 1-3 (24 Nov): view.c moved to the tail for code room
 # The stock remaining-distance overlay call and its trampoline (design 2026-11-23 section 8).
 KM_CALL, KM_CALL_OLD, KM_TRAMP, KM_TRAMP_SIZE = 0x4204ca2e, bytes.fromhex('e54d0f'), 0x4205bdd0, 0x1c
 KM_DEAD = (0x4205bd90, 0x4205bdf0)  # the dead stock body that holds the trampoline (incoming_refs.DEAD_SPANS)
