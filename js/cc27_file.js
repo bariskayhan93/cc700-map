@@ -26,13 +26,18 @@ export async function cc27Sections(routeFile, {wayback = true, elevation = true,
   for (let r = wayback ? reach : null; r;) {
     let w;
     try { w = await addWayback(routeFile, {format: 2, reach: r, fetchImpl, layer: false}); } catch (err) { report.waybackError = err.message; break; }
-    let far = null, farReason = null;   // far map (23 Nov): a failure keeps the way-back data
-    try { far = farSection(w, await loadFarSource(w.boxes, fetchImpl)); if (!far) farReason = 'keine Fernkarten-Zelle'; } catch (err) { farReason = err.message; }
-    for (const withFar of far ? [true, false] : [false]) {
-      const sections = [{type: SECTION.WAYBACK, bytes: w.wayback}, ...(withFar ? [{type: SECTION.FAR, bytes: far.bytes}] : []), ...tail], file = make(sections);
+    let src = null, farReason = null;   // far map (23-24 Nov): a failure keeps the way-back data
+    try { src = await loadFarSource(w.boxes, fetchImpl); } catch (err) { farReason = err.message; }
+    // the far map at the reach of the way back; over the file guard first at 2 km, then without it, then the reach steps down
+    const farAt = m => { try { return src ? farSection(w, src, undefined, m) : null; } catch (err) { farReason = err.message; return null; } };
+    const reachM = {line1k: 1000, line2k: 2000, line3k: 3000}[w.reach], tries = [reachM, ...(reachM > 2000 ? [2000] : []), 0];
+    for (const fm of tries) {
+      const far = fm ? farAt(fm) : null;
+      if (fm && !far) { farReason ??= 'keine Fernkarten-Zelle'; continue; }
+      const sections = [{type: SECTION.WAYBACK, bytes: w.wayback}, ...(far ? [{type: SECTION.FAR, bytes: far.bytes}] : []), ...tail], file = make(sections);
       if (file.length > fileLimit) continue;
-      Object.assign(report, {waybackBytes: w.wayback.length, farBytes: withFar ? far.bytes.length : 0, reach: w.reach, stats: w.stats, ...(withFar ? {farCells: far.cells, farRemovedLines: far.removedLines} : {})});
-      if (!withFar) report.farReason = far ? over : farReason;
+      Object.assign(report, {waybackBytes: w.wayback.length, farBytes: far ? far.bytes.length : 0, farReachM: far ? fm : 0, reach: w.reach, stats: w.stats, ...(far ? {farCells: far.cells, farRemovedLines: far.removedLines} : {})});
+      if (!far) report.farReason = src && farReason !== 'keine Fernkarten-Zelle' && !farReason ? over : farReason ?? over;
       delete report.waybackError;
       return {file, sections: sections.map(s => s.type), report};
     }

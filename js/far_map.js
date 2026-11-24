@@ -5,36 +5,37 @@
 import {forEachScreen, lineWorkBound} from './screen_proof.js';
 import {makeFrame} from './wayback_format.js';
 import {REACH} from './wayback_tree.js';
+import {bikeWay} from './recovery_graph.js';
 
-export const FAR = {MAIN: 0, MINOR: 1, CYCLE: 2, TRACK: 3, PATH: 4, WATERLINE: 5, WATER: 8, FOREST: 9, GREEN: 10};
-export const FAR_CAPS = {pixCap: 60000, ptCap: 2048, fillCap: 61440};
-export const FAR_REACH_MAX = 2000;   // owner, 23 Nov (option 1): the far map stays inside 2 km; the violet line keeps 3 km
+export const FAR = {MAIN: 0, MINOR: 1, CYCLE: 2, TRACK: 3, PATH: 4, WATERLINE: 5, WATER: 8, FOREST: 9, GREEN: 10, BUILT: 11};
+export const FAR_CAPS = {pixCap: 150000, ptCap: 4096, fillCap: 61440};   // 24 Nov: the 60 ms time stop of the unit is the real limit
 const MAGIC = [0x43, 0x43, 0x46, 0x4D];          // "CCFM"
 const VERSION = 1, CELL_SHIFT = 12, Q_SHIFT = 3, CELL = 1 << CELL_SHIFT, Q = 1 << Q_SHIFT, U_M = 16;
 const MAX_POINTS = 32, MAX_RING = 64, MAX_BODY = 2048, MAX_CELLS = 16384, MAX_KEYS = 256, HEADER = 48, ENTRY = 8, SENTINEL = 0xFFFFFFFF;
 const LINE_TOL = 40, AREA_TOL = 12 * U_M, AREA_MIN = 5000, STEP_M = 20;
 // detail reach of each line class (js/mapsec.js:311 SR); the far line starts where the detail map stops
 export const DETAIL_REACH = {[FAR.MAIN]: 1000, [FAR.MINOR]: 550, [FAR.CYCLE]: 350, [FAR.TRACK]: 300, [FAR.PATH]: 300, [FAR.WATERLINE]: 600};
-// unit draw order and widths in pixels (edge, core); the fit removes from the start of FIT_ORDER first
-export const DRAW_ORDER = [FAR.WATER, FAR.FOREST, FAR.GREEN, FAR.PATH, FAR.TRACK, FAR.CYCLE, FAR.MINOR, FAR.WATERLINE, FAR.MAIN];
-export const WIDTHS = {[FAR.MAIN]: [6, 4], [FAR.MINOR]: [3], [FAR.CYCLE]: [2], [FAR.TRACK]: [2], [FAR.PATH]: [1], [FAR.WATERLINE]: [2]};
-const FIT_ORDER = [FAR.PATH, FAR.TRACK, FAR.CYCLE, FAR.WATERLINE, FAR.MINOR, FAR.MAIN];
+// unit draw order and widths in pixels (edge, core)
+// 24 Nov: streets as the detail map draws far streets (edge 6 + core 3), main roads one thin line (no motorway)
+export const DRAW_ORDER = [FAR.BUILT, FAR.WATER, FAR.FOREST, FAR.GREEN, FAR.WATERLINE, FAR.PATH, FAR.TRACK, FAR.CYCLE, FAR.MINOR, FAR.MAIN];
+export const WIDTHS = {[FAR.MAIN]: [4], [FAR.MINOR]: [6, 3], [FAR.CYCLE]: [2], [FAR.TRACK]: [2], [FAR.PATH]: [1], [FAR.WATERLINE]: [2]};
 
-const MAIN = new Set(['motorway', 'trunk', 'primary', 'secondary', 'tertiary', 'motorway_link', 'trunk_link', 'primary_link', 'secondary_link', 'tertiary_link']);
-const MINOR = new Set(['residential', 'unclassified', 'living_street', 'road']);
+const MAIN = new Set(['trunk', 'primary', 'secondary', 'tertiary', 'trunk_link', 'primary_link', 'secondary_link', 'tertiary_link']);
+// Bike rule (js/recovery_graph.js bikeWay): only ways to ride are drawn; motorways, driveways, private ways, trails are cut.
 export function farClassOf(t = {}) {
   const h = t.highway;
+  if (!h) return ['river', 'stream', 'canal'].includes(t.waterway) ? FAR.WATERLINE : null;
+  if (bikeWay(t) !== 'ride') return null;
   if (MAIN.has(h)) return FAR.MAIN;
-  if (MINOR.has(h)) return FAR.MINOR;
-  if (h === 'cycleway') return FAR.CYCLE;
+  if (h === 'cycleway' || t.bicycle === 'designated') return FAR.CYCLE;
   if (h === 'track') return FAR.TRACK;
-  if (h === 'path' || h === 'bridleway') return FAR.PATH;
-  if (!h && ['river', 'stream', 'canal'].includes(t.waterway)) return FAR.WATERLINE;
-  return null;
+  if (h === 'path' || h === 'footway' || h === 'bridleway' || h === 'pedestrian' || h === 'steps') return FAR.PATH;
+  return FAR.MINOR;
 }
 const GREEN_LU = new Set(['grass', 'meadow', 'recreation_ground', 'village_green', 'allotments', 'cemetery', 'orchard']);
 const GREEN_LE = new Set(['park', 'garden', 'golf_course', 'nature_reserve']), GREEN_NA = new Set(['scrub', 'heath', 'grassland', 'wetland']);
 export function areaClassOf(t = {}) {
+  if (['residential', 'commercial', 'industrial', 'retail'].includes(t.landuse)) return FAR.BUILT;
   if (t.natural === 'water' || t.waterway === 'riverbank' || t.landuse === 'reservoir' || t.landuse === 'basin') return FAR.WATER;
   if (t.landuse === 'forest' || t.natural === 'wood') return FAR.FOREST;
   if (GREEN_LU.has(t.landuse) || GREEN_LE.has(t.leisure) || GREEN_NA.has(t.natural)) return FAR.GREEN;
@@ -227,7 +228,7 @@ export function proveFar(cells, caps = FAR_CAPS) {
     screens++; worstWork = Math.max(worstWork, w); worstPoints = Math.max(worstPoints, p); if (w > caps.pixCap || p > caps.ptCap) over++; });
   return {screens, over, worstWork, worstPoints};
 }
-// While a screen is over a cap: remove, in its cells, the line of the lowest class (FIT_ORDER), shortest first.
+// While a screen is over a cap: remove, in its cells, the shortest line; main roads last.
 export function fitFar(cells, caps = FAR_CAPS, maxRemovals = 20000) {
   const work = cells.map(c => ({key: c.key, items: c.items.slice()})), byKey = new Map(work.map(c => [c.key, c])), cost = costs(work);
   let removedLines = 0;
@@ -237,7 +238,7 @@ export function fitFar(cells, caps = FAR_CAPS, maxRemovals = 20000) {
     for (let s = sum(); s.w > caps.pixCap || s.p > caps.ptCap; s = sum()) {
       let best = null;
       for (const o of offsets) { const c = byKey.get(key + o); if (!c) continue;
-        c.items.forEach((it, i) => { if (it.cls >= FAR.WATER) return; const r = FIT_ORDER.indexOf(it.cls), l = len(it.pts);
+        c.items.forEach((it, i) => { if (it.cls >= FAR.WATER) return; const r = it.cls === FAR.MAIN ? 1 : 0, l = len(it.pts);   // shortest first, main roads last
           if (!best || r < best.r || (r === best.r && l < best.l)) best = {c, i, r, l}; }); }
       if (!best) break;
       const it = best.c.items.splice(best.i, 1)[0], c = cost.get(best.c.key); c.work -= itemWork(it); c.points -= it.pts.length;
@@ -250,11 +251,11 @@ export function fitFar(cells, caps = FAR_CAPS, maxRemovals = 20000) {
 
 // The section bytes of one route file (null: no far cell). w: the result of addWayback (snapshot, bbox, route, reach);
 // src: captureFarSource. The frame covers the query box, so every far point has non-negative units.
-export function farSection(w, src, caps = FAR_CAPS) {
+export function farSection(w, src, caps = FAR_CAPS, reachM = REACH[w.reach].air) {
   const [s, wl, n, e] = w.bbox, frame = makeFrame([[s, wl], [n, e]]), node = new Map(w.snapshot.nodes.map(x => [x.id, x.point]));
   const ways = w.snapshot.ways.map(x => ({tags: x.tags, pts: x.nodes.map(id => node.get(id)).filter(Boolean)}));
   for (const l of src.waterLines) ways.push({tags: l.tags, pts: l.pts});
-  const cells = buildFarCells({ways, areas: src.areas, route: w.route.map(r => r.point), frame, reachM: Math.min(FAR_REACH_MAX, REACH[w.reach].air)});
+  const cells = buildFarCells({ways, areas: src.areas, route: w.route.map(r => r.point), frame, reachM});
   if (!cells.length) return null;
   const fit = fitFar(cells, caps);
   return fit.cells.length ? {bytes: encodeFar(fit.cells, caps, frame), removedLines: fit.removedLines, cells: fit.cells.length} : null;

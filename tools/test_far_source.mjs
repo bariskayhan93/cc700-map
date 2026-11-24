@@ -23,3 +23,15 @@ const ring = s.areas.find(a => a.tags.natural === 'wood').rings[0];
 assert.deepEqual(ring[0], ring.at(-1), 'closed ring');
 assert.equal(s.waterLines.length, 1);
 ok('capture');
+// 24 Nov: town areas in the query; one request per box with a retry, so one slow box does not cost the whole far map
+{
+  assert(/residential\|commercial\|industrial\|retail/.test(farQuery([[51, 7, 51.01, 7.01]])), 'built-up land in the query');
+  const {loadFarSource} = await import('../js/far_source.js');
+  let calls = 0; const bodies = [];
+  const f = async (u, o) => { calls++; bodies.push(o.body.get('data')); if (calls === 1) return {url: u, ok: false, status: 504, json: async () => ({})};
+    return {url: u, ok: true, status: 200, json: async () => ({elements: [{type: 'way', id: calls, tags: {landuse: 'forest'}, geometry: [[51, 7], [51, 7.01], [51.01, 7.01], [51, 7]].map(([lat, lon]) => ({lat, lon}))}]})}; };
+  const s = await loadFarSource([[51, 7, 51.01, 7.01], [51.01, 7, 51.02, 7.01]], f);
+  assert(bodies.every(b => (b.match(/way\[landuse/g) || []).length === 1), 'one box per request');
+  assert.equal(s.areas.length, 2, 'both boxes, the first after a retry');
+  ok('per-box requests with retry');
+}

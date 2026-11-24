@@ -7,7 +7,7 @@
 #include "raster.h"
 #include "view.h"
 
-enum { FM_MAIN = 0, FM_MINOR = 1, FM_CYCLE = 2, FM_TRACK = 3, FM_PATH = 4, FM_WATERLINE = 5, FM_WATER = 8, FM_FOREST = 9, FM_GREEN = 10 };
+enum { FM_MAIN = 0, FM_MINOR = 1, FM_CYCLE = 2, FM_TRACK = 3, FM_PATH = 4, FM_WATERLINE = 5, FM_WATER = 8, FM_FOREST = 9, FM_GREEN = 10, FM_BUILT = 11 };
 #define FM_RING 64u                  /* points of one area ring */
 
 typedef struct { gl_layer l; wb_grid g; uint32_t fill_cap; } fm_layer;

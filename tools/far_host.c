@@ -39,7 +39,7 @@ int main(int argc, char **argv) {
     ok = units && vw_fit(&v, (int32_t)x, (int32_t)y, a);
     if (ok) done = fm_draw(&l, &cv, &v, x, y, course, clock0, 0u, (uint32_t)strtoul(argv[12], 0, 10), &st);
   }
-  for (i = 0; i < 240u * 256u; i++) { forest += canvas_buf[i] == RS_RGB(0xa2d683u); street += canvas_buf[i] == RS_RGB(0x9a9ea3u); }
+  for (i = 0; i < 240u * 256u; i++) { forest += canvas_buf[i] == RS_RGB(0xa2d683u); street += canvas_buf[i] == RS_RGB(0x7a7e83u); }
   printf("{\"open\":%d,\"view\":%d,\"x\":%u,\"y\":%u,\"done\":%d,\"lines\":%u,\"areas\":%u,\"points\":%u,\"work\":%u,\"stop\":%u,\"reads\":%d,\"forestPx\":%u,\"streetPx\":%u}\n",
          open, ok, x, y, done, st.lines, st.areas, st.points, st.work, st.stop, n_reads, forest, street);
   free(buf); fclose(f);

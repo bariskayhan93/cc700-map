@@ -1,6 +1,6 @@
 // Far-map source (23 Nov): green and water areas and river lines from Overpass, one request per route file, with
 // geometry. The routing snapshot stays as it is (its validator allows only restriction relations).
-const AREA = 'landuse~"^(forest|grass|meadow|recreation_ground|village_green|allotments|cemetery|orchard|reservoir|basin)$"';
+const AREA = 'landuse~"^(forest|grass|meadow|recreation_ground|village_green|allotments|cemetery|orchard|reservoir|basin|residential|commercial|industrial|retail)$"';
 const NAT = 'natural~"^(water|wood|scrub|heath|grassland|wetland)$"', LEIS = 'leisure~"^(park|garden|golf_course|nature_reserve)$"';
 const WATER = 'waterway~"^(river|stream|canal|riverbank)$"';
 import {unionArea} from './routing_snapshot.js';
@@ -45,5 +45,10 @@ export function captureFarSource(json) {
   return {areas, waterLines};
 }
 
-// The far source of the boxes of a way-back fetch (one request).
-export async function loadFarSource(boxes, fetchImpl) { return captureFarSource((await overpass(farQuery(boxes), fetchImpl)).json); }
+// The far source of the boxes of a way-back fetch: one request per box (overpass() retries on all servers), so one slow
+// box does not cost the whole far map; the answers are joined (a way in two boxes once).
+export async function loadFarSource(boxes, fetchImpl) {
+  const elements = [];
+  for (const b of boxes) elements.push(...((await overpass(farQuery([b]), fetchImpl)).json.elements || []));
+  return captureFarSource({elements});
+}

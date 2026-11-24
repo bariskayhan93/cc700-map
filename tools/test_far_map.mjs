@@ -13,14 +13,19 @@ const U = 16;                                                          // way-ba
 const dist = q => { const [x, y] = frame.toUnits(q), [x0, y0] = frame.toUnits(route[0]); return Math.abs(y - y0) / U; };
 
 // 1. classes
-assert.equal(farClassOf({highway: 'track'}), FAR.TRACK);
+assert.equal(farClassOf({highway: 'track'}), null, 'untagged track: exit only, not drawn');
+assert.equal(farClassOf({highway: 'track', tracktype: 'grade2'}), FAR.TRACK);
+assert.equal(farClassOf({highway: 'motorway'}), null);
+assert.equal(farClassOf({highway: 'service', service: 'driveway'}), null);
+assert.equal(farClassOf({highway: 'path', bicycle: 'yes'}), FAR.PATH);
+assert.equal(areaClassOf({landuse: 'residential'}), FAR.BUILT);
 assert.equal(farClassOf({highway: 'primary'}), FAR.MAIN);
 assert.equal(farClassOf({highway: 'residential'}), FAR.MINOR);
 assert.equal(farClassOf({highway: 'cycleway'}), FAR.CYCLE);
-assert.equal(farClassOf({highway: 'bridleway'}), FAR.PATH);
+assert.equal(farClassOf({highway: 'bridleway'}), null);
 assert.equal(farClassOf({waterway: 'stream'}), FAR.WATERLINE);
 assert.equal(farClassOf({highway: 'footway'}), null);
-assert.equal(farClassOf({highway: 'service'}), null);
+assert.equal(farClassOf({highway: 'service'}), FAR.MINOR, 'plain service roads stay (bike rule); driveways are cut');
 assert.equal(areaClassOf({landuse: 'forest'}), FAR.FOREST);
 assert.equal(areaClassOf({natural: 'water'}), FAR.WATER);
 assert.equal(areaClassOf({leisure: 'park'}), FAR.GREEN);
@@ -54,7 +59,7 @@ assert.equal(rings(FAR.GREEN).length, 0, 'area under 5,000 m2 dropped');
 ok('areas clipped per cell, concave kept, small dropped');
 
 // 4. encode -> read round trip
-const both = buildFarCells({ways: [zig, {tags: {highway: 'track'}, pts: [P(500, 1200), P(900, 1700), P(1500, 1650)]}],
+const both = buildFarCells({ways: [zig, {tags: {highway: 'track'}, pts: [P(500, 1200), P(900, 1700), P(1500, 1650)]}, {tags: {highway: 'track', tracktype: 'grade1'}, pts: [P(600, 1300), P(1000, 1900)]}],
   areas: [{tags: {landuse: 'forest'}, rings: [sq(2500, 1500, 600)]}], route, frame, reachM: 3000});
 const bytes = encodeFar(both, FAR_CAPS, frame), back = readFar(bytes);
 assert.deepEqual(back.caps, FAR_CAPS);
@@ -65,13 +70,13 @@ assert.deepEqual(norm(back.cells), norm(both));
 ok('encode and read round trip');
 
 // 5. a cell body over 2,048 B throws
-const many = Array.from({length: 120}, (_, k) => ({tags: {highway: 'track'}, pts: Array.from({length: 30}, (_, j) => P(2010 + j * 7, 1510 + k * 2 + (j % 2) * 3))}));
+const many = Array.from({length: 120}, (_, k) => ({tags: {highway: 'track', tracktype: 'grade1'}, pts: Array.from({length: 30}, (_, j) => P(2010 + j * 7, 1510 + k * 2 + (j % 2) * 3))}));
 assert.throws(() => encodeFar(buildFarCells({ways: many, areas: [], route, frame, reachM: 3000}), FAR_CAPS, frame), /far cell over 2048 B/);
 ok('cell body limit');
 
 // 6. fit: lines are removed until no screen is over the caps; low classes go first
 const dense = [];
-for (let k = 0; k < 60; k++) dense.push({tags: {highway: k % 2 ? 'path' : 'tertiary'}, pts: [P(1500 + k * 15, 1200), P(1500 + k * 15, 2400)]});
+for (let k = 0; k < 60; k++) dense.push({tags: k % 2 ? {highway: 'path', bicycle: 'yes'} : {highway: 'tertiary'}, pts: [P(1500 + k * 15, 1200), P(1500 + k * 15, 2400)]});
 const before = buildFarCells({ways: dense, areas: [], route, frame, reachM: 3000});
 const caps = {pixCap: 20000, ptCap: 2048, fillCap: FAR_CAPS.fillCap};
 assert(proveFar(before, caps).over > 0, 'dense test is over the cap');
@@ -84,13 +89,14 @@ ok('fit to the caps');
 
 // 7. owner decision 23 Nov (option 1): the far map reach is at most 2 km; the violet line keeps 3 km
 {
-  const {FAR_REACH_MAX} = await import('../js/far_map.js');
-  assert.equal(FAR_REACH_MAX, 2000);
+  assert.deepEqual([FAR_CAPS.pixCap, FAR_CAPS.ptCap], [150000, 4096], 'time stop is the real limit; caps only guard');
   const w = {snapshot: {nodes: [{id: 1, point: P(1000, 2500)}, {id: 2, point: P(1200, 2500)}, {id: 3, point: P(1000, 1500)}, {id: 4, point: P(1200, 1500)}],
     ways: [{tags: {highway: 'residential'}, nodes: [1, 2]}, {tags: {highway: 'residential'}, nodes: [3, 4]}]},
     bbox: [P(0, -3200)[0], P(-3200, 0)[1], P(0, 3200)[0], P(7200, 0)[1]], route: route.map(p => ({point: p})), reach: 'line3k'};
-  const {farSection: fs} = await import('../js/far_map.js'), out = readFar(fs(w, {areas: [], waterLines: []}).bytes);
+  const {farSection: fs} = await import('../js/far_map.js'), out = readFar(fs(w, {areas: [], waterLines: []}, FAR_CAPS, 2000).bytes), full = readFar(fs(w, {areas: [], waterLines: []}).bytes);
   const ys = out.cells.flatMap(c => c.items.flatMap(i => i.pts.map(p => p[1]))), y0 = (Math.round(route[0][0] * 1e7) - out.frame.lat0E7) * out.frame.latU / 65536;
   assert(ys.length && ys.every(y => (y - y0) / U <= 2050), 'nothing beyond 2 km');
-  ok('far reach at most 2 km');
+  const yf = full.cells.flatMap(c => c.items.flatMap(i => i.pts.map(p => p[1]))), y1 = (Math.round(route[0][0] * 1e7) - full.frame.lat0E7) * full.frame.latU / 65536;
+  assert(yf.some(y => (y - y1) / U > 2200), 'default: the full 3 km reach of line3k');
+  ok('far reach 3 km by default, 2 km on request (file guard)');
 }

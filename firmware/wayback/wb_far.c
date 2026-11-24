@@ -30,15 +30,16 @@ __attribute__((optimize("no-tree-switch-conversion", "no-jump-tables")))
 #endif
 static int fm_style(uint32_t cls, uint32_t pass, uint16_t *col, int *w) {
   uint32_t rgb; int wd = 0;
-  if (cls == FM_WATER) rgb = 0x82cbd5u;
+  if (cls == FM_BUILT) rgb = 0xd4d4d4u;                         /* as the detail map: built-up */
+  else if (cls == FM_WATER) rgb = 0x82cbd5u;
   else if (cls == FM_FOREST) rgb = 0xa2d683u;
   else if (cls == FM_GREEN) rgb = 0xc8e6b0u;
   else if (cls == FM_PATH) { rgb = 0x66615au; wd = 1; }
   else if (cls == FM_TRACK) { rgb = 0x6b4a2bu; wd = 2; }
   else if (cls == FM_CYCLE) { rgb = 0x7040b0u; wd = 2; }
-  else if (cls == FM_MINOR) { rgb = 0x9a9ea3u; wd = 3; }
+  else if (cls == FM_MINOR) { rgb = pass ? 0xf4f4f4u : 0x7a7e83u; wd = pass ? 3 : 6; }   /* the detail map's far street: edge, core */
   else if (cls == FM_WATERLINE) { rgb = 0x82cbd5u; wd = 2; }
-  else if (cls == FM_MAIN) { rgb = pass ? 0xffd56au : 0x8a7a40u; wd = pass ? 4 : 6; }
+  else if (cls == FM_MAIN) { rgb = 0xf2c94cu; wd = 4; }            /* one thin line: no motorway in the far map */
   else return 0;
   *col = RS_RGB(rgb); *w = wd; return 1;
 }
@@ -62,9 +63,9 @@ static int fm_items(fm_ctx *c, uint32_t key, const uint8_t **pp, const uint8_t *
       s[k] = vw_map(c->v, x0 + qx * 8, y0 + qy * 8);
     }
     *pp = p;
-    if (!pass || cls != FM_MAIN) {                                 /* count an item one time */
+    if (!pass) {                                                   /* count an item one time */
       if (c->st->points + m > c->f->l.pt_cap) return 1;
-      if (!area) { wk = rs_work(s, m, w) + (cls == FM_MAIN ? rs_work(s, m, 4) : 0u); if (c->st->work + wk > c->f->l.pix_cap) return 1; c->st->work += wk; c->st->lines++; }
+      if (!area) { wk = rs_work(s, m, w) + (cls == FM_MINOR ? rs_work(s, m, 3) : 0u); if (c->st->work + wk > c->f->l.pix_cap) return 1; c->st->work += wk; c->st->lines++; }
       else c->st->areas++;
       c->st->points += m;
     }
@@ -84,7 +85,7 @@ static int fm_body(void *vc, uint32_t key, const uint8_t *p, uint32_t len) {
     if (!gl_var(&p, end, &cnt)) { c->st->stop = 3u; return -1; }
     g = p;
     rc = fm_items(c, key, &p, end, cls, cnt, 0u);
-    if (!rc && cls == FM_MAIN) { p = g; rc = fm_items(c, key, &p, end, cls, cnt, 1u); }   /* main: edge, then core */
+    if (!rc && cls == FM_MINOR) { p = g; rc = fm_items(c, key, &p, end, cls, cnt, 1u); }   /* streets: edge, then core */
     if (rc) { c->st->stop = rc > 0 ? 1u : 3u; return rc; }
   }
   return p == end ? 0 : (c->st->stop = 3u, -1);
