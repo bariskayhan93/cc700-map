@@ -2,7 +2,7 @@
 // detail reach, area clipping, encode/read round trip, body limit, fit to the caps. Host only, synthetic data.
 import assert from 'node:assert/strict';
 import {makeFrame} from '../js/wayback_format.js';
-import {farClassOf, areaClassOf, buildFarCells, encodeFar, readFar, fitFar, proveFar, FAR_CAPS, FAR} from '../js/far_map.js';
+import {DETAIL_REACH, farClassOf, areaClassOf, buildFarCells, encodeFar, readFar, fitFar, proveFar, FAR_CAPS, FAR} from '../js/far_map.js';
 
 const ok = name => console.log('PASS ' + name);
 const LAT = 51.0, mN = 1 / 111320, mE = 1 / (111320 * Math.cos(LAT * Math.PI / 180));
@@ -13,7 +13,8 @@ const U = 16;                                                          // way-ba
 const dist = q => { const [x, y] = frame.toUnits(q), [x0, y0] = frame.toUnits(route[0]); return Math.abs(y - y0) / U; };
 
 // 1. classes
-assert.equal(farClassOf({highway: 'track'}), null, 'untagged track: exit only, not drawn');
+assert.equal(farClassOf({highway: 'track'}), FAR.TRACK, 'WP 6: exit tracks are drawn, so the violet line never runs on an empty map');
+assert.equal(farClassOf({highway: 'path'}), FAR.PATH, 'WP 6: exit path drawn');
 assert.equal(farClassOf({highway: 'track', tracktype: 'grade2'}), FAR.TRACK);
 assert.equal(farClassOf({highway: 'motorway'}), null);
 assert.equal(farClassOf({highway: 'service', service: 'driveway'}), null);
@@ -22,7 +23,8 @@ assert.equal(areaClassOf({landuse: 'residential'}), FAR.BUILT);
 assert.equal(farClassOf({highway: 'primary'}), FAR.MAIN);
 assert.equal(farClassOf({highway: 'residential'}), FAR.MINOR);
 assert.equal(farClassOf({highway: 'cycleway'}), FAR.CYCLE);
-assert.equal(farClassOf({highway: 'bridleway'}), null);
+assert.equal(farClassOf({highway: 'bridleway'}), FAR.PATH, 'WP 6: exit way');
+assert.equal(farClassOf({highway: 'path', informal: 'yes'}), null, 'cut ways stay out');
 assert.equal(farClassOf({waterway: 'stream'}), FAR.WATERLINE);
 assert.equal(farClassOf({highway: 'footway'}), null);
 assert.equal(farClassOf({highway: 'service'}), FAR.MINOR, 'plain service roads stay (bike rule); driveways are cut');
@@ -30,14 +32,15 @@ assert.equal(areaClassOf({landuse: 'forest'}), FAR.FOREST);
 assert.equal(areaClassOf({natural: 'water'}), FAR.WATER);
 assert.equal(areaClassOf({leisure: 'park'}), FAR.GREEN);
 assert.equal(areaClassOf({landuse: 'farmland'}), null);
+assert.deepEqual(DETAIL_REACH, {[FAR.MAIN]: 1000, [FAR.MINOR]: 300, [FAR.CYCLE]: 300, [FAR.TRACK]: 300, [FAR.PATH]: 300, [FAR.WATERLINE]: 300}, 'WP 6 handover: 300 m, main roads 1000 m');
 ok('classes');
 
-// 2. a street that leaves and enters the 550 m minor reach two times gives two far pieces that start at the reach
+// 2. a street that leaves and enters the 300 m minor reach (WP 6 handover) two times gives two far pieces that start at the reach
 const zig = {tags: {highway: 'residential'}, pts: [P(2000, 0), P(2000, 1000), P(2040, 220), P(2080, 1000)]};
 const lines = buildFarCells({ways: [zig], areas: [], route, frame, reachM: 3000}).flatMap(c => c.items.filter(i => i.cls === FAR.MINOR));
-const ends = lines.flatMap(l => [l.pts[0], l.pts.at(-1)]).map(([x, y]) => (y - frame.toUnits(route[0])[1]) / U).filter(d => d < 650);
+const ends = lines.flatMap(l => [l.pts[0], l.pts.at(-1)]).map(([x, y]) => (y - frame.toUnits(route[0])[1]) / U).filter(d => d < 400);
 assert.equal(ends.length, 3, 'three reach crossings: out, in, out');
-for (const d of ends) assert(Math.abs(d - 550) <= 40, 'piece end at the reach: ' + d);
+for (const d of ends) assert(Math.abs(d - 300) <= 40, 'piece end at the reach: ' + d);
 ok('far pieces start at the detail reach');
 
 // 3. an area over several cells: one clipped ring per cell, each inside its cell, area kept; a small area is dropped

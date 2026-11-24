@@ -110,25 +110,36 @@ async function build() {
 
     const d = new Date(), z = n => String(n).padStart(2, '0');
     const id = z(d.getMonth() + 1) + z(d.getDate()) + z(d.getHours()) + z(d.getMinutes());
-    const r = buildRoute(gpx, lines, {
+    const routeOpt = mapExtra => ({
       speedKmh, id, label: gpx.name, title: gpx.name, nameImage, measureName: nameImageWidth, areas, water, rails, green, wlines, navigationLines,
       trams: layers.trams ? trams : [], signals: layers.signals ? signals : [], stops: layers.stops ? stops : [],
       landmarks: layers.names ? landmarks || [] : [],                                // cc27: three landmark types, with the names
       noF9: styled,   // patched firmware: field 9 off, as tested on the device
       map: { styled, ...layers, ...(codec ? { codec } : {}), ...(cc27 ? { blockFlags: cc27Flags(sw) } : {}),
-        ...(LIMIT > 1200 ? { cap: LIMIT, capMax: LIMIT } : {}) },
+        ...(LIMIT > 1200 ? { cap: LIMIT, capMax: LIMIT } : {}), ...mapExtra },
     });
-    const tRoute = performance.now();
-    const model = readFile(r.file), check = verify(r, model, styled);
+    let r = buildRoute(gpx, lines, routeOpt({}));
+    let model = readFile(r.file), check = verify(r, model, styled);
     if (check) throw new Error('Prüfung fehlgeschlagen: ' + check);
+    // WP 6: the handover route (detail map near the route only, the far map owns areas and the transition); used only
+    // when the file gets a far map
+    let ho = null;
+    if (cc27 && styled && $('wayback').checked) {
+      ho = buildRoute(gpx, lines, routeOpt({ handover: true }));
+      const hoModel = readFile(ho.file), hoCheck = verify(ho, hoModel, styled);
+      if (hoCheck) throw new Error('Prüfung fehlgeschlagen (Übergabe): ' + hoCheck);
+      ho.model = hoModel;
+    }
+    const tRoute = performance.now();
     // cc27 sections (way-back, grey, corner chart): appended after the check, so the route part of the file is the
     // verified one. Any failure keeps the plain route file.
     let wayback = '';
     if (cc27 && ($('wayback').checked || sw.elevation)) {
       say('sum', 'Rückweg-Daten werden geladen …');
       try {
-        const c = await cc27Sections(r.file, { wayback: $('wayback').checked, elevation: sw.elevation, reach: $('waybackReach').value });
+        const c = await cc27Sections(r.file, { wayback: $('wayback').checked, elevation: sw.elevation, reach: $('waybackReach').value, farRouteFile: ho?.file });
         if (needsBuild) return;
+        if (c.report.handover) { model = ho.model; r = ho; }
         r.file = c.file;
         const km = c.report.reach ? (/(\d)k$/.exec(c.report.reach) || [0, '?'])[1] + ' km' : '';
         wayback = (c.report.waybackBytes ? ` · Rückweg-Daten ${((c.report.waybackBytes + c.report.greyBytes) / 1024).toFixed(0)} KB (${km})` : '') +

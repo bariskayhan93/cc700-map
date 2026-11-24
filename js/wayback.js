@@ -165,7 +165,16 @@ export async function addWayback(routeBytes, {fetchImpl = fetch, maxBytes = WAYB
   if (!made.model.stats.stored) throw new Error('no stored street');
   const q = waybackQuery(route, r);
   return {wayback: made.bytes, grey: made.grey, greyReport: made.greyReport, bytes: made.bytes.length + (made.grey ? made.grey.length : 0), reach: made.reach, stats: made.model.stats,
-    snapshot, boxes: q.boxes || [q.bbox], bbox: q.bbox, route};
+    snapshot, boxes: q.boxes || [q.bbox], bbox: q.bbox, route, made: {fetchReach: r, maxBytes, format, layer, caps}};
+}
+
+// WP 6: the same way-back data for another file of the same route (the handover detail map). The section carries the id
+// of its route part and grey flags from its map blocks, so it is made again from the loaded snapshot, with no new fetch.
+export async function waybackForRoute(w, routeBytes) {
+  const {fetchReach: reach, ...o} = w.made;
+  const made = waybackFromSnapshot(w.snapshot, w.route, await routeIdentity(routeBytes), {...o, routeBytes, reach});
+  if (!made) throw new Error('way-back data exceeds ' + o.maxBytes + ' bytes');
+  return made.bytes;
 }
 
 // The sections of addWayback for embedSections: the way-back section, then the grey section when there is one.

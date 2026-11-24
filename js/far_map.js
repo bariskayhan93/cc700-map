@@ -13,19 +13,22 @@ const MAGIC = [0x43, 0x43, 0x46, 0x4D];          // "CCFM"
 const VERSION = 1, CELL_SHIFT = 12, Q_SHIFT = 3, CELL = 1 << CELL_SHIFT, Q = 1 << Q_SHIFT, U_M = 16;
 const MAX_POINTS = 32, MAX_RING = 64, MAX_BODY = 2048, MAX_CELLS = 16384, MAX_KEYS = 256, HEADER = 48, ENTRY = 8, SENTINEL = 0xFFFFFFFF;
 const LINE_TOL = 40, AREA_TOL = 12 * U_M, AREA_MIN = 5000, STEP_M = 20;
-// detail reach of each line class (js/mapsec.js:311 SR); the far line starts where the detail map stops
-export const DETAIL_REACH = {[FAR.MAIN]: 1000, [FAR.MINOR]: 550, [FAR.CYCLE]: 350, [FAR.TRACK]: 300, [FAR.PATH]: 300, [FAR.WATERLINE]: 600};
+// detail reach of each line class; the far line starts where the detail map stops. WP 6: a file with a far map carries the
+// handover detail map (js/mapsec.js HANDOVER_M), so small classes hand over at 300 m and main roads at 1000 m.
+export const DETAIL_REACH = {[FAR.MAIN]: 1000, [FAR.MINOR]: 300, [FAR.CYCLE]: 300, [FAR.TRACK]: 300, [FAR.PATH]: 300, [FAR.WATERLINE]: 300};
 // unit draw order and widths in pixels (edge, core)
 // 24 Nov: streets as the detail map draws far streets (edge 6 + core 3), main roads one thin line (no motorway)
 export const DRAW_ORDER = [FAR.BUILT, FAR.WATER, FAR.FOREST, FAR.GREEN, FAR.WATERLINE, FAR.PATH, FAR.TRACK, FAR.CYCLE, FAR.MINOR, FAR.MAIN];
 export const WIDTHS = {[FAR.MAIN]: [4], [FAR.MINOR]: [6, 3], [FAR.CYCLE]: [2], [FAR.TRACK]: [2], [FAR.PATH]: [1], [FAR.WATERLINE]: [2]};
 
 const MAIN = new Set(['trunk', 'primary', 'secondary', 'tertiary', 'trunk_link', 'primary_link', 'secondary_link', 'tertiary_link']);
-// Bike rule (js/recovery_graph.js bikeWay): only ways to ride are drawn; motorways, driveways, private ways, trails are cut.
+// Bike rule (js/recovery_graph.js bikeWay): ways to ride and exit ways (WP 6) are drawn; motorways, driveways, private ways, trails are cut.
 export function farClassOf(t = {}) {
   const h = t.highway;
   if (!h) return ['river', 'stream', 'canal'].includes(t.waterway) ? FAR.WATERLINE : null;
-  if (bikeWay(t) !== 'ride') return null;
+  const bw = bikeWay(t);
+  if (bw === 'exit') return h === 'track' ? FAR.TRACK : FAR.PATH;   // WP 6: the way-back graph uses exit ways, so the map shows them
+  if (bw !== 'ride') return null;
   if (MAIN.has(h)) return FAR.MAIN;
   if (h === 'cycleway' || t.bicycle === 'designated') return FAR.CYCLE;
   if (h === 'track') return FAR.TRACK;

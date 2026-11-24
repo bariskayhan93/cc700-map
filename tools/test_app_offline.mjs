@@ -51,7 +51,8 @@ for (const styled of [false,true]) {
   assert.match(app, /codec = fwChoice === 'patch25' \|\| fwChoice === 'patch27' \? 'd' : undefined/);
   assert.match(app, /blockFlags: cc27Flags\(sw\)/);
   assert.match(app, /localStorage\.setItem\('cc700-fw2', \$\('fw'\)\.value\)/);
-  assert.match(app, /cc27Sections\(r\.file, \{ wayback: \$\('wayback'\)\.checked, elevation: sw\.elevation, reach: \$\('waybackReach'\)\.value \}\)/);
+  assert.match(app, /cc27Sections\(r\.file, \{ wayback: \$\('wayback'\)\.checked, elevation: sw\.elevation, reach: \$\('waybackReach'\)\.value, farRouteFile: ho\?\.file \}\)/);
+  assert.match(app, /if \(c\.report\.handover\) \{ model = ho\.model; r = ho; \}/, 'WP 6: the handover route only with a far map');
   assert.doesNotMatch(app, /addWayback/);           // only cc27 writes way-back data (cc26 formats are gone)
   assert.match(cc27, /addWayback\(routeFile, \{format: 2, reach: r, fetchImpl, layer: false\}\)/);
   assert.match(app, /ohne Fernkarte: ' \+ c\.report\.farReason/);   // review finding 4: the summary says why (far map, 23 Nov)
@@ -99,6 +100,19 @@ for (const styled of [false,true]) {
   assert.deepEqual(flat.sections, [3]);   // no way-back offline, but the chart section stays
   assert.notEqual(flat.file.length, plain.length);
   assert.match(flat.report.waybackError, /offline/);
+  // WP 6: the handover route file (no detail fills, near part only) goes in only together with a far map
+  const ho = buildRoute(gpx, [], {id: '11120000', nameImage: () => new Uint8Array(42), speedKmh: 18, noF9: true, map: {styled: true, codec: 'd', blockFlags: all, handover: true}}).file;
+  assert.notDeepEqual(ho, plain);
+  const paired = await cc27Sections(plain, {fetchImpl, reach: 'line3k', farRouteFile: ho});
+  assert.deepEqual(paired.sections, [1, 4, 3]);
+  assert.deepEqual(routePart(paired.file), ho, 'with a far map: the handover detail map');
+  assert.equal(paired.report.handover, true);
+  const {checkWayback} = await import('../js/wayback.js');
+  assert.equal((await checkWayback(paired.file)).status, 'ok', 'the way-back id belongs to the handover route part');
+  assert.equal((await checkWayback(c.file)).status, 'ok');
+  const noFar = await cc27Sections(plain, {fetchImpl: async () => { throw Error('offline'); }, reach: 'line2k', farRouteFile: ho});
+  assert.deepEqual(routePart(noFar.file), plain, 'no far map: today\'s detail map with its fills');
+  assert.equal(noFar.report.handover, false);
   console.log('PASS retained sections, native elevation, block switches and plain-route fallback');
 }
 // Review finding 2: at the file guard the page drops the grey section first, then steps the reach down. A 3 km street grid (31 x 31 crossings, 100 m) around a 1 km route along its bottom row.

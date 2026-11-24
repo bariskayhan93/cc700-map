@@ -310,6 +310,11 @@ const S = { BUILT: 1, GREEN: 2, WATER: 3, WLINE: 4, MAJ: 5, MIN: 6, SRV: 7, PTH:
 export { S as MAP_CLASS };
 const SR = { [S.MAJ]: 1000, [S.MIN]: 550, [S.SRV]: 350, [S.PTH]: 300, [S.CYC]: 350, [S.RAIL]: 450, [S.TRAM]: 450, [S.WLINE]: 600 };   // range from the route (m); WLINE = AREA_R: rivers reach as far as the water fills (20 Nov)
 const AREA_R = 600, MAXPTS = 60, BLOCK_LEN = 1500;
+// WP 6 handover (24 Nov, docs/research/map-layers-2026-11-24.md): with a far map in the file the detail map keeps only the
+// near part. No area fills (the far map owns them), no widening to 1 km, small line classes end at HANDOVER_M; main roads,
+// rails and trams keep their reach. js/far_map.js DETAIL_REACH starts the far lines at the same points.
+export const HANDOVER_M = 300;
+const HO_CLS = [S.MIN, S.SRV, S.PTH, S.CYC, S.WLINE];
 function lineClass(L) {
   const k = L.kind & 0x7f;
   return k === 8 ? S.SRV : k === 1 ? S.MAJ :   // A1: motorways grey and thin, landmarks only
@@ -357,13 +362,13 @@ function runIsFar(run, cor) {
   return true;
 }
 function styledEntries(data, cor, o = {}, coverageFloor = 0, contextRadiusCap = 1000) {
-  const F = cor.F, out = [], [bx0, by0, bx1, by1] = cor.box;
+  const F = cor.F, out = [], [bx0, by0, bx1, by1] = cor.box, reach = cls => o.handover && HO_CLS.includes(cls) ? Math.min(SR[cls], HANDOVER_M) : SR[cls];
   const nearBox = (b, m) => !(b[2] < bx0 - m || b[0] > bx1 + m || b[3] < by0 - m || b[1] > by1 + m);
   // areas: built-up, green, water; each [outer, holes...] clipped to the window, holes joined by a doubled edge (even-odd fill)
   // Fills use the 600 m window. A block with a context cap below 600 m cuts its fills at the cap (D1, 18 Nov). A cut ring has no outline (bit 10).
   const areaR = contextRadiusCap < AREA_R ? contextRadiusCap : Math.max(AREA_R, Math.min(contextRadiusCap, coverageFloor));
   const win = [bx0 - areaR, by0 - areaR, bx1 + areaR, by1 + areaR];
-  for (const [cls, list] of [[S.BUILT, data.areas], [S.GREEN, data.green], [S.WATER, data.water]]) for (const A of list || []) {
+  for (const [cls, list] of o.handover ? [] : [[S.BUILT, data.areas], [S.GREEN, data.green], [S.WATER, data.water]]) for (const A of list || []) {
     if (!nearBox(A.box, areaR)) continue;
     const outer = clipRing(A.m[0], win); if (!outer) continue;
     const rings = [outer, ...A.m.slice(1).map(r => clipRing(r, win)).filter(Boolean)];
@@ -377,7 +382,7 @@ function styledEntries(data, cor, o = {}, coverageFloor = 0, contextRadiusCap = 
     ...(data.displayTrams || []).map(L => ({ L, cls: S.TRAM, fl: L.fl || 0 })), ...(data.displayWlines || []).map(L => ({ L, cls: S.WLINE, fl: 0 }))];
   const groups = new Map();
   for (const { L, cls, fl } of lines) {
-    if (!cls) continue; const lim = Math.min(contextRadiusCap, Math.max(SR[cls], coverageFloor)), b = L.box || (L.box = box(L.pts, F)); if (!nearBox(b, lim)) continue;
+    if (!cls) continue; const lim = Math.min(contextRadiusCap, Math.max(reach(cls), coverageFloor)), b = L.box || (L.box = box(L.pts, F)); if (!nearBox(b, lim)) continue;
     for (const run of clipDisplayLine(L, q => cor.near(...F.m(...q), lim)[0] <= lim)) {
       const far = (cls === S.MIN || cls === S.SRV) && runIsFar(run, cor) ? 128 : 0, st = styleOf(cls, fl | far);
       if (cls >= S.MAJ && cls <= S.TRAM) { if (!groups.has(st)) groups.set(st, []); groups.get(st).push(run); }   // joined below (A2)
@@ -455,7 +460,7 @@ export function buildStyledSection(sections, data, F) {
   // Geometry inside the protected minimum is never pruned or simplified to fit.
   // Admit outer context only with spare capacity in every independent budget.
   for(let n=0;n<groups.length;n++) {
-    for(const floor of [600,800,1000].filter(r=>r<=groups[n].contextRadiusCap)) {
+    for(const floor of data.opt?.handover ? [] : [600,800,1000].filter(r=>r<=groups[n].contextRadiusCap)) {
       const g=groups[n],candidate=make(g.i,g.j,floor,g.contextRadiusCap),failures=budgetFailures(candidate.cost,limits);
       const costs=groups.map((b,i)=>i===n?candidate.cost:b.cost);
       if(transitionPeak(costs)>TRANSITION_BUDGET)failures.push('transitionBytes');
@@ -464,7 +469,7 @@ export function buildStyledSection(sections, data, F) {
     }
   }
   const stat={styled:true,budgetVersion:BUDGET_VERSION,limits,transitionLimitBytes:TRANSITION_BUDGET,
-    transitionPeakBytes:transitionPeak(groups.map(g=>g.cost)),minimumContextMeters:300,omittedProtectedEntries:0,
+    transitionPeakBytes:transitionPeak(groups.map(g=>g.cost)),minimumContextMeters:300,handover:data.opt?.handover?HANDOVER_M:0,omittedProtectedEntries:0,
     reducedContextBlocks:groups.filter(g=>g.contextRadiusCap<1000).length,
     blocks:groups.map(({entries,...report})=>report)};
   const body = new Bytes(), offs = new Array(sections.length).fill(0);
