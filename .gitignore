@@ -3,3 +3,6 @@ __pycache__/
 .DS_Store
 .idea/
 .local/
+
+# Lab route tracks (24 Nov): local only, never in the public repo (tools/lab/setup.sh reads them)
+tools/lab/data/*.gpx
