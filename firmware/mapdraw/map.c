@@ -263,16 +263,18 @@ static void map_time(uint32_t ms, uint32_t cut, int pd, int far, const uint32_t 
   *o = 0;
   map_row(24, s);
   if (far < 0) return;
-  // Far map, own row at y 42 (24 Nov: one row was cut at the screen edge). '+': it stopped. f total, o open, z the
-  // first read (64 B at the file start), t the trailer, h header and anchors, r reads, i file ms, d draw ms.
-  o = s;
-  for (int i = 0; i < 8; i++) {                               // "fozthrid" from one literal: no rodata
-    if (i) *o++ = ' ';
-    *o++ = (char)(0x64697268747a6f66ull >> (8 * i)); o = tx_num(o, fs[i]);
-    if (!i && far) *o++ = '+';
+  // Far map, rows at y 42 and 60 (24 Nov). '+': it stopped. f total, o open, t trailer, h header and anchors, r reads,
+  // i file ms, d draw ms; F fill ms, L line ms, A areas, N lines, W line work (k px).
+  for (int row = 0, i = 0; row < 2; row++) {
+    o = s;
+    for (int k = 0; k < (row ? 5 : 7); k++, i++) {            // "fthrid" and "FLANW" from literals: no rodata
+      if (k) *o++ = ' ';
+      *o++ = (char)((row ? 0x574e414c46ull : 0x64697268746f66ull) >> (8 * k)); o = tx_num(o, fs[i]);
+      if (!i && far) *o++ = '+';
+    }
+    *o = 0;
+    map_row(42 + 18 * row, s);
   }
-  *o = 0;
-  map_row(42, s);
 }
 // Pass 0: the range of each bucket and the largest point count; the original star lines (style 0) until the stop.
 // *late = 1 when the stop came in this pass.
@@ -334,14 +336,14 @@ static void draw_names(proj_cb_t cb, const ent_t *E, const entry_range_t *r, con
 #ifdef HOST
 static int far_map(proj_cb_t cb, uint32_t *ms) { (void)cb; ms[0] = 0; return -1; }
 #else
-int wb_far(int (*anchor)(void *, const int32_t *, pt_t *), void *actx, uint32_t ms[8]);
+int wb_far(int (*anchor)(void *, const int32_t *, pt_t *), void *actx, uint32_t ms[12]);
 // ll: E7; probe takes the map unit (2^31 = 180 degrees): x 2^31 / 1.8e9 = 1.1930465 = 5,004,011 / 2^22.
 static int32_t far_mu(int32_t e7) { return (int32_t)(((int64_t)e7 * 5004011) >> 22); }
 static int far_anchor(void *ctx, const int32_t *ll, pt_t *s) { return probe((proj_cb_t)ctx, far_mu(ll[0]), far_mu(ll[1]), &s->x, &s->y); }
 static int far_map(proj_cb_t cb, uint32_t *ms) { return wb_far(far_anchor, (void *)cb, ms); }
 #endif
 void cc_iter(proj_cb_t cb) {
-  uint32_t fms[8]; int far = far_map(cb, fms);
+  uint32_t fms[12]; int far = far_map(cb, fms);
   fw_blk_lock();
   uint32_t cnt = FW_BLK_CNT, t0 = fw_clock(); ent_t *E = FW_BLK_ENTS;
   if (cnt > 0xFFFFu) cnt = 0xFFFFu;                            // the ranges hold 16 bits (a 64 KB block has fewer entries)
