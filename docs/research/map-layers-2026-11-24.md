@@ -259,3 +259,8 @@ fill stores) is not in these numbers.
 N3 / N4 home: `f` 24 / 25 ms (noseek 32), `d` 17 / 20 (25), `L` 4 / 4 (13), `F` 10 / 12 (10-11), `o` 5 / 4, `e` 0,
 reads 0. The line time fell 3x (estimate: 1.5x): the per-pixel bounds check was most of the line cost. The fill is
 now the largest draw part; overlapping areas (WP 6 step 2) are the next lever.
+
+### 12.4 Fill overdraw (host, 252 frames of N3 and N4)
+
+Fill writes 44.9 k px per frame on 41.7 k unique pixels: overdraw 7.5 % (worst frame 1.54x). The union of areas
+(WP 6 step 2) saves about 1 ms on average: not done. The fill cost is the covered area itself.
