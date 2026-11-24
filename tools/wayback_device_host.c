@@ -69,7 +69,8 @@ void *host_fopen(const char *path, const char *mode) {
 }
 int host_fclose(void *f) { n_close++; return fclose((FILE *)f); }
 int32_t host_ftell(void *f) { return (int32_t)ftell((FILE *)f); }
-int host_fseek(void *f, int32_t off, int whence) { file_under_blk += blk_held; return fseek((FILE *)f, off, whence); }
+static int n_seek_end;
+int host_fseek(void *f, int32_t off, int whence) { file_under_blk += blk_held; n_seek_end += whence == 2; return fseek((FILE *)f, off, whence); }
 uint32_t host_fread(void *dst, uint32_t size, uint32_t n, void *f) {
   n_reads++; file_under_blk += blk_held;
   if (g_fail_at && (uint32_t)n_reads == g_fail_at) return 0;
@@ -150,7 +151,7 @@ int main(int argc, char **argv) {
   if (argc == 23) wb_km(atoi(argv[19]), atoi(argv[20]), atoi(argv[21]), atoi(argv[22]));
   else wb_rt((uint32_t)atoi(argv[6]));
   if (getenv("FRAME2")) {                                      /* WP 5/7: the same frame again; reads of frame 2 only */
-    n_reads = 0; memset(host_buf, 0, 240u * 256u * 2u); g_clock = 0xfffffff0u;
+    n_reads = 0; n_seek_end = 0; memset(host_buf, 0, 240u * 256u * 2u); g_clock = 0xfffffff0u;
     wb_rt((uint32_t)atoi(argv[6]));
   }
   if (getenv("STOCKKEY") && host_getspecific(1) != (void *)0x1234) return 9;   /* the stock key must survive */
@@ -160,7 +161,7 @@ int main(int argc, char **argv) {
     free(host_tls); n_free++;
   }
   for (k = 0; k < 240u * 256u; k++) { hash = (hash ^ host_buf[k]) * 16777619u; px += host_buf[k] != 0; }
-  printf("{\"rt\":%d,\"opens\":%d,\"closes\":%d,\"reads\":%d,\"texts\":%d,\"text\":\"%s\",\"opened\":\"%s\",", n_rt, n_open, n_close, n_reads, n_text, text, opened);
+  printf("{\"seekEnd\":%d,\"rt\":%d,\"opens\":%d,\"closes\":%d,\"reads\":%d,\"texts\":%d,\"text\":\"%s\",\"opened\":\"%s\",", n_seek_end, n_rt, n_open, n_close, n_reads, n_text, text, opened);
   printf("\"takes\":%d,\"gives\":%d,\"dashAfter\":%d,\"badDash\":%d,\"labelCol\":%u,", n_take, n_give, host_dsc.dash_width, bad_dash, host_label_col);
   printf("\"anchors\":%d,\"anchorReads\":%d,\"mallocs\":%d,\"frees\":%d,\"hash\":%u,\"greyPx\":%u,\"dsc\":[%u,%d,%d],",
          n_anchor, anchor_reads, n_malloc, n_free, hash, px, host_dsc.color, host_dsc.width, host_dsc.dash_gap);

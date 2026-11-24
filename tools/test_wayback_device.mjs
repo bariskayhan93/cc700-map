@@ -61,6 +61,8 @@ test('WP 5/7: with the kept page cache the second off-route frame reads almost n
   assert.equal(plain.reads, one.reads);                          // no cache: frame 2 reads as frame 1
   assert.ok(one.reads > 20, String(one.reads));
   assert.equal(kept.reads, 0);                                 // 24 Nov: the trailer goes through the cache too
+  assert.equal(kept.seekEnd, 0);                               // 24 Nov: the size comes from the kept cache (no stdio seek)
+  assert.equal(plain.seekEnd, 1);
   assert.equal(kept.hash, plain.hash);
   assert.deepEqual(kept.lines, plain.lines);
   assert.equal(kept.mallocs - kept.frees, plain.mallocs - plain.frees);

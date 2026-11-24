@@ -31,7 +31,7 @@ static wc_cache *wbd_keep(void) {
   wc_cache *k = (wc_cache *)fw_getspecific(WBD_KEY); uintptr_t *head, *node;   /* 32-bit words on the unit */
   if (k) return k;
   if (!(k = (wc_cache *)fw_malloc(WC_BYTES, CAPS_PSRAM))) return 0;
-  k->key = 0; k->size = 0;                                     /* key 0: the first wc_reset empties it */
+  k->key = 0; k->size = 0; k->nk = 0;                          /* key 0: the first wc_reset empties it */
   node = (uintptr_t *)fw_malloc(3u * sizeof(uintptr_t), CAPS_PSRAM);
   head = (uintptr_t *)fw_tls_get(0, 0);
   if (node && !head && (head = (uintptr_t *)fw_malloc(sizeof(uintptr_t), CAPS_PSRAM)) != 0) { *head = 0; fw_tls_set(0, 0, head, FW_TLS_DEL); }
@@ -105,14 +105,20 @@ static uint32_t wbd_core(wbd_ctx *, uint32_t, uint8_t *, const float *, float *,
 typedef struct { uint32_t at[5], size[5]; } wbd_secs;            /* index = type: 1 way-back, 2 grey, 3 elevation (the chart), 4 far map */
 /* FNV-1a of the path: with the file size, the page-cache key (24 Nov). */
 static uint32_t wbd_hash(const char *p) { uint32_t h = 2166136261u; while (*p) h = (h ^ (uint8_t)*p++) * 16777619u; return h; }
-/* The file size comes from a seek to the end (no read); the trailer read then goes through the page cache, so a kept
- * cache reads nothing (24 Nov: one trailer read cost 11-17 ms). c->nk: wbd_hash of the path. */
+/* The file size comes from a seek to the end (no read); the trailer read then goes through the page cache. With a kept
+ * cache of the same path the size comes from the cache and there is no seek (24 Nov photos: the first stdio seek after
+ * an open costs 33-35 ms; reads from the cache cost nothing). c->nk: wbd_hash of the path. Gap: a file replaced under
+ * the same name without a restart keeps the old cache (storage writes restart the unit; new routes get new ids). */
 static int wbd_secs_read(wbd_ctx *c, wbd_secs *s) {
   uint8_t t[64]; uint32_t i, j, n, total; int32_t size;
   for (i = 0; i < 5u; i++) { s->at[i] = 0; s->size[i] = 0; }
+#ifdef WBD_KEEP
+  if ((c->wc = wbd_keep()) != 0 && c->wc->nk == c->nk && c->wc->size >= 64u) size = (int32_t)c->wc->size;
+  else
+#endif
   if (fw_fseek(c->fp, 0, 2) != 0 || (size = fw_ftell(c->fp)) < 64) return 0;
 #ifdef WBD_KEEP
-  if ((c->wc = wbd_keep()) != 0) wc_reset(c->wc, (c->nk ^ (uint32_t)size) | 1u, (uint32_t)size);
+  if (c->wc) { wc_reset(c->wc, (c->nk ^ (uint32_t)size) | 1u, (uint32_t)size); c->wc->nk = c->nk; }
 #endif
   if (!wbd_at(c, (uint32_t)size - 64u, t, 64u) || wb_u32(t) != 0x53574343u) return 0;
   n = wb_u32(t + 4); total = wb_u32(t + 56);
