@@ -68,6 +68,17 @@ static int wbd_path(char *name) {
   fw_file_give(sem);
   return found;
 }
+/* FNV-1a of the path: with the file size, the page-cache key (24 Nov). */
+static uint32_t wbd_hash(const char *p) { uint32_t h = 2166136261u; while (*p) h = (h ^ (uint8_t)*p++) * 16777619u; return h; }
+/* The route file of the frame: path, cache key, open. Returns the wbd_path result (-1 busy, 0 none), else 1 = open,
+ * 2 = the open failed (c->fp = 0). */
+static int wbd_open(wbd_ctx *c, char *name) {
+  uint32_t mode = 0x00006272u;                                 /* "rb" */
+  int found = wbd_path(name);
+  if (found <= 0) return found;
+  c->nk = wbd_hash(name);
+  return (c->fp = fw_fopen(name, (const char *)&mode)) != 0 ? 1 : 2;
+}
 static void wbd_line(const float *p, uint32_t n, int op) { FW_DASH = (int16_t)(OP_PATCH | op); fw_proj(p, n); FW_DASH = 0; }
 /* The switches of the current map block (types.h): read under the block lock, the lock of cc_iter. */
 static uint32_t wbd_flags(void) { uint32_t f; fw_blk_lock(); f = blk_flags(FW_BLK_ENTS, FW_BLK_CNT); fw_blk_unlock(); return f; }
@@ -101,16 +112,15 @@ static int wbd_file(void *vctx, uint32_t off, void *dst, uint32_t n) { return wb
 /* Mounts the data at the file end, runs one tick and reads the line. Returns 0 with n points, or a code. */
 static uint32_t wbd_core(wbd_ctx *, uint32_t, uint8_t *, const float *, float *, uint32_t *, uint32_t *);   /* *n bit 31: the line is cut */
 /* Trailer v2 (cc27), the last 64 bytes: "CCWS", count 1..4, 4 x {type, offset, size}, file length, 0. One read. The
- * sections must lie before the trailer and must not overlap; a type occurs once; types above 4 are ignored. */
+ * file length must be the file size; each section must lie before the trailer; a type occurs once; types above 4 are
+ * ignored. Overlap is not checked (24 Nov, code room): each read stays inside its own section, and the app writes none. */
 typedef struct { uint32_t at[5], size[5]; } wbd_secs;            /* index = type: 1 way-back, 2 grey, 3 elevation (the chart), 4 far map */
-/* FNV-1a of the path: with the file size, the page-cache key (24 Nov). */
-static uint32_t wbd_hash(const char *p) { uint32_t h = 2166136261u; while (*p) h = (h ^ (uint8_t)*p++) * 16777619u; return h; }
 /* The file size comes from a seek to the end (no read); the trailer read then goes through the page cache. With a kept
  * cache of the same path the size comes from the cache and there is no seek (24 Nov photos: the first stdio seek after
  * an open costs 33-35 ms; reads from the cache cost nothing). c->nk: wbd_hash of the path. Gap: a file replaced under
  * the same name without a restart keeps the old cache (storage writes restart the unit; new routes get new ids). */
 static int wbd_secs_read(wbd_ctx *c, wbd_secs *s) {
-  uint8_t t[64]; uint32_t i, j, n, total; int32_t size;
+  uint8_t t[64]; uint32_t i, n, total; int32_t size;
   for (i = 0; i < 5u; i++) { s->at[i] = 0; s->size[i] = 0; }
 #ifdef WBD_KEEP
   if ((c->wc = wbd_keep()) != 0 && c->wc->nk == c->nk && c->wc->size >= 64u) size = (int32_t)c->wc->size;
@@ -122,11 +132,10 @@ static int wbd_secs_read(wbd_ctx *c, wbd_secs *s) {
 #endif
   if (!wbd_at(c, (uint32_t)size - 64u, t, 64u) || wb_u32(t) != 0x53574343u) return 0;
   n = wb_u32(t + 4); total = wb_u32(t + 56);
-  if (n < 1u || n > 4u || total < 64u) return 0;
+  if (n < 1u || n > 4u || total != (uint32_t)size) return 0;
   for (i = 0; i < n; i++) {
     uint32_t ty = wb_u32(t + 8 + 12 * i), at = wb_u32(t + 12 + 12 * i), sz = wb_u32(t + 16 + 12 * i);
     if (!sz || at > total - 64u || sz > total - 64u - at) return 0;
-    for (j = 0; j < i; j++) { uint32_t a2 = wb_u32(t + 12 + 12 * j), s2 = wb_u32(t + 16 + 12 * j); if (at < a2 + s2 && a2 < at + sz) return 0; }
     if (ty >= 1u && ty <= 4u) { if (s->size[ty]) return 0; s->at[ty] = at; s->size[ty] = sz; }
   }
   return 1;
@@ -136,15 +145,18 @@ static __attribute__((noinline)) uint32_t wbd_run(wbd_ctx *c, const float *pos, 
   uint8_t t[16]; wbd_secs sec; uint32_t code;
   if (wb_size() > 128u + 8u * (sizeof(void *) - 4)) return WBD_NODATA;
   if (!wbd_secs_read(c, &sec) || !sec.size[1]) return WBD_NODATA;
-  c->base = sec.at[1]; c->gat = sec.at[2]; c->gsize = sec.size[2];
+  c->base = sec.at[1];
 #ifdef WBD_GREY
+  c->gat = sec.at[2]; c->gsize = sec.size[2];
   if (sec.size[2] && !sec.size[4]) {                         /* far map (23 Nov): it draws the far streets in cc_iter */
     c->buf = (uint8_t *)fw_malloc(GL_BUF, CAPS_PSRAM);
     c->nomem = !c->buf;
   }
 #endif
   code = wbd_core(c, sec.size[1], t, pos, line, n, dm);
+#ifdef WBD_GREY
   if (c->buf) fw_free(c->buf);
+#endif
   return code;
 }
 #ifdef WBD_GREY
@@ -208,12 +220,11 @@ typedef int (*wbd_anchor_fn)(void *ctx, const int32_t ll[2], pt_t *s);
 static uint32_t wbd_clock(void) { return fw_clock(); }
 int wb_far(wbd_anchor_fn anchor, void *actx, uint32_t ms[11]) {
   char name[128]; float pos[2]; wbd_ctx c; wbd_secs sec; fm_layer f; fm_stat st; vw_t v; pt_t s[4]; rs_canvas cv;
-  uint32_t x, y, i, mode = 0x00006272u, ts = 0, is = 0, to, te; int rc = -1, found; float head = FW_MAP_HEAD;
+  uint32_t x, y, i, ts = 0, is = 0, to, te; int rc = -1, found; float head = FW_MAP_HEAD;
   c.t0 = fw_clock(); c.late = 0; c.reads = 0; c.io = 0; c.buf = 0; c.wc = 0;
   for (i = 0; i < 11u; i++) ms[i] = 0;
-  if (fw_stack() < WBD_STACK || !wbd_pos(pos) || (found = wbd_path(name)) <= 0) return -1;
-  if (!(c.fp = fw_fopen(name, (const char *)&mode))) return -1;
-  c.nk = wbd_hash(name); to = fw_clock();                      /* o: position, path, open */
+  if (fw_stack() < WBD_STACK || !wbd_pos(pos) || wbd_open(&c, name) != 1) return -1;
+  to = fw_clock();                      /* o: position, path, open */
   found = wbd_secs_read(&c, &sec);                             /* the trailer, through the page cache */
   te = fw_clock();                                             /* e: seek to the end, ftell, cache, trailer */
   if (found && sec.size[4] && head >= -360.0f && head <= 720.0f && (c.buf = (uint8_t *)fw_malloc(GL_BUF, CAPS_PSRAM)) &&
@@ -244,15 +255,16 @@ int wb_far(wbd_anchor_fn anchor, void *actx, uint32_t ms[11]) {
 static __attribute__((noinline)) void wbd_frame(void) {
   union { char s[128]; float line[2 * WBD_POINTS]; } u;       /* the path until the open, the line points, then the text */
   float pos[2]; char *o = u.s; uint32_t n = 0, dm = 0, code, flags = 0; int found;
-  uint32_t mode = 0x00006272u;                                 /* "rb" */
   wbd_ctx c;
-  c.t0 = fw_clock(); c.late = 0; c.reads = 0; c.io = 0; c.glines = 0; c.gcut = 0; c.nomem = 0; c.buf = 0; c.wc = 0;
+  c.t0 = fw_clock(); c.late = 0; c.reads = 0; c.io = 0; c.buf = 0; c.wc = 0;
+#ifdef WBD_GREY
+  c.glines = 0; c.gcut = 0; c.nomem = 0;
+#endif
   if (fw_stack() < WBD_STACK) code = WBD_STACK_LOW;            /* before the block lock and any file call */
   else {
     flags = wbd_flags();
     if (!wbd_pos(pos)) code = WB_GPS;
-    else if ((found = wbd_path(u.s)) <= 0) code = found ? WBD_LOCK : WBD_NODATA;
-    else if (c.nk = wbd_hash(u.s), !(c.fp = fw_fopen(u.s, (const char *)&mode))) code = WBD_OPEN;
+    else if ((found = wbd_open(&c, u.s)) != 1) code = found < 0 ? WBD_LOCK : found ? WBD_OPEN : WBD_NODATA;
     else { code = wbd_run(&c, pos, u.line, &n, &dm); fw_fclose(c.fp); }
   }
   if (code) { *o++ = 'w'; *o++ = 'b'; o = tx_num(o, code); }
@@ -339,7 +351,7 @@ static void wbd_km_text(void *cv, uint32_t rem, uint32_t climb) {
  * (the stock second mode show_text 0, low stack, untrusted progress, no canvas): the stock overlay, unchanged. */
 void wb_km(int32_t left, int32_t total, int32_t bar_w, int32_t show_text) {
   char path[128]; wbd_secs sec; el_head h; el_view v; rs_canvas cv; wbd_ctx c;
-  uint32_t u = 0, tm = 0, len, tol, k0 = 0, nb, climb = 0, fl = 0, mode = 0x00006272u;   /* "rb" */
+  uint32_t u = 0, tm = 0, len, tol, k0 = 0, nb, climb = 0, fl = 0;
   void *canvas = FW_CANVAS;
   int drawn = 0, why = 0;
   cv.buf = FW_CANVAS_BUF; cv.w = (int16_t)FW_CANVAS_W; cv.h = (int16_t)FW_CANVAS_H;
@@ -350,8 +362,8 @@ void wb_km(int32_t left, int32_t total, int32_t bar_w, int32_t show_text) {
 #endif
     return;
   }
-  c.buf = 0; c.fp = 0; c.wc = 0;
-  if (wbd_path(path) > 0 && (c.nk = wbd_hash(path), c.fp = fw_fopen(path, (const char *)&mode)) != 0) {
+  c.buf = 0; c.fp = 0; c.wc = 0; c.io = 0;
+  if (wbd_open(&c, path) == 1) {
     c.t0 = fw_clock(); c.late = 0; c.reads = 0;
     if (wbd_secs_read(&c, &sec) && sec.size[3] >= EL_HEAD2 && (c.buf = (uint8_t *)fw_malloc(GL_BUF, CAPS_PSRAM)) != 0 &&
         wbd_file(&c, sec.at[3], c.buf, EL_HEAD2) && el_head_parse(&h, c.buf)) {
