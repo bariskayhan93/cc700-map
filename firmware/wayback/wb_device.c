@@ -176,21 +176,19 @@ static uint32_t wbd_core(wbd_ctx *cp, uint32_t i, uint8_t *t, const float *pos, 
 /* Far map (23 Nov): called at the start of cc_iter, before the block lock, in every map frame. Opens the route file,
  * draws section 4 under the detail map, closes. anchor: the screen point of (lat, lon) E7 through the map projection.
  * Returns -1 = no far map (no section, no position, busy lock, low stack), else the fm_stat stop (0 = all drawn).
- * WP 1 (24 Nov) ms[12]: f total, o open, t trailer, h header and anchors, r reads, i file ms, d draw ms; then the draw
- * split: F fill ms, L line ms, A areas, N lines, W line work (k px). */
+ * WP 1 (24 Nov) ms[9]: f total, s setup (open, trailer, header, anchors), r reads, i file ms, d draw ms; then the draw
+ * split: F fill ms, L line ms, A areas, N lines. */
 #define FAR_US 150000u                 /* 24 Nov: emergency stop only (WP 1 photos: setup 25-49 ms left too few cells) */
 typedef int (*wbd_anchor_fn)(void *ctx, const int32_t ll[2], pt_t *s);
 static uint32_t wbd_clock(void) { return fw_clock(); }
-int wb_far(wbd_anchor_fn anchor, void *actx, uint32_t ms[12]) {
+int wb_far(wbd_anchor_fn anchor, void *actx, uint32_t ms[9]) {
   char name[128]; float pos[2]; wbd_ctx c; wbd_secs sec; fm_layer f; fm_stat st; vw_t v; pt_t s[4]; rs_canvas cv;
-  uint32_t x, y, i, mode = 0x00006272u, t[3] = {0, 0, 0}, is = 0; int rc = -1, found; float head = FW_MAP_HEAD;
+  uint32_t x, y, i, mode = 0x00006272u, ts = 0, is = 0; int rc = -1, found; float head = FW_MAP_HEAD;
   c.t0 = fw_clock(); c.late = 0; c.reads = 0; c.io = 0; c.buf = 0; c.wc = 0;
-  for (i = 0; i < 12u; i++) ms[i] = 0;
+  for (i = 0; i < 9u; i++) ms[i] = 0;
   if (fw_stack() < WBD_STACK || !wbd_pos(pos) || (found = wbd_path(name)) <= 0) return -1;
   if (!(c.fp = fw_fopen(name, (const char *)&mode))) return -1;
-  t[0] = fw_clock();                                           /* o: position, path and open */
-  found = wbd_secs_read(c.fp, &sec);
-  t[1] = fw_clock();                                           /* t: the trailer (24 Nov probe: a read at the file start costs the same) */
+  found = wbd_secs_read(c.fp, &sec);                          /* the trailer: 11-17 ms (24 Nov probe: a read at the file start costs the same) */
 #ifdef WBD_KEEP
   if (found && (c.wc = wbd_keep()) != 0) wc_reset(c.wc, sec.key, sec.total);
 #endif
@@ -203,18 +201,18 @@ int wb_far(wbd_anchor_fn anchor, void *actx, uint32_t ms[12]) {
     }
     cv.buf = FW_CANVAS_BUF; cv.w = (int16_t)FW_CANVAS_W; cv.h = (int16_t)FW_CANVAS_H;
     if (i == 4u && cv.buf && vw_fit(&v, (int32_t)x, (int32_t)y, s)) {
-      t[2] = fw_clock(); is = c.io;                            /* h: buffer, header, directory and the 4 anchors */
+      ts = fw_clock(); is = c.io;                              /* s: open, trailer, header, anchors (24 Nov: o3-5 t11-17 h3-6 a0) */
       fm_draw(&f, &cv, &v, x, y, (uint32_t)(int32_t)(810.5f - head) % 360u, wbd_clock, c.t0, FAR_US, &st);
       rc = (int)st.stop;
-      ms[6] = (fw_clock() - t[2] - (c.io - is)) / 1000u;       /* d: draw less its file time */
-      ms[7] = st.fill_us / 1000u; ms[8] = st.line_us / 1000u; ms[9] = st.areas; ms[10] = st.lines; ms[11] = st.work / 1000u;
+      ms[4] = (fw_clock() - ts - (c.io - is)) / 1000u;         /* d: draw less its file time */
+      ms[5] = st.fill_us / 1000u; ms[6] = st.line_us / 1000u; ms[7] = st.areas; ms[8] = st.lines;
+      ms[1] = (ts - c.t0) / 1000u;
     }
   }
   if (c.buf) fw_free(c.buf);
   fw_fclose(c.fp);
   ms[0] = (fw_clock() - c.t0) / 1000u;
-  for (i = 0; i < 3u && t[i]; i++) ms[1u + i] = (t[i] - (i ? t[i - 1] : c.t0)) / 1000u;
-  ms[4] = c.reads; ms[5] = c.io / 1000u;
+  ms[2] = c.reads; ms[3] = c.io / 1000u;
   return rc;
 }
 
