@@ -232,3 +232,16 @@ Findings: the first reads after an open are slow anywhere in the file; the setup
 users of a frame (far map, way-back line, km bar). The draw model of section 4.3 counted instructions and missed the
 PSRAM store cost (fill) and the round joins (lines). Setup and reads are about 70 % of the far time: state kept
 between frames (WP 4) is the largest lever.
+
+### 12.1 Kept cache, no end seek (24 Nov, late; image c1b45d57, f2ec6fa)
+
+| Value | Split image (before WP 4/5) | Noseek image, N3 / N4 home |
+|---|---|---|
+| Far total `f` | 67-93 ms | 32 / 32 ms |
+| Open `o`, end seek + trailer `e`, header `h` | e 33-35 | o 3, e 0, h 0-3 |
+| Reads `r`, file time `i` | 13, 21-31 ms | 0, 0 |
+| Draw `d` | 20-27 ms | 25 / 2x ms |
+| Way-back `w` | 141-170 ms | 10-11 ms |
+
+Finding: the end seek + `ftell` was the setup (33-35 ms), not the reads. With the size from the kept cache, the far
+map is now draw-bound: `d` is about 80 % of `f`. The lazy open is not necessary (`o` 3 ms).
