@@ -26,7 +26,7 @@ const F = d => path.join(root, 'firmware', d);
 execFileSync('cc', ['-std=gnu11', '-O1', '-g', '-Wall', '-Wextra', '-Werror', '-DHOST',
   '-fsanitize=address,undefined', '-fno-sanitize-recover=all', '-I', F('wayback'), '-I', F('common'), '-I', F('raster'), '-I', F('view'), '-I', F('elev'),
   path.join(root, 'tools/wayback_device_host.c'), F('wayback/wb_device.c'), F('wayback/wayback.c'), F('wayback/wb_grey.c'),
-  F('wayback/wb_grey_draw.c'), F('wayback/wb_far.c'), F('raster/raster.c'), F('view/view.c'), F('elev/elev.c'), '-lm', '-o', exe], {stdio: ['ignore', 'pipe', 'pipe']});
+  F('wayback/wb_grey_draw.c'), F('wayback/wb_far.c'), F('wayback/wb_cache.c'), F('raster/raster.c'), F('view/view.c'), F('elev/elev.c'), '-lm', '-o', exe], {stdio: ['ignore', 'pipe', 'pipe']});
 
 const {graph, route, p} = gridFixture();
 const id = Uint8Array.from({length: 16}, (_, i) => i + 1);
@@ -47,6 +47,23 @@ function run(o) {
   return JSON.parse(execFileSync(exe, args, {encoding: 'utf8'}));
 }
 const F_OWN = 1, F_TEXT = 2, F_ROUTE = 4;
+
+// WP 5 and WP 7 (24 Nov): the page cache behind the WP 4 RAM word (here a host pointer). FRAME2: the same frame again.
+const keepExe = path.join(work, 'host-keep');
+execFileSync('cc', ['-std=gnu11', '-O1', '-g', '-Wall', '-Wextra', '-Werror', '-DHOST', '-DWBD_KEEP=(&host_keep)',
+  '-fsanitize=address,undefined', '-fno-sanitize-recover=all', '-I', F('wayback'), '-I', F('common'), '-I', F('raster'), '-I', F('view'), '-I', F('elev'),
+  path.join(root, 'tools/wayback_device_host.c'), F('wayback/wb_device.c'), F('wayback/wayback.c'), F('wayback/wb_grey.c'),
+  F('wayback/wb_grey_draw.c'), F('wayback/wb_far.c'), F('wayback/wb_cache.c'), F('raster/raster.c'), F('view/view.c'), F('elev/elev.c'), '-lm', '-o', keepExe], {stdio: ['ignore', 'pipe', 'pipe']});
+const twice = (o, e) => { process.env.FRAME2 = '1'; try { return run({...o, exe: e}); } finally { delete process.env.FRAME2; } };
+test('WP 5/7: with the kept page cache the second off-route frame reads almost nothing and draws the same', () => {
+  const plain = twice({}, exe), kept = twice({}, keepExe), one = run({});
+  assert.equal(plain.reads, one.reads);                          // no cache: frame 2 reads as frame 1
+  assert.ok(one.reads > 20, String(one.reads));
+  assert.ok(kept.reads <= 2, String(kept.reads));
+  assert.equal(kept.hash, plain.hash);
+  assert.deepEqual(kept.lines, plain.lines);
+  assert.equal(kept.mallocs - kept.frees, plain.mallocs - plain.frees);
+});
 const near = (pt, x, y, tol = 2) => assert(hav(pt, p(x, y)) <= tol, `${pt} is not at ${x},${y}`);
 
 test('the embedded file keeps the route bytes and has a trailer at the end', () => {

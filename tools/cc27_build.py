@@ -32,9 +32,9 @@ CALLED = tuple(wdb.CALLED) + (0x403763e0, 0x40376398, 0x420494a4, 0x420494b8, 0x
 # The cc27 tree, copied flat into the build directory: directory under firmware/ -> files.
 TREE = {'common': ('types.h', 'fw.h', 'text.h'), 'raster': ('raster.h', 'raster.c'), 'view': ('view.h', 'view.c'),
         'mapdraw': ('map.c', 'md_tramp.S', 'proj.h', 'proj.c'),
-        'wayback': ('wayback.h', 'wayback.c', 'wb_grey.h', 'wb_grey.c', 'wb_grey_draw.h', 'wb_grey_draw.c', 'wb_far.h', 'wb_far.c', 'wb_device.c',
+        'wayback': ('wayback.h', 'wayback.c', 'wb_grey.h', 'wb_grey.c', 'wb_grey_draw.h', 'wb_grey_draw.c', 'wb_far.h', 'wb_far.c', 'wb_cache.h', 'wb_cache.c', 'wb_device.c',
                     'wb_tramp.S', 'km_tramp.S', 'wb_area2.ld'), 'elev': ('elev.h', 'elev.c', 'elev_font.h')}
-SOURCES = ('wb_device.c', 'wayback.c', 'wb_grey.c', 'wb_grey_draw.c', 'wb_far.c', 'wb_tramp.S', 'km_tramp.S', 'map.c', 'md_tramp.S', 'raster.c', 'view.c', 'proj.c', 'elev.c')
+SOURCES = ('wb_device.c', 'wb_cache.c', 'wayback.c', 'wb_grey.c', 'wb_grey_draw.c', 'wb_far.c', 'wb_tramp.S', 'km_tramp.S', 'map.c', 'md_tramp.S', 'raster.c', 'view.c', 'proj.c', 'elev.c')
 run = c26.run
 # The IROM tail after the C4 code (the cc25 method, tools/cc25_build.py): the lens chart module elev.o runs there.
 TAIL = 0x421debac

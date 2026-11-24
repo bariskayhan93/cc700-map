@@ -110,6 +110,9 @@ void host_canvas_text(void *cv, int32_t x, int32_t y, int32_t w, void *dsc, cons
   n_text++; strncpy(text, s, sizeof text - 1);
 }
 
+#ifdef WBD_KEEP
+void *host_keep;
+#endif
 int main(int argc, char **argv) {
   int i, mode;
   void *route = &route, *other = &other;
@@ -135,6 +138,13 @@ int main(int argc, char **argv) {
   if (mode != 0) host_fps[2] = route;                          /* a route handle of type 2 */
   if (argc == 23) wb_km(atoi(argv[19]), atoi(argv[20]), atoi(argv[21]), atoi(argv[22]));
   else wb_rt((uint32_t)atoi(argv[6]));
+  if (getenv("FRAME2")) {                                      /* WP 5/7: the same frame again; reads of frame 2 only */
+    n_reads = 0; memset(host_buf, 0, 240u * 256u * 2u); g_clock = 0xfffffff0u;
+    wb_rt((uint32_t)atoi(argv[6]));
+  }
+#ifdef WBD_KEEP
+  if (host_keep) { free(host_keep); n_free++; }                /* the cache stays until the unit restarts */
+#endif
   for (k = 0; k < 240u * 256u; k++) { hash = (hash ^ host_buf[k]) * 16777619u; px += host_buf[k] != 0; }
   printf("{\"rt\":%d,\"opens\":%d,\"closes\":%d,\"reads\":%d,\"texts\":%d,\"text\":\"%s\",\"opened\":\"%s\",", n_rt, n_open, n_close, n_reads, n_text, text, opened);
   printf("\"takes\":%d,\"gives\":%d,\"dashAfter\":%d,\"badDash\":%d,\"labelCol\":%u,", n_take, n_give, host_dsc.dash_width, bad_dash, host_label_col);
