@@ -182,7 +182,7 @@ typedef int (*wbd_anchor_fn)(void *ctx, const int32_t ll[2], pt_t *s);
 static uint32_t wbd_clock(void) { return fw_clock(); }
 int wb_far(wbd_anchor_fn anchor, void *actx, uint32_t ms[8]) {
   char name[128]; float pos[2]; wbd_ctx c; wbd_secs sec; fm_layer f; fm_stat st; vw_t v; pt_t s[4]; rs_canvas cv;
-  uint32_t x, y, i, mode = 0x00006272u, t[4] = {0, 0, 0, 0}, is = 0; uint8_t z[64]; int rc = -1, found; float head = FW_MAP_HEAD;
+  uint32_t x, y, i, mode = 0x00006272u, t[4] = {0, 0, 0, 0}, is = 0; int rc = -1, found; float head = FW_MAP_HEAD;
   c.t0 = fw_clock(); c.late = 0; c.reads = 0; c.io = 0; c.buf = 0; c.wc = 0;
   for (i = 0; i < 8u; i++) ms[i] = 0;
   if (fw_stack() < WBD_STACK || !wbd_pos(pos) || (found = wbd_path(name)) <= 0) return -1;
@@ -190,7 +190,7 @@ int wb_far(wbd_anchor_fn anchor, void *actx, uint32_t ms[8]) {
   t[0] = fw_clock();                                           /* o: position, path and open */
   /* z (24 Nov probe): 64 B at the file start before the trailer. z high and t low: the first read after an open is
    * slow; z low and t high: a read at the file end is slow. Not counted in r and i. */
-  (void)(fw_fseek(c.fp, 0, 0) == 0 && fw_fread(z, 1u, 64u, c.fp) == 64u);
+  (void)(fw_fseek(c.fp, 0, 0) == 0 && fw_fread(name, 1u, 64u, c.fp) == 64u);   /* name is free after the open */
   t[1] = fw_clock();
   found = wbd_secs_read(c.fp, &sec);
   t[2] = fw_clock();                                           /* t: the trailer at the file end */
