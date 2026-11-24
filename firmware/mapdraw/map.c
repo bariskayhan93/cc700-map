@@ -265,12 +265,12 @@ static void map_time(uint32_t ms, uint32_t cut, int pd, int far, const uint32_t 
   if (far < 0) return;
   // Far map, rows at y 42 and 60 (24 Nov). '+': it stopped. f total, o open, t trailer, h header and anchors, r reads,
   // Now: f total, o open, e end seek and trailer, h header and anchors, d draw ms; F fill ms, L line ms, A areas, N lines,
-  // P fill pixels / 100 (25 Nov; was r reads), i file ms.
+  // P fill pixels / 100 (25 Nov; was r reads), W canvas pass in 0.1 ms (was i file ms).
   for (int row = 0, i = 0; row < 2; row++) {
     o = s;
-    for (int k = 0; k < (row ? 6 : 5); k++, i++) {            // "foehd" and "FLANPi" from literals: no rodata
+    for (int k = 0; k < (row ? 6 : 5); k++, i++) {            // "foehd" and "FLANPW" from literals: no rodata
       if (k) *o++ = ' ';
-      *o++ = (char)((row ? 0x69504e414c46ull : 0x6468656f66ull) >> (8 * k)); o = tx_num(o, fs[i]);
+      *o++ = (char)((row ? 0x57504e414c46ull : 0x6468656f66ull) >> (8 * k)); o = tx_num(o, fs[i]);
       if (!i && far) *o++ = '+';
     }
     *o = 0;
