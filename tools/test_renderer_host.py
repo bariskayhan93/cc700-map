@@ -83,8 +83,11 @@ class RendererHost(unittest.TestCase):
                 if case=="dense4000":
                     self.assertEqual(actual["selection_checks"],12000)
                     self.assertEqual(expected["selection_checks"],248000)
-                for field in ("trace","callbacks","projected_points","draws","allocations","peak_bytes"):
+                for field in ("draws","allocations","peak_bytes"):
                     self.assertEqual(actual[field],expected[field],field)
+                # WP 3 (24 Nov): the outline is drawn on the fill's own points, so an outlined area is projected once
+                for field in ("callbacks","projected_points"):
+                    self.assertLessEqual(actual[field],expected[field],field)
 
     def test_doubled_hole_bridge_is_direction_independent(self):
         data=self.run_case("hole")
@@ -156,7 +159,7 @@ class RendererHost(unittest.TestCase):
                 self.assertEqual(new["visible_trace"], old["visible_trace"])
                 self.assertEqual(new["visible_draws"], old["visible_draws"])
                 self.assertEqual(new["painted"], old["painted"])
-                self.assertEqual(new["callbacks"], old["callbacks"])
+                self.assertLessEqual(new["callbacks"], old["callbacks"])   # WP 3: one projection for each outlined area
                 self.assertEqual(new["labels"], old["labels"])
         new, old = self.run_case("offscreen"), self.run_v21("offscreen")
         self.assertGreater(old["draws"], 20 * new["draws"], (old["draws"], new["draws"]))
@@ -234,6 +237,11 @@ class RendererHost(unittest.TestCase):
             aa, own = self.run_entries(cls + "_aa"), self.run_entries(cls + "_own")
             self.assertGreater(own["painted"], 0, cls)
             self.assertEqual((aa["painted"], aa["ink"]), (own["painted"], own["ink"]), cls)
+
+    def test_WP3_fused_outline_projects_each_area_once_with_the_same_pixels(self):   # 24 Nov: fill + outline in one call
+        for cls, px in (("wat", 1968064241), ("grn", 2381880997)):
+            d = self.run_entries(cls + "_own")
+            self.assertEqual((d["px"], d["painted"], d["callbacks"]), (px, 7081, 40), cls)
 
     def test_F_PROJ_projects_without_the_stock_callback(self):   # cc28b: only the probes go through the stock projection
         stock, own = self.run_entries("own_aa"), self.run_entries("proj")

@@ -39,7 +39,7 @@ def block_budget(entries,serialized_bytes):
         if not big:continue  # actual iterator skips all styled passes without buffer
         passes=0;length=count+1
         if cls in (1,4):passes=1
-        elif cls in (2,3):passes=1 if style&0x400 else 2
+        elif cls in (2,3):passes=1  # WP 3 (24 Nov): fill and outline in one projection
         elif cls in (5,6,7,8,9,10,11) and ((style>>4)&7)<=4:
             passes=2 if cls in (5,6,7,11) else 1
             if style&0x80 and cls in (8,9,10):passes+=2

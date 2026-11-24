@@ -56,6 +56,17 @@ test('rs_fill gives the same pixels as the v21 fill on the renderer fixtures', (
   for (const c of cases) { const r = run('fill', ...c); assert.equal(r.hash, r.ref); assert.ok(r.changed > 0); }
 });
 
+test('WP 2 band fill: large rings (band path, edge-list overflow, off-canvas) give the same pixels as the v21 fill', () => {
+  let s = 7; const rnd = () => (s = (s * 1103515245 + 12345) >>> 0) / 2 ** 32;
+  const ring = (n, cx, cy, r0, r1) => Array.from({length: n}, (_, i) => {
+    const a = 2 * Math.PI * i / n, r = r0 + (r1 - r0) * rnd();
+    return [Math.round(cx + r * Math.cos(a)), Math.round(cy + r * Math.sin(a))];
+  }).flat();
+  const cases = [ring(120, 120, 128, 40, 120), ring(280, 120, 128, 5, 200), ring(200, 300, 100, 50, 150),
+    ring(250, 120, -60, 80, 140), Array.from({length: 280}, (_, i) => [i % 2 ? 230 : 10, 2 + i * 0.9 | 0]).flat()];
+  for (const c of cases) { const r = run('fill', 0x82cb, ...c); assert.equal(r.hash, r.ref); }
+});
+
 test('white at opa 115 over black gives RGB565 0x6b8d (R 13, G 28, B 13)', () => {
   assert.equal(run('line', 1, WHITE, 115, 0, 5, 5, 5, 5).first, 0x6b8d);
 });

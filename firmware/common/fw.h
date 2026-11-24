@@ -14,7 +14,7 @@
 #define OP_TUNNEL 0x0200 
 #define OP_OWN    0x4000             /* cc27: draw this op with the raster module (block flag F_OWN) */
 #define OP_AA     0x2000             /* cc28: smooth lines (block flag F_AA) */
-/* 0x1000: free (cc28 OP_CYC, removed in cc28b) */
+#define OP_RING   0x1000             /* WP 3 (24 Nov): K_FILL, then the 1 px plain outline on the same points (green 24, water 25) */
 #define OP_ANCHOR 23                 /* K_TEXT: cc_line returns pts[0] in color/width and sets dash_gap = 1 */
 
 #ifdef HOST                                                   // PC builds of the same code (tools/*_host.c)

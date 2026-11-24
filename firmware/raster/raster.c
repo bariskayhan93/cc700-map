@@ -167,34 +167,57 @@ void rs_rect(const rs_canvas *c, int x0, int y0, int x1, int y1, uint16_t col) {
   for (y = y0; y < y1; y++) for (x = x0; x < x1; x++) c->buf[y * c->w + x] = col;
 }
 
-void rs_fill(const rs_canvas *c, const pt_t *p, uint32_t n, uint16_t col) {   /* even-odd scanline fill (v21 fill) */
+/* WP 2 (24 Nov): band fill. Rows in bands of RS_BAND; one pass over the edges per band collects the edges that cross
+ * it (at most RS_BLIST, else that band uses all edges); a ring with edges x rows < RS_SMALL is one band with all edges
+ * (the v21 loop). Same crossings, same order, same 128 cap, same hole-bridge cancel: the pixels of the v21 fill. */
+#define RS_BAND 16
+#define RS_BLIST 64
+#define RS_SMALL 4096
+static int rs_cross(const pt_t *p, uint32_t i, uint32_t j, int y) {
+  int ya = p[j].y, yb = p[i].y, xa = p[j].x, xb = p[i].x;
+  if (ya > yb) { int t = ya; ya = yb; yb = t; t = xa; xa = xb; xb = t; }
+  int dy = yb - ya, den = 2 * dy, num = 2 * xa * dy + (xb - xa) * (2 * (y - ya) + 1) - dy;
+  return num / den + (num > 0 && num % den != 0);   // ceil, independent of edge direction
+}
+void rs_fill(const rs_canvas *c, const pt_t *p, uint32_t n, uint16_t col) {   /* even-odd scanline fill (v21 pixels) */
   uint16_t *buf = c->buf; int W = c->w, H = c->h;
   if (!buf || n < 3) return;
-  int y0 = 1 << 30, y1 = -(1 << 30);
-  for (uint32_t i = 0; i < n; i++) { if (p[i].y < y0) y0 = p[i].y; if (p[i].y > y1) y1 = p[i].y; }
+  int y0 = 1 << 30, y1 = -(1 << 30), x0 = 1 << 30, x1 = -(1 << 30);
+  for (uint32_t i = 0; i < n; i++) {
+    if (p[i].y < y0) y0 = p[i].y;
+    if (p[i].y > y1) y1 = p[i].y;
+    if (p[i].x < x0) x0 = p[i].x;
+    if (p[i].x > x1) x1 = p[i].x;
+  }
+  if (x1 <= 0 || x0 >= W) return;                       // every span would be empty
   if (y0 < 0) y0 = 0;
   if (y1 > H - 1) y1 = H - 1;
-  int16_t xs[128];
-  for (int y = y0; y <= y1; y++) {
-    int k = 0;
-    for (uint32_t i = 0, j = n - 1; i < n; j = i++) {
-      int ya = p[j].y, yb = p[i].y;
-      if ((ya > y) == (yb > y) || k >= 128) continue;
-      int xa=p[j].x, xb=p[i].x;
-      if(ya>yb) {int t=ya;ya=yb;yb=t;t=xa;xa=xb;xb=t;}
-      int dy=yb-ya, den=2*dy;
-      int num=2*xa*dy+(xb-xa)*(2*(y-ya)+1)-dy;
-      int x=num/den+(num>0 && num%den!=0); // ceil, independent of edge direction
-      int m = k++; while (m > 0 && xs[m - 1] > x) { xs[m] = xs[m - 1]; m--; } xs[m] = x;
+  int small = (int)n * (y1 - y0 + 1) < RS_SMALL;
+  int16_t xs[128]; uint16_t L[RS_BLIST];
+  for (int by = y0; by <= y1;) {
+    int be = small || by + RS_BAND - 1 > y1 ? y1 : by + RS_BAND - 1, nl = 0, full = small;
+    for (uint32_t i = 0, j = n - 1; i < n && !full; j = i++) {
+      int ya = p[j].y, yb = p[i].y, lo = ya < yb ? ya : yb, hi = ya < yb ? yb : ya;
+      if (lo == hi || lo > be || hi <= by) continue;
+      if (nl == RS_BLIST) full = 1; else L[nl++] = (uint16_t)i;
     }
-    // Cancel equal crossings: doubled hole bridges have zero parity.
-    int odd=0;
-    for(int m=0;m<k;m++) {if(odd && xs[odd-1]==xs[m]) odd--; else xs[odd++]=xs[m];}
-    k=odd;
-    uint16_t *row = buf + y * W;
-    for (int m = 0; m + 1 < k; m += 2) {
-      int a = xs[m] < 0 ? 0 : xs[m], b = xs[m + 1] > W ? W : xs[m + 1];
-      for (int x = a; x < b; x++) row[x] = col;
+    for (int y = by; y <= be; y++) {
+      int k = 0, m;
+      for (uint32_t q = 0, cnt = full ? n : (uint32_t)nl; q < cnt; q++) {
+        uint32_t i = full ? q : L[q], j = i ? i - 1 : n - 1;
+        if ((p[j].y > y) == (p[i].y > y) || k >= 128) continue;
+        int x = rs_cross(p, i, j, y);
+        m = k++; while (m > 0 && xs[m - 1] > x) { xs[m] = xs[m - 1]; m--; } xs[m] = x;
+      }
+      // Cancel equal crossings: doubled hole bridges have zero parity.
+      int odd = 0;
+      for (m = 0; m < k; m++) { if (odd && xs[odd - 1] == xs[m]) odd--; else xs[odd++] = xs[m]; }
+      uint16_t *row = buf + y * W;
+      for (m = 0; m + 1 < odd; m += 2) {
+        int a = xs[m] < 0 ? 0 : xs[m], b = xs[m + 1] > W ? W : xs[m + 1];
+        for (int x = a; x < b; x++) row[x] = col;
+      }
     }
+    by = be + 1;
   }
 }

@@ -15,7 +15,7 @@
 enum { WBD_LOCK = 6, WBD_NODATA = 7, WBD_STACK_LOW = 8, WBD_OPEN = 9, WBD_HEAP = 11 };   /* after the core reasons 1 to 5 (10 retired) */
 
 /* One frame: file reads, the grey section, its PSRAM buffer and its draw result. */
-typedef struct { void *fp; uint32_t base, t0, late, reads, gat, gsize, glines, gcut, nomem; uint8_t *buf; } wbd_ctx;
+typedef struct { void *fp; uint32_t base, t0, late, reads, io, gat, gsize, glines, gcut, nomem; uint8_t *buf; } wbd_ctx;
 
 #include "fw.h"
 #include "text.h"
@@ -64,9 +64,9 @@ static void wbd_text(const char *s) { wbd_text_at(s, 6); }
  * wbd_file: offsets in the file (the grey layer). */
 static int wbd_at(wbd_ctx *c, uint32_t off, void *dst, uint32_t n) {
   if (fw_clock() - c->t0 > WBD_TIME_US) { c->late = 1; return 0; }
-  if (fw_fseek(c->fp, (int32_t)off, 0) != 0) return 0;
-  c->reads++;
-  return fw_fread(dst, 1u, n, c->fp) == n;
+  uint32_t t = fw_clock(); int ok = fw_fseek(c->fp, (int32_t)off, 0) == 0 && fw_fread(dst, 1u, n, c->fp) == n;
+  c->reads++; c->io += fw_clock() - t;                         /* WP 1: the file time of the frame */
+  return ok;
 }
 static int wbd_read(void *vctx, uint32_t off, void *dst, uint32_t n) { wbd_ctx *c = (wbd_ctx *)vctx; return wbd_at(c, c->base + off, dst, n); }
 static int wbd_file(void *vctx, uint32_t off, void *dst, uint32_t n) { return wbd_at((wbd_ctx *)vctx, off, dst, n); }
@@ -153,15 +153,16 @@ static uint32_t wbd_core(wbd_ctx *cp, uint32_t i, uint8_t *t, const float *pos, 
 
 /* Far map (23 Nov): called at the start of cc_iter, before the block lock, in every map frame. Opens the route file,
  * draws section 4 under the detail map, closes. anchor: the screen point of (lat, lon) E7 through the map projection.
- * Returns -1 = no far map (no section, no position, busy lock, low stack), else the fm_stat stop (0 = all drawn). *ms:
- * the time of this call. */
+ * Returns -1 = no far map (no section, no position, busy lock, low stack), else the fm_stat stop (0 = all drawn).
+ * WP 1 (24 Nov) ms[5]: total ms, setup ms (until fm_draw), reads, file ms, draw ms (fm_draw less its file time). */
 #define FAR_US 60000u
 typedef int (*wbd_anchor_fn)(void *ctx, const int32_t ll[2], pt_t *s);
 static uint32_t wbd_clock(void) { return fw_clock(); }
-int wb_far(wbd_anchor_fn anchor, void *actx, uint32_t *ms) {
+int wb_far(wbd_anchor_fn anchor, void *actx, uint32_t ms[5]) {
   char name[128]; float pos[2]; wbd_ctx c; wbd_secs sec; fm_layer f; fm_stat st; vw_t v; pt_t s[4]; rs_canvas cv;
   uint32_t x, y, i, mode = 0x00006272u; int rc = -1, found; float head = FW_MAP_HEAD;
-  c.t0 = fw_clock(); c.late = 0; c.reads = 0; c.buf = 0; *ms = 0;
+  uint32_t ts = 0, is = 0;
+  c.t0 = fw_clock(); c.late = 0; c.reads = 0; c.io = 0; c.buf = 0; ms[0] = ms[1] = ms[2] = ms[3] = ms[4] = 0;
   if (fw_stack() < WBD_STACK || !wbd_pos(pos) || (found = wbd_path(name)) <= 0) return -1;
   if (!(c.fp = fw_fopen(name, (const char *)&mode))) return -1;
   if (wbd_secs_read(c.fp, &sec) && sec.size[4] && head >= -360.0f && head <= 720.0f && (c.buf = (uint8_t *)fw_malloc(GL_BUF, CAPS_PSRAM)) &&
@@ -173,13 +174,15 @@ int wb_far(wbd_anchor_fn anchor, void *actx, uint32_t *ms) {
     }
     cv.buf = FW_CANVAS_BUF; cv.w = (int16_t)FW_CANVAS_W; cv.h = (int16_t)FW_CANVAS_H;
     if (i == 4u && cv.buf && vw_fit(&v, (int32_t)x, (int32_t)y, s)) {
+      ts = fw_clock() - c.t0; is = c.io;
       fm_draw(&f, &cv, &v, x, y, (uint32_t)(int32_t)(810.5f - head) % 360u, wbd_clock, c.t0, FAR_US, &st);
       rc = (int)st.stop;
+      ms[4] = (fw_clock() - c.t0 - ts - (c.io - is)) / 1000u;
     }
   }
   if (c.buf) fw_free(c.buf);
   fw_fclose(c.fp);
-  *ms = (fw_clock() - c.t0) / 1000u;
+  ms[0] = (fw_clock() - c.t0) / 1000u; ms[1] = ts / 1000u; ms[2] = c.reads; ms[3] = c.io / 1000u;
   return rc;
 }
 
@@ -189,7 +192,7 @@ static __attribute__((noinline)) void wbd_frame(void) {
   float pos[2]; char *o = u.s; uint32_t n = 0, dm = 0, code, flags = 0; int found;
   uint32_t mode = 0x00006272u;                                 /* "rb" */
   wbd_ctx c;
-  c.t0 = fw_clock(); c.late = 0; c.reads = 0; c.glines = 0; c.gcut = 0; c.nomem = 0; c.buf = 0;
+  c.t0 = fw_clock(); c.late = 0; c.reads = 0; c.io = 0; c.glines = 0; c.gcut = 0; c.nomem = 0; c.buf = 0;
   if (fw_stack() < WBD_STACK) code = WBD_STACK_LOW;            /* before the block lock and any file call */
   else {
     flags = wbd_flags();

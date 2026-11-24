@@ -20,10 +20,10 @@ class MapBudget(unittest.TestCase):
         r=block_budget([(8|32|0x80,3)],100)
         self.assertEqual(r['projection_calls'],3)
 
-    def test_fill_outline_and_clipped_outline_omission(self):
+    def test_fill_outline_and_clipped_outline_omission(self):   # WP 3 (24 Nov): the outline uses the fill's points
         r=block_budget([(2|32,4),(3|32|0x400,5)],100)
-        self.assertEqual(r['projection_calls'],3)
-        self.assertEqual(r['projected_points'],16)
+        self.assertEqual(r['projection_calls'],2)
+        self.assertEqual(r['projected_points'],11)
 
     def test_label_projects_anchor_only(self):
         r=block_budget([(12|32,3)],100)
