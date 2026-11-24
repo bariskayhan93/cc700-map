@@ -213,8 +213,8 @@ static uint32_t wbd_core(wbd_ctx *cp, uint32_t i, uint8_t *t, const float *pos, 
 /* Far map (23 Nov): called at the start of cc_iter, before the block lock, in every map frame. Opens the route file,
  * draws section 4 under the detail map, closes. anchor: the screen point of (lat, lon) E7 through the map projection.
  * Returns -1 = no far map (no section, no position, busy lock, low stack), else the fm_stat stop (0 = all drawn).
- * WP 1 (24 Nov) ms[9]: f total, s setup (open, trailer, header, anchors), r reads, i file ms, d draw ms; then the draw
- * split: F fill ms, L line ms, A areas, N lines. */
+ * WP 1 (24 Nov) ms[9]: f total, s setup (open, trailer, header, anchors), i file ms, d draw ms; then the draw
+ * split: F fill ms, L line ms, A areas, N lines, P fill pixels / 100 (25 Nov). */
 #define FAR_US 150000u                 /* 24 Nov: emergency stop only (WP 1 photos: setup 25-49 ms left too few cells) */
 typedef int (*wbd_anchor_fn)(void *ctx, const int32_t ll[2], pt_t *s);
 static uint32_t wbd_clock(void) { return fw_clock(); }
@@ -240,14 +240,14 @@ int wb_far(wbd_anchor_fn anchor, void *actx, uint32_t ms[11]) {
       fm_draw(&f, &cv, &v, x, y, (uint32_t)(int32_t)(810.5f - head) % 360u, wbd_clock, c.t0, FAR_US, &st);
       rc = (int)st.stop;
       ms[4] = (fw_clock() - ts - (c.io - is)) / 1000u;         /* d: draw less its file time */
-      ms[5] = st.fill_us / 1000u; ms[6] = st.line_us / 1000u; ms[7] = st.areas; ms[8] = st.lines;
+      ms[5] = st.fill_us / 1000u; ms[6] = st.line_us / 1000u; ms[7] = st.areas; ms[8] = st.lines; ms[9] = st.fill_px / 100u;
       ms[1] = (to - c.t0) / 1000u; ms[2] = (te - to) / 1000u; ms[3] = (ts - te) / 1000u;   /* h: header, buffer, anchors */
     }
   }
   if (c.buf) fw_free(c.buf);
   fw_fclose(c.fp);
   ms[0] = (fw_clock() - c.t0) / 1000u;
-  ms[9] = c.reads; ms[10] = c.io / 1000u;
+  ms[10] = c.io / 1000u;                                       /* 25 Nov: ms[9] = P, fill pixels / 100 (was r, reads) */
   return rc;
 }
 

@@ -9,7 +9,7 @@ typedef struct { uint16_t *buf; int16_t w, h; } rs_canvas;   /* row-major, w * h
 #define RS_RGB(rgb) ((uint16_t)((((rgb) >> 8) & 0xf800u) | (((rgb) >> 5) & 0x07e0u) | (((rgb) >> 3) & 0x001fu)))
 
 /* Even-odd scanline fill of the polygon p[0..n) (the v21 fill, moved). Doubled hole bridges cancel. */
-void rs_fill(const rs_canvas *c, const pt_t *p, uint32_t n, uint16_t col);
+uint32_t rs_fill(const rs_canvas *c, const pt_t *p, uint32_t n, uint16_t col);   /* returns the painted pixels */
 /* Polyline of width w. w <= 0: nothing. w == 1: one pixel per Bresenham step, both ends drawn. w >= 2: at each step a
  * span of w' = ceil(w * len / major) pixels across the minor axis. round and w >= 3 and opa == 255: a disk of diameter
  * w at each point. opa < 255: each pixel is blended. */

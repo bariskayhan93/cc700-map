@@ -100,7 +100,7 @@ int main(int argc, char **argv) {
     work = rs_work(p, n, a[0]);
   } else if (!strcmp(c, "fill")) {                         /* col x y x y ... */
     for (int i = 1; i + 1 < na && n < 290; i += 2) { p[n].x = (int16_t)a[i]; p[n].y = (int16_t)a[i + 1]; n++; }
-    rs_fill(&cv, p, n, (uint16_t)a[0]);
+    work = rs_fill(&cv, p, n, (uint16_t)a[0]);              /* the painted pixels */
     old_fill(ref, 240, 256, p, n, (uint16_t)a[0]);
     refhash = hash(ref);
   } else if (!strcmp(c, "disk")) { rs_disk(&cv, a[0], a[1], a[2], (uint16_t)a[3], (uint8_t)a[4]);

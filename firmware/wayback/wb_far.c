@@ -70,7 +70,7 @@ static int fm_items(fm_ctx *c, uint32_t key, const uint8_t **pp, const uint8_t *
       c->st->points += m;
     }
     wk = c->clk();                                                 /* 24 Nov: the draw split (fill or line time) */
-    if (area) rs_fill(c->cv, s, m, col); else rs_line(c->cv, s, m, w, col, 255u, w >= 3);
+    if (area) c->st->fill_px += rs_fill(c->cv, s, m, col); else rs_line(c->cv, s, m, w, col, 255u, w >= 3);
     wk = c->clk() - wk; if (area) c->st->fill_us += wk; else c->st->line_us += wk;
   }
   return 0;
@@ -96,7 +96,7 @@ int fm_draw(fm_layer *f, const rs_canvas *cv, const vw_t *v, uint32_t x, uint32_
             fm_clock clk, uint32_t t0, uint32_t limit_us, fm_stat *st) {
   uint32_t cells[GL_CELLS], n = gl_cells(x, y, course, cells); fm_ctx c;
   c.f = f; c.cv = cv; c.v = v; c.clk = clk; c.t0 = t0; c.limit = limit_us; c.st = st;
-  st->lines = st->areas = st->points = st->work = st->stop = st->fill_us = st->line_us = 0u;
+  st->lines = st->areas = st->points = st->work = st->stop = st->fill_us = st->line_us = st->fill_px = 0u;
   if (clk() - t0 >= limit_us) { st->stop = 2u; return 0; }
   return gl_bodies(&f->l, cells, n, fm_body, &c) && !st->stop;
 }

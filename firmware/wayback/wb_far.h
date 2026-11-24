@@ -11,7 +11,7 @@ enum { FM_MAIN = 0, FM_MINOR = 1, FM_CYCLE = 2, FM_TRACK = 3, FM_PATH = 4, FM_WA
 #define FM_RING 64u                  /* points of one area ring */
 
 typedef struct { gl_layer l; wb_grid g; uint32_t fill_cap; } fm_layer;
-typedef struct { uint32_t lines, areas, points, work, stop, fill_us, line_us; } fm_stat;   /* stop: 0 none, 1 cap, 2 time, 3 bad data; 24 Nov: fill and line time */
+typedef struct { uint32_t lines, areas, points, work, stop, fill_us, line_us, fill_px; } fm_stat;   /* stop: 0 none, 1 cap, 2 time, 3 bad data; 24 Nov: fill and line time */
 typedef uint32_t (*fm_clock)(void);                                       /* microseconds */
 
 /* Header and directory of the section at [at, at + size) (one read). 1 = a version 1 far map. */

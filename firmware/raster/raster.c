@@ -215,9 +215,9 @@ static int rs_cross(const pt_t *p, uint32_t i, uint32_t j, int y) {
   int dy = yb - ya, den = 2 * dy, num = 2 * xa * dy + (xb - xa) * (2 * (y - ya) + 1) - dy;
   return num / den + (num > 0 && num % den != 0);   // ceil, independent of edge direction
 }
-void rs_fill(const rs_canvas *c, const pt_t *p, uint32_t n, uint16_t col) {   /* even-odd scanline fill (v21 pixels) */
-  uint16_t *buf = c->buf; int W = c->w, H = c->h;
-  if (!buf || n < 3) return;
+uint32_t rs_fill(const rs_canvas *c, const pt_t *p, uint32_t n, uint16_t col) {   /* even-odd scanline fill (v21 pixels) */
+  uint16_t *buf = c->buf; int W = c->w, H = c->h; uint32_t px = 0;   /* 25 Nov: painted pixels, for the far-map test text */
+  if (!buf || n < 3) return 0;
   int y0 = 1 << 30, y1 = -(1 << 30), x0 = 1 << 30, x1 = -(1 << 30);
   for (uint32_t i = 0; i < n; i++) {
     if (p[i].y < y0) y0 = p[i].y;
@@ -225,7 +225,7 @@ void rs_fill(const rs_canvas *c, const pt_t *p, uint32_t n, uint16_t col) {   /*
     if (p[i].x < x0) x0 = p[i].x;
     if (p[i].x > x1) x1 = p[i].x;
   }
-  if (x1 <= 0 || x0 >= W) return;                       // every span would be empty
+  if (x1 <= 0 || x0 >= W) return 0;                     // every span would be empty
   if (y0 < 0) y0 = 0;
   if (y1 > H - 1) y1 = H - 1;
   int small = (int)n * (y1 - y0 + 1) < RS_SMALL;
@@ -251,9 +251,10 @@ void rs_fill(const rs_canvas *c, const pt_t *p, uint32_t n, uint16_t col) {   /*
       uint16_t *row = buf + y * W;
       for (m = 0; m + 1 < odd; m += 2) {
         int a = xs[m] < 0 ? 0 : xs[m], b = xs[m + 1] > W ? W : xs[m + 1];
-        if (a < b) rs_hrun(row + a, b - a, col);
+        if (a < b) { rs_hrun(row + a, b - a, col); px += (uint32_t)(b - a); }
       }
     }
     by = be + 1;
   }
+  return px;
 }

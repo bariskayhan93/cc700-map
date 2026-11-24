@@ -66,6 +66,11 @@ test('WP 2 band fill: large rings (band path, edge-list overflow, off-canvas) gi
     ring(250, 120, -60, 80, 140), Array.from({length: 280}, (_, i) => [i % 2 ? 230 : 10, 2 + i * 0.9 | 0]).flat()];
   for (const c of cases) { const r = run('fill', 0x82cb, ...c); assert.equal(r.hash, r.ref); }
 });
+test('rs_fill returns the painted pixels (the far-map P value)', () => {
+  const cases = [[0x82cb, 10, 10, 100, 10, 100, 60, 10, 60], [0x82cb, -50, -50, 300, -50, 300, 300, -50, 300],
+    [0x82cb, 20, 20, 200, 20, 200, 200, 20, 200, 20, 20, 60, 60, 160, 60, 160, 160, 60, 160, 60, 60], [0x82cb, 300, 10, 400, 10, 400, 50]];
+  for (const c of cases) { const r = run('fill', ...c); assert.equal(r.work, r.changed); }
+});
 
 test('white at opa 115 over black gives RGB565 0x6b8d (R 13, G 28, B 13)', () => {
   assert.equal(run('line', 1, WHITE, 115, 0, 5, 5, 5, 5).first, 0x6b8d);
