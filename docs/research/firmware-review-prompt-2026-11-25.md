@@ -62,6 +62,9 @@ F1. Size changes that caused a later fault. Known cases (from git history; OWNER
        the 1,904 B they had on ride-tested cc23. Check: any stack cut that reduces the
        room left for stock callees, not only our own frames.
 F2. Stack: a merged or non-inlined function that deepens the call path from wb_rt, or a new large local.
+    The gate depth (tools/review_gate.py, G4) is an upper bound: each indirect call counts as the
+    deepest callback in CALLBACKS. Report the frame delta (from .su files or `entry a1, N`). Compare
+    an absolute depth only with a figure from the same method, and say that it is an upper bound.
 F3. Hook timing: a shared helper that changes the order or the number of file opens, reads or locks
     between cc_iter, wb_far, wb_km and wb_rt (route-exit crash class: check-then-lock, null map context).
 F4. Linker: --gc-sections or section placement that drops, moves or duplicates code or data
