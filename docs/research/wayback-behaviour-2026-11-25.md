@@ -10,6 +10,9 @@ follow-up host runs. Marks: M = device measured (cited), H = host run, E = estim
 - A stateless near-tie rule (`WB_TIE`) fixes the largest jump cause and is now in the device build (c79f246).
 - A forward join needs a trusted exit position and data made when the file is built. It does not fit the code room.
 - The far map builder now caps the stacked area fill per cell (765a941).
+- Second pass (below): a correct-move test now exists (host). The 5 m bonus for the last piece passes it and gives the
+  fewest jumps together with `WB_TIE`. Cause 3 was exit edges, not turn rules: fixed in the builder (410f32c). A tunnel
+  mark does not pay. The old forward lists do not fix "behind the rider" and do not fit.
 
 ## Host replay of the core (H)
 
@@ -31,8 +34,8 @@ Causes of the large jumps (traced on Monaco and rural):
 1. A node shared by a tree piece and a one-way extra piece. The rider is about 0.3 m from both. Stock picks by
    rounding. The extra piece must go to its far end: 1,382 m instead of 640 m.
 2. Two streets cross with no shared node (bridge, tunnel). A 2D position cannot tell them apart.
-3. One rural case: an extra piece at a node gives a ride 300 m shorter than the node's own tree distance. Possible
-   cause: a turn restriction in the tree. Not checked (gap).
+3. One rural case: an extra piece at a node gives a ride 300 m shorter than the node's own tree distance. Cause found
+   in the second pass: an exit edge (see below), not a turn rule. The tree has no turn rules.
 
 Fixes on the host (scenario b = ride toward the route; c = still rider with noise):
 
@@ -96,12 +99,72 @@ Hand link of area 2 without the base image (the cc25 base is not on this machine
 - Far map speed: the two cheap ideas (lazy open, wider stores) were rejected on 24 Nov (`map-layers-2026-11-24.md`
   section 12). No new idea with evidence.
 
+## Second pass, 25 Nov (H)
+
+Same replay, seed 7, the demo and three lab files; rural and Freiburg rebuilt with 410f32c. New tracks: e = a real turn
+at a node (45-135 degrees), f = a switch to a parallel street over a connector (at most 60 m). The true piece of each
+frame is known. Lag = frames after the turn (+10 m) until the line starts on the new street. Policies with memory keep
+one piece id per track.
+
+| Policy | Turn tracks with lag >= 20 m, clean / 3 m noise (of 302) | Largest lag | Toward the route, distance jumps > 25 m, clean / 3 m noise | Largest jump, 3 m noise |
+|---|---|---|---|---|
+| stock | 0 / 0 | 15 m | 32 / 812 | 1,194 m |
+| hysteresis 15/20 m | 25 / 47 | 80 m | 314 / 889 | 1,202 m |
+| neighbour hysteresis | 5 / 14 | 85 m | 30 / 200 | 1,190 m |
+| bonus 5 m | 0 / 0 | 15 m | 0 / 254 | 1,199 m |
+| `WB_TIE` (device build) | 0 / 1 | 20 m | 12 / 477 | 1,182 m |
+| bonus 5 m + `WB_TIE` | 1 / 7 | 25 m | 4 / 105 | 779 m |
+
+- Both hysteresis policies fail the correct-move test. The bonus passes it. On clean turn tracks the bonus starts the
+  line on the true piece or on a piece that shares a node with it in 99.4 % of frames (stock 100 %, `WB_TIE` 99.9 %):
+  after a node it keeps the old piece for up to 5 m, and that piece ends at the same node.
+- Bonus + `WB_TIE` is the strongest jump fix (812 -> 105 with noise) at a small cost in turns. A device version needs
+  one piece id between frames (the `WBD_KEEP` page cache, about +50-65 B, E), a reset rule (no line, no GPS, route
+  change), and its own device test. Not started: a separate firmware deliverable.
+
+Jumps that stay with `WB_TIE` (3 m noise, toward the route, three lab files, 464 jumps): 285 near piece with no shared
+node (mostly the same road class side by side, which looks like the two halves of a dual carriageway), 73 crossings
+with no shared node, 53 shared node with a tree piece, 52 shared node with an extra piece, 1 other. In Monaco most
+crossings have a tunnel piece (layer -1 or -2). The rural file has no crossing jump.
+
+Exit edges (410f32c). The extra pieces with a ride shorter than the tree distance of their node are exit edges: all 98
+on the rural file and 109 of 112 in Freiburg (the other 3 are rounding of 1-2 m); Monaco has none. The tree never
+takes a street node's next over an exit edge, but the core took the shorter end of the extra piece, and `WB_TIE`
+prefers it. The builder now clears that end bit. Rural file: 98 end bits change, no other byte. Rural largest jump of
+`WB_TIE` on clean tracks: 300.7 m -> 9.1 m.
+
+Tunnel mark: rejected. A host policy that never starts the line on a tunnel piece changes Monaco surface frames from 95.1 to
+95.2 % correct (clean) and 80.1 to 80.5 % (noise), but riders in a tunnel get a line from the street above: Monaco
+clean jumps toward the route 4 -> 47. The format has no free bit for a tree piece (the 64-bit node record is full;
+only the top bit of an extra's node index b is free), so the mark needs a new version.
+
+Forward lists (`exceptions: true`, the old v1 design) on the lab graphs:
+
+| File | Route km | Records, 3 km reach | Bytes | Of node and extra bytes |
+|---|---|---|---|---|
+| Monaco | 4 | 0 | 20 | 0 % |
+| rural | 13 | 7,605 | 60,896 | 70 % |
+| Freiburg | 4 | 3,072 | 24,596 | 16 % |
+
+- Each chunk accepts route nodes from the ride reach (6 km) behind its start, so on a short route the lists are empty:
+  Monaco gets none, but it has the most frames behind the rider (44 %). The lists do not fix "behind the rider".
+- A strict variant (route nodes from 50 m before the chunk start): Monaco 7,196 B (28 %), rural 123,088 B (142 %),
+  Freiburg 49,908 B (32 %) at 3 km.
+- The forward part of the old core was about 488 B (2,782 - 2,294 B). Area 2 has 308 B free.
+- Any forward join first needs a trusted exit position. Proposed device test T1 (not run, needs the owner's go):
+  hypothesis: `FW_ROUTE_LEFT` keeps the value of the last on-route frame while the stock is off route. Observation: the
+  text fields `u t o p` on the map, read-only, no write to stock memory. Bounded: one ride of 10 minutes with three
+  exits (forward parallel, back, a turn at the shared start/finish). Restoration: flash the current image back.
+
 ## Gaps
 
 - No ride. All behaviour numbers are host numbers on synthetic tracks.
 - The full cc27 image was not built (base image absent).
-- Crossings with no shared node still give jumps; the builder knows `bridge`/`tunnel`/`layer`, the file does not.
-- A correct-move test for stateful policies does not exist.
-- The rural 300 m case (cause 3) is not classified.
+- Crossings with no shared node and dual carriageways still give jumps. A heading input could split the two halves of
+  a dual carriageway, but the core has no heading and the file has no one-way bit for tree pieces.
+- Real GPS in tunnels is not known: no device data.
+- The bonus is not on the device; its PSRAM memory and reset rule are estimates.
+- T1 (the remaining distance while off route) is not run.
 
-Scripts and output: `.local/lab/wayback-replay/` (local only; the lab files hold real street geometry).
+Scripts and output: `.local/lab/wayback-replay/` (local only; the lab files hold real street geometry). Second pass:
+`l3_run.mjs`, `l3_sum.mjs`, `l3_graph.mjs`, `l3_fwdsize.mjs`, policies 6-7 in `l2_host.c`.
