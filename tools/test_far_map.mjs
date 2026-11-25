@@ -32,7 +32,7 @@ assert.equal(areaClassOf({landuse: 'forest'}), FAR.FOREST);
 assert.equal(areaClassOf({natural: 'water'}), FAR.WATER);
 assert.equal(areaClassOf({leisure: 'park'}), FAR.GREEN);
 assert.equal(areaClassOf({landuse: 'farmland'}), null);
-assert.deepEqual(DETAIL_REACH, {[FAR.MAIN]: 1000, [FAR.MINOR]: 300, [FAR.CYCLE]: 300, [FAR.TRACK]: 300, [FAR.PATH]: 300, [FAR.WATERLINE]: 300}, 'WP 6 handover: 300 m, main roads 1000 m');
+assert.deepEqual(DETAIL_REACH, {[FAR.MAIN]: 600, [FAR.MINOR]: 300, [FAR.CYCLE]: 300, [FAR.TRACK]: 300, [FAR.PATH]: 300, [FAR.WATERLINE]: 300}, 'WP 6 handover: 300 m, main roads 600 m (25 Nov)');
 ok('classes');
 
 // 2. a street that leaves and enters the 300 m minor reach (WP 6 handover) two times gives two far pieces that start at the reach

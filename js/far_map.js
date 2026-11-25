@@ -6,6 +6,7 @@ import {forEachScreen, lineWorkBound} from './screen_proof.js';
 import {makeFrame} from './wayback_format.js';
 import {REACH} from './wayback_tree.js';
 import {bikeWay} from './recovery_graph.js';
+import {HANDOVER_M, MAIN_HANDOVER_M} from './mapsec.js';
 
 export const FAR = {MAIN: 0, MINOR: 1, CYCLE: 2, TRACK: 3, PATH: 4, WATERLINE: 5, WATER: 8, FOREST: 9, GREEN: 10, BUILT: 11};
 export const FAR_CAPS = {pixCap: 150000, ptCap: 4096, fillCap: 61440};   // the unit checks pixCap and ptCap; fillCap is written but not read; FAR_US 150 ms is an emergency stop only
@@ -14,8 +15,8 @@ const VERSION = 1, CELL_SHIFT = 12, Q_SHIFT = 3, CELL = 1 << CELL_SHIFT, Q = 1 <
 const MAX_POINTS = 32, MAX_RING = 64, MAX_BODY = 2048, MAX_CELLS = 16384, MAX_KEYS = 256, HEADER = 48, ENTRY = 8, SENTINEL = 0xFFFFFFFF;
 const LINE_TOL = 40, AREA_TOL = 12 * U_M, AREA_MIN = 5000, STEP_M = 20;
 // detail reach of each line class; the far line starts where the detail map stops. WP 6: a file with a far map carries the
-// handover detail map (js/mapsec.js HANDOVER_M), so small classes hand over at 300 m and main roads at 1000 m.
-export const DETAIL_REACH = {[FAR.MAIN]: 1000, [FAR.MINOR]: 300, [FAR.CYCLE]: 300, [FAR.TRACK]: 300, [FAR.PATH]: 300, [FAR.WATERLINE]: 300};
+// handover detail map (js/mapsec.js HANDOVER_M, MAIN_HANDOVER_M), so small classes hand over at 300 m and main roads at 600 m.
+export const DETAIL_REACH = {[FAR.MAIN]: MAIN_HANDOVER_M, [FAR.MINOR]: HANDOVER_M, [FAR.CYCLE]: HANDOVER_M, [FAR.TRACK]: HANDOVER_M, [FAR.PATH]: HANDOVER_M, [FAR.WATERLINE]: HANDOVER_M};
 // unit draw order and widths in pixels (edge, core)
 // streets in style D as the unit draws and counts them (wb_far.c fm_style: edge 4 + core 2, 0f1d019), main roads one thin line
 export const DRAW_ORDER = [FAR.BUILT, FAR.WATER, FAR.FOREST, FAR.GREEN, FAR.WATERLINE, FAR.PATH, FAR.TRACK, FAR.CYCLE, FAR.MINOR, FAR.MAIN];
