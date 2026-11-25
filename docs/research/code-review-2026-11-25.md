@@ -34,5 +34,7 @@ branch was found in them.
 ## Gaps
 
 - The two-opens saving is from the test text (`o4`), not from a timing of the shared handle.
-- Tests in `tools/` that import missing modules (`map_budget`, `target_measurement`, and 10 more) fail on import.
-  They did not run. They are not part of the image build tests.
+- Correction (25 Nov): no module is missing. The import errors came from running the tests from the repo root.
+  Run as `validate_local.py` runs them (`python3 -I -m unittest discover -s tools -p 'test_*.py'`): 234 tests, 62 skipped,
+  3 errors from this machine: `zoneinfo` needs Python 3.9 (this machine has 3.8.10; `test_replay_inputs`),
+  `.local/cc25/ota_1_cc25.bin` is absent (`test_font_widths`), and `../cc700-patch` is absent (`test_patch_loader`).
