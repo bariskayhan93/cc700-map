@@ -53,8 +53,8 @@ Method:
 Failure classes:
 F1. Size changes that caused a later fault. Known cases (from git history; OWNER: confirm or extend):
     a) 3e81fd6 -> fixed in 83d6c5c: a "no rodata" one-line loop in map_time put
-       `o = tx_num(...)` and the '+' after a `//` comment. It compiled; the far text lost
-       its numbers. Check: compact one-line edits, code after `//`, macros that swallow code.
+       `o = tx_num(...)`, the '+' and the loop's `}` after a `//` comment. map.c did not
+       compile (checked 25 Nov). Check: compact one-line edits, code after `//`, macros that swallow code.
     b) 98c7e0e: the loop-start trampoline frame was 32 B, not 48 B. A window spill wrote
        a4..a7 over stored argument 7 (crash of 2026-11-16). Check: any smaller `entry`
        frame or moved stack slot in a trampoline.
@@ -104,7 +104,7 @@ a host test or a disassembly. Keep a finding only if the refutation fails.
 
 ## Part 5: runs
 
-Environment for both runs: the C4 base image (`.local/`) is absent, so `tools/cc27_build.py` did not run. The area-2 link was done by hand with the same flags; the sizes match the commit messages. `tools/test_renderer_host.py` did not run (commit `6bacafc` is missing).
+Environment for all runs: the C4 base image (`.local/`) is absent, so `tools/cc27_build.py` did not run. The area-2 link was done by hand with the same flags; the sizes match the commit messages. In the first two runs, `tools/test_renderer_host.py` did not run (commit `6bacafc` is missing; `79fc86f` changed it to `5837e9d`).
 
 ### 7f27e9b^..7f27e9b (1,388 B)
 
@@ -120,6 +120,18 @@ Environment for both runs: the C4 base image (`.local/`) is absent, so `tools/cc
 - Behaviour change, damaged files only: a trailer total larger than the file and a trailer moved by padding now fall back to the stock display (the old code drew the line); an elevation section that overlaps the way-back section now draws the line (the old code fell back). The app writer makes none of these files.
 - Unverified: a future `#include "text.h"` in a tail source would let the link keep the first `tx_num`.
 
+### 3e81fd6^..3e81fd6 (calibration, blind)
+
+The prompt ran without case F1 a), and the reviewer did not see later commits. The fix copy changes only the `//` on `map.c:254` to `/* */`, so sizes can be measured.
+
+- Build break (no class): `map.c:254` does not compile (`invalid storage class for function 'scan'`). Second pass: true; fixed in `83d6c5c`. The blind prompt found the known fault.
+- Limits: area 2 is 18,612 B, 208 B over 18,404 B (old: 18,176 B). Second pass: true; `83d6c5c` is also 18,612 B. `9226308` moved `view.c` to the tail area.
+- F3: `wbd_at` calls `fw_clock` three times for each read. `test_wayback_device.mjs` passes 41/42 at `83d6c5c` (old: 42/42). Second pass: true; `dbcdda6` changed the slow-clock test.
+- F7: `map_time` writes 1 B past `char s[48]` when every number has 5 digits and cut and pd are set (48 characters plus the NUL; ASan). Second pass: true, but only a frame of 10 s or more triggers it. HEAD uses `s[64]` and two rows.
+- F2: frame deltas `wbd_frame` 352→368, `cc_iter` 400→416, `rs_fill` 320→464 B (`.su`). Second pass: true. No gate checks the map frame path; G4 starts at `wb_rt` only. The reviewer compared a G4 depth with 1,904 B; the F2 note does not allow that.
+- Not ranked: `__lshrdi3` from libgcc is in area 2 (24 B), and it is still there in the 8538ec4 builds. G3 lists only libc names.
+- Refuted: `tools/map_budget.py` counts one projection and `js/map_budget.js` counts two. The commit message says that this is on purpose.
+
 ### Result
 
-No false alarm in two runs. Each run had one ranked finding: a real stack delta that the second pass showed is not a risk. Same gaps in both runs: no full build check without the base image, and no host harness for the `wb_far` open, trailer and close path.
+No false alarm in three runs. The blind run found the known fault and two more real faults that the commit left: the code limit and a failing test. The prompt has no class for "the range builds, fits the code limit and passes its tests"; the reviewer added that check without a class. Same gaps in all runs: no full build check without the base image, and no host harness for the `wb_far` open, trailer and close path.
