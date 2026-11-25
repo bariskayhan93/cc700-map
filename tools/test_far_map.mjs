@@ -3,7 +3,7 @@
 import assert from 'node:assert/strict';
 import {makeFrame} from '../js/wayback_format.js';
 import {HANDOVER_M, HANDOVER_LONG_M} from '../js/mapsec.js';
-import {farClassOf, areaClassOf, buildFarCells, encodeFar, readFar, fitFar, proveFar, FAR_CAPS, FAR} from '../js/far_map.js';
+import {farClassOf, areaClassOf, buildFarCells, encodeFar, readFar, fitFar, proveFar, FAR_CAPS, FILL_STACK, FAR} from '../js/far_map.js';
 
 const ok = name => console.log('PASS ' + name);
 const LAT = 51.0, mN = 1 / 111320, mE = 1 / (111320 * Math.cos(LAT * Math.PI / 180));
@@ -96,6 +96,27 @@ assert(fit.removedLines > 0);
 const kept = c => fit.cells.flatMap(x => x.items).filter(i => i.cls === c).length;
 assert(kept(FAR.MAIN) > kept(FAR.PATH), 'paths go before main roads');
 ok('fit to the caps');
+
+// 6b. fill stack: overlapping areas in one cell are cut to fillStack cell areas, the smallest area first
+{
+  const sq = (x0, y0, x1, y1) => ({tags: {landuse: 'forest'}, rings: [[P(x0, y0), P(x1, y0), P(x1, y1), P(x0, y1), P(x0, y0)]]});
+  const big = sq(500, 500, 1500, 1500), areas = [big, big, big, big, sq(900, 900, 960, 960)];
+  const cells = buildFarCells({ways: [], areas, route, frame, reachM: 3000});
+  const p0 = proveFar(cells);
+  assert(p0.worstStack > FILL_STACK && p0.fillOver > 0, 'test cell is over the fill stack');
+  const f = fitFar(cells);
+  assert(f.removedAreas > 0 && f.proof.fillOver === 0 && f.proof.worstStack <= FILL_STACK);
+  // in each cell, every removed area is not larger than any kept area
+  const area = r => Math.abs(r.reduce((s, p, i) => { const q = r[(i + 1) % r.length]; return s + p[0] * q[1] - q[0] * p[1]; }, 0) / 2);
+  const after = new Map(f.cells.map(c => [c.key, c.items.map(i => area(i.pts))]));
+  for (const c of cells) {
+    const kept = after.get(c.key) || [], left = kept.slice(), removed = [];
+    for (const a of c.items.map(i => area(i.pts))) { const j = left.indexOf(a); if (j >= 0) left.splice(j, 1); else removed.push(a); }
+    if (removed.length && kept.length) assert(Math.max(...removed) <= Math.min(...kept), 'the smallest area goes first');
+  }
+  assert.equal(fitFar(fit.cells).removedAreas, 0, 'lines only: no area removal');
+}
+ok('fill stack');
 
 // 7. owner decision 23 Nov (option 1): the far map reach is at most 2 km; the violet line keeps 3 km
 {

@@ -41,7 +41,7 @@ export async function cc27Sections(routeFile, {wayback = true, elevation = true,
       const sections = [{type: SECTION.WAYBACK, bytes: wb}, ...(far ? [{type: SECTION.FAR, bytes: far.bytes}] : []), ...tail];
       const file = make(sections, base);
       if (file.length > fileLimit) continue;
-      Object.assign(report, {waybackBytes: wb.length, farBytes: far ? far.bytes.length : 0, farReachM: far ? fm : 0, reach: w.reach, stats: w.stats, handover: !!(far && farRouteFile), ...(far ? {farCells: far.cells, farRemovedLines: far.removedLines} : {})});
+      Object.assign(report, {waybackBytes: wb.length, farBytes: far ? far.bytes.length : 0, farReachM: far ? fm : 0, reach: w.reach, stats: w.stats, handover: !!(far && farRouteFile), ...(far ? {farCells: far.cells, farRemovedLines: far.removedLines, farRemovedAreas: far.removedAreas} : {})});
       if (!far) report.farReason = src && farReason !== 'keine Fernkarten-Zelle' && !farReason ? over : farReason ?? over;
       delete report.waybackError;
       return {file, sections: sections.map(s => s.type), report};

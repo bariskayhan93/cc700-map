@@ -10,6 +10,10 @@ import {HANDOVER_M, HANDOVER_LONG_M} from './mapsec.js';
 
 export const FAR = {MAIN: 0, MINOR: 1, CYCLE: 2, TRACK: 3, PATH: 4, WATERLINE: 5, WATER: 8, FOREST: 9, GREEN: 10, BUILT: 11};
 export const FAR_CAPS = {pixCap: 150000, ptCap: 4096, fillCap: 61440};   // the unit checks pixCap and ptCap; fillCap is written but not read; FAR_US 150 ms is an emergency stop only
+export const FILL_STACK = 3;
+// FILL_STACK (builder only, not in the file; caps.fillStack overrides it): the area fill of one cell is at most FILL_STACK cell areas. A screen then
+// fills at most FILL_STACK canvases (3 x 61,440 px, about 29 ms at 0.16 us/px: an estimate). Measured 25 Nov: rural
+// 2.28, Freiburg 1.82, Monaco 1.00 (compare routes), so the cap removes nothing there.
 const MAGIC = [0x43, 0x43, 0x46, 0x4D];          // "CCFM"
 const VERSION = 1, CELL_SHIFT = 12, Q_SHIFT = 3, CELL = 1 << CELL_SHIFT, Q = 1 << Q_SHIFT, U_M = 16;
 const MAX_POINTS = 32, MAX_RING = 64, MAX_BODY = 2048, MAX_CELLS = 16384, MAX_KEYS = 256, HEADER = 48, ENTRY = 8, SENTINEL = 0xFFFFFFFF;
@@ -228,18 +232,27 @@ export function readFar(bytes) {
 
 // Line work and points of the items of one cell (areas: their ring points; the fill is bounded by the canvas).
 const itemWork = i => i.cls >= FAR.WATER ? 0 : (WIDTHS[i.cls] || [2]).reduce((s, w) => s + lineWorkBound(i.pts, w), 0);
+const itemFill = i => i.cls >= FAR.WATER ? ringArea(i.pts) / (CELL * CELL) : 0;   // in cell areas
+const cellStack = c => c.items.reduce((s, i) => s + itemFill(i), 0);
 function costs(cells) { return new Map(cells.map(c => [c.key, c.items.reduce((s, i) => ({work: s.work + itemWork(i), points: s.points + i.pts.length}), {work: 0, points: 0})])); }
 export function proveFar(cells, caps = FAR_CAPS) {
-  const cost = costs(cells); let over = 0, screens = 0, worstWork = 0, worstPoints = 0;
+  const cost = costs(cells); let over = 0, screens = 0, worstWork = 0, worstPoints = 0, worstStack = 0, fillOver = 0;
+  for (const c of cells) { const k = cellStack(c); worstStack = Math.max(worstStack, k); if (k > (caps.fillStack ?? FILL_STACK)) fillOver++; }
   forEachScreen(cells, 1024, 16, (x, y, course, key, offsets) => { let w = 0, p = 0;
     for (const o of offsets) { const c = cost.get(key + o); if (c) { w += c.work; p += c.points; } }
     screens++; worstWork = Math.max(worstWork, w); worstPoints = Math.max(worstPoints, p); if (w > caps.pixCap || p > caps.ptCap) over++; });
-  return {screens, over, worstWork, worstPoints};
+  return {screens, over, worstWork, worstPoints, worstStack, fillOver};
 }
-// While a screen is over a cap: remove, in its cells, the shortest line; main roads last.
+// While a cell is over FILL_STACK: remove its smallest area. Then, while a screen is over a cap: remove, in its cells,
+// the shortest line; main roads last.
 export function fitFar(cells, caps = FAR_CAPS, maxRemovals = 20000) {
   const work = cells.map(c => ({key: c.key, items: c.items.slice()})), byKey = new Map(work.map(c => [c.key, c])), cost = costs(work);
-  let removedLines = 0;
+  let removedLines = 0, removedAreas = 0;
+  for (const c of work) while (cellStack(c) > (caps.fillStack ?? FILL_STACK)) {
+    let bi = -1;
+    c.items.forEach((it, i) => { if (it.cls >= FAR.WATER && (bi < 0 || itemFill(it) < itemFill(c.items[bi]))) bi = i; });
+    const it = c.items.splice(bi, 1)[0], k = cost.get(c.key); k.points -= it.pts.length; removedAreas++;
+  }
   const len = p => p.slice(1).reduce((s, q, k) => s + Math.hypot(q[0] - p[k][0], q[1] - p[k][1]), 0);
   forEachScreen(work, 1024, 16, (x, y, course, key, offsets) => {
     const sum = () => offsets.reduce((s, o) => { const c = cost.get(key + o); return c ? {w: s.w + c.work, p: s.p + c.points} : s; }, {w: 0, p: 0});
@@ -254,7 +267,7 @@ export function fitFar(cells, caps = FAR_CAPS, maxRemovals = 20000) {
     }
   });
   const out = work.filter(c => c.items.length);
-  return {cells: out, removedLines, proof: proveFar(out, caps)};
+  return {cells: out, removedLines, removedAreas, proof: proveFar(out, caps)};
 }
 
 // The section bytes of one route file (null: no far cell). w: the result of addWayback (snapshot, bbox, route, reach);
@@ -266,5 +279,5 @@ export function farSection(w, src, caps = FAR_CAPS, reachM = REACH[w.reach].air)
   const cells = buildFarCells({ways, areas: src.areas, route: w.route.map(r => r.point), frame, reachM});
   if (!cells.length) return null;
   const fit = fitFar(cells, caps);
-  return fit.cells.length ? {bytes: encodeFar(fit.cells, caps, frame), removedLines: fit.removedLines, cells: fit.cells.length} : null;
+  return fit.cells.length ? {bytes: encodeFar(fit.cells, caps, frame), removedLines: fit.removedLines, removedAreas: fit.removedAreas, cells: fit.cells.length} : null;
 }
