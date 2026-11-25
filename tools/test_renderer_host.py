@@ -9,7 +9,7 @@ import unittest
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE = Path(os.environ.get("CC700_PATCH_SRC", ROOT / "firmware/mapdraw/map.c")).parent
-V21_COMMIT = "6bacafc"   # firmware/mapdraw as built in the base image, before A and B (18 Nov 2026)
+V21_COMMIT = "5837e9d"   # firmware/mapdraw as built in the base image, before A and B (18 Nov 2026; was 6bacafc before a history rewrite)
 
 
 class RendererHost(unittest.TestCase):
