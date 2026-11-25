@@ -168,3 +168,11 @@ Forward lists (`exceptions: true`, the old v1 design) on the lab graphs:
 
 Scripts and output: `.local/lab/wayback-replay/` (local only; the lab files hold real street geometry). Second pass:
 `l3_run.mjs`, `l3_sum.mjs`, `l3_graph.mjs`, `l3_fwdsize.mjs`, policies 6-7 in `l2_host.c`.
+
+## Device, 25 Nov late (M)
+
+- ota_1: image 164deaa3 (19c1213, `WB_TIE` + `WB_BONUS`, area 2 18,128 B), verified on the chip; before: segfast 2de34f29.
+- Storage: N3 8130da61 (557,056 B) and N4 e1d04b59 (712,704 B) from the 19c1213 builder, verified, 313 blocks changed.
+  Restoration: `restore-segfast` and the restriction-fix files (5628dcf0, 5eb6fdfb).
+- Not yet observed: the off-route photo on N4 (expected: no jump between frames, `w` near 12 ms).
+- Host note: three storage writes hung in the read phase while the computer slept; under `caffeinate` the write passed.
