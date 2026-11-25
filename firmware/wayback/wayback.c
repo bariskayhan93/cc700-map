@@ -2,9 +2,13 @@
  * Integer code only: no float, no heap, no 64-bit division. The only library-free helper that
  * touches memory is the reader callback. File layout: firmware/wayback/README.md. */
 #include "wayback.h"
-#ifdef CC26_AREA2      /* the device build: the tick-only core and the near-tie rule (25 Nov study) */
+#ifdef CC26_AREA2      /* the device build: the tick-only core, the near-tie rule and the last-piece bonus (25 Nov study) */
 #define WB_TICK_ONLY 1
 #define WB_TIE 1
+#define WB_BONUS 1
+#endif
+#if defined(WB_BONUS) && !defined(WB_TIE)
+#error "WB_BONUS needs WB_TIE"
 #endif
 
 #define WB_HEADER_BYTES 64u
@@ -49,6 +53,9 @@ typedef struct { uint8_t has; uint32_t kind, a, b; } wb_prev;
 typedef struct { uint32_t X, Y, d2, t; int have; wb_cand cand;
 #ifdef WB_TIE
   uint32_t d, ride;
+#endif
+#ifdef WB_BONUS
+  uint32_t keep;
 #endif
 } wb_pick;
 
@@ -298,6 +305,13 @@ static void cand_set(wb_cand *d, const wb_cand *s) {
  * rider is within a few decimetres of both; stock then picks by rounding, and the ride distance can change by 300 to
  * 750 m between two frames. One pass in scan order, no state between frames. */
 #define WB_TIE_UNITS 32u            /* 2 m */
+#ifdef WB_BONUS
+/* WB_BONUS (25 Nov second pass; on in the device build): the last frame's piece (wb_input.keep) stays a candidate up to
+ * 20 m, and every other piece counts 5 m farther. Then the tie rule as above. Host replay: it passes the correct-move
+ * test (real turns, parallel streets) and cuts the distance jumps toward the route from 812 to 105 (3 m noise). */
+#define WB_BONUS_UNITS 80u          /* 5 m */
+#define WB_KEEP_D2 102400u          /* 20 m = 320 units; 320 * 320 */
+#endif
 static uint32_t wb_isqrt(uint32_t v) {
   uint32_t r = 0u, b = 1u << 30;
   while (b > v) b >>= 2;
@@ -323,8 +337,14 @@ static int pick_visit(void *vp, const wb_cand *c) {
   if (!wb_measure((int32_t)c->xa - (int32_t)p->X, (int32_t)c->ya - (int32_t)p->Y,
                   (int32_t)c->xb - (int32_t)p->X, (int32_t)c->yb - (int32_t)p->Y, &d2, &t)) return 1;
 #ifdef WB_TIE
+#ifdef WB_BONUS
+  uint32_t same = (c->id & 0x00FFFFFFu) + 1u == p->keep;
+  if (d2 <= (same ? WB_KEEP_D2 : WB_D2_LIMIT)) {
+    uint32_t d = wb_isqrt(d2) + (same ? 0u : WB_BONUS_UNITS), r = wb_ride(c, t);
+#else
   if (d2 <= WB_D2_LIMIT) {
     uint32_t d = wb_isqrt(d2), r = wb_ride(c, t);
+#endif
     if (!p->have || d + WB_TIE_UNITS < p->d || (d <= p->d + WB_TIE_UNITS && r < p->ride)) {
       cand_set(&p->cand, c);
       p->d2 = d2;
@@ -422,6 +442,9 @@ void wb_tick(wb_engine *e, const wb_input *in, wb_output *out) {
   out_reset(out);
   prev_take(e, &pr);
   pk.have = 0;
+#ifdef WB_BONUS
+  pk.keep = in->keep;
+#endif
 #ifndef WB_TICK_ONLY   /* the device adapter ticks only after a good mount, with both flags set (wb_device.c:198-201) */
   if (!e->mounted) { out->reason = WB_NO_FILE; return; }
   if (!(in->flags & WB_GPS_VALID)) { out->reason = WB_GPS; return; }
@@ -438,7 +461,11 @@ void wb_tick(wb_engine *e, const wb_input *in, wb_output *out) {
     out->reason = WB_READ;
     return;
   }
+#ifdef WB_BONUS
+  if (!pk.have) { out->reason = WB_NO_STREET; return; }   /* the pick admits only pieces in their limit */
+#else
   if (!pk.have || pk.d2 > WB_D2_LIMIT) { out->reason = WB_NO_STREET; return; }
+#endif
   wb_commit(e, &pk.cand, pk.t, &pr, out);
 }
 

@@ -75,7 +75,7 @@ int main(int argc, char **argv) {
     if (wb_mount(e, mem_read, &m, n, id)) {
       mounted++;
       for (j = 0; j < 8; j++) {
-        wb_input in = {e7[j][0], e7[j][1], 0u, WB_GPS_VALID | WB_OFF_ROUTE};
+        wb_input in = {e7[j][0], e7[j][1], 0u, WB_GPS_VALID | WB_OFF_ROUTE, 0u};
         wb_output out;
         int32_t p[2];
         wb_tick(e, &in, &out);

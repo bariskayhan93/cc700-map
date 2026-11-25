@@ -11,6 +11,7 @@
 
 typedef struct {
   uint32_t key, size, tick, hits, nk;   /* nk: the owner's path hash (wb_device.c), kept with the size */
+  uint32_t keep, at;                 /* the way-back piece memory (WB_BONUS): wb_input.keep and its fw_clock time; 0 = none */
   uint32_t page[WC_PAGES];           /* page index + 1; 0 = empty */
   uint32_t used[WC_PAGES];           /* tick of the last use */
   uint8_t data[WC_PAGES][WC_PAGE];

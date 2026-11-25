@@ -127,6 +127,7 @@ static void cover_check(wb_engine *e, long *cases, long *errors) {
     in.lon_e7 = e7[1];
     in.exit_progress_cm = 0u;
     in.flags = WB_GPS_VALID | WB_OFF_ROUTE;
+    in.keep = 0u;
     wb_tick(e, &in, &out);
     if (out.state != WB_LINE) continue;
     if (!wb_units(&g, in.lat_e7, in.lon_e7, &X, &Y)) { (*errors)++; continue; }
@@ -177,7 +178,7 @@ int main(int argc, char **argv) {
   uint8_t route[16];
   host_ctx c;
   wb_engine *eng;
-  long size, lat, lon, exit_cm, flags, max_points, fail_after;
+  long size, lat, lon, exit_cm, flags, max_points, fail_after, keep;
   char line[256];
   const char *file, *hex;
   int mounted, selftest;
@@ -215,7 +216,8 @@ int main(int argc, char **argv) {
 
   while (fgets(line, sizeof line, stdin)) {
     long reads_tick;
-    if (sscanf(line, "%ld %ld %ld %ld %ld %ld", &lat, &lon, &exit_cm, &flags, &max_points, &fail_after) < 6) break;
+    keep = 0;   /* optional 7th field: wb_input.keep (WB_BONUS) */
+    if (sscanf(line, "%ld %ld %ld %ld %ld %ld %ld", &lat, &lon, &exit_cm, &flags, &max_points, &fail_after, &keep) < 6) break;
     if (!mounted) {
       printf("{\"mounted\":0}\n");
       continue;
@@ -228,6 +230,7 @@ int main(int argc, char **argv) {
     in.lon_e7 = (int32_t)lon;
     in.exit_progress_cm = (uint32_t)exit_cm;
     in.flags = (uint32_t)flags;
+    in.keep = (uint32_t)keep;
     wb_tick(eng, &in, &out);
     printf("{\"mounted\":1,\"state\":%" PRIu32 ",\"reason\":%" PRIu32 ",\"distanceDm\":%" PRIu32
            ",\"forward\":%" PRIu32 ",\"changed\":%" PRIu32 ",\"piece\":%" PRIu32 ",\"points\":[",

@@ -23,7 +23,7 @@ const work = fs.mkdtempSync(path.join(os.tmpdir(), 'wayback-device-'));
 process.on('exit', () => { try { fs.rmSync(work, {recursive: true, force: true}); } catch {} });
 const exe = path.join(work, 'host');
 const F = d => path.join(root, 'firmware', d);
-execFileSync('cc', ['-std=gnu11', '-O1', '-g', '-Wall', '-Wextra', '-Werror', '-DHOST', '-DWB_TICK_ONLY', '-DWB_TIE', '-DWBD_KM_WHY', '-DWBD_GREY', '-DWBD_NO_KEEP',
+execFileSync('cc', ['-std=gnu11', '-O1', '-g', '-Wall', '-Wextra', '-Werror', '-DHOST', '-DWB_TICK_ONLY', '-DWB_TIE', '-DWB_BONUS', '-DWBD_KM_WHY', '-DWBD_GREY', '-DWBD_NO_KEEP',
   '-fsanitize=address,undefined', '-fno-sanitize-recover=all', '-I', F('wayback'), '-I', F('common'), '-I', F('raster'), '-I', F('view'), '-I', F('elev'),
   path.join(root, 'tools/wayback_device_host.c'), F('wayback/wb_device.c'), F('wayback/wayback.c'), F('wayback/wb_grey.c'),
   F('wayback/wb_grey_draw.c'), F('wayback/wb_far.c'), F('wayback/wb_cache.c'), F('raster/raster.c'), F('view/view.c'), F('elev/elev.c'), '-lm', '-o', exe], {stdio: ['ignore', 'pipe', 'pipe']});
@@ -51,11 +51,21 @@ const F_OWN = 1, F_TEXT = 2, F_ROUTE = 4;
 // The unit build (24 Nov): kept page cache in the task's pthread key list (WP 4), no grey fallback. The other tests use
 // the cc27 build (grey, no cache). FRAME2: the same frame again.
 const keepExe = path.join(work, 'host-keep');
-execFileSync('cc', ['-std=gnu11', '-O1', '-g', '-Wall', '-Wextra', '-Werror', '-DHOST', '-DWB_TICK_ONLY', '-DWB_TIE',
+execFileSync('cc', ['-std=gnu11', '-O1', '-g', '-Wall', '-Wextra', '-Werror', '-DHOST', '-DWB_TICK_ONLY', '-DWB_TIE', '-DWB_BONUS',
   '-fsanitize=address,undefined', '-fno-sanitize-recover=all', '-I', F('wayback'), '-I', F('common'), '-I', F('raster'), '-I', F('view'), '-I', F('elev'),
   path.join(root, 'tools/wayback_device_host.c'), F('wayback/wb_device.c'), F('wayback/wayback.c'), F('wayback/wb_grey.c'),
   F('wayback/wb_grey_draw.c'), F('wayback/wb_far.c'), F('wayback/wb_cache.c'), F('raster/raster.c'), F('view/view.c'), F('elev/elev.c'), '-lm', '-o', keepExe], {stdio: ['ignore', 'pipe', 'pipe']});
 const twice = (o, e) => { process.env.FRAME2 = '1'; try { return run({...o, exe: e}); } finally { delete process.env.FRAME2; } };
+test('WB_BONUS in the unit build: the last piece holds the line 18 m away for 5 s; after 5 s the frame is stateless', () => {
+  const q = p(-18, 125), at2 = (gap) => {
+    Object.assign(process.env, {FRAME2: '1', FRAME2_AT: `${q[0]} ${q[1]}`, FRAME2_GAP_US: String(gap)});
+    try { return run({x: 0, y: 125, exe: keepExe}); } finally { delete process.env.FRAME2; delete process.env.FRAME2_AT; delete process.env.FRAME2_GAP_US; }
+  };
+  const alone = run({x: -18, y: 125, exe: keepExe}), held = at2(1000000), late = at2(6000000);
+  assert.equal(alone.lines.length, 0, 'no street within 15 m: no line');
+  assert(held.lines.length > 0, 'the street piece of frame 1 is 18 m away: the line stays');
+  assert.equal(late.lines.length, 0, 'frame 2 comes 6 s later: no last piece, no line');
+});
 test('WP 5/7: with the kept page cache the second off-route frame reads almost nothing and draws the same', () => {
   const plain = twice({}, exe), kept = twice({}, keepExe), one = run({});
   assert.equal(plain.reads, one.reads);                          // no cache: frame 2 reads as frame 1

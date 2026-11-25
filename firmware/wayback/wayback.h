@@ -7,7 +7,8 @@ typedef struct wb_engine wb_engine;
 enum { WB_NONE = 0, WB_LINE = 1 };                                             /* state */
 enum { WB_OK = 0, WB_NO_FILE = 1, WB_GPS = 2, WB_ON_ROUTE = 3, WB_NO_STREET = 4, WB_READ = 5 }; /* reason */
 enum { WB_GPS_VALID = 1, WB_OFF_ROUTE = 2, WB_EXIT_TRUSTED = 4 };              /* input flags */
-typedef struct { int32_t lat_e7, lon_e7; uint32_t exit_progress_cm, flags; } wb_input;
+/* keep (WB_BONUS only): bits 0-23 of the last frame's piece + 1; 0 = no last piece (zero init = no memory). */
+typedef struct { int32_t lat_e7, lon_e7; uint32_t exit_progress_cm, flags, keep; } wb_input;
 typedef struct { uint32_t state, reason, distance_dm, forward, changed, piece; } wb_output;   /* piece: bits 0-23 of the chosen piece id, WB_NIL without a line */
 #define WB_DIST_UNKNOWN 0xFFFFFFFFu        /* forward distance not known (never set since cc26: kept for the device text) */
 /* Version 2 grid: the frame of the file and the unit scales (24 B). */

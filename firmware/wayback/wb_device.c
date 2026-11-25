@@ -26,6 +26,7 @@ typedef struct { void *fp; uint32_t nk, base, t0, late, reads, io, gat, gsize, g
  * read goes to the file as before. WBD_NO_KEEP: no cache (host comparison builds). */
 #ifndef WBD_NO_KEEP
 #define WBD_KEEP 1
+#define WBD_KEEP_US 5000000u                                   /* WB_BONUS: the last piece is valid for 5 s */
 #define WBD_KEY 0x434d4343u                                    /* "CCMC": far above the sequential pthread keys */
 static wc_cache *wbd_keep(void) {
   wc_cache *k = (wc_cache *)fw_getspecific(WBD_KEY); uintptr_t *head, *node;   /* 32-bit words on the unit */
@@ -198,7 +199,16 @@ static uint32_t wbd_core(wbd_ctx *cp, uint32_t i, uint8_t *t, const float *pos, 
   if (!wb_mount(e, wbd_read, cp, i, t)) return cp->late ? WB_READ : WBD_NODATA;
   in.lat_e7 = (int32_t)(pos[0] * 1e7f); in.lon_e7 = (int32_t)(pos[1] * 1e7f);
   in.exit_progress_cm = 0; in.flags = WB_GPS_VALID | WB_OFF_ROUTE;   /* no trusted exit on the device: tree A values */
+  in.keep = 0;
+#if defined(WBD_KEEP) && defined(WB_BONUS)
+  /* The last piece (WB_BONUS): kept in the page cache, valid for WBD_KEEP_US after the last line frame. A frame with no
+   * line, a new route (wc_reset) or no cache: no last piece, the tick is stateless as before. */
+  if (cp->wc && cp->wc->keep && fw_clock() - cp->wc->at < WBD_KEEP_US) in.keep = cp->wc->keep;
+#endif
   wb_tick(e, &in, &out);
+#if defined(WBD_KEEP) && defined(WB_BONUS)
+  if (cp->wc) { cp->wc->keep = out.state == WB_LINE ? (out.piece & 0x00FFFFFFu) + 1u : 0u; cp->wc->at = fw_clock(); }
+#endif
   if (out.state != WB_LINE) return out.reason ? out.reason : WB_READ;
   for (i = 0; i < WBD_POINTS && wb_read_point(e, i, p); i++) { line[2 * i] = (float)p[0] * 1e-7f; line[2 * i + 1] = (float)p[1] * 1e-7f; }
   if (i < 2u) return WB_READ;                                  /* a failed read: draw nothing */

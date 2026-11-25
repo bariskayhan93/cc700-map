@@ -38,7 +38,7 @@ ent_t *host_ents;
 static ent_t g_ents[2];
 void host_nop(void) { n_blk++; blk_held ^= 1; }              /* fw_blk_lock and fw_blk_unlock */
 
-static float g_pos[2];
+static float g_pos[2]; static uint32_t frame1_end;
 static uint32_t g_off, g_stack, g_gps, g_clock, g_step, g_open_ok;
 static int g_busy_file, g_busy_nav, held;
 static int n_rt, n_open, n_close, n_lines, n_text, n_reads, n_take, n_give, bad_dash;
@@ -151,8 +151,14 @@ int main(int argc, char **argv) {
   }
   if (argc == 23) wb_km(atoi(argv[19]), atoi(argv[20]), atoi(argv[21]), atoi(argv[22]));
   else wb_rt((uint32_t)atoi(argv[6]));
+  frame1_end = g_clock;
   if (getenv("FRAME2")) {                                      /* WP 5/7: the same frame again; reads of frame 2 only */
     n_reads = 0; n_seek_end = 0; memset(host_buf, 0, 240u * 256u * 2u); g_clock = 0xfffffff0u;
+    if (getenv("FRAME2_AT")) {                                 /* WB_BONUS: frame 2 at "lat lon", FRAME2_GAP_US after frame 1; lines of frame 2 only */
+      g_clock = frame1_end + (uint32_t)strtoul(getenv("FRAME2_GAP_US") ? getenv("FRAME2_GAP_US") : "1000000", 0, 10);
+      if (sscanf(getenv("FRAME2_AT"), "%f %f", &g_pos[0], &g_pos[1]) != 2) return 2;
+      n_lines = 0;
+    }
     wb_rt((uint32_t)atoi(argv[6]));
   }
   if (getenv("STOCKKEY") && host_getspecific(1) != (void *)0x1234) return 9;   /* the stock key must survive */

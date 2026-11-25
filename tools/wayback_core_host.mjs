@@ -24,14 +24,14 @@ function binary(defines = []) {
   return out;
 }
 
-// lines: [{latE7, lonE7, exitCm = 0, flags, maxPoints = 64, failReadAfter = -1}]
+// lines: [{latE7, lonE7, exitCm = 0, flags, maxPoints = 64, failReadAfter = -1, keep = 0}] (keep: wb_input.keep, WB_BONUS)
 // Returns one object per line: {mounted, state, reason, distanceDm, forward, changed, reads, points, piece}.
 export function runCore(fileBytes, routeId, lines, {defines = []} = {}) {
   const dir = fs.mkdtempSync(path.join(work, 'run-'));
   const file = path.join(dir, 'file.ccwb');
   fs.writeFileSync(file, Buffer.from(fileBytes));
   const hex = Buffer.from(routeId).toString('hex');
-  const input = lines.map(l => [l.latE7, l.lonE7, l.exitCm ?? 0, l.flags, l.maxPoints ?? 64, l.failReadAfter ?? -1].join(' ')).join('\n') + '\n';
+  const input = lines.map(l => [l.latE7, l.lonE7, l.exitCm ?? 0, l.flags, l.maxPoints ?? 64, l.failReadAfter ?? -1, l.keep ?? 0].join(' ')).join('\n') + '\n';
   let text;
   try {
     text = execFileSync(binary(defines), [file, hex], {input, maxBuffer: 1 << 30, encoding: 'utf8'});

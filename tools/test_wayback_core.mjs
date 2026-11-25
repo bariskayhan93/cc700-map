@@ -188,3 +188,25 @@ test('WB_TICK_ONLY (the device core): where the host core starts fresh (changed 
   });
   assert(n > 500, `${n} lines compared`);
 });
+
+// WB_BONUS (25 Nov second pass, on in the device build): wb_input.keep = the last piece + 1. The last piece stays a
+// candidate to 20 m; every other piece counts 5 m farther; then the tie rule.
+const DEV = ['WB_TICK_ONLY', 'WB_TIE'], BONUS = [...DEV, 'WB_BONUS'];
+test('WB_BONUS with keep 0: the same output as the device core without it, on every fixture line', () => {
+  const lines = fixture.lines.filter(l => l.flags === ON).map(l => ({...l}));
+  const a = runCore(file, id, lines, {defines: DEV}), b = runCore(file, id, lines, {defines: BONUS});
+  b.forEach((r, i) => assert.deepEqual([r.state, r.reason, r.distanceDm, r.piece, r.points], [a[i].state, a[i].reason, a[i].distanceDm, a[i].piece, a[i].points], `line ${i}`));
+});
+test('WB_BONUS: the last piece stays within 5 m, a real move to another street happens beyond it, and the limit is 20 m', () => {
+  // the one-way street y = 100 (x -100..0) ends at node (0,100) of the street x = 0 (piece y 100..150)
+  const [street] = runCore(file, id, [{...e7(0, 125), flags: ON}], {defines: BONUS});
+  const [oneway] = runCore(file, id, [{...e7(-50, 100), flags: ON}], {defines: BONUS});
+  assert.notEqual(street.piece, oneway.piece);
+  const at = (x, y, keep) => runCore(file, id, [{...e7(x, y), flags: ON, keep}], {defines: BONUS})[0];
+  assert.equal(at(-3, 100, 0).piece, oneway.piece, 'no memory: the nearest piece');
+  assert.equal(at(-3, 100, street.piece + 1).piece, street.piece, 'the last piece 3 m away is kept');
+  assert.equal(at(-8, 100, street.piece + 1).piece, oneway.piece, 'the rider 8 m from the last piece is on the one-way street');
+  assert.equal(at(-18, 125, 0).state, 0, 'no memory: no street within 15 m');
+  assert.equal(at(-18, 125, street.piece + 1).piece, street.piece, 'the last piece 18 m away still gives the line');
+  assert.equal(at(-22, 125, street.piece + 1).state, 0, 'the last piece 22 m away: no line');
+});

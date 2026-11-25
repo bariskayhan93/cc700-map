@@ -4,7 +4,7 @@
 void wc_reset(wc_cache *c, uint32_t key, uint32_t size) {
   uint32_t i;
   if (c->key == key && c->size == size && key) return;
-  c->key = key; c->size = size; c->tick = 0u; c->hits = 0u;
+  c->key = key; c->size = size; c->tick = 0u; c->hits = 0u; c->keep = 0u;   /* a new route: no last piece */
   for (i = 0u; i < WC_PAGES; i++) { c->page[i] = 0u; c->used[i] = 0u; }
 }
 
