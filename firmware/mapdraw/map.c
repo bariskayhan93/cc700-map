@@ -176,7 +176,7 @@ static const pass_t LEVEL[] = { { C_RAIL, 12 }, { C_PTH, 11 }, { C_CYC, 13 },
 
 // Bounds preserve entry order even for arbitrary unsorted legacy blocks.
 // 4 fills + 7 road classes * 5 levels + interleaved symbols + labels.
-typedef struct { uint16_t first,end; } entry_range_t;   // cc27: 16 bits keep cc_iter at 352 B (cc28: 368 B; 512 B frame rule)
+typedef struct { uint16_t first,end; } entry_range_t;   // 16 bits keep the cc_iter frame small (448 B with the far test text, 25 Nov; 512 B rule; G4 reports the map path)
 static int bucket(uint32_t s) {
   unsigned c=s&15,lv=(s>>4)&7;
   if(c>=1 && c<=4) return c-1;

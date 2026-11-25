@@ -39,10 +39,18 @@ STACK_LIMIT = 3968                          # WBD_STACK: free stack wb_rt needs 
 # The core (wayback.c, wb_grey.c) calls only these callbacks indirectly. An indirect call in wb_device.c goes to stock
 # code: it is counted as 0 B here, and the room left for it is reported.
 CALLBACKS = ('wbd_read', 'wbd_file', 'gd_line', 'pick_visit')
-CORE_FILES = ('wayback.ci', 'wb_grey.ci')
+# The callees of each indirect call, by call-graph file. wb_cache.c calls only the raw reader; wb_far.c the file reader
+# and the clock. In map.c only probe, draw_entry and scan call the stock iterator callback, which calls cc_line (its
+# stock frames are not counted); the other indirect calls of map.c and wb_device.c go to stock code and count 0 B.
+INDIRECT = {'wayback.ci': CALLBACKS, 'wb_grey.ci': CALLBACKS, 'wb_cache.ci': ('wbd_raw',), 'wb_far.ci': ('wbd_file', 'wbd_clock')}
+MAP_CB = {'probe': ('cc_line',), 'draw_entry': ('cc_line',), 'scan': ('cc_line',)}
 # The cc27 adapter tree for the stack graph: (directory, source) under firmware/.
 STACK_SOURCES = (('wayback', 'wb_device.c'), ('wayback', 'wayback.c'), ('wayback', 'wb_grey.c'), ('wayback', 'wb_grey_draw.c'),
+                 ('wayback', 'wb_cache.c'), ('wayback', 'wb_far.c'), ('mapdraw', 'map.c'),
                  ('raster', 'raster.c'), ('view', 'view.c'), ('elev', 'elev.c'))
+# Hooks that check fw_stack() >= STACK_LIMIT before their file calls (as wb_rt). cc_iter has no check: reported only.
+STACK_HOOKS = ('wb_far', 'wb_km')
+MAP_ROOT = 'cc_iter'
 
 # One limit, each place that states it: (file, regex with one group, transform to a common value).
 HEX_OR_DEC = lambda s: int(s, 0)
@@ -142,9 +150,9 @@ def g3_c(r, since):
 def stack_graph(tmp):
     """{function: (own bytes, {callees})} from -fcallgraph-info=su of the cc27 adapter tree."""
     fw = ROOT / 'firmware'
-    inc = [a for d in ('common', 'raster', 'view', 'elev', 'wayback') for a in ('-I', str(fw / d))]
+    inc = [a for d in ('common', 'raster', 'view', 'elev', 'wayback', 'mapdraw') for a in ('-I', str(fw / d))]
     subprocess.run([str(XT) + 'gcc', '-Os', '-mlongcalls', '-mtext-section-literals', '-ffreestanding', '-fno-builtin',
-                    '-nostdlib', '-std=gnu11', '-fcallgraph-info=su', *inc, '-c', *(str(fw / d / n) for d, n in STACK_SOURCES)],
+                    '-nostdlib', '-std=gnu11', '-fcallgraph-info=su', '-DCC26_AREA2', *inc, '-c', *(str(fw / d / n) for d, n in STACK_SOURCES)],
                    cwd=tmp, check=True, capture_output=True)
     nodes, edges = {}, {}
     name = lambda t: t.split(':')[-1]   # a compiler clone (name$constprop$0) is its own node
@@ -155,8 +163,8 @@ def stack_graph(tmp):
                 nodes[name(m[1])] = int(m[2])
             m = re.match(r'edge: \{ sourcename: "([^"]+)" targetname: "([^"]+)"', line)
             if m and m[2] == '__indirect_call':
-                if ci.name in CORE_FILES:
-                    edges.setdefault(name(m[1]), set()).update(CALLBACKS)
+                src = name(m[1])
+                edges.setdefault(src, set()).update(MAP_CB.get(src, ()) if ci.name == 'map.ci' else INDIRECT.get(ci.name, ()))
             elif m:
                 edges.setdefault(name(m[1]), set()).add(name(m[2]))
     return nodes, edges
@@ -183,6 +191,11 @@ def g4_stack(r):
     # Each indirect call of the core counts as the deepest callback: the value is an upper bound.
     say(r, 'G4', total < STACK_LIMIT, f'deepest path (upper bound) {total} B of {STACK_LIMIT} B: ' + ' > '.join(path))
     say(r, 'G4', None, f'room left for the stock calls (fread, cc_line): at least {STACK_LIMIT - total} B, not measured')
+    for hook in STACK_HOOKS:
+        total, path = deepest(nodes, edges, hook)
+        say(r, 'G4', total < STACK_LIMIT, f'{hook} deepest path (upper bound) {total} B of {STACK_LIMIT} B: ' + ' > '.join(path))
+    total, path = deepest(nodes, edges, MAP_ROOT)
+    say(r, 'G4', None, f'{MAP_ROOT} own frames (upper bound, stock frames not counted, no stack check) {total} B: ' + ' > '.join(path))
 
 
 def g5_limits(r):
