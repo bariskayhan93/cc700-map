@@ -48,9 +48,13 @@ Method:
 3. For each idea, state the proof of equal behaviour: which host harness (far_host, grey_host,
    wayback_device_host, fuzz_readers, replay) shows byte-identical output on the same inputs,
    and which input class it does not cover.
-4. Check each failure class F1 to F8 below against the range. One verdict per class: finding or "none".
+4. Check each failure class F0 to F8 below against the range. One verdict per class: finding or "none".
 
 Failure classes:
+F0. Build: each commit in the range compiles for the device and for the host, fits the code
+    limit, and passes the tests that passed at its parent. Check each commit, not only the
+    end of the range. Report the first command that fails, with its output. If the base image
+    is absent, say which build steps did not run.
 F1. Size changes that caused a later fault. Known cases (from git history; OWNER: confirm or extend):
     a) 3e81fd6 -> fixed in 83d6c5c: a "no rodata" one-line loop in map_time put
        `o = tx_num(...)`, the '+' and the loop's `}` after a `//` comment. map.c did not
@@ -76,7 +80,7 @@ F7. Format and limit agreement: a limit or field changed in C but not in the pag
 F8. Fallback: a changed path that no longer ends in the stock display when data is absent, bad or late.
 
 Finding format, one per finding, nothing else:
-- Class: F1..F8
+- Class: F0..F8
 - Claim: one sentence.
 - Location: file:line
 - Trigger: the concrete input, state or call order that shows it.
@@ -124,7 +128,7 @@ Environment for all runs: the C4 base image (`.local/`) is absent, so `tools/cc2
 
 The prompt ran without case F1 a), and the reviewer did not see later commits. The fix copy changes only the `//` on `map.c:254` to `/* */`, so sizes can be measured.
 
-- Build break (no class): `map.c:254` does not compile (`invalid storage class for function 'scan'`). Second pass: true; fixed in `83d6c5c`. The blind prompt found the known fault.
+- F0 (added after this run): `map.c:254` does not compile (`invalid storage class for function 'scan'`). Second pass: true; fixed in `83d6c5c`. The blind prompt found the known fault.
 - Limits: area 2 is 18,612 B, 208 B over 18,404 B (old: 18,176 B). Second pass: true; `83d6c5c` is also 18,612 B. `9226308` moved `view.c` to the tail area.
 - F3: `wbd_at` calls `fw_clock` three times for each read. `test_wayback_device.mjs` passes 41/42 at `83d6c5c` (old: 42/42). Second pass: true; `dbcdda6` changed the slow-clock test.
 - F7: `map_time` writes 1 B past `char s[48]` when every number has 5 digits and cut and pd are set (48 characters plus the NUL; ASan). Second pass: true, but only a frame of 10 s or more triggers it. HEAD uses `s[64]` and two rows.
@@ -134,4 +138,4 @@ The prompt ran without case F1 a), and the reviewer did not see later commits. T
 
 ### Result
 
-No false alarm in three runs. The blind run found the known fault and two more real faults that the commit left: the code limit and a failing test. The prompt has no class for "the range builds, fits the code limit and passes its tests"; the reviewer added that check without a class. Same gaps in all runs: no full build check without the base image, and no host harness for the `wb_far` open, trailer and close path.
+No false alarm in three runs. The blind run found the known fault and two more real faults that the commit left: the code limit and a failing test. The prompt had no class for "the range builds, fits the code limit and passes its tests"; the reviewer added that check without a class. Class F0 now asks for it. Same gaps in all runs: no full build check without the base image, and no host harness for the `wb_far` open, trailer and close path.
