@@ -114,7 +114,10 @@ int main(int argc, char **argv) {
   int changed = 0, x0 = 9999, y0 = 9999, x1 = -1, y1 = -1, first = -1;
   for (int y = 0; y < 256; y++) for (int x = 0; x < 240; x++) if (buf[y * 240 + x]) {
     changed++; if (first < 0) first = buf[y * 240 + x];
-    if (x < x0) x0 = x; if (x > x1) x1 = x; if (y < y0) y0 = y; if (y > y1) y1 = y;
+    if (x < x0) x0 = x;
+    if (x > x1) x1 = x;
+    if (y < y0) y0 = y;
+    if (y > y1) y1 = y;
   }
   printf("{\"hash\":\"%016llx\",\"ref\":\"%016llx\",\"changed\":%d,\"box\":[%d,%d,%d,%d],\"first\":%d,\"work\":%u,\"probe\":%d,\"sum\":%u}\n",
          (unsigned long long)hash(buf), (unsigned long long)refhash, changed, x0, y0, x1, y1, first, work, probe, sum);
