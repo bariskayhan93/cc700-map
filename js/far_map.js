@@ -8,7 +8,7 @@ import {REACH} from './wayback_tree.js';
 import {bikeWay} from './recovery_graph.js';
 
 export const FAR = {MAIN: 0, MINOR: 1, CYCLE: 2, TRACK: 3, PATH: 4, WATERLINE: 5, WATER: 8, FOREST: 9, GREEN: 10, BUILT: 11};
-export const FAR_CAPS = {pixCap: 150000, ptCap: 4096, fillCap: 61440};   // 24 Nov: the 60 ms time stop of the unit is the real limit
+export const FAR_CAPS = {pixCap: 150000, ptCap: 4096, fillCap: 61440};   // the unit checks pixCap and ptCap; fillCap is written but not read; FAR_US 150 ms is an emergency stop only
 const MAGIC = [0x43, 0x43, 0x46, 0x4D];          // "CCFM"
 const VERSION = 1, CELL_SHIFT = 12, Q_SHIFT = 3, CELL = 1 << CELL_SHIFT, Q = 1 << Q_SHIFT, U_M = 16;
 const MAX_POINTS = 32, MAX_RING = 64, MAX_BODY = 2048, MAX_CELLS = 16384, MAX_KEYS = 256, HEADER = 48, ENTRY = 8, SENTINEL = 0xFFFFFFFF;
@@ -17,9 +17,9 @@ const LINE_TOL = 40, AREA_TOL = 12 * U_M, AREA_MIN = 5000, STEP_M = 20;
 // handover detail map (js/mapsec.js HANDOVER_M), so small classes hand over at 300 m and main roads at 1000 m.
 export const DETAIL_REACH = {[FAR.MAIN]: 1000, [FAR.MINOR]: 300, [FAR.CYCLE]: 300, [FAR.TRACK]: 300, [FAR.PATH]: 300, [FAR.WATERLINE]: 300};
 // unit draw order and widths in pixels (edge, core)
-// 24 Nov: streets as the detail map draws far streets (edge 6 + core 3), main roads one thin line (no motorway)
+// streets in style D as the unit draws and counts them (wb_far.c fm_style: edge 4 + core 2, 0f1d019), main roads one thin line
 export const DRAW_ORDER = [FAR.BUILT, FAR.WATER, FAR.FOREST, FAR.GREEN, FAR.WATERLINE, FAR.PATH, FAR.TRACK, FAR.CYCLE, FAR.MINOR, FAR.MAIN];
-export const WIDTHS = {[FAR.MAIN]: [4], [FAR.MINOR]: [6, 3], [FAR.CYCLE]: [2], [FAR.TRACK]: [2], [FAR.PATH]: [1], [FAR.WATERLINE]: [2]};
+export const WIDTHS = {[FAR.MAIN]: [4], [FAR.MINOR]: [4, 2], [FAR.CYCLE]: [2], [FAR.TRACK]: [2], [FAR.PATH]: [1], [FAR.WATERLINE]: [2]};
 
 const MAIN = new Set(['trunk', 'primary', 'secondary', 'tertiary', 'trunk_link', 'primary_link', 'secondary_link', 'tertiary_link']);
 // Bike rule (js/recovery_graph.js bikeWay): ways to ride and exit ways (WP 6) are drawn; motorways, driveways, private ways, trails are cut.
