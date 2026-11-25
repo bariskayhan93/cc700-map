@@ -101,3 +101,25 @@ a host test or a disassembly. Keep a finding only if the refutation fails.
 2. Run the second pass on the ranked findings.
 3. Measure any size idea that survives, one commit per idea, with the byte delta and the equal-output proof in the message.
 4. Calibrate once: run the prompt on a range whose faults are known (for example the `7f27e9b` range plus the later fixes). Count the false alarms. Change the prompt if the false alarms are high.
+
+## Part 5: runs
+
+Environment for both runs: the C4 base image (`.local/`) is absent, so `tools/cc27_build.py` did not run. The area-2 link was done by hand with the same flags; the sizes match the commit messages. `tools/test_renderer_host.py` did not run (commit `6bacafc` is missing).
+
+### 7f27e9b^..7f27e9b (1,388 B)
+
+- F2: deleting `wb_tick_piece` let gcc inline `wb_commit` into `wb_tick`; its frame went from 192 B to 224 B (`entry a1`, `.su`). Second pass: true. The first pass compared the gate depth (2,144 B) with the 1,904 B target; that depth is an upper bound. At HEAD the gate gives 1,952 B. This led to the F2 note.
+- F4: `-ffunction-sections` saves 20 B, not the 564 B in the message (15,024 B without, 15,004 B with). Second pass: true. The total is correct.
+- None: gc-sections dropped nothing reachable; `dash` 32-bit math: 0 differences in 300,000 runs; the removed `wb_mount` checks are covered.
+- Unverified (needs stock code): the line style is restored before `text()`; `probe()` passes a stack buffer.
+
+### 8538ec4^..8538ec4 (300 B)
+
+- F2: `wbd_open` (64 B frame) now calls `fw_fopen`, so `fopen` gets at least 3,904 B after the `fw_stack()` check, not 3,968 B. Second pass: true, but not a limit risk. The same check covers the reads, 1,248 B deeper (at least 2,720 B left); the read depth did not change. It matters only if stock `fopen` needs about 1,180 B more than stock `fread` (not measured). Not ranked.
+- None: one `tx_num` in the image, and both copies disassemble the same; each hook opens and closes once, in the old order; the trailer rule agrees with `js/wayback_embed.js:14`; `c.io` is correct; `test_wayback_device.mjs` 45/45 and `test_fuzz_readers.mjs` 2/2 (ASan, UBSan).
+- Behaviour change, damaged files only: a trailer total larger than the file and a trailer moved by padding now fall back to the stock display (the old code drew the line); an elevation section that overlaps the way-back section now draws the line (the old code fell back). The app writer makes none of these files.
+- Unverified: a future `#include "text.h"` in a tail source would let the link keep the first `tx_num`.
+
+### Result
+
+No false alarm in two runs. Each run had one ranked finding: a real stack delta that the second pass showed is not a risk. Same gaps in both runs: no full build check without the base image, and no host harness for the `wb_far` open, trailer and close path.
