@@ -158,6 +158,22 @@ The prompt ran without case F1 a), and the reviewer did not see later commits. T
 - None in F0 to F8. Area 2 is 18,380 B (24 B free; parent 18,612 B). The tail area is 3,224 B, 212 B before the 1,768 B reserve; `cc27_build.py` checks both. The gc lists are equal. Calls to `vw_fit` and `vw_map` changed from `call8` to `l32r` + `callx8` (4 B each). Net: area 2 −232 B, tail +248 B. Python tests are the same as at the parent.
 - Gaps: no device run of `view.c` in the tail (`elev.o` uses the same method); the commit message has no byte figures.
 
+### HEAD mode, tree at f60b880 (two reviewers: map side, way-back side)
+
+Area 2 is 18,200 B (204 B free); the tail area is 3,224 B (212 B free before the reserve). The ranked findings below held in the second pass; both reviewers found 1 and 5.
+
+1. F3: the 400 ms stop in `cc_iter` does not count the far map. `t0` is read after `far_map()` and `fw_blk_lock()` (`map.c:347-349`). The far map has its own bounds (300 ms file, `FAR_US` 150 ms checked at group starts), and then a full canvas read and write pass (`wb_device.c:244-246`, "25 Nov test") that runs in every far frame without F_TEXT. That pass is 84 B. No time is measured for the worst case.
+2. F7: `js/far_map.js:22` estimates a minor street as widths 6+3; the unit draws and counts 4+2 (`wb_far.c:40, 68`; +42 % on one test street). The builder can drop minor streets that the unit would draw. `js/far_map.js:11` still says 60 ms; `FAR_US` is 150 ms. The header field `fillCap` is written but not read. G5 has no far-map entry.
+3. F2: the `cc_iter` frame went from 416 B to 448 B with the far test text (`fms[11]`); the map frame path has no gate, and its room needs the stock frames. G4 does not compile `wb_cache.c`, so the read path misses `wc_read` (64 B); without the `gd_line` callback the gate path is 1,712 B, so the bound still holds.
+4. F4: libgcc `__divsf3` (89 B) is in area 2, from the two float divisions in `fm_point` (`wb_far.c:21-22`). `proj.c` avoids it on purpose. A `proj_recip` form saves 76 B but changes the output (max 64 E7 units); no harness runs `fm_point`.
+5. F0: `tools/test_raster.mjs` fails on gcc (`raster_host.c:117`, `-Werror=misleading-indentation`); with the warning off it passes 25/25. The owner's compiler may not give the warning.
+
+- Refuted: `own_setup` has no residual check, so a projection that does not agree would draw in the wrong place. The host projection does not turn and is not Mercator; the device photo shows `m6 p0` (`docs/research/wayback-cache-2026-11-25.md:9`).
+- Not ranked: `own_setup` overflows `int32` at stock zoom 1 (`map.c:214`); no evidence that zoom 1 occurs.
+- Size ideas, measured: remove the canvas pass −84 B (pixels same); one `fw_color_hex` in `cc_line` −20 B (renderer harness 31/32, `ride` error only); 32-bit letter words in `map_time` +4 B.
+- Unverified (needs stock code): `guard_tramp` does not return the handler result, and `bltui` is unsigned; the canvas pass uses 32-bit access without an alignment check; the far anchors run outside the block lock and do not recheck the route context; `probe()` does not restore `dash_width`.
+- Gaps: no base image (no `cc27_build.py`, no stock frames, no map-table check); no harness for `wb_far`; no time figures for the far map worst case.
+
 ### Result
 
-No false alarm in four runs. The blind run found the known fault and two more real faults that the commit left: the code limit and a failing test. The prompt had no class for "the range builds, fits the code limit and passes its tests"; the reviewer added that check without a class. Class F0 now asks for it. Same gaps in all runs: no full build check without the base image, and no host harness for the `wb_far` open, trailer and close path.
+No false alarm in four range runs. The HEAD run gave five ranked findings that held and one that the second pass refuted with device evidence. The blind run found the known fault and two more real faults that the commit left: the code limit and a failing test. The prompt had no class for "the range builds, fits the code limit and passes its tests"; the reviewer added that check without a class. Class F0 now asks for it. Same gaps in all runs: no full build check without the base image, and no host harness for the `wb_far` open, trailer and close path.
