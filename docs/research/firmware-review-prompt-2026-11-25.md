@@ -1,7 +1,7 @@
 # Firmware size review: research and review prompt, 25 Nov 2026
 
 Status: offline only. No device contact. Part 1 is web research. Part 2 is the repo evidence. Part 3 is the prompt.
-Gap: the owner's own list of size changes that caused a later fault is not in this file. Add it to section F1 of the prompt.
+Gap: section F1 holds three cases found in git history. The owner has not confirmed them, and other cases may exist that left no commit message.
 
 ## Part 1: what the web research says
 
@@ -51,7 +51,16 @@ Method:
 4. Check each failure class F1 to F8 below against the range. One verdict per class: finding or "none".
 
 Failure classes:
-F1. Size changes that caused a later fault. [OWNER: add the cases here, with commit ids.]
+F1. Size changes that caused a later fault. Known cases (from git history; OWNER: confirm or extend):
+    a) 3e81fd6 -> fixed in 83d6c5c: a "no rodata" one-line loop in map_time put
+       `o = tx_num(...)` and the '+' after a `//` comment. It compiled; the far text lost
+       its numbers. Check: compact one-line edits, code after `//`, macros that swallow code.
+    b) 98c7e0e: the loop-start trampoline frame was 32 B, not 48 B. A window spill wrote
+       a4..a7 over stored argument 7 (crash of 2026-11-16). Check: any smaller `entry`
+       frame or moved stack slot in a trampoline.
+    c) 716bc27: the way-back stack limit went back up to 3,968 B so the stock calls keep
+       the 1,904 B they had on ride-tested cc23. Check: any stack cut that reduces the
+       room left for stock callees, not only our own frames.
 F2. Stack: a merged or non-inlined function that deepens the call path from wb_rt, or a new large local.
 F3. Hook timing: a shared helper that changes the order or the number of file opens, reads or locks
     between cc_iter, wb_far, wb_km and wb_rt (route-exit crash class: check-then-lock, null map context).
