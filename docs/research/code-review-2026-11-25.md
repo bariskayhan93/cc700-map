@@ -1,7 +1,10 @@
-# Code review parts 2 and 3, 25 Nov 2026 (image 8be5c061, source ec16ed9)
+# Code review parts 2 and 3, 25 Nov 2026 (image 8be5c061, source f8efa91; was ec16ed9 before the history rewrite)
 
-Part 1 (correctness) was done on 24 Nov. Sizes are from the cc27 build disassembly; the area-2 code is 17,888 of
-18,404 B (516 B free); the tail area has 1,980 B free.
+Part 1 (correctness) was done on 24 Nov. Sizes are from the cc27 build disassembly; the area-2 code at f8efa91 is
+17,888 of 18,404 B (516 B free). The tail area code is 3,224 B: 212 B are free before the 1,768 B reserve, which
+cc27_build.py does not allow code to use (an earlier text said 1,980 B; that figure included the reserve).
+Correction (25 Nov): at HEAD (dd4833a, hand link, no base image) area 2 is 18,200 B (204 B free): b8ffe5c +188 B,
+587be90 +52 B, a0f9341 +72 B.
 
 ## Part 2: architecture
 
@@ -16,8 +19,8 @@ Part 1 (correctness) was done on 24 Nov. Sizes are from the cc27 build disassemb
 3. **Stock addresses are in `firmware/common/fw.h` only.** `guard_tramp.S` now includes `fw.h` (ec16ed9).
    `tools/test_fw_addresses.py` passes. No fix.
 4. **Stack.** Deepest path is 1,952 of 3,968 B (gate G4, 24 Nov). The stock calls keep at least 2,016 B. No fix.
-5. **Code room.** Area 2 has 516 B free; the tail area has 1,980 B free. A new feature larger than 516 B must go to
-   the tail area (`wb_area2.ld`, region `tail`) or must remove code first.
+5. **Code room.** At HEAD, area 2 has 204 B free and the tail area has 212 B free before the reserve. A new feature
+   larger than that must remove code first.
 
 ## Part 3: code to remove
 

@@ -18,7 +18,7 @@ Limits of this research: no source covers size refactors of patched stock firmwa
 
 ## Part 2: what the repo already shows
 
-- Area 2: 17,888 of 18,404 B used, 516 B free. Tail area: 1,980 B free (`docs/research/code-review-2026-11-25.md`).
+- Area 2: 18,200 of 18,404 B used at dd4833a, 204 B free. Tail area: 212 B free before the 1,768 B reserve (`docs/research/code-review-2026-11-25.md`).
 - Largest functions: `cc_iter` 1,632 B, `wb_scan` 980 B, `wb_km` 836 B, `wb_far` 780 B, `rs_fill` 668 B. The 25 Nov review found no dead branch in them.
 - Trims that held: `7f27e9b` (1,388 B) and `8538ec4` (300 B). Each stated "same behaviour" and listed the byte change per edit.
 - Pins after trims: `0c01b72` fixed map and way-back frames to recorded values. `aafa85b` tests the readers with ASan on damaged files.
