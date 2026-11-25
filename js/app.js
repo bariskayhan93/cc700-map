@@ -141,6 +141,7 @@ async function build() {
         if (needsBuild) return;
         if (c.report.handover) { model = ho.model; r = ho; }
         r.file = c.file;
+        if (c.report.farBytes) model = { ...model, far: readFile(c.file).far };   // the preview draws the far map as the unit
         const km = c.report.reach ? (/(\d)k$/.exec(c.report.reach) || [0, '?'])[1] + ' km' : '';
         wayback = (c.report.waybackBytes ? ` · Rückweg-Daten ${((c.report.waybackBytes + c.report.greyBytes) / 1024).toFixed(0)} KB (${km})` : '') +
           (c.report.elevationBytes ? ' · Höhenprofil' : '') +

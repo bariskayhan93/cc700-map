@@ -107,6 +107,8 @@ for (const styled of [false,true]) {
   assert.deepEqual(paired.sections, [1, 4, 3]);
   assert.deepEqual(routePart(paired.file), ho, 'with a far map: the handover detail map');
   assert.equal(paired.report.handover, true);
+  assert.equal(readFile(paired.file).far?.cells.length, paired.report.farCells, 'the preview reads the far map (section 4) to draw it as the unit');
+  assert.equal(readFile(ho).far, null, 'a route without section 4: no far map in the preview');
   const {checkWayback} = await import('../js/wayback.js');
   assert.equal((await checkWayback(paired.file)).status, 'ok', 'the way-back id belongs to the handover route part');
   assert.equal((await checkWayback(c.file)).status, 'ok');

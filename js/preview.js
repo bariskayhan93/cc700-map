@@ -7,6 +7,9 @@ import { dashSegments, scanlineSpans } from './device_draw.js';
 import { rgb565, mapColor } from './map_style.js';
 import { placeLabels } from './map_labels.js';
 import { isBlockD, decodeBlockD } from './map_codec.js';
+import { readSections } from './wayback_embed.js';
+import { readFar, FAR } from './far_map.js';
+import { greyCells } from './screen_proof.js';
 export { rgb565 } from './map_style.js';
 
 export const DEFAULT_METRES_PER_PIXEL = 2.5;
@@ -77,7 +80,11 @@ export function readFile(f) {
       blocks.push(byOffset.get(offset));
     }
   }
-  return { secs, blocks, styled: [...byOffset.values()].some(block => block.some(entry => entry.style)) };
+  // WP 6 far map (section 4): the unit draws it under the detail map in every map frame (firmware/wayback/wb_device.c wb_far)
+  const far4 = readSections(f)?.find(s => s.type === 4);
+  let far = null;
+  try { far = far4 ? readFar(f.subarray(far4.offset, far4.offset + far4.size)) : null; } catch { far = null; }   // a bad far map: the unit draws none
+  return { secs, blocks, far, styled: [...byOffset.values()].some(block => block.some(entry => entry.style)) };
 }
 
 function path(g, points) {
@@ -101,6 +108,29 @@ function stroke(g, points, color, width, dash = []) {
 function fillPolygon(g, points, color, consistent = false) {
   g.fillStyle = g.previewColor(color);
   for (const [x, y, width] of scanlineSpans(points, W, H, consistent)) g.fillRect(x, y, width, 1);
+}
+
+// Far map as firmware/wayback/wb_far.c fm_draw: the cells of the heading-up screen (gl_cells = greyCells), nearest first;
+// in each cell the groups in file order; streets edge 4 px then white core 2 px; fills even-odd (rs_fill), other lines one
+// pass. The unit stops at the header caps; the generator proves every 2.5 m/px screen inside them, so the preview draws all.
+const FAR_STYLE = { [FAR.BUILT]: ['#d4d4d4'], [FAR.WATER]: ['#82cbd5'], [FAR.FOREST]: ['#a2d683'], [FAR.GREEN]: ['#c8e6b0'],
+  [FAR.PATH]: ['#66615a', 1], [FAR.TRACK]: ['#6b4a2b', 2], [FAR.CYCLE]: ['#7040b0', 2], [FAR.WATERLINE]: ['#82cbd5', 2], [FAR.MAIN]: ['#f2c94c', 4] };
+function drawFar(g, far, me, heading, project) {
+  const fr = far.frame, toLL = ([x, y]) => [(y * 65536 / fr.latU + fr.lat0E7) / 1e7, (x * 65536 / fr.lonU + fr.lon0E7) / 1e7];
+  const x = Math.floor((Math.round(me[1] * 1e7) - fr.lon0E7) * fr.lonU / 65536), y = Math.floor((Math.round(me[0] * 1e7) - fr.lat0E7) * fr.latU / 65536);
+  const byKey = new Map(far.cells.map(c => [c.key, c.items])), line = (pts, col, w) => {
+    g.strokeStyle = rgb565(col); g.lineWidth = w; g.lineCap = g.lineJoin = w >= 3 ? 'round' : 'butt'; g.setLineDash([]); path(g, pts); g.stroke(); };
+  for (const key of greyCells(x, y, Math.round(heading) % 360)) {
+    const items = byKey.get(key) ?? [];
+    for (let i = 0; i < items.length;) {
+      let j = i; while (j < items.length && items[j].cls === items[i].cls) j++;   // one group: the items of one class
+      const cls = items[i].cls, run = items.slice(i, j).map(it => it.pts.map(p => project(toLL(p))));
+      if (cls >= FAR.WATER) for (const r of run) { g.fillStyle = rgb565(FAR_STYLE[cls][0]); path(g, r); g.closePath(); g.fill('evenodd'); }
+      else if (cls === FAR.MINOR) { for (const r of run) line(r, '#7a7e83', 4); for (const r of run) line(r, '#ffffff', 2); }
+      else for (const r of run) line(r, ...FAR_STYLE[cls]);
+      i = j;
+    }
+  }
 }
 
 function drawOriginal(g, entries, project) {
@@ -271,6 +301,7 @@ export function draw(canvas, model, distM, styled = model.styled, options = {}) 
 
   if (options.riderPosition) section = replayMapSection(secs, me, section);
   const entries = blocks[section] ?? [];
+  if (styled && model.far && !options.noFar) drawFar(g, model.far, me, heading, project);
   const original = entries.filter(entry => !entry.style);
   drawOriginal(g, original, project);
   const labels = styled ? drawStyled(g, entries.filter(entry => entry.style), project, options.profile === 'cycling', ['v19','v20','v21'].includes(options.profile), ['v20','v21'].includes(options.profile), options.mapCut) : [];
