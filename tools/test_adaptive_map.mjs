@@ -89,10 +89,10 @@ test('a cap of 600 m or more keeps the fill window of today',()=>{
  assert(r.stat.blocks[0].contextRadiusCap>=600);
  assert.equal(styleOfEntry(greenOf(r))&0x400,0);
 });
-test('WP 6 handover block: no fills, no widening, small classes end at 300 m, main roads at 600 m',()=>{
+test('WP 6 handover block: no fills, no widening, every line class ends at 300 m',()=>{
  const ring=[p(100,100),p(250,100),p(250,300),p(100,300)].map(q=>q.slice(0,2));
  const data={green:[[ring]],wlines:[[p(200,0),p(200,500)],[p(450,0),p(450,500)]],
-  lines:[{kind:1,fl:0,name:'Main',pts:[p(550,0),p(550,500)]},{kind:1,fl:0,name:'Main2',pts:[p(900,0),p(900,500)]},{kind:5,fl:32,name:'Cyc',pts:[p(320,0),p(320,500)]}]};
+  lines:[{kind:1,fl:0,name:'Main',pts:[p(250,0),p(250,500)]},{kind:1,fl:0,name:'Main2',pts:[p(550,0),p(550,500)]},{kind:5,fl:32,name:'Cyc',pts:[p(320,0),p(320,500)]},{kind:9,fl:0,name:'Rail',pts:[p(400,0),p(400,500)]}]};
  const cls=r=>decode(r)[0].map(e=>parse(Uint8Array.from(e)).find(f=>f[0]===2)[2]&15);
  const plain=buildStyledSection(sections(1),{...data,opt:options()},F),ho=buildStyledSection(sections(1),{...data,opt:options({handover:true})},F);
  assert(cls(plain).includes(2),'today: the detail map fills green');
@@ -100,7 +100,8 @@ test('WP 6 handover block: no fills, no widening, small classes end at 300 m, ma
  assert.equal(ho.stat.blocks[0].coverageFloor,0,'no widening to 1 km');
  assert.equal(cls(ho).filter(c=>c===4).length,1,'river at 200 m kept, river at 450 m goes to the far map');
  assert(!cls(ho).includes(10),'cycleway at 320 m goes to the far map');
- assert.equal(cls(ho).filter(c=>c===5).length,1,'main road at 550 m stays, main road at 900 m goes to the far map');
+ assert(cls(plain).includes(9)&&!cls(ho).includes(9),'rail at 400 m: kept without a far map, cut at 300 m with one (no far class)');
+ assert.equal(cls(ho).filter(c=>c===5).length,1,'main road at 250 m stays, main road at 550 m goes to the far map');
  assert.equal(cls(plain).filter(c=>c===5).length,2,'today: both main roads in the detail map');
  assert.equal(ho.stat.handover,300);
 });

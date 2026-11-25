@@ -2,7 +2,8 @@
 // detail reach, area clipping, encode/read round trip, body limit, fit to the caps. Host only, synthetic data.
 import assert from 'node:assert/strict';
 import {makeFrame} from '../js/wayback_format.js';
-import {DETAIL_REACH, farClassOf, areaClassOf, buildFarCells, encodeFar, readFar, fitFar, proveFar, FAR_CAPS, FAR} from '../js/far_map.js';
+import {HANDOVER_M} from '../js/mapsec.js';
+import {farClassOf, areaClassOf, buildFarCells, encodeFar, readFar, fitFar, proveFar, FAR_CAPS, FAR} from '../js/far_map.js';
 
 const ok = name => console.log('PASS ' + name);
 const LAT = 51.0, mN = 1 / 111320, mE = 1 / (111320 * Math.cos(LAT * Math.PI / 180));
@@ -32,7 +33,7 @@ assert.equal(areaClassOf({landuse: 'forest'}), FAR.FOREST);
 assert.equal(areaClassOf({natural: 'water'}), FAR.WATER);
 assert.equal(areaClassOf({leisure: 'park'}), FAR.GREEN);
 assert.equal(areaClassOf({landuse: 'farmland'}), null);
-assert.deepEqual(DETAIL_REACH, {[FAR.MAIN]: 600, [FAR.MINOR]: 300, [FAR.CYCLE]: 300, [FAR.TRACK]: 300, [FAR.PATH]: 300, [FAR.WATERLINE]: 300}, 'WP 6 handover: 300 m, main roads 600 m (25 Nov)');
+assert.equal(HANDOVER_M, 300, 'WP 6 handover: every line class at 300 m (25 Nov: one rule)');
 ok('classes');
 
 // 2. a street that leaves and enters the 300 m minor reach (WP 6 handover) two times gives two far pieces that start at the reach

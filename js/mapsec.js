@@ -311,12 +311,10 @@ export { S as MAP_CLASS };
 const SR = { [S.MAJ]: 1000, [S.MIN]: 550, [S.SRV]: 350, [S.PTH]: 300, [S.CYC]: 350, [S.RAIL]: 450, [S.TRAM]: 450, [S.WLINE]: 600 };   // range from the route (m); WLINE = AREA_R: rivers reach as far as the water fills (20 Nov)
 const AREA_R = 600, MAXPTS = 60, BLOCK_LEN = 1500;
 // WP 6 handover (24 Nov, docs/research/map-layers-2026-11-24.md): with a far map in the file the detail map keeps only the
-// near part. No area fills (the far map owns them), no widening to 1 km, small line classes end at HANDOVER_M, main roads
-// at MAIN_HANDOVER_M (25 Nov: 600 m, was 1000 m); rails and trams keep their reach (no far class). js/far_map.js
-// DETAIL_REACH imports both, so the far lines start at the same points.
+// near part. No area fills (the far map owns them), no widening to 1 km, and every line class ends at HANDOVER_M
+// (25 Nov: one rule; main roads were 1000 m, rails and trams 450 m, which have no far class). js/far_map.js starts
+// every far line at the same HANDOVER_M, so nothing is drawn twice and nothing is left out between the two maps.
 export const HANDOVER_M = 300;
-export const MAIN_HANDOVER_M = 600;
-const HO_CLS = [S.MIN, S.SRV, S.PTH, S.CYC, S.WLINE];
 function lineClass(L) {
   const k = L.kind & 0x7f;
   return k === 8 ? S.SRV : k === 1 ? S.MAJ :   // A1: motorways grey and thin, landmarks only
@@ -364,7 +362,7 @@ function runIsFar(run, cor) {
   return true;
 }
 function styledEntries(data, cor, o = {}, coverageFloor = 0, contextRadiusCap = 1000) {
-  const F = cor.F, out = [], [bx0, by0, bx1, by1] = cor.box, reach = cls => !o.handover ? SR[cls] : HO_CLS.includes(cls) ? Math.min(SR[cls], HANDOVER_M) : cls === S.MAJ ? Math.min(SR[cls], MAIN_HANDOVER_M) : SR[cls];
+  const F = cor.F, out = [], [bx0, by0, bx1, by1] = cor.box, reach = cls => o.handover ? Math.min(SR[cls], HANDOVER_M) : SR[cls];
   const nearBox = (b, m) => !(b[2] < bx0 - m || b[0] > bx1 + m || b[3] < by0 - m || b[1] > by1 + m);
   // areas: built-up, green, water; each [outer, holes...] clipped to the window, holes joined by a doubled edge (even-odd fill)
   // Fills use the 600 m window. A block with a context cap below 600 m cuts its fills at the cap (D1, 18 Nov). A cut ring has no outline (bit 10).
