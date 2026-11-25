@@ -9,22 +9,24 @@ import {fileURLToPath} from 'node:url';
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const work = fs.mkdtempSync(path.join(os.tmpdir(), 'wayback-core-'));
 process.on('exit', () => { try { fs.rmSync(work, {recursive: true, force: true}); } catch {} });
-let exe = null;
+const exes = new Map();
 
-function binary() {
-  if (exe) return exe;
-  const out = path.join(work, 'wayback_host');
-  execFileSync('cc', ['-std=c11', '-O1', '-g', '-Wall', '-Wextra', '-Werror',
+// defines: extra -D names for the core (for example ['WB_TIE']); one binary per set.
+function binary(defines = []) {
+  const k = defines.join(',');
+  if (exes.has(k)) return exes.get(k);
+  const out = path.join(work, 'wayback_host' + (k ? '_' + k.replace(/\W/g, '_') : ''));
+  execFileSync('cc', ['-std=c11', '-O1', '-g', '-Wall', '-Wextra', '-Werror', ...defines.map(d => '-D' + d),
     '-fsanitize=address,undefined', '-fno-sanitize-recover=all',
     '-I', path.join(root, 'firmware/wayback'),
     path.join(root, 'tools/wayback_host.c'), '-o', out], {stdio: ['ignore', 'pipe', 'pipe']});
-  exe = out;
-  return exe;
+  exes.set(k, out);
+  return out;
 }
 
 // lines: [{latE7, lonE7, exitCm = 0, flags, maxPoints = 64, failReadAfter = -1}]
 // Returns one object per line: {mounted, state, reason, distanceDm, forward, changed, reads, points, piece}.
-export function runCore(fileBytes, routeId, lines) {
+export function runCore(fileBytes, routeId, lines, {defines = []} = {}) {
   const dir = fs.mkdtempSync(path.join(work, 'run-'));
   const file = path.join(dir, 'file.ccwb');
   fs.writeFileSync(file, Buffer.from(fileBytes));
@@ -32,7 +34,7 @@ export function runCore(fileBytes, routeId, lines) {
   const input = lines.map(l => [l.latE7, l.lonE7, l.exitCm ?? 0, l.flags, l.maxPoints ?? 64, l.failReadAfter ?? -1].join(' ')).join('\n') + '\n';
   let text;
   try {
-    text = execFileSync(binary(), [file, hex], {input, maxBuffer: 1 << 30, encoding: 'utf8'});
+    text = execFileSync(binary(defines), [file, hex], {input, maxBuffer: 1 << 30, encoding: 'utf8'});
   } finally {
     fs.rmSync(dir, {recursive: true, force: true});
   }

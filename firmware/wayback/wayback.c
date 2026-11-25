@@ -2,6 +2,10 @@
  * Integer code only: no float, no heap, no 64-bit division. The only library-free helper that
  * touches memory is the reader callback. File layout: firmware/wayback/README.md. */
 #include "wayback.h"
+#ifdef CC26_AREA2      /* the device build: the tick-only core and the near-tie rule (25 Nov study) */
+#define WB_TICK_ONLY 1
+#define WB_TIE 1
+#endif
 
 #define WB_HEADER_BYTES 64u
 #define WB_CELL_BYTES 12u
@@ -42,7 +46,11 @@ _Static_assert(sizeof(struct wb_engine) <= WB_ENGINE_MAX, "wb_engine is larger t
 typedef struct { uint8_t has; uint32_t kind, a, b; } wb_prev;
 
 /* The best piece of a scan, with its squared distance and its position on the piece (0..256). */
-typedef struct { uint32_t X, Y, d2, t; int have; wb_cand cand; } wb_pick;
+typedef struct { uint32_t X, Y, d2, t; int have; wb_cand cand;
+#ifdef WB_TIE
+  uint32_t d, ride;
+#endif
+} wb_pick;
 
 static uint32_t rd_u16(const uint8_t *p) {
   return (uint32_t)p[0] | ((uint32_t)p[1] << 8);
@@ -219,8 +227,11 @@ int wb_scan(wb_engine *e, uint32_t cx0, uint32_t cy0, uint32_t cx1, uint32_t cy1
             uint32_t x0, uint32_t y0, uint32_t x1, uint32_t y1, wb_visit visit, void *ctx) {
   uint8_t cb[WB_ROW_CELLS * WB_CELL_BYTES], buf[WB_BLOCK];
   uint32_t cy;
+#ifndef WB_TICK_ONLY   /* the device build has one caller, wb_tick: 3 cells across and the box of one point; the row
+                          read stays bounded by the cnt clamp below */
   if (cx1 < cx0 || cy1 < cy0 || cx1 - cx0 > WB_ROW_CELLS - 2u) return 0;
   if (x1 < x0 || y1 < y0) return 0;
+#endif
   for (cy = cy0; cy <= cy1; cy++) {
     uint32_t klo = (cy << 16) | cx0, khi = (cy << 16) | cx1, at, cnt, c;
     if (!find_row(e, klo, &at)) return 0;
@@ -281,11 +292,50 @@ static void cand_set(wb_cand *d, const wb_cand *s) {
   d->bits = s->bits; d->vn = s->vn; d->xa = s->xa; d->ya = s->ya; d->xb = s->xb; d->yb = s->yb;
 }
 
+#ifdef WB_TIE
+/* WB_TIE (25 Nov study; on in the device build): among the pieces within WB_TIE_UNITS of the nearest one, take the piece with
+ * the shortest ride to the route. At a node shared by two pieces, or where two streets cross with no shared node, the
+ * rider is within a few decimetres of both; stock then picks by rounding, and the ride distance can change by 300 to
+ * 750 m between two frames. One pass in scan order, no state between frames. */
+#define WB_TIE_UNITS 32u            /* 2 m */
+static uint32_t wb_isqrt(uint32_t v) {
+  uint32_t r = 0u, b = 1u << 30;
+  while (b > v) b >>= 2;
+  while (b) {
+    if (v >= r + b) { v -= r + b; r = (r >> 1) + b; } else r >>= 1;
+    b >>= 2;
+  }
+  return r;
+}
+/* The ride distance (0.1 m) that wb_commit gives for this piece and position t. */
+static uint32_t wb_ride(const wb_cand *c, uint32_t t) {
+  uint32_t ca = 0xFFFFFFFFu, cb = 0xFFFFFFFFu;
+  if (!(c->id & WB_EXTRA_FLAG)) return c->db + c->len * (256u - t) / 256u;
+  if (c->bits & 1u) ca = c->len * t / 256u + c->da;
+  if (c->bits & 2u) cb = c->len * (256u - t) / 256u + c->db;
+  return ca < cb ? ca : cb;
+}
+#endif
+
 static int pick_visit(void *vp, const wb_cand *c) {
   wb_pick *p = (wb_pick *)vp;
   uint32_t d2, t;
   if (!wb_measure((int32_t)c->xa - (int32_t)p->X, (int32_t)c->ya - (int32_t)p->Y,
                   (int32_t)c->xb - (int32_t)p->X, (int32_t)c->yb - (int32_t)p->Y, &d2, &t)) return 1;
+#ifdef WB_TIE
+  if (d2 <= WB_D2_LIMIT) {
+    uint32_t d = wb_isqrt(d2), r = wb_ride(c, t);
+    if (!p->have || d + WB_TIE_UNITS < p->d || (d <= p->d + WB_TIE_UNITS && r < p->ride)) {
+      cand_set(&p->cand, c);
+      p->d2 = d2;
+      p->t = t;
+      p->d = d;
+      p->ride = r;
+      p->have = 1;
+    }
+  }
+  return 1;
+#endif
   if (!p->have || d2 < p->d2) {
     cand_set(&p->cand, c);
     p->d2 = d2;
@@ -316,7 +366,12 @@ static void out_reset(wb_output *out) {
 /* The end choice, the change test and the output of a chosen piece (the end of wb_tick). */
 static void wb_commit(wb_engine *e, const wb_cand *c, uint32_t t, const wb_prev *pr, wb_output *out) {
   uint32_t kind = (c->id & WB_EXTRA_FLAG) ? 2u : 1u, end = WB_NIL, end_first = 0u, end_dist = 0u, way, dist_dm;
+#ifdef WB_TICK_ONLY   /* the device mounts a fresh engine for each frame: there is no line before, so always a change */
+  int changed = 1;
+  (void)pr;
+#else
   int changed = !pr->has || kind != pr->kind || c->a != pr->a || c->b != pr->b;
+#endif
   int32_t p[2];
   wb_grid g;
   if (changed) {
@@ -367,9 +422,11 @@ void wb_tick(wb_engine *e, const wb_input *in, wb_output *out) {
   out_reset(out);
   prev_take(e, &pr);
   pk.have = 0;
+#ifndef WB_TICK_ONLY   /* the device adapter ticks only after a good mount, with both flags set (wb_device.c:198-201) */
   if (!e->mounted) { out->reason = WB_NO_FILE; return; }
   if (!(in->flags & WB_GPS_VALID)) { out->reason = WB_GPS; return; }
   if (!(in->flags & WB_OFF_ROUTE)) { out->reason = WB_ON_ROUTE; return; }
+#endif
   wb_grid_get(e, &g);
   if (!wb_units(&g, in->lat_e7, in->lon_e7, &X, &Y)) { out->reason = WB_NO_STREET; return; }
   cx = X >> 11;

@@ -98,6 +98,17 @@ test('the core output is the same as before the shared scan: state, reason, dist
     assert.deepEqual([r.state, r.reason, r.distanceDm, r.changed, r.piece, r.points], [b.state, b.reason, b.distanceDm, b.changed, b.piece, b.points], `line ${i} ${fixture.lines[i].name}`);
   });
 });
+test('WB_TIE: the same states; a different piece only within 2 m of the nearest, and then a ride that is not longer', () => {
+  const lines = fixture.lines.map(l => ({...l, flags: ON}));
+  const stock = runCore(file, id, lines), tie = runCore(file, id, lines, {defines: ['WB_TIE']});
+  let differ = 0;
+  tie.forEach((r, i) => {
+    const s = stock[i];
+    assert.deepEqual([r.state, r.reason], [s.state, s.reason], `line ${i}`);
+    if (r.state === 1 && r.piece !== s.piece) { differ++; assert(r.distanceDm <= s.distanceDm, `line ${i}: ${r.distanceDm} > ${s.distanceDm}`); }
+  });
+  console.log(`WB_TIE: ${differ} of ${tie.length} fixture lines take another piece`);
+});
 test('forward is 0 for every rider point of the fixture (version 2 has no forward mode)', () => {
   const out = runCore(file, id, fixture.lines);
   assert.equal(out.filter(r => r.forward !== 0).length, 0);
@@ -160,4 +171,20 @@ test('bytes after the extras refuse the mount (no grey tail since cc27)', () => 
   const tail = new Uint8Array(file.length + 16); tail.set(file);
   const q = gridFixture().p(300, 400);
   assert.equal(runCore(tail, id, [{latE7: Math.round(q[0] * 1e7), lonE7: Math.round(q[1] * 1e7), flags: ON}])[0].mounted, 0);
+});
+// runCore keeps one engine for all lines; the device mounts a fresh engine for each frame. The host form equals a fresh
+// engine where its changed is 1 (no line before, or a new piece), so those lines are compared.
+test('WB_TICK_ONLY (the device core): where the host core starts fresh (changed 1), the same output; changed always 1', () => {
+  const lines = fixture.lines.filter(l => l.flags === ON).map(l => ({...l}));
+  const tie = runCore(file, id, lines, {defines: ['WB_TIE']}), dev = runCore(file, id, lines, {defines: ['WB_TICK_ONLY', 'WB_TIE']});
+  assert(lines.length > 1000);
+  let n = 0;
+  dev.forEach((r, i) => {
+    const b = tie[i];
+    if (r.state === 1) assert.equal(r.changed, 1);
+    if (b.state === 1 && b.changed !== 1) return;
+    n++;
+    assert.deepEqual([r.state, r.reason, r.distanceDm, r.piece, r.points], [b.state, b.reason, b.distanceDm, b.piece, b.points], `line ${i}`);
+  });
+  assert(n > 500, `${n} lines compared`);
 });

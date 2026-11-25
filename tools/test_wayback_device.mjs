@@ -23,7 +23,7 @@ const work = fs.mkdtempSync(path.join(os.tmpdir(), 'wayback-device-'));
 process.on('exit', () => { try { fs.rmSync(work, {recursive: true, force: true}); } catch {} });
 const exe = path.join(work, 'host');
 const F = d => path.join(root, 'firmware', d);
-execFileSync('cc', ['-std=gnu11', '-O1', '-g', '-Wall', '-Wextra', '-Werror', '-DHOST', '-DWBD_KM_WHY', '-DWBD_GREY', '-DWBD_NO_KEEP',
+execFileSync('cc', ['-std=gnu11', '-O1', '-g', '-Wall', '-Wextra', '-Werror', '-DHOST', '-DWB_TICK_ONLY', '-DWB_TIE', '-DWBD_KM_WHY', '-DWBD_GREY', '-DWBD_NO_KEEP',
   '-fsanitize=address,undefined', '-fno-sanitize-recover=all', '-I', F('wayback'), '-I', F('common'), '-I', F('raster'), '-I', F('view'), '-I', F('elev'),
   path.join(root, 'tools/wayback_device_host.c'), F('wayback/wb_device.c'), F('wayback/wayback.c'), F('wayback/wb_grey.c'),
   F('wayback/wb_grey_draw.c'), F('wayback/wb_far.c'), F('wayback/wb_cache.c'), F('raster/raster.c'), F('view/view.c'), F('elev/elev.c'), '-lm', '-o', exe], {stdio: ['ignore', 'pipe', 'pipe']});
@@ -51,7 +51,7 @@ const F_OWN = 1, F_TEXT = 2, F_ROUTE = 4;
 // The unit build (24 Nov): kept page cache in the task's pthread key list (WP 4), no grey fallback. The other tests use
 // the cc27 build (grey, no cache). FRAME2: the same frame again.
 const keepExe = path.join(work, 'host-keep');
-execFileSync('cc', ['-std=gnu11', '-O1', '-g', '-Wall', '-Wextra', '-Werror', '-DHOST',
+execFileSync('cc', ['-std=gnu11', '-O1', '-g', '-Wall', '-Wextra', '-Werror', '-DHOST', '-DWB_TICK_ONLY', '-DWB_TIE',
   '-fsanitize=address,undefined', '-fno-sanitize-recover=all', '-I', F('wayback'), '-I', F('common'), '-I', F('raster'), '-I', F('view'), '-I', F('elev'),
   path.join(root, 'tools/wayback_device_host.c'), F('wayback/wb_device.c'), F('wayback/wayback.c'), F('wayback/wb_grey.c'),
   F('wayback/wb_grey_draw.c'), F('wayback/wb_far.c'), F('wayback/wb_cache.c'), F('raster/raster.c'), F('view/view.c'), F('elev/elev.c'), '-lm', '-o', keepExe], {stdio: ['ignore', 'pipe', 'pipe']});
