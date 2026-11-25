@@ -40,7 +40,7 @@ void cc_iter(proj_cb_t cb) {
             uint32_t s = E[i].style;
             if (!s || (s & 15) != LEVEL[f].cls || (int)((s >> 4) & 7) != lv) continue;
             uint8_t op = LEVEL[f].op == 11 && (s & 0x200) ? 18 : LEVEL[f].op;
-            if (s & 0x800) op = op == 7 ? 28 : op == 8 ? 29 : op == 9 ? 30 : op == 10 ? 31 : op;   // A2: far from the route
+            if (s & 0x800) op = op == 7 ? 28 : op == 8 ? 29 : op == 9 ? 30 : op == 10 ? 31 : op == 5 ? 33 : op == 6 ? 34 : op;   // A2: far from the route (25 Nov: main road 33, 34)
             uint16_t sel = op | (s & 0x100 ? F_TUNNEL : 0);
             int edge = LEVEL[f].op == 5 || LEVEL[f].op == 7 || LEVEL[f].op == 9;
             if (edge && (s & 0x80)) sel |= F_BRIDGE;

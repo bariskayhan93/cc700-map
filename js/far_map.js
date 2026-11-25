@@ -16,6 +16,9 @@ const MAX_POINTS = 32, MAX_RING = 64, MAX_BODY = 2048, MAX_CELLS = 16384, MAX_KE
 const LINE_TOL = 40, AREA_TOL = 12 * U_M, AREA_MIN = 5000, STEP_M = 20;
 // detail reach of each line class; the far line starts where the detail map stops. WP 6: a file with a far map carries the
 // handover detail map, so every far line starts at js/mapsec.js HANDOVER_M, where the detail lines end.
+// OVERLAP_M (25 Nov): the far line starts 20 m before that, under the wider detail line drawn on top. The detail clip
+// drops runs under 8 m (js/map_geometry.js), so a way that starts at 292-300 m left a white gap at the handover.
+export const OVERLAP_M = 20;
 // unit draw order and widths in pixels (edge, core)
 // streets in style D as the unit draws and counts them (wb_far.c fm_style: edge 4 + core 2, 0f1d019), main roads one thin line
 export const DRAW_ORDER = [FAR.BUILT, FAR.WATER, FAR.FOREST, FAR.GREEN, FAR.WATERLINE, FAR.PATH, FAR.TRACK, FAR.CYCLE, FAR.MINOR, FAR.MAIN];
@@ -137,7 +140,7 @@ export function buildFarCells({ways = [], areas = [], route, frame, reachM}) {
   const add = (cls, key, pts) => { if (!byCell.has(key)) byCell.set(key, []); byCell.get(key).push({cls, pts}); };
   for (const w of ways) {
     const cls = farClassOf(w.tags); if (cls === null || w.pts.length < 2) continue;
-    for (const run of farRuns(w.pts.map(frame.toUnits), dist, HANDOVER_M, reachM)) cutLine(run, c => add(cls, c.key, c.pts));
+    for (const run of farRuns(w.pts.map(frame.toUnits), dist, HANDOVER_M - OVERLAP_M, reachM)) cutLine(run, c => add(cls, c.key, c.pts));
   }
   for (const a of areas) {
     const cls = areaClassOf(a.tags); if (cls === null) continue;

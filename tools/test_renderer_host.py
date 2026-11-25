@@ -140,6 +140,14 @@ class RendererHost(unittest.TestCase):
                 self.assertEqual(data["callbacks"], 0)
                 self.assertEqual(data["allocations"], 0)
 
+    def test_a2_main_road_far_is_thinner_than_near(self):
+        # 25 Nov: a main road with bit 11 draws ops 33, 34 (6/4 px), between the near road (10/7 px) and the far map (4 px)
+        # (lines go to the stock line stub, so painted counts fills only; the trace hashes width and colour of each draw)
+        near, far = self.run_case("main_near"), self.run_case("main_far")
+        self.assertEqual(near["visible_draws"], far["visible_draws"])
+        self.assertGreater(far["visible_draws"], 0)
+        self.assertNotEqual(far["visible_trace"], near["visible_trace"])
+
     def test_sixty_point_geometry_and_failed_projection_prefix(self):
         data=self.run_case("geometry60")
         self.assertEqual(data["peak_bytes"],61*8)
@@ -153,7 +161,8 @@ class RendererHost(unittest.TestCase):
         return json.loads(result.stdout)
 
     def test_a_off_canvas_lines_make_no_draw_call_and_the_visible_calls_are_the_same(self):
-        for case in ("offscreen", "styles", "mixed", "dense1201", "geometry60", "labels"):
+        # mixed_v21: the mixed styles without a main road with bit 11; v21 has no A2 main road (ops 33, 34, 25 Nov)
+        for case in ("offscreen", "styles", "mixed_v21", "dense1201", "geometry60", "labels"):
             with self.subTest(case=case):
                 new, old = self.run_case(case), self.run_v21(case)
                 self.assertEqual(new["visible_trace"], old["visible_trace"])

@@ -20,12 +20,14 @@ test('blocks serialize each road class/level as a compact stable range',()=>{
   assert(ids.length>1);assert.equal(ids.at(-1)-ids[0]+1,ids.length);
  }
 });
-test('a straight road crossing the route stays near even when its endpoints are far',()=>{
+test('a straight road crossing the route stays near at the route; only its parts beyond 150 m are far (A2 split)',()=>{
  const crossing={kind:3,name:'Crossing',pts:[at(-300,250),at(300,250)]};
  const short={...route,pts:Array.from({length:11},(_,i)=>[...at(0,i*50),0])};
  const model=readFile(buildRoute(short,[crossing],{id:'11120000',nameImage:()=>new Uint8Array(42),map:{styled:true},speedKmh:18}).file);
- const lines=model.blocks[0].filter(e=>(e.style&15)===6);
- assert(lines.length>0);assert(lines.every(e=>!(e.style&0x800)));
+ const lines=model.blocks[0].filter(e=>(e.style&15)===6), xs=e=>[e.center,...e.points].map(p=>(p[1]-origin[1])*70000);
+ const near=lines.filter(e=>!(e.style&0x800)), far=lines.filter(e=>e.style&0x800);
+ assert(near.some(e=>Math.min(...xs(e))<0&&Math.max(...xs(e))>0),'one near piece crosses the route');
+ assert(far.length>0&&far.every(e=>xs(e).every(x=>Math.abs(x)>=135)),'far pieces lie beyond 150 m (15 m samples)');
 });
 test('two minor roads that meet end to end become one entry',()=>{
  // The block window can mark one side "far" (bit 11); a far and a near piece never join. So the contract is:

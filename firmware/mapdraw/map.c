@@ -137,7 +137,11 @@ void cc_line(const pt_t *pts, uint32_t n, int32_t width, int32_t mode) {
     line(pts, n, fw_color_hex(mode == 1 ? 0xc86d : mode == 2 ? 0xc8d0de : 0x1f78ff), width * 2, 255, 0);
     line(pts, n, 0xffff, (width - 4) * 2, 255, 0);
   } else {
-    const op_t *o = &OPS[sel & 0xff];
+    // A2 main road far from the route (25 Nov): ops 33 edge 6 px, 34 core 4 px in the far-map main colour, so the road
+    // steps 10/7 -> 6/4 -> far 4 px. Set field by field: area 2 has no data and the v21 OPS table ends at 32.
+    op_t m; m.kind = K_LINE; m.on = m.off = 0; m.width = 6; m.rgb = 0x202326u;
+    if ((sel & 0xff) == 34) { m.width = 4; m.rgb = 0xf2c94cu; }
+    const op_t *o = (sel & 0xff) > 32 ? &m : &OPS[sel & 0xff];
     int own = sel & OP_OWN ? (sel & OP_AA ? 2 : 1) : 0;
     uint8_t opa = sel & F_TUNNEL ? 115 : 255, op = sel & 0xff;
     int w2 = o->width * 2 - (own == 2 && (op == 11 || op == 18));   // cc28b smooth: path, track 1.5 px; cc28d: cycleway 2.0 px
@@ -309,7 +313,8 @@ static void draw_level(proj_cb_t cb, const ent_t *E, const entry_range_t *ranges
       uint32_t s = E[i].style;
       if (!s || (s & 15) != LEVEL[f].cls || (int)((s >> 4) & 7) != lv) continue;
       uint8_t op = LEVEL[f].op == 11 && (s & 0x200) ? 18 : LEVEL[f].op;
-      if (s & 0x800) op = op == 7 ? 28 : op == 8 ? 29 : op == 9 ? 30 : op == 10 ? 31 : op;   // A2: far from the route
+      // A2: far from the route; ops 7-10 -> 28-31, main road 5, 6 -> 33, 34 (arithmetic: a ternary chain became a 6 B table)
+      if ((s & 0x800) && op >= 5 && op <= 10) op += op >= 7 ? 21 : 28;
       uint16_t sel = op | (s & 0x100 ? F_TUNNEL : 0) | own;
       int edge = LEVEL[f].op == 5 || LEVEL[f].op == 7 || LEVEL[f].op == 9;
       if (edge && (s & 0x80)) sel |= F_BRIDGE;

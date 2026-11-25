@@ -349,17 +349,26 @@ function clipRing(r, [x0, y0, x1, y1]) {                 // Sutherland-Hodgman, 
   }
   return P;
 }
-function runIsFar(run, cor) {
-  // Sparse prepared endpoints cannot classify a long segment crossing the route.
-  // Range/style sampling is independent of the vertices retained for drawing.
+// A2 (25 Nov: split, was whole runs only): the run cut where it crosses FAR m from the route, sampled every 15 m, so a
+// road steps down near -> A2 -> far map (main 10/7 -> 6/4 -> 4 px) instead of one jump at the handover. A piece under
+// FAR_MIN_M joins the piece before it (no style flicker). -> [{pts, far}]
+const FAR_MIN_M = 30;
+function splitFar(run, cor) {
+  const isFar = q => cor.near(...cor.F.m(q[0], q[1]), FAR)[0] > FAR, out = [];
+  let cur = { pts: [run[0]], far: isFar(run[0]) };
   for (let i = 1; i < run.length; i++) {
     const a = run[i - 1], b = run[i], n = Math.max(1, Math.ceil(hav(a, b) / 15));
-    for (let k = 0; k <= n; k++) {
-      const t = k / n;
-      if (cor.near(...cor.F.m(a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t), FAR)[0] <= FAR) return false;
-    }
+    for (let k = 1; k < n; k++) { const t = k / n, q = [a[0] + (b[0] - a[0]) * t, a[1] + (b[1] - a[1]) * t];
+      if (isFar(q) !== cur.far) { cur.pts.push(q); out.push(cur); cur = { pts: [q], far: !cur.far }; } }
+    if (isFar(b) !== cur.far && i < run.length - 1) { cur.pts.push(b); out.push(cur); cur = { pts: [b], far: !cur.far }; }
+    else cur.pts.push(b);
   }
-  return true;
+  out.push(cur);
+  const merged = [];
+  for (const p of out) { const last = merged.at(-1);
+    if (last && (lineLen(p.pts) < FAR_MIN_M || last.far === p.far)) last.pts.push(...p.pts.slice(1)); else merged.push(p); }
+  if (merged.length > 1 && lineLen(merged[0].pts) < FAR_MIN_M) { merged[1].pts = [...merged[0].pts, ...merged[1].pts.slice(1)]; merged.shift(); }
+  return merged.filter(p => p.pts.length >= 2);
 }
 function styledEntries(data, cor, o = {}, coverageFloor = 0, contextRadiusCap = 1000) {
   const F = cor.F, out = [], [bx0, by0, bx1, by1] = cor.box, reach = cls => o.handover ? Math.min(SR[cls], HANDOVER_M) : SR[cls];
@@ -384,9 +393,11 @@ function styledEntries(data, cor, o = {}, coverageFloor = 0, contextRadiusCap = 
   for (const { L, cls, fl } of lines) {
     if (!cls) continue; const lim = Math.min(contextRadiusCap, Math.max(reach(cls), coverageFloor)), b = L.box || (L.box = box(L.pts, F)); if (!nearBox(b, lim)) continue;
     for (const run of clipDisplayLine(L, q => cor.near(...F.m(...q), lim)[0] <= lim)) {
-      const far = (cls === S.MIN || cls === S.SRV) && runIsFar(run, cor) ? 128 : 0, st = styleOf(cls, fl | far);
-      if (cls >= S.MAJ && cls <= S.TRAM) { if (!groups.has(st)) groups.set(st, []); groups.get(st).push(run); }   // joined below (A2)
-      else for (let s = 0; s < run.length - 1; s += MAXPTS - 1) out.push(sentry(st, run.slice(s, s + MAXPTS)));
+      for (const { pts, far } of cls === S.MAJ || cls === S.MIN || cls === S.SRV ? splitFar(run, cor) : [{ pts: run, far: false }]) {
+        const st = styleOf(cls, fl | (far ? 128 : 0));
+        if (cls >= S.MAJ && cls <= S.TRAM) { if (!groups.has(st)) groups.set(st, []); groups.get(st).push(pts); }   // joined below (A2)
+        else for (let s = 0; s < pts.length - 1; s += MAXPTS - 1) out.push(sentry(st, pts.slice(s, s + MAXPTS)));
+      }
     }
   }
   // A2: same-style runs of classes 5 to 11 join at an exact shared end point, at most MAXPTS points per joined run

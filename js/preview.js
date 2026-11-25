@@ -157,7 +157,7 @@ function drawStyled(g, entries, project, study = false, corrected = false, water
           const opacity = g.globalAlpha; g.globalAlpha = 1;
           stroke(g, points, '#111111', 7); stroke(g, points, '#ffffff', 5);
           g.globalAlpha = opacity; }
-        const far = style & 0x800, fw = { [C.MIN]: edge ? [6, '#7a7e83'] : [3, '#f4f4f4'], [C.SRV]: edge ? [4, '#9a9ea3'] : [2, '#f4f4f4'] }[kind];
+        const far = style & 0x800, fw = { [C.MAJ]: edge ? [6, '#202326'] : [4, '#f2c94c'], [C.MIN]: edge ? [6, '#7a7e83'] : [3, '#f4f4f4'], [C.SRV]: edge ? [4, '#9a9ea3'] : [2, '#f4f4f4'] }[kind];
         if (far && fw) {
           if (edge && bridge) stroke(g, points, '#000000', fw[0] + 2);
           else {

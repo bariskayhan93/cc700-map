@@ -161,7 +161,8 @@ int main(int argc, char **argv) {
   else if (!strcmp(which,"oom")) {n = 2; fail_alloc = 1;}
   else if (!strcmp(which,"dense1201")) n = 1201;
   else if (!strcmp(which,"dense4000")) n = 4000;
-  else if (!strcmp(which,"mixed")) n=1024;
+  else if (!strcmp(which,"mixed") || !strcmp(which,"mixed_v21")) n=1024;   /* mixed_v21: no main road with bit 11 (v21 has no ops 33, 34) */
+  else if (!strcmp(which,"main_near") || !strcmp(which,"main_far")) n=8;    /* 25 Nov A2 main road: 10/7 px near, 6/4 px far */
   else if (!strncmp(which,"labels",6)) {
     n=30;label_mode=1;
     if(!strcmp(which,"labels_cap")) {n=20;frames=3;label_mode=2;}
@@ -197,7 +198,9 @@ int main(int argc, char **argv) {
       style = cls ? cls | (level<<4) | ((flags&1)?0x80:0) | ((flags&2)?0x100:0) : 0;
     }
     if (fail_alloc && i==0) style=0;
-    if (!strcmp(which,"mixed")) {unsigned v=(i*2654435761u)^0xdeadbeef;style=(v>>8)&0xfff; if(i%17==0)style=0;}
+    if (!strncmp(which,"mixed",5)) {unsigned v=(i*2654435761u)^0xdeadbeef;style=(v>>8)&0xfff; if(i%17==0)style=0;}
+    if (!strcmp(which,"mixed_v21") && (style&15)==5) style&=~0x800u;
+    if (!strncmp(which,"main_",5)) style = 5 | (2<<4) | (which[5]=='f' ? 0x800u : 0);
     if (!strncmp(which,"labels",6)) style=12;
     host_ents[i] = (ent_t){i,style,4000,-4000,4,shape};
   }
