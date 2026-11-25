@@ -241,9 +241,7 @@ int wb_far(wbd_anchor_fn anchor, void *actx, uint32_t ms[11]) {
       rc = (int)st.stop;
       ms[4] = (fw_clock() - ts - (c.io - is)) / 1000u;         /* d: draw less its file time */
       ms[5] = st.fill_us / 1000u; ms[6] = st.line_us / 1000u; ms[7] = st.areas; ms[8] = st.lines; ms[9] = st.fill_px / 100u;
-      { volatile uint32_t *q = (volatile uint32_t *)(void *)cv.buf; uint32_t k = (uint32_t)cv.w * (uint32_t)cv.h / 2u, tw = fw_clock();
-        while (k--) { *q = *q; q++; }                         /* 25 Nov test: W = one canvas pass, read and write back */
-        ms[10] = (fw_clock() - tw) / 100u; }                     /* W in 0.1 ms (was i, file ms) */
+      /* ms[10] (W, the canvas pass): set by cc_iter with F_TEXT only (25 Nov review: not in every far frame) */
       ms[1] = (to - c.t0) / 1000u; ms[2] = (te - to) / 1000u; ms[3] = (ts - te) / 1000u;   /* h: header, buffer, anchors */
     }
   }

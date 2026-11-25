@@ -344,6 +344,8 @@ static int far_anchor(void *ctx, const int32_t *ll, pt_t *s) { return probe((pro
 static int far_map(proj_cb_t cb, uint32_t *ms) { return wb_far(far_anchor, (void *)cb, ms); }
 #endif
 void cc_iter(proj_cb_t cb) {
+  // The far map has its own bounds (wb_device.c: 300 ms file time, FAR_US); t0 below starts after it, so the 400 ms
+  // stop B counts the detail map only and the far map does not take time from the native detail (25 Nov review).
   uint32_t fms[11]; int far = far_map(cb, fms);
   fw_blk_lock();
   uint32_t cnt = FW_BLK_CNT, t0 = fw_clock(); ent_t *E = FW_BLK_ENTS;
@@ -371,6 +373,14 @@ void cc_iter(proj_cb_t cb) {
     }
     FW_LINE_DSC->dash_width = 0;
   }
-  if (flags & F_TEXT) map_time((fw_clock() - t0) / 1000u, cut, pd, far, fms);
+  if (flags & F_TEXT) {
+    uint32_t mt = (fw_clock() - t0) / 1000u;
+    if (far >= 0 && FW_CANVAS_BUF) {                           // 25 Nov test W: one canvas pass, read and write back, in 0.1 ms
+      volatile uint32_t *q = (volatile uint32_t *)(void *)FW_CANVAS_BUF; uint32_t k = (uint32_t)FW_CANVAS_W * (uint32_t)FW_CANVAS_H / 2u, tw = fw_clock();
+      while (k--) { *q = *q; q++; }                           // (was in wb_far, in every far frame; now after the detail map)
+      fms[10] = (fw_clock() - tw) / 100u;
+    }
+    map_time(mt, cut, pd, far, fms);
+  }
   fw_blk_unlock();
 }
