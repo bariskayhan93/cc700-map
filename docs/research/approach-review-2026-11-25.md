@@ -42,7 +42,7 @@ Designs that a host harness tests and pins to fixed output held. Designs that on
 2. A rewrite for each image. The way-back core changed three times in three days: v1 `2337f3b` (+372 lines), v2 `1f1fe6e` (+321, −266), cc27 tree `b84a368` (+359, −378). `tools/` keeps separate builders for cc23, cc25, cc26 and cc27.
 3. The device as the debugger. On 24 Nov, about 17 commits changed the far map and the page cache. About 8 of them changed only the test text (`f s r i d`, then `o e h`, then `P`, then `W`). Each text had to fit the 512 B frame and one text row. The F1 fault of `3e81fd6` (code after a `//` comment) came from this packing. Cause: the host has no model of file read time, so each question needed a new image and a photo.
 4. The rule "no data, no bss" in area 2 turns into code. The page cache keeps state between frames: `b5fbb8f` puts a node into the stock pthread TLS key list and adds 4 stock calls. The "no rodata" rule packs text into 64-bit constants; this let in the F1 fault. No document records the rule and its code cost as one decision.
-5. Work that was retired later. 31 commits name the grey layer. The far map replaced it, but `wb_grey.c` and `wb_grey_draw.c` stay in the cc27 tree for host tests (`WBD_GREY`). The way-back tree replaced the recovery package (`ddbe568` and about ten research files). `recovery`, `loop_start`, `measurement` and `guidance` are not in the cc27 build but stay in `firmware/` and in review scope.
+5. Work that was retired later. 31 commits name the grey layer. The far map replaced the grey streets on the unit; the grey draw is compiled only with `WBD_GREY` for host tests. Correction (25 Nov): most modules outside the cc27 source list are still on the unit, because cc27 patches a base image that already holds them. The chain is v21 -> cc22 (`guidance`) -> cc23 (`loop_start`) -> cc23 with the trampoline fix -> cc25 = C4 (`mapdec`) -> cc27. `wb_grey.c` is in the cc27 sources and `wb_far.c` uses it. `recovery` is host research, not retired (AGENTS.md). Only `measurement` (the rejected cc24 diagnostic) is retired.
 
 ## Recommendations
 
@@ -50,7 +50,7 @@ Designs that a host harness tests and pins to fixed output held. Designs that on
 2. For time questions, use one fixed test text with fixed fields, or a host model of file read time. Do not make a new text and a new image for each question.
 3. Use one checked trampoline template for all hooks, not hand-written assembly for each hook.
 4. Record "no data, no bss" as a decision with its cost (TLS node, packed constants), so each workaround is a choice.
-5. Move retired modules and old builders out of the build path, so that each review reads less code.
+5. Mark in each module README which image put it on the unit. A review of the cc27 sources alone does not cover the code that runs on the unit. Do not move `guidance`, `loop_start`, `mapdec` or `wb_grey.c`: the unit runs them, and their builders rebuild the base chain.
 
 ## Gaps
 
