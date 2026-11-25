@@ -17,9 +17,11 @@ int fm_open(fm_layer *f, wb_reader rd, void *ctx, uint32_t at, uint32_t size, ui
   return l->body <= size && size - l->body == FM_HEAD + 4u * l->m + 8u * (l->n + 1u);
 }
 int fm_units(const fm_layer *f, int32_t lat_e7, int32_t lon_e7, uint32_t *x, uint32_t *y) { return wb_units(&f->g, lat_e7, lon_e7, x, y); }
+/* floor(v * 65536 / u) in 32-bit integer steps (no libgcc __divsf3); u > 0 (fm_open), (v % u) << 16 < 2^32 for u < 65536 */
+static int32_t fm_inv(uint32_t v, uint32_t u) { return (int32_t)(((v / u) << 16) + ((v % u) << 16) / u); }
 void fm_point(const fm_layer *f, int32_t x, int32_t y, int32_t ll_e7[2]) {
-  ll_e7[0] = f->g.lat0_e7 + (int32_t)((float)y * 65536.0f / (float)f->g.lat_u);
-  ll_e7[1] = f->g.lon0_e7 + (int32_t)((float)x * 65536.0f / (float)f->g.lon_u);
+  ll_e7[0] = f->g.lat0_e7 + fm_inv((uint32_t)y, f->g.lat_u);
+  ll_e7[1] = f->g.lon0_e7 + fm_inv((uint32_t)x, f->g.lon_u);
 }
 
 typedef struct { fm_layer *f; const rs_canvas *cv; const vw_t *v; fm_clock clk; uint32_t t0, limit; fm_stat *st; } fm_ctx;
