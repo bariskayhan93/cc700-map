@@ -326,7 +326,7 @@ function lineClass(L) {
 // level: OSM layer + 2; a bridge or tunnel without a layer tag is one level above or below the ground (F1)
 const lvOf = fl => { const v = (fl >> 2) & 7; return v && v !== 2 ? v : fl & 1 ? 3 : fl & 2 ? 1 : 2; };
 const styleOf = (cls, fl = 0) => cls | (lvOf(fl) << 4) | (fl & 1 ? 0x80 : 0) | (fl & 2 ? 0x100 : 0) | (fl & 64 ? 0x200 : 0) | (fl & 128 ? 0x800 : 0);   // bit 11: far from the route (A2: thinner, lighter)
-const FAR = 150, DOT_R = 300;
+const FAR = 150, FAR_MAJ = 300, DOT_R = 300;   // A2 from FAR m; main roads from FAR_MAJ (25 Nov: one boundary with the 300 m reach of the other classes)
 function lentry(c, name) {                               // the map font has ASCII only
   const b = [...new TextEncoder().encode(labelName(name))];
   b.push(0); while (b.length % 8) b.push(0);
@@ -352,11 +352,11 @@ function clipRing(r, [x0, y0, x1, y1]) {                 // Sutherland-Hodgman, 
   return P;
 }
 // A2 (25 Nov: split, was whole runs only): the run cut where it crosses FAR m from the route, sampled every 15 m, so a
-// road steps down near -> A2 -> far map (main 10/7 -> 6/4 -> 4 px) instead of one jump at the handover. A piece under
+// road steps down near -> A2 -> far map (main 10/7 -> 6/4 at 300 m -> 4 px at 450 m) instead of one jump at the handover. A piece under
 // FAR_MIN_M joins the piece before it (no style flicker). -> [{pts, far}]
 const FAR_MIN_M = 30;
-function splitFar(run, cor) {
-  const isFar = q => cor.near(...cor.F.m(q[0], q[1]), FAR)[0] > FAR, out = [];
+function splitFar(run, cor, lim = FAR) {
+  const isFar = q => cor.near(...cor.F.m(q[0], q[1]), lim)[0] > lim, out = [];
   let cur = { pts: [run[0]], far: isFar(run[0]) };
   for (let i = 1; i < run.length; i++) {
     const a = run[i - 1], b = run[i], n = Math.max(1, Math.ceil(hav(a, b) / 15));
@@ -395,7 +395,7 @@ function styledEntries(data, cor, o = {}, coverageFloor = 0, contextRadiusCap = 
   for (const { L, cls, fl } of lines) {
     if (!cls) continue; const lim = Math.min(contextRadiusCap, Math.max(reach(cls), coverageFloor)), b = L.box || (L.box = box(L.pts, F)); if (!nearBox(b, lim)) continue;
     for (const run of clipDisplayLine(L, q => cor.near(...F.m(...q), lim)[0] <= lim)) {
-      for (const { pts, far } of cls === S.MAJ || cls === S.MIN || cls === S.SRV ? splitFar(run, cor) : [{ pts: run, far: false }]) {
+      for (const { pts, far } of cls === S.MAJ ? splitFar(run, cor, FAR_MAJ) : cls === S.MIN || cls === S.SRV ? splitFar(run, cor) : [{ pts: run, far: false }]) {
         const st = styleOf(cls, fl | (far ? 128 : 0));
         if (cls >= S.MAJ && cls <= S.TRAM) { if (!groups.has(st)) groups.set(st, []); groups.get(st).push(pts); }   // joined below (A2)
         else for (let s = 0; s < pts.length - 1; s += MAXPTS - 1) out.push(sentry(st, pts.slice(s, s + MAXPTS)));

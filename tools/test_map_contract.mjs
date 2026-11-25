@@ -29,6 +29,15 @@ test('a straight road crossing the route stays near at the route; only its parts
  assert(near.some(e=>Math.min(...xs(e))<0&&Math.max(...xs(e))>0),'one near piece crosses the route');
  assert(far.length>0&&far.every(e=>xs(e).every(x=>Math.abs(x)>=135)),'far pieces lie beyond 150 m (15 m samples)');
 });
+test('a main road crossing the route keeps the full width to 300 m; only its parts beyond 300 m are A2',()=>{
+ const crossing={kind:1,name:'Main',pts:[at(-500,250),at(500,250)]};
+ const short={...route,pts:Array.from({length:11},(_,i)=>[...at(0,i*50),0])};
+ const model=readFile(buildRoute(short,[crossing],{id:'11120000',nameImage:()=>new Uint8Array(42),map:{styled:true},speedKmh:18}).file);
+ const lines=model.blocks[0].filter(e=>(e.style&15)===5), xs=e=>[e.center,...e.points].map(p=>(p[1]-origin[1])*70000);
+ const near=lines.filter(e=>!(e.style&0x800)), far=lines.filter(e=>e.style&0x800);
+ assert(near.some(e=>Math.min(...xs(e))<=-280&&Math.max(...xs(e))>=280),'one near piece runs from -280 m to 280 m');
+ assert(far.length>0&&far.every(e=>xs(e).every(x=>Math.abs(x)>=285)),'A2 pieces lie beyond 300 m (15 m samples)');
+});
 test('two minor roads that meet end to end become one entry',()=>{
  // The block window can mark one side "far" (bit 11); a far and a near piece never join. So the contract is:
  // in no block do two class-6 entries of the same style share an end point, and some entry runs through the meeting point.
