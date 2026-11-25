@@ -99,9 +99,26 @@ Second pass (separate run, only for ranked findings): try to refute each finding
 a host test or a disassembly. Keep a finding only if the refutation fails.
 ```
 
+### HEAD mode
+
+Use it to review the current tree, not a diff. Replace `<RANGE>` with "the tree at <COMMIT>" and replace these lines of the prompt:
+
+```text
+Task: review the CC700 firmware patch sources in the tree at <COMMIT> (optionally limited to
+<FILES>) for code-size and behaviour risk. The subject is the current code, not its history.
+
+4. Check each failure class F0 to F8 against the current code. Read F1 a) to c) as patterns to
+   search for, not as commits to review. One verdict per class: finding or "none".
+F0 (HEAD mode): the tree compiles for the device and the host, fits the code limit and the tail
+   reserve, and the tests pass (environment errors listed apart).
+History: use git log -L, git blame and commit messages only as context for a finding: why the
+   code is there, and whether a later commit already changed it. Do not report a fault that the
+   tree at <COMMIT> no longer has.
+```
+
 ## Part 4: how to use it
 
-1. Run the prompt on one range, with the owner's F1 list filled in.
+1. Run the prompt on one range, with the owner's F1 list filled in. To find faults that are still in the code, use HEAD mode; use range mode for a new commit before it is used on the unit.
 2. Run the second pass on the ranked findings.
 3. Measure any size idea that survives, one commit per idea, with the byte delta and the equal-output proof in the message.
 4. Calibrate once: run the prompt on a range whose faults are known (for example the `7f27e9b` range plus the later fixes). Count the false alarms. Change the prompt if the false alarms are high.
