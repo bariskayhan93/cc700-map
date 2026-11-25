@@ -103,3 +103,15 @@ test('an unsupported scoped restriction cannot hide behind a generic rule or bic
  const g=graph([...junction(),rel(100,10,2,20,{'restriction:hgv':'only_straight_on'})]);
  assert(g.turnRules.length===1); // hgv-only scope does not override the generic bicycle rule
 });
+
+test('way-back keep option: an unsupported restriction leaves its ways in the graph and stays in the audit as a gap',()=>{
+ // 25 Nov: a no_entry with two from-ways removed both Burscheider Straße pieces from the N3 way-back data (detour line).
+ const els=[...junction(),node(5),way(40,[5,2]),{...rel(100,10,2,20,{restriction:'no_entry'}),members:[{type:'way',ref:10,role:'from'},{type:'way',ref:40,role:'from'},{type:'node',ref:2,role:'via'},{type:'way',ref:20,role:'to'}]}];
+ const strict=graph(els);
+ assert(strict.excluded.some(e=>e.way===10&&e.reason==='unsupported-restriction-member'));
+ const kept=buildTransitionGraph(snapshot(els),{unsupportedRestrictions:'keep'});
+ assert(!kept.excluded.some(e=>e.reason==='unsupported-restriction-member'));
+ for(const w of [10,20,40])assert(kept.edges.some(e=>e.way===w),`way ${w} has edges`);
+ assert(kept.restrictionAudit.some(a=>a.id===100&&a.status==='unsupported-ignored'));
+ assert.equal(kept.turnRules.length,0);
+});

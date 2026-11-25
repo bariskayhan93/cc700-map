@@ -73,7 +73,7 @@ export function waybackQuery(route, reach) {
 export function waybackFromSnapshot(snapshot, route, routeId, {reach = 'line2k', exceptions = false, maxBytes = 0, format = 1, routeBytes = null, layer = false, caps = GREY_CAPS} = {}) {
   if (format === 2 && !routeBytes) throw new Error('format 2 needs routeBytes: the grey flags come from the map (D0 item 4)');
   checkCover(snapshot, waybackBbox(route, reach), reach);   // snapshot.json too: no silent cut (20 Nov)
-  const graph = buildTransitionGraph(snapshot, {wayPolicy});
+  const graph = buildTransitionGraph(snapshot, {wayPolicy, unsupportedRestrictions: 'keep'})   // 25 Nov: the tree has no turn rules;
   const encode = model => {
     if (format !== 2) return {bytes: encodeWayback(model, routeId), grey: null, greyReport: null};
     const bytes = encodeWaybackV3(model, routeId, greyFlags(routeBytes, makeFrame(model.nodes.map(n => n.point))));

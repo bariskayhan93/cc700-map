@@ -14,7 +14,9 @@ function nodeBlock(t){
  if(t.barrier&&t.barrier!=='no'&&(!knownBarriers.has(t.barrier)||!allowed.has(t.bicycle)))return 'barrier-access-unverified';
  return null;
 }
-export function buildTransitionGraph(snapshot,{wayPolicy}={}){
+// unsupportedRestrictions 'keep' (way-back data, 25 Nov): the tree ignores turn rules, so an unsupported restriction keeps
+// its ways and via node; the audit lists it as 'unsupported-ignored' (a gap). Default: quarantine (recovery planner).
+export function buildTransitionGraph(snapshot,{wayPolicy,unsupportedRestrictions='quarantine'}={}){
  validateRoutingSnapshot(snapshot);
  const excluded=[],blockedNodes=new Map(),turnRules=[],quarantined=new Set(),restrictionAudit=[];
  const original=new Map(snapshot.ways.map(w=>[w.id,w]));
@@ -38,6 +40,7 @@ export function buildTransitionGraph(snapshot,{wayPolicy}={}){
    turnRules.push({id:r.id,fromWay:from[0].ref,via:via[0].ref,toWay:to[0].ref,kind:value});
    restrictionAudit.push({id:r.id,status:'via-node-transition'});
   }else{
+   if(unsupportedRestrictions==='keep'){restrictionAudit.push({id:r.id,status:'unsupported-ignored'});continue;}
    restrictionAudit.push({id:r.id,status:'unsupported-quarantined'});
    for(const m of r.members){if(m.type==='way')quarantined.add(m.ref);if(m.type==='node')blockedNodes.set(m.ref,'unsupported-restriction-via');}
   }
