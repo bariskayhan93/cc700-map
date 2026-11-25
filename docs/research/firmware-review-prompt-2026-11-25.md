@@ -136,6 +136,11 @@ The prompt ran without case F1 a), and the reviewer did not see later commits. T
 - Not ranked: `__lshrdi3` from libgcc is in area 2 (24 B), and it is still there in the 8538ec4 builds. G3 lists only libc names.
 - Refuted: `tools/map_budget.py` counts one projection and `js/map_budget.js` counts two. The commit message says that this is on purpose.
 
+### 9226308^..9226308 (view.c to the tail area)
+
+- None in F0 to F8. Area 2 is 18,380 B (24 B free; parent 18,612 B). The tail area is 3,224 B, 212 B before the 1,768 B reserve; `cc27_build.py` checks both. The gc lists are equal. Calls to `vw_fit` and `vw_map` changed from `call8` to `l32r` + `callx8` (4 B each). Net: area 2 −232 B, tail +248 B. Python tests are the same as at the parent.
+- Gaps: no device run of `view.c` in the tail (`elev.o` uses the same method); the commit message has no byte figures.
+
 ### Result
 
-No false alarm in three runs. The blind run found the known fault and two more real faults that the commit left: the code limit and a failing test. The prompt had no class for "the range builds, fits the code limit and passes its tests"; the reviewer added that check without a class. Class F0 now asks for it. Same gaps in all runs: no full build check without the base image, and no host harness for the `wb_far` open, trailer and close path.
+No false alarm in four runs. The blind run found the known fault and two more real faults that the commit left: the code limit and a failing test. The prompt had no class for "the range builds, fits the code limit and passes its tests"; the reviewer added that check without a class. Class F0 now asks for it. Same gaps in all runs: no full build check without the base image, and no host harness for the `wb_far` open, trailer and close path.
