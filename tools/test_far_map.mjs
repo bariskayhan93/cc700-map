@@ -2,7 +2,7 @@
 // detail reach, area clipping, encode/read round trip, body limit, fit to the caps. Host only, synthetic data.
 import assert from 'node:assert/strict';
 import {makeFrame} from '../js/wayback_format.js';
-import {HANDOVER_M} from '../js/mapsec.js';
+import {HANDOVER_M, HANDOVER_LONG_M} from '../js/mapsec.js';
 import {farClassOf, areaClassOf, buildFarCells, encodeFar, readFar, fitFar, proveFar, FAR_CAPS, FAR} from '../js/far_map.js';
 
 const ok = name => console.log('PASS ' + name);
@@ -33,7 +33,8 @@ assert.equal(areaClassOf({landuse: 'forest'}), FAR.FOREST);
 assert.equal(areaClassOf({natural: 'water'}), FAR.WATER);
 assert.equal(areaClassOf({leisure: 'park'}), FAR.GREEN);
 assert.equal(areaClassOf({landuse: 'farmland'}), null);
-assert.equal(HANDOVER_M, 300, 'WP 6 handover: every line class at 300 m (25 Nov: one rule)');
+assert.equal(HANDOVER_M, 300, 'WP 6 handover: line classes at 300 m');
+assert.equal(HANDOVER_LONG_M, 450, '25 Nov option a: main roads, rails and trams at 450 m');
 ok('classes');
 
 // 2. a street that leaves and enters the 300 m minor reach (WP 6 handover) two times gives two far pieces that start at the reach
@@ -42,6 +43,11 @@ const lines = buildFarCells({ways: [zig], areas: [], route, frame, reachM: 3000}
 const ends = lines.flatMap(l => [l.pts[0], l.pts.at(-1)]).map(([x, y]) => (y - frame.toUnits(route[0])[1]) / U).filter(d => d < 400);
 assert.equal(ends.length, 3, 'three reach crossings: out, in, out');
 for (const d of ends) assert(Math.abs(d - 300) <= 40, 'piece end at the reach: ' + d);
+const zigMain = {...zig, tags: {highway: 'primary'}}, zigTer = {...zig, tags: {highway: 'tertiary'}};
+const nearest = w => Math.min(...buildFarCells({ways: [w], areas: [], route, frame, reachM: 3000}).flatMap(c => c.items.filter(i => i.cls === FAR.MAIN))
+  .flatMap(l => l.pts).map(([x, y]) => (y - frame.toUnits(route[0])[1]) / U));
+assert(Math.abs(nearest(zigMain) - 430) <= 20, 'main road: the far line starts at 450 m - OVERLAP_M: ' + nearest(zigMain));
+assert(Math.abs(nearest(zigTer) - 280) <= 20, 'tertiary (detail class MIN): the far line starts at 300 m - OVERLAP_M: ' + nearest(zigTer));
 ok('far pieces start at the detail reach');
 
 // 3. an area over several cells: one clipped ring per cell, each inside its cell, area kept; a small area is dropped
