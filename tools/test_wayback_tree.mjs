@@ -115,3 +115,22 @@ test('a street node never takes its next over an exit edge; a track node leads o
   assert.equal(m.nodes[at(m, 0, 200)].next, at(m, 0, 100), 'track node leads out along the track');
   assert.equal(m.nodes[at(m, 300, 500)].next, at(m, 200, 500), 'track-only node leads to the street node');
 });
+test('an extra piece never gives a ride over an exit edge that the tree refuses (25 Nov)', async () => {
+  const {makeGraph} = await import('./wayback_fixture.mjs');
+  // as above: street node A(0,500) has its tree next along the street (800 m); the track A -> (0,0) is 500 m
+  const g = makeGraph([[-500, 0], [0, 0], [500, 0], [-300, 0], [0, 500], [-300, 500], [300, 300], [300, 0]], [[0, 3], [3, 1], [1, 2], [4, 5], [5, 3], [4, 6]]);
+  const ex = (i, j, one) => { for (const [a, b] of one ? [[i, j]] : [[i, j], [j, i]]) g.edges.push({from: a, to: b, meters: hav(g.nodes[a].point, g.nodes[b].point), exit: true}); };
+  ex(4, 1); ex(6, 7, true);                                         // track A-(0,0); one-way track (300,300) -> (300,0)
+  const r = [{point: p(-500, 0), progress: 0}, {point: p(500, 0), progress: 100000}];
+  const m = buildWaybackModel(g, r, {reach: 'line2k'});
+  const A = at(m, 0, 500), T = at(m, 0, 400), x = m.extras.find(e => (e.a === A && e.b === T) || (e.a === T && e.b === A));
+  assert(x, 'the first track piece at A is an extra piece');
+  assert.equal(x.a === A ? x.toA : x.toB, true, 'a rider on the track piece may ride to the street node');
+  assert.equal(x.a === A ? x.toB : x.toA, false, 'no ride from the street node into the track');
+  const S = at(m, 300, 300), S1 = at(m, 300, 200);
+  assert(!m.extras.some(e => (e.a === S && e.b === S1) || (e.a === S1 && e.b === S)), 'the one-way track piece with no end left is not stored');
+  assert.equal(m.stats.exitDropped, 1);
+  assert.equal(m.stats.exitEnds, 2);
+  for (const e of m.extras) for (const [s0, t0, ok] of [[e.a, e.b, e.toB], [e.b, e.a, e.toA]])
+    if (ok) assert(e.meters + m.nodes[t0].dist >= m.nodes[s0].dist - 1e-6, 'no extra piece end is shorter than the tree');
+});

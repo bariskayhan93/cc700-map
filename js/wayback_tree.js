@@ -284,11 +284,18 @@ export function buildWaybackModel(graph, route, {reach = 'line2k', exceptions = 
   }));
 
   // Extra pieces: stored pairs with an edge, that tree A does not link.
-  const meterOf = new Map();
+  // Exit edges (25 Nov): tree A never takes a street node's next over an exit edge, so an extra piece must not give that
+  // ride either. A direction with only exit edges loses its end bit when its ride is shorter than the tree distance of
+  // its start node; a piece with no end left is not stored (the core has no case for it). Without this the core sends a
+  // rider at a street node into the track (rural lab file: 98 piece ends, up to 2,085 m shorter than the tree).
+  const meterOf = new Map(), admittedDir = new Set();
   for (const e of edges) {
     const k = e.u + '>' + e.v, m0 = meterOf.get(k);
     if (m0 === undefined || e.m < m0) meterOf.set(k, e.m);
+    if (!e.exit) admittedDir.add(k);
   }
+  const shortcut = (x, y, m) => m !== undefined && !admittedDir.has(x + '>' + y) && m + dist[y] < dist[x];
+  let exitEnds = 0, exitDropped = 0;
   const extras = [], pairSeen = new Set();
   for (const e of edges) {
     const u = e.u, v = e.v;
@@ -298,12 +305,14 @@ export function buildWaybackModel(graph, route, {reach = 'line2k', exceptions = 
     pairSeen.add(pk);
     if (next[u] === v || next[v] === u) continue;
     const ab = meterOf.get(a + '>' + b), ba = meterOf.get(b + '>' + a);
-    extras.push({a: newIndex[a], b: newIndex[b], meters: Math.min(ab ?? Infinity, ba ?? Infinity),
-      toA: ba !== undefined, toB: ab !== undefined});
+    const cutB = shortcut(a, b, ab), cutA = shortcut(b, a, ba), toA = ba !== undefined && !cutA, toB = ab !== undefined && !cutB;
+    exitEnds += cutA + cutB;
+    if (!toA && !toB) { exitDropped++; continue; }
+    extras.push({a: newIndex[a], b: newIndex[b], meters: Math.min(ab ?? Infinity, ba ?? Infinity), toA, toB});
   }
   extras.sort((p, q) => p.a - q.a || p.b - q.b);
 
-  const stats = {graphNodes, splitNodes: N - graphNodes, routeNodes, stored: kept.length, extras: extras.length, noWay: 0, noWayInside2km: 0};
+  const stats = {graphNodes, splitNodes: N - graphNodes, routeNodes, stored: kept.length, extras: extras.length, exitEnds, exitDropped, noWay: 0, noWayInside2km: 0};
   for (let i = 0; i < graphNodes; i++) if (dist[i] === Infinity) { stats.noWay++; if (withinAir(i)) stats.noWayInside2km++; }
 
   const model = {nodes, extras, chunks: [], stats};
