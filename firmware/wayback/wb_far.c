@@ -13,15 +13,16 @@ int fm_open(fm_layer *f, wb_reader rd, void *ctx, uint32_t at, uint32_t size, ui
   const uint8_t *h = buf; gl_layer *l = &f->l; uint32_t shift;
   if (!buf || size < FM_HEAD || FM_PTS_AT + 4u * FM_RING > GL_BUF || !rd(ctx, at, buf, size < FM_HEAD + 1024u ? size : FM_HEAD + 1024u)) return 0;
   if (wb_u32(h) != 0x4D464343u || h[4] != 12u || h[5] != 3u || h[6] != 1u || h[7] < 4u || h[7] > 6u) return 0;   /* "CCFM" */
+  uint32_t w[10], i;
+  for (i = 0; i < 10u; i++) w[i] = wb_u32(h + 8 + 4 * i);       /* the 10 header words after the 8 id bytes */
   shift = h[7];
   l->rd = rd; l->ctx = ctx; l->at = at; l->size = size; l->buf = buf; l->head = FM_HEAD; l->stride = 1u << shift;
-  l->n = wb_u32(h + 8); l->body = wb_u32(h + 12); l->pix_cap = wb_u32(h + 16); l->pt_cap = wb_u32(h + 20); f->fill_cap = wb_u32(h + 24); l->m = wb_u32(h + 28);
-  f->g.lat0_e7 = (int32_t)wb_u32(h + 32); f->g.lon0_e7 = (int32_t)wb_u32(h + 36); f->g.lat_u = wb_u32(h + 40); f->g.lon_u = wb_u32(h + 44);
+  l->n = w[0]; l->body = w[1]; l->pix_cap = w[2]; l->pt_cap = w[3]; f->fill_cap = w[4]; l->m = w[5];
+  f->g.lat0_e7 = (int32_t)w[6]; f->g.lon0_e7 = (int32_t)w[7]; f->g.lat_u = w[8]; f->g.lon_u = w[9];
   f->g.lat_e = 0u; f->g.lon_e = 0u;
   if (!l->n || l->n > (256u << shift) || l->m != (l->n + l->stride - 1u) >> shift || !f->g.lat_u || !f->g.lon_u) return 0;
   return l->body <= size && size - l->body == FM_HEAD + 4u * l->m + 8u * (l->n + 1u);
 }
-int fm_units(const fm_layer *f, int32_t lat_e7, int32_t lon_e7, uint32_t *x, uint32_t *y) { return wb_units(&f->g, lat_e7, lon_e7, x, y); }
 /* floor(v * 65536 / u) in 32-bit integer steps (no libgcc __divsf3); u > 0 (fm_open), (v % u) << 16 < 2^32 for u < 65536 */
 static int32_t fm_inv(uint32_t v, uint32_t u) { return (int32_t)(((v / u) << 16) + ((v % u) << 16) / u); }
 void fm_point(const fm_layer *f, int32_t x, int32_t y, int32_t ll_e7[2]) {

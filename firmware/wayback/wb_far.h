@@ -17,7 +17,7 @@ typedef uint32_t (*fm_clock)(void);                                       /* mic
 /* Header and directory of the section at [at, at + size) (one read). 1 = a version 1 far map. */
 int fm_open(fm_layer *f, wb_reader rd, void *ctx, uint32_t at, uint32_t size, uint8_t *buf);
 /* Rider units of (lat, lon) E7 in the frame of the section. 0 = outside. */
-int fm_units(const fm_layer *f, int32_t lat_e7, int32_t lon_e7, uint32_t *x, uint32_t *y);
+#define fm_units(f, lat_e7, lon_e7, x, y) wb_units(&(f)->g, lat_e7, lon_e7, x, y)   /* the grid units of (lat, lon) E7 */
 /* (lat, lon) E7 of the unit point (x, y). */
 void fm_point(const fm_layer *f, int32_t x, int32_t y, int32_t ll_e7[2]);
 /* Draws the items of the cells under the screen (gl_cells) through the view: areas filled, lines by class. Stops at an

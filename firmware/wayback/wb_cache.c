@@ -33,6 +33,8 @@ int wc_read(wc_cache *c, wb_reader rd, void *ctx, uint32_t off, void *dst, uint3
     for (j = 0u; j < k; j++) o[j] = c->data[s][in + j];
     o += k; off += k; n -= k;
   }
-  if (!miss) c->hits++;
+#ifdef WB_DIAG
+  if (!miss) c->hits++;                                        /* test image only (test_wb_cache) */
+#endif
   return 1;
 }

@@ -26,7 +26,7 @@ Correction (25 Nov): at HEAD (dd4833a, hand link, no base image) area 2 is 18,20
 
 | Item | Where | Size | Decision |
 |---|---|---|---|
-| Test text and projection check (F_TEXT) | `map_time`, `own_check` in `firmware/mapdraw/map.c`; `text`, `tx_num` | at least 572 B (`text` 452, `own_check` 120) | Keep until the way-back ride tests end (owner, 23 Nov). Remove at release. |
+| Test text and projection check (F_TEXT) | `map_time`, `own_check` in `firmware/mapdraw/map.c`; `tx_num` | at least 120 B (`own_check` 120) | Keep until the way-back ride tests end (owner, 23 Nov). Remove at release. Correction (27 Nov): `text` (452 B) is the street-name drawer, not test text; `own_check` and the closed test rows are under `WB_DIAG` since d742bfe. |
 | Grey streets (WBD_GREY) | `wb_device.c`, `wb_grey_draw.c` | 0 B in the image | Already out of the build. Delete the source after the next ride if no file without section 4 is in use. |
 | Retired flags F_CYC (16), F_NODRAW (32) | `firmware/common/types.h:18-19` | 0 B | Keep the comments: old route files still set the bits. |
 | `gl_cells`, `gl_bodies` | `wb_grey.c` | 1,072 B | Live: the far map uses the same cell index. Keep. |

@@ -14,6 +14,7 @@
 #ifdef HOST
 extern uint32_t host_selection_checks;
 #define COUNT_ENTRY() (host_selection_checks++)
+#define tx_clock() fw_clock()
 #else
 #define COUNT_ENTRY() ((void)0)
 #endif
@@ -63,7 +64,12 @@ static int outside(const pt_t *p, uint32_t n) {            // A: the box of the 
   for (uint32_t i = 1; i < n; i++) { if (p[i].x < x0) x0 = p[i].x; if (p[i].x > x1) x1 = p[i].x; if (p[i].y < y0) y0 = p[i].y; if (p[i].y > y1) y1 = p[i].y; }
   return x1 < -CLIP_M || y1 < -CLIP_M || x0 > FW_CANVAS_W + CLIP_M || y0 > FW_CANVAS_H + CLIP_M;
 }
+#ifdef HOST
 static rs_canvas canvas(void) { rs_canvas c = { FW_CANVAS_BUF, (int16_t)FW_CANVAS_W, (int16_t)FW_CANVAS_H }; return c; }
+#else
+void tx_cv(rs_canvas *c);                                  // wb_device.c: the stock canvas as a raster target
+static rs_canvas canvas(void) { rs_canvas c; tx_cv(&c); return c; }
+#endif
 // w2: width in half pixels (cc28b); only the smooth drawer uses an odd value, the others round it up
 static void line(const pt_t *p, uint32_t n, uint16_t col, int w2, uint8_t opa, int own) {   // own: 0 LVGL, 1 raster, 2 smooth
   int w = (w2 + 1) >> 1;
@@ -97,8 +103,6 @@ typedef struct { int16_t x0,y0,x1,y1; } label_box_t;
 typedef struct { label_box_t boxes[12]; uint8_t count; } label_state_t;
 #ifdef HOST
 void host_text(int, int, const char *, uint16_t);
-#else
-static void fw_text(int32_t x,int32_t y,const char *t) { FW_LABEL_OPA=255; fw_canvas_text(FW_CANVAS,x,y,400,FW_LABEL_DSC,t); }
 #endif
 static void text(pt_t p, uint32_t i, uint16_t col, label_state_t *state) {
   if (state->count >= 12 || (uint32_t)i >= FW_BLK_CNT) return;
@@ -119,9 +123,7 @@ static void text(pt_t p, uint32_t i, uint16_t col, label_state_t *state) {
 #ifdef HOST
   host_text(x,y,t,col);
 #else
-  uint16_t old=FW_LABEL_COL; FW_LABEL_COL=0xffff;
-  fw_text(x-1,y,t);fw_text(x+1,y,t);fw_text(x,y-1,t);fw_text(x,y+1,t);
-  FW_LABEL_COL=col;fw_text(x,y,t);FW_LABEL_COL=old;
+  tx_halo(FW_CANVAS, x, y, 400, col, t);   // wb_device.c: white halo (x -+ 1, y -+ 1), then col
 #endif
 }
 
@@ -145,20 +147,21 @@ void cc_line(const pt_t *pts, uint32_t n, int32_t width, int32_t mode) {
     int own = sel & OP_OWN ? (sel & OP_AA ? 2 : 1) : 0;
     uint8_t opa = sel & F_TUNNEL ? 115 : 255, op = sel & 0xff;
     int w2 = o->width * 2 - (own == 2 && (op == 11 || op == 18));   // cc28b smooth: path, track 1.5 px; cc28d: cycleway 2.0 px
+    uint16_t col = fw_color_hex(o->rgb);                         // the colour of the op, for every kind below
     if (o->kind == K_TEXT) {
       // Stock callback only frees its projected buffer after cc_line returns.
       // Report the anchor to cc_iter; placement state remains on its stack.
       if(n) {d->color=(uint16_t)pts[0].x;d->width=pts[0].y;d->dash_gap=1;}
     }
-    else if (o->kind == K_DOT) { if (n) { pt_t q[2] = { pts[0], { (int16_t)(pts[0].x + 1), pts[0].y } }; line(q, 2, fw_color_hex(o->rgb), w2, 255, own); } }
+    else if (o->kind == K_DOT) { if (n) { pt_t q[2] = { pts[0], { (int16_t)(pts[0].x + 1), pts[0].y } }; line(q, 2, col, w2, 255, own); } }
     else if (o->kind == K_FILL) {
-      rs_canvas c = canvas(); rs_fill(&c, pts, n, fw_color_hex(o->rgb));
+      rs_canvas c = canvas(); rs_fill(&c, pts, n, col);
       if (sel & OP_RING) line(pts, n, fw_color_hex(OPS[op == 2 ? 24 : 25].rgb), 2, 255, own ? 1 : 0);   // WP 3: as ops 24/25, own & ~OP_AA
     }
-    else if (o->kind == K_DASH) dash(pts, n, fw_color_hex(o->rgb), w2, opa, o->on, o->off, own);
+    else if (o->kind == K_DASH) dash(pts, n, col, w2, opa, o->on, o->off, own);
     else if (sel & F_BRIDGE) line(pts, n, 0, w2 + 4, 255, own);   // bridge edge: black, wider
-    else if ((sel & F_TUNNEL) && ((sel & 0xff) == 5 || (sel & 0xff) == 7 || (sel & 0xff) == 9)) dash(pts, n, fw_color_hex(o->rgb), w2, 255, 3, 2, own);   // tunnel edge: dashed
-    else line(pts, n, fw_color_hex(o->rgb), w2, opa, own);
+    else if ((sel & F_TUNNEL) && ((sel & 0xff) == 5 || (sel & 0xff) == 7 || (sel & 0xff) == 9)) dash(pts, n, col, w2, 255, 3, 2, own);   // tunnel edge: dashed
+    else line(pts, n, col, w2, opa, own);
   }
   d->opa = 255; d->flags = 0;                               // as set up by the firmware
 }
@@ -188,10 +191,12 @@ static int bucket(uint32_t s) {
   if(c==C_SIG || c==C_STOP) return 39;
   return c==C_LABEL ? 40 : -1;
 }
+// Map units (2^31 = 180 degrees) to the degrees of the stock projection: the one conversion of the map path.
+static __attribute__((noinline)) void deg(float *o, const int32_t *v, uint32_t n) { while (n--) *o++ = (float)*v++ * (180.0f / 2147483648.0f); }
 static int16_t rnd(float v) { if (v > 32000.0f) v = 32000.0f; if (v < -32000.0f) v = -32000.0f; return (int16_t)(v >= 0 ? (int)(v + 0.5f) : -(int)(0.5f - v)); }
 // cc28b F_PROJ: the stock screen point of (lat, lon) through the label anchor path of cc_line; 1 = got it
 static int probe(proj_cb_t cb, int32_t lat, int32_t lon, int16_t *x, int16_t *y) {
-  const float k = 180.0f / 2147483648.0f; float b[2] = { (float)lat * k, (float)lon * k };
+  int32_t ll[2] = { lat, lon }; float b[2]; deg(b, ll, 2);
   line_dsc_t *d = FW_LINE_DSC; uint16_t oc = d->color; int16_t ow = d->width; int ok;
   d->dash_width = (int16_t)(OP_PATCH | OP_ANCHOR); d->dash_gap = 0; cb(b, 1);
   ok = d->dash_gap; *x = (int16_t)d->color; *y = d->width;
@@ -235,18 +240,15 @@ static __attribute__((noinline)) int own_check(proj_cb_t cb, const ent_t *E, uin
 }
 #endif
 static void draw_entry(proj_cb_t cb, const ent_t *e, uint16_t sel, float *buf, const proj_t *p) {
-  const float k = 180.0f / 2147483648.0f;
+  FW_LINE_DSC->dash_width = (int16_t)(OP_PATCH | sel);                   // the op for cc_line, both paths
   if (p) {                                                               // cc28b F_PROJ: own points, then cc_line directly
     pt_t *q = (pt_t *)buf; float x, y;
     proj_xy(p, e->lat, e->lon, &x, &y); q[0].x = rnd(x); q[0].y = rnd(y);
     for (uint32_t i = 0; i < e->cnt; i++) { proj_xy(p, e->pts[2 * i], e->pts[2 * i + 1], &x, &y); q[1 + i].x = rnd(x); q[1 + i].y = rnd(y); }
-    FW_LINE_DSC->dash_width = (int16_t)(OP_PATCH | sel);
     cc_line(q, e->cnt + 1, 0, 0);
     return;
   }
-  buf[0] = (float)e->lat * k; buf[1] = (float)e->lon * k;
-  for (uint32_t i = 0; i < e->cnt; i++) { buf[2 + 2 * i] = (float)e->pts[2 * i] * k; buf[3 + 2 * i] = (float)e->pts[2 * i + 1] * k; }
-  FW_LINE_DSC->dash_width = (int16_t)(OP_PATCH | sel);
+  deg(buf, &e->lat, 2); deg(buf + 2, e->pts, 2 * e->cnt);
   cb(buf, e->cnt + 1);
 }
 // cc27 F_TEXT: the time of cc_iter in ms at (6, 24), white shadow then black (the adapter text is at (6, 6))
@@ -255,10 +257,7 @@ static void map_row(int32_t y, const char *s) {
 #ifdef HOST
   host_text(6, y, s, 0);
 #else
-  uint16_t old = FW_LABEL_COL;
-  FW_LABEL_COL = 0xffff; fw_text(7, y + 1, s);
-  FW_LABEL_COL = 0; fw_text(6, y, s);
-  FW_LABEL_COL = old;
+  tx_row(y, s);                                              // wb_device.c, as the way-back row
 #endif
 }
 static void map_time(uint32_t ms, uint32_t cut, int pd, int far, const uint32_t *fs) {   // pd: F_PROJ check " p<d>", -1 = none; far: wb_far result
@@ -290,15 +289,15 @@ static void map_time(uint32_t ms, uint32_t cut, int pd, int far, const uint32_t 
 // Pass 0: the range of each bucket and the largest point count; the original star lines (style 0) until the stop.
 // *late = 1 when the stop came in this pass.
 static uint32_t scan(proj_cb_t cb, const ent_t *E, uint32_t cnt, entry_range_t ranges[41], uint32_t t0, uint32_t *late) {
-  const float k = 180.0f / 2147483648.0f; uint32_t big = 0;
+  uint32_t big = 0;
   for (uint32_t i = 0; i < cnt; i++, COUNT_ENTRY()) {
     const ent_t *e = &E[i];
     int b = bucket(e->style);
     if (b >= 0) { if (ranges[b].first == cnt) ranges[b].first = i; ranges[b].end = i + 1; }
     if (e->style) { if (e->cnt > big) big = e->cnt; continue; }
-    if (!*late && fw_clock() - t0 > MAP_FRAME_US) *late = 1;
+    if (!*late && tx_clock() - t0 > MAP_FRAME_US) *late = 1;
     for (uint32_t j = 0; j < e->cnt && !*late; j++) {      // original star line: centre -> point j
-      float l[4] = { (float)e->lat * k, (float)e->lon * k, (float)e->pts[2 * j] * k, (float)e->pts[2 * j + 1] * k };
+      float l[4]; deg(l, &e->lat, 2); deg(l + 2, e->pts + 2 * j, 2);
       FW_LINE_DSC->dash_width = 0; cb(l, 2);
     }
   }
@@ -359,13 +358,12 @@ void cc_iter(proj_cb_t cb) {
   // stop B counts the detail map only and the far map does not take time from the native detail (25 Nov review).
   uint32_t fms[11]; int far = far_map(cb, fms);
   fw_blk_lock();
-  uint32_t cnt = FW_BLK_CNT, t0 = fw_clock(); ent_t *E = FW_BLK_ENTS;
+  uint32_t cnt = FW_BLK_CNT, t0 = tx_clock(); ent_t *E = FW_BLK_ENTS;
   if (cnt > 0xFFFFu) cnt = 0xFFFFu;                            // the ranges hold 16 bits (a 64 KB block has fewer entries)
   uint32_t flags = blk_flags(E, cnt);                         // cc27: the last entry, 0 without it (cc26)
   uint16_t own = (flags & F_OWN ? OP_OWN | (flags & F_AA ? OP_AA : 0) : 0);   // F_CYC 16 (cc28b) and 32 (F_NODRAW, 23 Nov): retired
   // cc27: the stop (B, MAP_FRAME_US: the rest of this frame is not drawn) is checked only between passes, so a road
   // never shows its edge without its core. cut = the pass before which it came.
-#define STOP(k) if (fw_clock() - t0 > MAP_FRAME_US) { cut = (k); goto done; }
   uint32_t cut = 0; int pd = -1; proj_t pj; const proj_t *P = 0;
   entry_range_t ranges[41];
   for (unsigned r = 0; r < 41; r++) { ranges[r].first = cnt; ranges[r].end = 0; }
@@ -379,22 +377,24 @@ void cc_iter(proj_cb_t cb) {
 #endif
     }
     if (buf) {
-      STOP(1) draw_fills(cb, E, ranges, own, buf, P);
-      for (int lv = 0; lv <= 4; lv++) { STOP(2 + lv) draw_level(cb, E, ranges, own, buf, P, lv); }
-      STOP(7) draw_stops(cb, E, &ranges[39], own, buf, P);
-      STOP(8) draw_names(cb, E, &ranges[40], P);
-    done:
+      for (uint32_t k = 1; k <= 8u; k++) {                     // pass k: 1 fills, 2..6 levels 0..4, 7 signals, 8 names
+        if (tx_clock() - t0 > MAP_FRAME_US) { cut = k; break; }
+        if (k == 1u) draw_fills(cb, E, ranges, own, buf, P);
+        else if (k <= 6u) draw_level(cb, E, ranges, own, buf, P, (int)k - 2);
+        else if (k == 7u) draw_stops(cb, E, &ranges[39], own, buf, P);
+        else draw_names(cb, E, &ranges[40], P);
+      }
       fw_free(buf);
     }
     FW_LINE_DSC->dash_width = 0;
   }
   if (flags & F_TEXT) {
-    uint32_t mt = (fw_clock() - t0) / 1000u;
+    uint32_t mt = (tx_clock() - t0) / 1000u;
 #ifdef WB_DIAG
     if (far >= 0 && FW_CANVAS_BUF) {                           // 25 Nov test W: one canvas pass, read and write back, in 0.1 ms
-      volatile uint32_t *q = (volatile uint32_t *)(void *)FW_CANVAS_BUF; uint32_t k = (uint32_t)FW_CANVAS_W * (uint32_t)FW_CANVAS_H / 2u, tw = fw_clock();
+      volatile uint32_t *q = (volatile uint32_t *)(void *)FW_CANVAS_BUF; uint32_t k = (uint32_t)FW_CANVAS_W * (uint32_t)FW_CANVAS_H / 2u, tw = tx_clock();
       while (k--) { *q = *q; q++; }                           // (was in wb_far, in every far frame; now after the detail map)
-      fms[10] = (fw_clock() - tw) / 100u;
+      fms[10] = (tx_clock() - tw) / 100u;
     }
 #endif
     map_time(mt, cut, pd, far, fms);

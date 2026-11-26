@@ -36,7 +36,7 @@ int main(int argc, char **argv) {
   printf("{\\"bad\\":%u,\\"reads\\":%u,\\"raw\\":%u,\\"hits\\":%u}\\n", bad, reads, raw, c.hits);
   return 0;
 }`);
-execFileSync('cc', ['-std=gnu11', '-O1', '-g', '-Wall', '-Wextra', '-Werror', '-DHOST',
+execFileSync('cc', ['-std=gnu11', '-O1', '-g', '-Wall', '-Wextra', '-Werror', '-DHOST', '-DWB_DIAG',
   '-fsanitize=address,undefined', '-fno-sanitize-recover=all', '-I', path.join(root, 'firmware/wayback'),
   src, path.join(root, 'firmware/wayback/wb_cache.c'), '-o', exe], {stdio: ['ignore', 'pipe', 'pipe']});
 const run = (size, ...reqs) => JSON.parse(execFileSync(exe, [size, ...reqs.flat()].map(String), {encoding: 'utf8'}));

@@ -45,7 +45,7 @@ Host time, 200 x 2,000 random points, 240 x 256 canvas (`-O2`, Mac):
   (`firmware-mining-2026-11-16.md`). No new result.
 - Builder-side work: `wb_km` (836 B) is mostly glue (file read, admission, fallback). The lens
   chart math is in the tail (`elev.c`), not in area 2. No large gain.
-- Test text (`text` 452, `tx_num` 92, `fw_text` 44 B and call sites): owner keeps F_TEXT.
+- Test text (`tx_num` 92 B and call sites): owner keeps F_TEXT. Correction (27 Nov): `text` (452 B) is the street-name drawer, not test text; it stays. The closed test rows are under `WB_DIAG` (d742bfe).
 
 ## Decision for the owner
 
