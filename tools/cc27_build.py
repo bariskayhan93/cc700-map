@@ -83,8 +83,10 @@ def apply_cc28g_line(irom, code):
         irom[offset:offset + len(old)] = new
 
 
-def build(base, outdir, prefix=PREFIX, *, cc28g_line=None):
-    """Returns (image bytes, receipt). Refuses any base but the C4 image."""
+def build(base, outdir, prefix=PREFIX, *, cc28g_line=None, diag=False):
+    """Returns (image bytes, receipt). Refuses any base but the C4 image. diag: test image with the WB_DIAG rows
+    (docs/superpowers/specs/2026-11-27-wb-diag-design.md); the default is the ride image."""
+    dflags = ['-DWB_DIAG'] if diag else []
     if hashlib.sha256(base).hexdigest() != BASE_SHA:
         raise ValueError('expected exact C4 base (ac48ba3d)')
     esp = c26.esp_module()
@@ -106,9 +108,9 @@ def build(base, outdir, prefix=PREFIX, *, cc28g_line=None):
         elf = t / 'cc27.elf'
         # -ffunction-sections: gc-sections drops each function that the unit never calls, not only whole files
         for s in TAIL_SOURCES:
-            run(prefix + 'gcc', *c26.CFLAGS, '-ffunction-sections', '-DCC26_AREA2', '-c', '-o', t / s.replace('.c', '.o'), t / s, cwd=t)
+            run(prefix + 'gcc', *c26.CFLAGS, '-ffunction-sections', '-DCC26_AREA2', *dflags, '-c', '-o', t / s.replace('.c', '.o'), t / s, cwd=t)
         run(prefix + 'gcc', *c26.CFLAGS, '-ffunction-sections', '-Wl,-T,' + str(t / 'wb_area2.ld'), '-Wl,--gc-sections', '-Wl,-e,wb_rt',
-            '-DCC26_AREA2', '-o', elf, *(t / s for s in SOURCES if s not in TAIL_SOURCES),
+            '-DCC26_AREA2', *dflags, '-o', elf, *(t / s for s in SOURCES if s not in TAIL_SOURCES),
             *(t / s.replace('.c', '.o') for s in TAIL_SOURCES), '-lgcc', cwd=t)
         undefined = run(prefix + 'nm', '-u', elf).strip()
         if undefined:
@@ -203,7 +205,7 @@ def build(base, outdir, prefix=PREFIX, *, cc28g_line=None):
                 'tools/area2_image.py').strip()
     receipt = {'version': version.decode(), 'source_commit': version[-7:].decode(), 'source_dirty': bool(dirty),
                'base_sha256': BASE_SHA, 'image_sha256': hashlib.sha256(image).hexdigest(), 'image_bytes': len(image),
-               'cc28g_line': cc28g_line is not None, 'code_bytes': len(code), 'code_sha256': hashlib.sha256(code).hexdigest(), 'code_limit': CODE_LIMIT,
+               'cc28g_line': cc28g_line is not None, 'diag': diag, 'code_bytes': len(code), 'code_sha256': hashlib.sha256(code).hexdigest(), 'code_limit': CODE_LIMIT,
                'area_bytes': a2.AREA_LIMIT, 'hook_target': hex(word), 'hook_word_hex': lit.hex(), 'hook_frame': frame,
                'undefined_symbols': undefined, 'incoming': {'hook': hook_refs, 'km': {'outside': 0, 'dead': km_refs}, 'guard': {'outside': 0, 'dead': guard_refs}}, 'map_hooks': map_refs, 'dead_spans_ok': spans_ok is None,
                'tail_bytes': len(tail), 'tail_free': PAGE_END - TAIL - len(tail), 'km_target': hex(km_target),
@@ -219,13 +221,14 @@ def main():
     p.add_argument('--output', type=Path, default=ROOT / '.local/cc27')
     p.add_argument('--prefix', default=PREFIX)
     p.add_argument('--cc28g-line', type=Path, help='pinned 88-byte cc28g cc_seg code input')
+    p.add_argument('--diag', action='store_true', help='test image: all WB_DIAG test rows (default: ride image)')
     a = p.parse_args()
     line = a.cc28g_line.read_bytes() if a.cc28g_line else None
-    image, receipt = build(a.base.read_bytes(), a.output, a.prefix, cc28g_line=line)
+    image, receipt = build(a.base.read_bytes(), a.output, a.prefix, cc28g_line=line, diag=a.diag)
     a.output.mkdir(parents=True, exist_ok=True)
     (a.output / 'ota_1_cc27.bin').write_bytes(image)
     (a.output / 'manifest.json').write_text(json.dumps(receipt, indent=1) + '\n')
-    print(json.dumps({k: receipt[k] for k in ('version', 'image_sha256', 'image_bytes', 'code_bytes', 'max_frame', 'hook_frame', 'source_dirty')}))
+    print(json.dumps({k: receipt[k] for k in ('version', 'diag', 'image_sha256', 'image_bytes', 'code_bytes', 'max_frame', 'hook_frame', 'source_dirty')}))
 
 
 if __name__ == '__main__':

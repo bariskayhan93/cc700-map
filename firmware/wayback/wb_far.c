@@ -2,6 +2,11 @@
 #include "wb_far.h"
 
 #define FM_HEAD 48u
+#ifdef WB_DIAG                                   /* far draw counters: test image only (2026-11-27-wb-diag-design.md) */
+#define FM_DIAG(x) (x)
+#else
+#define FM_DIAG(x) ((void)0)
+#endif
 #define FM_PTS_AT (FM_HEAD + 1024u + 576u + 2048u)   /* after the grey buffer parts: 64 screen points (256 B) */
 
 int fm_open(fm_layer *f, wb_reader rd, void *ctx, uint32_t at, uint32_t size, uint8_t *buf) {
@@ -67,13 +72,17 @@ static int fm_items(fm_ctx *c, uint32_t key, const uint8_t **pp, const uint8_t *
     *pp = p;
     if (!pass) {                                                   /* count an item one time */
       if (c->st->points + m > c->f->l.pt_cap) return 1;
-      if (!area) { wk = rs_work(s, m, w) + (cls == FM_MINOR ? rs_work(s, m, 2) : 0u); if (c->st->work + wk > c->f->l.pix_cap) return 1; c->st->work += wk; c->st->lines++; }
-      else c->st->areas++;
+      if (!area) { wk = rs_work(s, m, w) + (cls == FM_MINOR ? rs_work(s, m, 2) : 0u); if (c->st->work + wk > c->f->l.pix_cap) return 1; c->st->work += wk; FM_DIAG(c->st->lines++); }
+      else FM_DIAG(c->st->areas++);
       c->st->points += m;
     }
+#ifdef WB_DIAG
     wk = c->clk();                                                 /* 24 Nov: the draw split (fill or line time) */
     if (area) c->st->fill_px += rs_fill(c->cv, s, m, col); else rs_line(c->cv, s, m, w, col, 255u, w >= 3);
     wk = c->clk() - wk; if (area) c->st->fill_us += wk; else c->st->line_us += wk;
+#else
+    if (area) rs_fill(c->cv, s, m, col); else rs_line(c->cv, s, m, w, col, 255u, w >= 3);
+#endif
   }
   return 0;
 }

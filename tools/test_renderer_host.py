@@ -17,20 +17,30 @@ class RendererHost(unittest.TestCase):
     def setUpClass(cls):
         cls.tmp = tempfile.TemporaryDirectory(prefix="cc700-renderer-")
         cls.exe = Path(cls.tmp.name) / "renderer"
-        subprocess.run(["cc", "-std=c11", "-O1", "-g", "-DHOST",
+        subprocess.run(["cc", "-std=c11", "-O1", "-g", "-DHOST", "-DWB_DIAG",
                         "-fsanitize=address,undefined", "-fno-sanitize-recover=all",
                         "-fno-omit-frame-pointer", "-I", str(SOURCE), "-I", str(ROOT / "firmware/common"),
                         "-I", str(ROOT / "firmware/raster"),
                         str(ROOT / "tools/renderer_host.c"), str(SOURCE / "map.c"), str(ROOT / "firmware/raster/raster.c"),
                         str(ROOT / "firmware/mapdraw/proj.c"), "-I", str(ROOT / "firmware/mapdraw"),
                         "-o", str(cls.exe)], check=True, capture_output=True)
+        # WB_DIAG (27 Nov, docs/superpowers/specs/2026-11-27-wb-diag-design.md): cls.exe is the test image; the ride image
+        # has no p<d> row, no own_check probes and no far rows.
+        cls.ride_exe = Path(cls.tmp.name) / "renderer-ride"
+        subprocess.run(["cc", "-std=c11", "-O1", "-g", "-DHOST",
+                        "-fsanitize=address,undefined", "-fno-sanitize-recover=all",
+                        "-fno-omit-frame-pointer", "-I", str(SOURCE), "-I", str(ROOT / "firmware/common"),
+                        "-I", str(ROOT / "firmware/raster"),
+                        str(ROOT / "tools/renderer_host.c"), str(SOURCE / "map.c"), str(ROOT / "firmware/raster/raster.c"),
+                        str(ROOT / "firmware/mapdraw/proj.c"), "-I", str(ROOT / "firmware/mapdraw"),
+                        "-o", str(cls.ride_exe)], check=True, capture_output=True)
 
         legacy = Path(cls.tmp.name) / "legacy.c"
         source = (SOURCE / "map.c").read_text()
         legacy.write_text(source[:source.index("// ---------- entry iterator ----------")] +
                           (ROOT / "tools/renderer_legacy_iterator.h").read_text())
         cls.legacy_exe = Path(cls.tmp.name) / "legacy"
-        subprocess.run(["cc", "-std=c11", "-O1", "-g", "-DHOST",
+        subprocess.run(["cc", "-std=c11", "-O1", "-g", "-DHOST", "-DWB_DIAG",
                         "-fsanitize=address,undefined", "-fno-sanitize-recover=all",
                         "-fno-omit-frame-pointer", "-I", str(SOURCE), "-I", str(ROOT / "firmware/common"),
                         "-I", str(ROOT / "firmware/raster"),
@@ -287,6 +297,24 @@ class RendererHost(unittest.TestCase):
     def test_map_time_text_only_with_F_TEXT(self):
         self.assertRegex(self.run_entries("flags_text")["map_text"], r"^m[0-9]+$")
         self.assertEqual(self.run_entries("own")["map_text"], "")
+
+    def run_ride(self, case):
+        result = subprocess.run([str(self.ride_exe), case], capture_output=True, text=True)
+        self.assertEqual(result.returncode, 0, result.stderr)
+        return json.loads(result.stdout)
+
+    def test_ride_image_keeps_map_time_and_stop_pass_but_not_the_projection_check(self):
+        self.assertRegex(self.run_ride("proj_text")["map_text"], r"^m\d+$")
+        self.assertRegex(self.run_ride("level_stop_text")["map_text"], r"^m\d+ c3$")
+        self.assertRegex(self.run_ride("flags_text")["map_text"], r"^m\d+$")
+        self.assertEqual(self.run_ride("own")["map_text"], "")
+
+    def test_ride_image_draws_the_same_pixels_as_the_test_image(self):
+        for case in ("own", "styles", "labels", "proj_text", "level_stop_text"):
+            ride, diag = self.run_ride(case), self.run_entries(case)
+            keys = ("px", "ink", "whole", "max_level", "roads_drawn", "fills", "draws", "painted", "labels")
+            self.assertEqual({k: ride.get(k) for k in keys}, {k: diag.get(k) for k in keys}, case)
+            self.assertEqual((ride["locks"], ride["live_bytes"]), (ride["unlocks"], 0))
 
     def test_budget_work_counts_match_actual_iterator(self):
         from map_budget import block_budget

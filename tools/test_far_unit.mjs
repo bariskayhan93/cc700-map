@@ -15,10 +15,16 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const work = fs.mkdtempSync(path.join(os.tmpdir(), 'far-unit-'));
 process.on('exit', () => { try { fs.rmSync(work, {recursive: true, force: true}); } catch {} });
 const exe = path.join(work, 'far'), W = d => path.join(root, 'firmware', d);
-execFileSync('cc', ['-std=gnu11', '-O1', '-g', '-Wall', '-Wextra', '-Werror', '-DHOST', '-fsanitize=address,undefined',
+execFileSync('cc', ['-std=gnu11', '-O1', '-g', '-Wall', '-Wextra', '-Werror', '-DHOST', '-DWB_DIAG', '-fsanitize=address,undefined',
   '-fno-sanitize-recover=all', '-I', W('common'), '-I', W('raster'), '-I', W('view'), '-I', W('wayback'),
   path.join(root, 'tools/far_host.c'), W('wayback/wb_far.c'), W('wayback/wb_grey.c'), W('wayback/wayback.c'), W('raster/raster.c'),
   W('view/view.c'), '-lm', '-o', exe], {stdio: ['ignore', 'pipe', 'pipe']});
+// WB_DIAG (27 Nov): exe is the test image (line and area counters); rideExe is the ride image without them.
+const rideExe = path.join(work, 'far-ride');
+execFileSync('cc', ['-std=gnu11', '-O1', '-g', '-Wall', '-Wextra', '-Werror', '-DHOST', '-fsanitize=address,undefined',
+  '-fno-sanitize-recover=all', '-I', W('common'), '-I', W('raster'), '-I', W('view'), '-I', W('wayback'),
+  path.join(root, 'tools/far_host.c'), W('wayback/wb_far.c'), W('wayback/wb_grey.c'), W('wayback/wayback.c'), W('raster/raster.c'),
+  W('view/view.c'), '-lm', '-o', rideExe], {stdio: ['ignore', 'pipe', 'pipe']});
 
 // A 1.2 km street grid of residential streets 1 km north of a route, a track and a forest and a lake.
 const LAT = 51.0, mN = 1 / 111320, mE = 1 / (111320 * Math.cos(LAT * Math.PI / 180)), P = (e, n) => [LAT + n * mN, 7.0 + e * mE];
@@ -33,7 +39,7 @@ const LEAD = 64, bytes = encodeFar(cells, {pixCap: 1e9, ptCap: 1e6, fillCap: 614
 const put = (b, name) => { const f = path.join(work, name), o = new Uint8Array(LEAD + b.length + 40).fill(0xAA); o.set(b, LEAD); fs.writeFileSync(f, o); return f; };
 const good = put(bytes, 'far.bin');
 const rider = P(1500, 1500), e7 = v => Math.round(v * 1e7);
-const draw = (o = {}) => JSON.parse(execFileSync(exe, ['draw', o.file ?? good, LEAD, o.size ?? bytes.length, e7(o.at?.[0] ?? rider[0]), e7(o.at?.[1] ?? rider[1]),
+const draw = (o = {}) => JSON.parse(execFileSync(o.exe ?? exe, ['draw', o.file ?? good, LEAD, o.size ?? bytes.length, e7(o.at?.[0] ?? rider[0]), e7(o.at?.[1] ?? rider[1]),
   o.course ?? 0, 2.5, o.failAt ?? 0, o.pixCap ?? 0, o.ptCap ?? 0, o.limitUs ?? 1000000].map(String), {encoding: 'utf8', maxBuffer: 1 << 24}));
 const byKey = new Map(cells.map(c => [c.key, c]));
 function reference(course) {
@@ -72,4 +78,11 @@ test('the caps and the time stop end the far map at an item boundary', () => {
 test('a grey section (CCGL) is not a far map', () => {
   const g = bytes.slice(); g[2] = 0x47; g[3] = 0x4C;
   assert.equal(draw({file: put(g, 'grey.bin')}).open, 0);
+});
+test('ride image (no WB_DIAG): the same far map pixels, caps and stop as the test image; no line and area counts', () => {
+  for (const o of [{}, {course: 90}, {pixCap: 4000}, {ptCap: 40}, {limitUs: 1}]) {
+    const r = draw({...o, exe: rideExe}), d = draw(o), k = ['open', 'view', 'x', 'y', 'done', 'points', 'work', 'stop', 'reads', 'forestPx', 'streetPx', 'corePx'];
+    assert.deepEqual(k.map(n => r[n]), k.map(n => d[n]), JSON.stringify(o));
+    assert.deepEqual([r.lines, r.areas], [0, 0]);
+  }
 });

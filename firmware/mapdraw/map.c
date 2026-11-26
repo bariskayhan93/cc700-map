@@ -221,6 +221,7 @@ static __attribute__((noinline)) int own_setup(proj_cb_t cb, const ent_t *E, uin
   proj_fit(p, 9, ll, sx, sy);
   return 1;
 }
+#ifdef WB_DIAG   // test image only (docs/superpowers/specs/2026-11-27-wb-diag-design.md)
 // F_TEXT with F_PROJ: the largest difference (px, at most 9) to the stock projection at 4 entry points
 static __attribute__((noinline)) int own_check(proj_cb_t cb, const ent_t *E, uint32_t cnt, const proj_t *p) {
   int m = 0; int16_t x, y; float ox, oy;
@@ -232,6 +233,7 @@ static __attribute__((noinline)) int own_check(proj_cb_t cb, const ent_t *E, uin
   }
   return m > 9 ? 9 : m;
 }
+#endif
 static void draw_entry(proj_cb_t cb, const ent_t *e, uint16_t sel, float *buf, const proj_t *p) {
   const float k = 180.0f / 2147483648.0f;
   if (p) {                                                               // cc28b F_PROJ: own points, then cc_line directly
@@ -260,12 +262,15 @@ static void map_row(int32_t y, const char *s) {
 #endif
 }
 static void map_time(uint32_t ms, uint32_t cut, int pd, int far, const uint32_t *fs) {   // pd: F_PROJ check " p<d>", -1 = none; far: wb_far result
-  char s[64], *o = s;
+  char s[64], *o = s; (void)pd; (void)far; (void)fs;   // pd, far, fs: WB_DIAG rows only
   *o++ = 'm'; o = tx_num(o, ms);
   if (cut) { *o++ = ' '; *o++ = 'c'; *o++ = (char)('0' + cut); }
+#ifdef WB_DIAG
   if (pd >= 0) { *o++ = ' '; *o++ = 'p'; *o++ = (char)('0' + pd); }
+#endif
   *o = 0;
   map_row(24, s);
+#ifdef WB_DIAG
   if (far < 0) return;
   // Far map, rows at y 42 and 60 (24 Nov). '+': it stopped. f total, o open, t trailer, h header and anchors, r reads,
   // Now: f total, o open, e end seek and trailer, h header and anchors, d draw ms; F fill ms, L line ms, A areas, N lines,
@@ -280,6 +285,7 @@ static void map_time(uint32_t ms, uint32_t cut, int pd, int far, const uint32_t 
     *o = 0;
     map_row(42 + 18 * row, s);
   }
+#endif
 }
 // Pass 0: the range of each bucket and the largest point count; the original star lines (style 0) until the stop.
 // *late = 1 when the stop came in this pass.
@@ -367,7 +373,11 @@ void cc_iter(proj_cb_t cb) {
     uint32_t late = 0, big = scan(cb, E, cnt, ranges, t0, &late);
     float *buf = big && !late ? fw_malloc((big + 1) * 8, CAPS_PSRAM) : 0;
     if (late) cut = 1;
-    if (buf && (flags & F_PROJ) && own && own_setup(cb, E, cnt, &pj)) { P = &pj; if (flags & F_TEXT) pd = own_check(cb, E, cnt, P); }
+    if (buf && (flags & F_PROJ) && own && own_setup(cb, E, cnt, &pj)) { P = &pj;
+#ifdef WB_DIAG
+      if (flags & F_TEXT) pd = own_check(cb, E, cnt, P);
+#endif
+    }
     if (buf) {
       STOP(1) draw_fills(cb, E, ranges, own, buf, P);
       for (int lv = 0; lv <= 4; lv++) { STOP(2 + lv) draw_level(cb, E, ranges, own, buf, P, lv); }
@@ -380,11 +390,13 @@ void cc_iter(proj_cb_t cb) {
   }
   if (flags & F_TEXT) {
     uint32_t mt = (fw_clock() - t0) / 1000u;
+#ifdef WB_DIAG
     if (far >= 0 && FW_CANVAS_BUF) {                           // 25 Nov test W: one canvas pass, read and write back, in 0.1 ms
       volatile uint32_t *q = (volatile uint32_t *)(void *)FW_CANVAS_BUF; uint32_t k = (uint32_t)FW_CANVAS_W * (uint32_t)FW_CANVAS_H / 2u, tw = fw_clock();
       while (k--) { *q = *q; q++; }                           // (was in wb_far, in every far frame; now after the detail map)
       fms[10] = (fw_clock() - tw) / 100u;
     }
+#endif
     map_time(mt, cut, pd, far, fms);
   }
   fw_blk_unlock();

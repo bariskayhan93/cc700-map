@@ -97,7 +97,11 @@ static void wbd_text(const char *s) { wbd_text_at(s, 6); }
  * wbd_file: offsets in the file (the grey layer). */
 static int wbd_raw(void *vctx, uint32_t off, void *dst, uint32_t n) {   /* one file read: r and i of the text */
   wbd_ctx *c = (wbd_ctx *)vctx; uint32_t t = fw_clock(); int ok = fw_fseek(c->fp, (int32_t)off, 0) == 0 && fw_fread(dst, 1u, n, c->fp) == n;
+#ifdef WB_DIAG
   c->reads++; c->io += fw_clock() - t;                         /* WP 1: the file time of the frame */
+#else
+  (void)t;
+#endif
   return ok;
 }
 static int wbd_at(wbd_ctx *c, uint32_t off, void *dst, uint32_t n) {
@@ -230,13 +234,20 @@ typedef int (*wbd_anchor_fn)(void *ctx, const int32_t ll[2], pt_t *s);
 static uint32_t wbd_clock(void) { return fw_clock(); }
 int wb_far(wbd_anchor_fn anchor, void *actx, uint32_t ms[11]) {
   char name[128]; float pos[2]; wbd_ctx c; wbd_secs sec; fm_layer f; fm_stat st; vw_t v; pt_t s[4]; rs_canvas cv;
-  uint32_t x, y, i, ts = 0, is = 0, to, te; int rc = -1, found; float head = FW_MAP_HEAD;
+  uint32_t x, y, i; int rc = -1, found; float head = FW_MAP_HEAD;
+#ifdef WB_DIAG
+  uint32_t ts = 0, is = 0, to, te;                             /* the far time split (test image) */
+#endif
   c.t0 = fw_clock(); c.late = 0; c.reads = 0; c.io = 0; c.buf = 0; c.wc = 0;
   for (i = 0; i < 11u; i++) ms[i] = 0;
   if (fw_stack() < WBD_STACK || !wbd_pos(pos) || wbd_open(&c, name) != 1) return -1;
+#ifdef WB_DIAG
   to = fw_clock();                      /* o: position, path, open */
+#endif
   found = wbd_secs_read(&c, &sec);                             /* the trailer, through the page cache */
+#ifdef WB_DIAG
   te = fw_clock();                                             /* e: seek to the end, ftell, cache, trailer */
+#endif
   if (found && sec.size[4] && head >= -360.0f && head <= 720.0f && (c.buf = (uint8_t *)fw_malloc(GL_BUF, CAPS_PSRAM)) &&
       fm_open(&f, wbd_file, &c, sec.at[4], sec.size[4], c.buf) && fm_units(&f, (int32_t)(pos[0] * 1e7f), (int32_t)(pos[1] * 1e7f), &x, &y)) {
     for (i = 0; i < 4u; i++) {
@@ -246,18 +257,24 @@ int wb_far(wbd_anchor_fn anchor, void *actx, uint32_t ms[11]) {
     }
     cv.buf = FW_CANVAS_BUF; cv.w = (int16_t)FW_CANVAS_W; cv.h = (int16_t)FW_CANVAS_H;
     if (i == 4u && cv.buf && vw_fit(&v, (int32_t)x, (int32_t)y, s)) {
+#ifdef WB_DIAG
       ts = fw_clock(); is = c.io;                              /* s: open, trailer, header, anchors (24 Nov: o3-5 t11-17 h3-6 a0) */
+#endif
       fm_draw(&f, &cv, &v, x, y, (uint32_t)(int32_t)(810.5f - head) % 360u, wbd_clock, c.t0, FAR_US, &st);
       rc = (int)st.stop;
+#ifdef WB_DIAG
       ms[4] = (fw_clock() - ts - (c.io - is)) / 1000u;         /* d: draw less its file time */
       ms[5] = st.fill_us / 1000u; ms[6] = st.line_us / 1000u; ms[7] = st.areas; ms[8] = st.lines; ms[9] = st.fill_px / 100u;
       /* ms[10] (W, the canvas pass): set by cc_iter with F_TEXT only (25 Nov review: not in every far frame) */
       ms[1] = (to - c.t0) / 1000u; ms[2] = (te - to) / 1000u; ms[3] = (ts - te) / 1000u;   /* h: header, buffer, anchors */
+#endif
     }
   }
   if (c.buf) fw_free(c.buf);
   fw_fclose(c.fp);
+#ifdef WB_DIAG
   ms[0] = (fw_clock() - c.t0) / 1000u;
+#endif
   /* 25 Nov: ms[9] = P, fill pixels / 100 (was r, reads); ms[10] = W, canvas pass in 0.1 ms (was i, file ms) */
   return rc;
 }
@@ -288,10 +305,12 @@ static __attribute__((noinline)) void wbd_frame(void) {
     if (n >> 31) *o++ = '+';                                   /* only the first 32 points are drawn */
   }
   if (flags & F_TEXT) {
+#ifdef WB_DIAG
     *o++ = ' '; *o++ = 'w';
     o = tx_num(o, (fw_clock() - c.t0) / 1000u);               /* file and core time of this frame, ms */
     *o++ = ' '; *o++ = 'r';
     o = tx_num(o, c.reads);                                 /* file reads of this frame */
+#endif
 #ifdef WBD_GREY
     *o++ = ' ';
     if (c.nomem) { *o++ = 'w'; *o++ = 'b'; o = tx_num(o, WBD_HEAP); }   /* no heap buffer: no grey */

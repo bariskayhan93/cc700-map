@@ -23,7 +23,7 @@ const work = fs.mkdtempSync(path.join(os.tmpdir(), 'wayback-device-'));
 process.on('exit', () => { try { fs.rmSync(work, {recursive: true, force: true}); } catch {} });
 const exe = path.join(work, 'host');
 const F = d => path.join(root, 'firmware', d);
-execFileSync('cc', ['-std=gnu11', '-O1', '-g', '-Wall', '-Wextra', '-Werror', '-DHOST', '-DWB_TICK_ONLY', '-DWB_TIE', '-DWB_BONUS', '-DWBD_KM_WHY', '-DWBD_GREY', '-DWBD_NO_KEEP',
+execFileSync('cc', ['-std=gnu11', '-O1', '-g', '-Wall', '-Wextra', '-Werror', '-DHOST', '-DWB_DIAG', '-DWB_TICK_ONLY', '-DWB_TIE', '-DWB_BONUS', '-DWBD_KM_WHY', '-DWBD_GREY', '-DWBD_NO_KEEP',
   '-fsanitize=address,undefined', '-fno-sanitize-recover=all', '-I', F('wayback'), '-I', F('common'), '-I', F('raster'), '-I', F('view'), '-I', F('elev'),
   path.join(root, 'tools/wayback_device_host.c'), F('wayback/wb_device.c'), F('wayback/wayback.c'), F('wayback/wb_grey.c'),
   F('wayback/wb_grey_draw.c'), F('wayback/wb_far.c'), F('wayback/wb_cache.c'), F('raster/raster.c'), F('view/view.c'), F('elev/elev.c'), '-lm', '-o', exe], {stdio: ['ignore', 'pipe', 'pipe']});
@@ -51,10 +51,33 @@ const F_OWN = 1, F_TEXT = 2, F_ROUTE = 4;
 // The unit build (24 Nov): kept page cache in the task's pthread key list (WP 4), no grey fallback. The other tests use
 // the cc27 build (grey, no cache). FRAME2: the same frame again.
 const keepExe = path.join(work, 'host-keep');
-execFileSync('cc', ['-std=gnu11', '-O1', '-g', '-Wall', '-Wextra', '-Werror', '-DHOST', '-DWB_TICK_ONLY', '-DWB_TIE', '-DWB_BONUS',
+execFileSync('cc', ['-std=gnu11', '-O1', '-g', '-Wall', '-Wextra', '-Werror', '-DHOST', '-DWB_DIAG', '-DWB_TICK_ONLY', '-DWB_TIE', '-DWB_BONUS',
   '-fsanitize=address,undefined', '-fno-sanitize-recover=all', '-I', F('wayback'), '-I', F('common'), '-I', F('raster'), '-I', F('view'), '-I', F('elev'),
   path.join(root, 'tools/wayback_device_host.c'), F('wayback/wb_device.c'), F('wayback/wayback.c'), F('wayback/wb_grey.c'),
   F('wayback/wb_grey_draw.c'), F('wayback/wb_far.c'), F('wayback/wb_cache.c'), F('raster/raster.c'), F('view/view.c'), F('elev/elev.c'), '-lm', '-o', keepExe], {stdio: ['ignore', 'pipe', 'pipe']});
+// WB_DIAG (27 Nov, docs/superpowers/specs/2026-11-27-wb-diag-design.md): the builds above are test images. The ride
+// image (no WB_DIAG) is the unit build without the w and r rows and without the file time count.
+const rideExe = path.join(work, 'host-ride');
+execFileSync('cc', ['-std=gnu11', '-O1', '-g', '-Wall', '-Wextra', '-Werror', '-DHOST', '-DWB_TICK_ONLY', '-DWB_TIE', '-DWB_BONUS',
+  '-fsanitize=address,undefined', '-fno-sanitize-recover=all', '-I', F('wayback'), '-I', F('common'), '-I', F('raster'), '-I', F('view'), '-I', F('elev'),
+  path.join(root, 'tools/wayback_device_host.c'), F('wayback/wb_device.c'), F('wayback/wayback.c'), F('wayback/wb_grey.c'),
+  F('wayback/wb_grey_draw.c'), F('wayback/wb_far.c'), F('wayback/wb_cache.c'), F('raster/raster.c'), F('view/view.c'), F('elev/elev.c'), '-lm', '-o', rideExe], {stdio: ['ignore', 'pipe', 'pipe']});
+test('ride image (no WB_DIAG): the off-route row has the distance and T1 u, z, but no w and r', () => {
+  assert.match(run({exe: rideExe}).text, /^\d+m u\d+ z16$/);
+  assert.match(run({exe: rideExe, flags: 0}).text, /^\d+m$/);
+  assert.match(run({exe: rideExe, x: 30, y: 30}).text, /^wb4 u\d+ z16$/);
+});
+test('ride image: the same way-back line, distance and pixels as the test image', () => {
+  for (const o of [{}, {x: 30, y: 30}, {x: -18, y: 125}, {head: 30}]) {
+    const r = run({...o, exe: rideExe}), k = run({...o, exe: keepExe});
+    assert.deepEqual([r.lines, r.hash, r.text.split(' ')[0]], [k.lines, k.hash, k.text.split(' ')[0]]);
+  }
+});
+test('ride image: file work above 300 ms still stops with code 5, no line, and the file is closed (as the test image)', () => {
+  const r = run({step: 200000, exe: rideExe}), k = run({step: 200000, exe: keepExe});
+  assert.deepEqual([r.lines.length, r.opens, r.closes], [0, 1, 1]); assert.match(r.text, /^wb5 u\d+ z16$/);
+  assert.equal(r.text.split(' ')[0], k.text.split(' ')[0]);
+});
 const twice = (o, e) => { process.env.FRAME2 = '1'; try { return run({...o, exe: e}); } finally { delete process.env.FRAME2; } };
 test('WB_BONUS in the unit build: the last piece holds the line 18 m away for 5 s; after 5 s the frame is stateless', () => {
   const q = p(-18, 125), at2 = (gap) => {
