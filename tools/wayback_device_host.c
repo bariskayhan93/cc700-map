@@ -28,6 +28,7 @@ void host_km_overlay(int32_t a, int32_t b, int32_t c, int32_t d) { n_km++; km_ar
 #define MAX_TEXTS 32
 static struct { int font, align, x, y, w; unsigned col; char s[24]; } texts[MAX_TEXTS];
 float host_map_head;
+uint32_t host_zoom_state; int32_t host_view_msg[21];
 uint32_t host_route_left, host_nav_selector;
 int host_proj_zoom = 16, host_proj_rot;
 float host_route_total;
@@ -150,6 +151,7 @@ int main(int argc, char **argv) {
     uintptr_t *h = malloc(sizeof(uintptr_t)), *n = malloc(3 * sizeof(uintptr_t));
     n[0] = 1; n[1] = 0x1234; n[2] = 0; *h = (uintptr_t)n; host_tls = h;
   }
+  if (getenv("ZOOM") && sscanf(getenv("ZOOM"), "%u %d %d %d", &host_zoom_state, &host_view_msg[11], &host_view_msg[12], &host_view_msg[15]) != 4) return 2;
   if (argc == 23) wb_km(atoi(argv[19]), atoi(argv[20]), atoi(argv[21]), atoi(argv[22]));
   else wb_rt((uint32_t)atoi(argv[6]));
   frame1_end = g_clock;
@@ -173,6 +175,7 @@ int main(int argc, char **argv) {
   printf("\"takes\":%d,\"gives\":%d,\"dashAfter\":%d,\"badDash\":%d,\"labelCol\":%u,", n_take, n_give, host_dsc.dash_width, bad_dash, host_label_col);
   printf("\"anchors\":%d,\"anchorReads\":%d,\"mallocs\":%d,\"frees\":%d,\"hash\":%u,\"greyPx\":%u,\"dsc\":[%u,%d,%d],",
          n_anchor, anchor_reads, n_malloc, n_free, hash, px, host_dsc.color, host_dsc.width, host_dsc.dash_gap);
+  printf("\"zoom\":[%u,%d,%d,%d],", host_zoom_state, host_view_msg[11], host_view_msg[12], host_view_msg[15]);
   printf("\"km\":%d,\"kmArgs\":[%d,%d,%d,%d],\"after\":[%d,%u,%u,%u],\"textCalls\":[", n_km, km_args[0], km_args[1], km_args[2], km_args[3],
          (int)(intptr_t)host_label_font, host_label_col, host_label_opa, host_label_align);
   for (i = 0; i < n_text && i < MAX_TEXTS; i++)

@@ -435,3 +435,14 @@ test('lens: wb_rt on the route draws nothing (the chart moved to wb_km)', () => 
   const r = run({file: elevFile, off: 0, flags: F_OWN, U: 2999, T: 5000, sel: 0});
   assert.deepEqual([r.rt, r.opens, r.greyPx, r.texts], [1, 0, 0, 0]);
 });
+
+// Stock auto zoom (0x42050190, 26 Nov): next turn <= 100 m -> view message zoom 16, state 1; > 110 m -> saved zoom
+// (msg[44], 15 when 0), state 0. Off route (guide[145]) the stock returns early, so a zoom-in from before stays.
+// wb_rt copies the stock zoom-out while off route. ZOOM="state m44 m48 m60"; out zoom = [state, m44, m48, m60].
+const zoomRun = (z, o) => { process.env.ZOOM = z; try { return run(o).zoom; } finally { delete process.env.ZOOM; } };
+test('off route: a stock zoom-in (state 1, zoom 16) goes back to the stock saved zoom; on route nothing changes', () => {
+  assert.deepEqual(zoomRun('1 0 16 0', {off: 1}), [0, 15, 15, 1]);     // saved 0: the stock uses 15
+  assert.deepEqual(zoomRun('1 14 16 0', {off: 1}), [0, 14, 14, 1]);    // saved 14
+  assert.deepEqual(zoomRun('1 0 16 0', {off: 0}), [1, 0, 16, 0]);      // on route: stock rule
+  assert.deepEqual(zoomRun('0 15 15 1', {off: 1}), [0, 15, 15, 1]);    // not zoomed in: no write
+});

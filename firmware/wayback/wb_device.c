@@ -397,7 +397,14 @@ void wb_km(int32_t left, int32_t total, int32_t bar_w, int32_t show_text) {
 }
 
 /* Replaces cc_rt in tramp_rt. The map frame (fw.h) makes one hooked route call for each frame. */
+/* Off route the stock auto zoom (fw.h FW_ZOOM_STATE) skips its zoom-out, so a 50 m zoom-in from before stays.
+ * This is the stock zoom-out step, done while off route: zoom in only on route. */
+static void wbd_zoom_out(void) {
+  if (FW_ZOOM_STATE != 1) return;
+  if (!FW_VIEW_MSG[11]) FW_VIEW_MSG[11] = 15;
+  FW_VIEW_MSG[12] = FW_VIEW_MSG[11]; FW_VIEW_MSG[15] = 1; FW_ZOOM_STATE = 0;
+}
 void wb_rt(uint32_t part) {
   fw_cc_rt(part);
-  if (fw_off_route()) wbd_frame();
+  if (fw_off_route()) { wbd_zoom_out(); wbd_frame(); }
 }

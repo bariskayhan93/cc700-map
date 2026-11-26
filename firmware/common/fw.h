@@ -98,6 +98,9 @@ extern uint32_t host_route_left, host_nav_selector; extern float host_route_tota
 #define FW_ROUTE_LEFT host_route_left
 #define FW_ROUTE_TOTAL host_route_total
 #define FW_NAV_SELECTOR host_nav_selector
+extern uint32_t host_zoom_state; extern int32_t host_view_msg[21];
+#define FW_ZOOM_STATE host_zoom_state
+#define FW_VIEW_MSG   host_view_msg
 extern int host_proj_zoom, host_proj_rot;
 #define FW_PROJ_ZOOM host_proj_zoom
 #define FW_PROJ_ROT host_proj_rot
@@ -159,6 +162,11 @@ extern int host_proj_zoom, host_proj_rot;
 #define FW_ROUTE_LEFT   (*(volatile uint32_t *)0x3c389344)                /* remaining route distance, m (progress words) */
 #define FW_ROUTE_TOTAL  (*(volatile float *)0x3c389320)                   /* total route distance, m */
 #define FW_NAV_SELECTOR (*(volatile uint32_t *)0x3fc9fcc4)                /* nav source: 0 = the route file */
+/* Stock auto zoom 0x42050190 (26 Nov), map task: next turn (0x3c389340) <= 100 m -> view message zoom [12] = 16, state 1;
+ * > 110 m or a new turn -> [12] = saved [11] (15 when 0), [15] = 1, state 0. It returns first while guide[145] (off route).
+ * The message 0x3c38939c (84 B) goes to the map queue; 0x42051638 sets the map zoom from [12]. */
+#define FW_ZOOM_STATE (*(volatile uint32_t *)0x3fc9fcac)
+#define FW_VIEW_MSG   ((volatile int32_t *)0x3c38939c)
 /* cc28b own projection (firmware/mapdraw/proj.h). Decoded stock chain, 20 Nov: fw_proj 0x4204c1bc, for each point
  * 0x4204a76c (60 B heap block via 0x4204a498; deg -> rad 0x42055b54; x 0x42055c1c: 2^z * 256 * lon / 2pi + 128 * 2^z;
  * y 0x42055bb4: 128 * 2^z - 2^z * 256 * atanh(sin lat) / 2pi, double, truncated), minus the origin S[4], S[5] plus the
