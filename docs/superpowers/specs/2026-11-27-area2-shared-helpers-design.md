@@ -35,3 +35,16 @@ Not taken: `far_mu` in float (changes the anchor units), position as E7 in `wbd_
 - Host tests: the same results as commit 1 (node 559 pass; python 247 tests; the same 4 failures from missing private
   inputs).
 - Gaps: no image built or flashed, no ride. The text pixels are checked by the host call records, not on the unit.
+
+## Commit 3: raster merges (27 Nov)
+
+- `rs_disk` is opaque only (no `opa` argument). The blended disk had no caller: `rs_line` draws its round caps only
+  with opa 255. `rs_put` is gone.
+- `rs_seg`, blended path: one `rs_cov` call per span pixel (the swap flag picks the axis), in place of three `rs_put`
+  branches. Same pixels in the same order.
+- Not taken: `wb_isqrt` on `rs_isqrt` (-20 B). The engine host builds (`wayback_host.c`, `fuzz_readers.c`,
+  `wayback_size.py`) do not link the raster module.
+- Result: ride image 16,908 B (-132 B; 1,496 B free), `--diag` 17,736 B. Largest frame 496 B (unchanged).
+- Pixel check (one time, not a kept test): the old and the new `raster.c` give the same canvas hash for 20,000 random
+  polylines (1-4 points, width 1-14, two thirds blended with opa 20-254, round caps on and off, many clipped at the
+  canvas edge). The kept tests (`test_raster`: disks 1-14 at the corners, lines against the frozen copy) pass.

@@ -103,8 +103,8 @@ int main(int argc, char **argv) {
     work = rs_fill(&cv, p, n, (uint16_t)a[0]);              /* the painted pixels */
     old_fill(ref, 240, 256, p, n, (uint16_t)a[0]);
     refhash = hash(ref);
-  } else if (!strcmp(c, "disk")) { rs_disk(&cv, a[0], a[1], a[2], (uint16_t)a[3], (uint8_t)a[4]);
-    if (a[4] == 255) { o_disk(ref, a[0], a[1], a[2], (uint16_t)a[3]); refhash = hash(ref); } }
+  } else if (!strcmp(c, "disk")) { rs_disk(&cv, a[0], a[1], a[2], (uint16_t)a[3]);   /* a[4]: the old opacity argument, unused */
+    o_disk(ref, a[0], a[1], a[2], (uint16_t)a[3]); refhash = hash(ref); }
   else if (!strcmp(c, "rect")) rs_rect(&cv, a[0], a[1], a[2], a[3], (uint16_t)a[4]);
   else return 2;
   const char *pr = getenv("PROBE"); int probe = -1;                   /* PROBE="x,y": that pixel's value */

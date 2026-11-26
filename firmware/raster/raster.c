@@ -23,7 +23,6 @@ static void rs_cov(const rs_canvas *c, int x, int y, int swap, uint32_t cov, uin
   if (cov >= 256u) *q = opa == 255 ? col : rs_blend(col, *q, opa);
   else *q = rs_blend(col, *q, (cov * opa + 128u) >> 8);
 }
-static void rs_put(const rs_canvas *c, int x, int y, uint16_t col, uint8_t opa) { rs_cov(c, x, y, 0, 256u, col, opa); }
 /* 24 Nov: n opaque pixels from q, two per 32-bit store where aligned (PSRAM stores are the fill cost) */
 static void rs_hrun(uint16_t *q, int n, uint16_t col) {
   if (n > 0 && ((uintptr_t)q & 2u)) { *q++ = col; n--; }
@@ -77,8 +76,7 @@ static void rs_seg(const rs_canvas *c, int x0, int y0, int x1, int y1, int w, ui
   }
   for (;;) {
     if (opa == 255) rs_run(c, xmaj ? x0 : x0 - lo, xmaj ? y0 - lo : y0, ws, xmaj, col);
-    else if (ws == 1) rs_put(c, x0, y0, col, opa);
-    else for (k = 0; k < ws; k++) { if (xmaj) rs_put(c, x0, y0 - lo + k, col, opa); else rs_put(c, x0 - lo + k, y0, col, opa); }
+    else for (k = 0; k < ws; k++) rs_cov(c, xmaj ? y0 - lo + k : y0, xmaj ? x0 : x0 - lo + k, 1, 256u, col, opa);   /* swap: (x, y); ws 1: (x0, y0) */
     if (x0 == x1 && y0 == y1) break;
     e2 = 2 * err;
     if (e2 >= dy) { err += dy; x0 += sx; }
@@ -86,16 +84,12 @@ static void rs_seg(const rs_canvas *c, int x0, int y0, int x1, int y1, int w, ui
   }
 }
 
-void rs_disk(const rs_canvas *c, int x, int y, int d, uint16_t col, uint8_t opa) {
+void rs_disk(const rs_canvas *c, int x, int y, int d, uint16_t col) {
   int r = d / 2, i, j;
   if (d <= 0 || x + r < 0 || y + r < 0 || x - r >= c->w || y - r >= c->h) return;
-  for (j = -r; j <= r; j++) {
-    if (opa == 255) {
-      for (i = r; i > 0 && 4 * (i * i + j * j) > d * d; i--) {}
-      if (4 * (i * i + j * j) <= d * d) rs_run(c, x - i, y + j, 2 * i + 1, 0, col);
-      continue;
-    }
-    for (i = -r; i <= r; i++) if (4 * (i * i + j * j) <= d * d) rs_put(c, x + i, y + j, col, opa);
+  for (j = -r; j <= r; j++) {                                /* one row: |i| up to the last i inside the circle */
+    for (i = r; i > 0 && 4 * (i * i + j * j) > d * d; i--) {}
+    if (4 * (i * i + j * j) <= d * d) rs_run(c, x - i, y + j, 2 * i + 1, 0, col);
   }
 }
 
@@ -104,7 +98,7 @@ void rs_line(const rs_canvas *c, const pt_t *p, uint32_t n, int w, uint16_t col,
   if (!c->buf || !p || !n || w <= 0) return;
   if (n == 1) rs_seg(c, p[0].x, p[0].y, p[0].x, p[0].y, w, col, opa);
   for (i = 1; i < n; i++) rs_seg(c, p[i - 1].x, p[i - 1].y, p[i].x, p[i].y, w, col, opa);
-  if (round && w >= 3 && opa == 255) for (i = 0; i < n; i++) rs_disk(c, p[i].x, p[i].y, w, col, opa);
+  if (round && w >= 3 && opa == 255) for (i = 0; i < n; i++) rs_disk(c, p[i].x, p[i].y, w, col);
 }
 
 /* ---------- cc28 smooth lines ---------- */

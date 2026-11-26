@@ -19,8 +19,9 @@ void rs_line(const rs_canvas *c, const pt_t *p, uint32_t n, int w, uint16_t col,
  * pixels blended. Segments are half-open (the last one closed), so a straight joint is drawn once. round and w >= 6:
  * a smooth disk at both ends and at each turn over about 10 degrees. n == 1: a smooth disk. */
 void rs_line_aa(const rs_canvas *c, const pt_t *p, uint32_t n, int w, uint16_t col, uint8_t opa, int round);
-/* Disk of diameter d at (x, y): the pixels (x + i, y + j) with 4i^2 + 4j^2 <= d^2. */
-void rs_disk(const rs_canvas *c, int x, int y, int d, uint16_t col, uint8_t opa);
+/* Opaque disk of diameter d at (x, y): the pixels (x + i, y + j) with 4i^2 + 4j^2 <= d^2. (27 Nov: the blended disk had
+ * no caller; rs_line draws its round caps only with opa 255.) */
+void rs_disk(const rs_canvas *c, int x, int y, int d, uint16_t col);
 /* Rectangle [x0, x1) x [y0, y1). */
 void rs_rect(const rs_canvas *c, int x0, int y0, int x1, int y1, uint16_t col);
 /* Pixel work of rs_line, not clipped: sum over the segments of (major + 1) * w', plus n * w * w when w >= 3. */
