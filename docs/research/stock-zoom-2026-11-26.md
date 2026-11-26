@@ -32,7 +32,7 @@ stock rule is unchanged. Cost: one load and one compare per off-route frame. Res
 
 ## Superseded: first desk study
 
-## Not found
+## Not found (superseded: the writer was found later, see "Writer found")
 
 - The code that writes `S[0]`. No store at `S + 0` follows any of the 32 getter calls or the 15 loads of the
   `0x3c388cfc` slot (raw byte scan, not only the linear disassembly). The writer may get `S` through an argument or
