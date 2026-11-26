@@ -297,6 +297,8 @@ static __attribute__((noinline)) void wbd_frame(void) {
     if (c.nomem) { *o++ = 'w'; *o++ = 'b'; o = tx_num(o, WBD_HEAP); }   /* no heap buffer: no grey */
     else { *o++ = 'g'; o = tx_num(o, c.glines); if (c.gcut) *o++ = '+'; }   /* grey lines; '+': not all lines */
 #endif
+    *o++ = ' '; *o++ = 'u'; o = tx_num(o, FW_ROUTE_LEFT);    /* T1: the stock remaining distance while off route, m */
+    *o++ = ' '; *o++ = 'z'; o = tx_num(o, (uint32_t)FW_PROJ_ZOOM);   /* the stock map level (16 = 50 m scale), read only */
   }
   *o = 0;
   wbd_text(u.s);

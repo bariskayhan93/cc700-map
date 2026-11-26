@@ -29,6 +29,7 @@ void host_km_overlay(int32_t a, int32_t b, int32_t c, int32_t d) { n_km++; km_ar
 static struct { int font, align, x, y, w; unsigned col; char s[24]; } texts[MAX_TEXTS];
 float host_map_head;
 uint32_t host_route_left, host_nav_selector;
+int host_proj_zoom = 16, host_proj_rot;
 float host_route_total;
 uint16_t *host_buf, host_w = 240, host_h = 256;
 static double g_scale;

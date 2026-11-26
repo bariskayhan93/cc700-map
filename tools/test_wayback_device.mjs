@@ -83,7 +83,7 @@ test('WP 4: a stock pthread key in the task list keeps its value; the cache stil
 });
 test('unit build: the off-route text has no grey part (grey fallback retired)', () => {
   const r = run({exe: keepExe});
-  assert.match(r.text, /m.* w\d+ r\d+$/);
+  assert.match(r.text, /m.* w\d+ r\d+ u\d+ z16$/);
 });
 const near = (pt, x, y, tol = 2) => assert(hav(pt, p(x, y)) <= tol, `${pt} is not at ${x},${y}`);
 
@@ -101,7 +101,8 @@ test('off the route near a street: the line is drawn two times, with the distanc
   assert.equal(r.opened, withData);                            // the name of the route handle, not of record 0
   assert.deepEqual(r.lines.map(l => [l.op, l.n]), [[17, 4], [14, 4]]);
   near(r.lines[0].first, 0, 120); near(r.lines[0].last, 0, 0);
-  assert.match(r.text, /^1[12]\dm w\d+ r\d+ g0$/);                 // 120 m to the route, then ms, then reads
+  assert.match(r.text, /^1[12]\dm w\d+ r\d+ g0 u\d+ z16$/);   // 120 m to the route, then ms, then reads
+  assert.match(run({U: 4321, T: 9000}).text, / u4321 z16$/);   // T1: the stock remaining distance and map level, read only
   assert.deepEqual([r.takes, r.gives, r.dashAfter, r.badDash, r.labelCol, r.anchors, r.mallocs], [2, 2, 0, 0, 0x1234, 0, 0]);   // no grey section: no anchor, no heap
 });
 test('the route call of state 3 (part 1) is handled as part 0', () => {
@@ -113,7 +114,7 @@ test('on the route there is no text, no lock, no file call and no line (wb3 remo
 });
 test('no street within 15 m shows code 4 and no line', () => {
   const r = run({x: 60, y: 100});
-  assert.deepEqual([r.lines.length, r.opens, r.closes], [0, 1, 1]); assert.match(r.text, /^wb4 w\d+ r\d+ g0$/);
+  assert.deepEqual([r.lines.length, r.opens, r.closes], [0, 1, 1]); assert.match(r.text, /^wb4 w\d+ r\d+ g0 u\d+ z16$/);
 });
 test('a route file without way-back data shows code 7 and is closed again', () => {
   const r = run({file: plain});
@@ -151,7 +152,7 @@ test('a failed open shows code 9 and no close is made', () => {
 });
 test('file work above 300 ms stops with code 5, no line, and the file is closed', () => {
   const r = run({step: 200000});
-  assert.deepEqual([r.lines.length, r.opens, r.closes], [0, 1, 1]); assert.match(r.text, /^wb5 w\d+ r\d+ g0$/);
+  assert.deepEqual([r.lines.length, r.opens, r.closes], [0, 1, 1]); assert.match(r.text, /^wb5 w\d+ r\d+ g0 u\d+ z16$/);
   assert(r.reads <= 3);
 });
 // Ride 18 Nov: most detour frames showed wb10. A line of more than 32 points now draws its first 32 points (from the rider)
@@ -165,12 +166,12 @@ test('a line of more than 32 points draws its first 32 points from the rider and
   assert.deepEqual(r.lines.map(l => [l.op, l.n]), [[17, 32], [14, 32]]);
   assert.equal(r.closes, 1);
   near(r.lines[0].first, 0, 900); near(r.lines[0].last, 0, 590);
-  assert.match(r.text, /^(89|90)\dm\+ w\d+ r\d+ g0$/);
+  assert.match(r.text, /^(89|90)\dm\+ w\d+ r\d+ g0 u\d+ z16$/);
 });
 test('a line of exactly 32 points has no +', () => {
   const r = run({file: longFile, x: 5, y: 310});
   assert.deepEqual(r.lines.map(l => l.n), [32, 32]);
-  assert.match(r.text, /^3\d\dm w\d+ r\d+ g0$/);
+  assert.match(r.text, /^3\d\dm w\d+ r\d+ g0 u\d+ z16$/);
 });
 test('damaged way-back data shows code 7 and no line', () => {
   const bad = embedWayback(routeBytes, wayback); bad[8192] = 88;
@@ -194,7 +195,7 @@ const fileWith = (name, wb, grey) => { const f = path.join(work, name); fs.write
 const BIG = {pixCap: 1e9, ptCap: 1e6};
 const denseGrey = fileWith('dense-grey.bin', denseWb, encodeGreyLayer(denseCells, BIG)), densePlain = fileWith('dense-plain.bin', denseWb);
 const dense = {file: denseGrey, x: 5, y: 90};
-const gOf = r => Number(/ g(\d+)\+?$/.exec(r.text)[1]);
+const gOf = r => Number(/ g(\d+)\+? /.exec(r.text)[1]);
 // The rider units and the course as the unit computes them: float position, (int32)(deg * 1e7f), the grid of the header.
 const f32 = Math.fround, e7 = v => Math.trunc(f32(f32(v) * f32(1e7)));
 function reference(o) {
@@ -222,7 +223,7 @@ test('every line of the selected cells is drawn: the drawn line count equals the
   for (const head of [90, 45, 0, 300]) {
     const r = run({...dense, head});
     assert.equal(gOf(r), reference({...dense, head}).lines, `map heading ${head}`);
-    assert.match(r.text, / g\d+$/);                            // no '+': every line is drawn
+    assert.match(r.text, / g\d+ u\d+ z16$/);                            // no '+': every line is drawn
   }
 });
 test('the same position and heading give the same canvas hash with a fast and a slow clock (below 300 ms)', () => {
@@ -258,7 +259,7 @@ test('the pixel cap of the header stops at a line boundary: fewer lines, a + in 
   const capped = fileWith('dense-cap.bin', denseWb, encodeGreyLayer(denseCells, {pixCap: 3000, ptCap: 1e6}));
   const full = run(dense), r = run({...dense, file: capped});
   assert(gOf(r) > 0 && gOf(r) < gOf(full), `${gOf(r)} ${gOf(full)}`);
-  assert.match(r.text, / g\d+\+$/);
+  assert.match(r.text, / g\d+\+ u\d+ z16$/);
   assert(r.greyPx < full.greyPx);
   assert.deepEqual(r.lines, full.lines);
 });
@@ -320,15 +321,15 @@ test('on the route without F_ROUTE: no block-flag text, no file call, no heap ca
 test('off the route without F_TEXT the text is only the distance; with F_TEXT it has w and r', () => {
   assert.match(run({...dense, flags: 0}).text, /^\d+m$/);
   assert.match(run({...dense, flags: -1}).text, /^\d+m$/);     // a block without the flags entry: cc26 switches
-  assert.match(run({...dense, flags: F_TEXT}).text, /^\d+m w\d+ r\d+ g\d+$/);
+  assert.match(run({...dense, flags: F_TEXT}).text, /^\d+m w\d+ r\d+ g\d+ u\d+ z16$/);
   assert.match(run({...dense, x: 30, y: 30, flags: 0}).text, /^wb4$/);
-  assert.match(run({...dense, x: 30, y: 30, flags: F_TEXT}).text, /^wb4 w\d+ r\d+ g0$/);
+  assert.match(run({...dense, x: 30, y: 30, flags: F_TEXT}).text, /^wb4 w\d+ r\d+ g0 u\d+ z16$/);
 });
 test('a failed heap allocation shows the line and code 11 in the text with F_TEXT', () => {
   const r = run({...dense, mallocOk: 0}), ok = run(dense);
   assert.deepEqual(r.lines, ok.lines);
   assert.deepEqual([r.greyPx, r.anchors, r.mallocs, r.frees], [0, 0, 1, 0]);   // the failed call is counted, nothing to free
-  assert.match(r.text, /^\d+m w\d+ r\d+ wb11$/);
+  assert.match(r.text, /^\d+m w\d+ r\d+ wb11 u\d+ z16$/);
   assert.equal(r.text.split(' ')[0], ok.text.split(' ')[0]);
   assert.match(run({...dense, mallocOk: 0, flags: 0}).text, /^\d+m$/);
 });
