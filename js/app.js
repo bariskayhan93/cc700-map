@@ -97,7 +97,7 @@ async function build() {
   const speedKmh = Math.max(8, Math.min(45, +$('speed').value || 18));
   const layers = Object.fromEntries(LAYERS.map(k => [k, $(k).checked]));
   try {
-    const gpx = parseGPX(await file.text());
+    const gpx = parseGPX(await file.text(), file.name);
     if (needsBuild) return;
     if (gpx.pts.length < 2) throw new Error('GPX ohne Trackpunkte');
     const { lines, areas, water, rails, green, trams, wlines, signals, stops, landmarks, coverage, navigationLines } =

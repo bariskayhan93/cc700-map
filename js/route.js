@@ -13,7 +13,12 @@ const THEN = 50, THEN_WORD = { 1: 'left', 2: 'slight left', 3: 'right', 4: 'slig
 // route name in the header and title: ASCII only (a GPX name with 'ü' stopped the device at start, 2026-11-12)
 const ascii = t => String(t).replace(/ä/g, 'ae').replace(/ö/g, 'oe').replace(/ü/g, 'ue').replace(/Ä/g, 'Ae').replace(/Ö/g, 'Oe').replace(/Ü/g, 'Ue').replace(/ß/g, 'ss').normalize('NFD').replace(/[^\x20-\x7e]/g, '');
 const UNNAMED = { 1: 'Straße', 2: 'Straße', 3: 'Straße', 4: 'Zufahrt', 5: 'Radweg', 6: 'Weg', 7: 'Fußweg' };
-export function parseGPX(text) {
+// a generic GPX name ('Route', 'Track', empty) gives the file name: export tools write <name>Route</name> (all N routes, 26 Nov)
+export function routeName(gpxName, fileName = '') {
+  const base = String(fileName).split(/[\\/]/).pop().replace(/\.gpx$/i, '').replace(/_+/g, ' ').trim();
+  return /^\s*((gpx )?route|track)?\s*$/i.test(gpxName || '') && base ? base : gpxName;
+}
+export function parseGPX(text, fileName) {
   const doc = new DOMParser().parseFromString(text, 'application/xml');
   const num = (e, a) => parseFloat(e.getAttribute(a));
   const ele = e => { const x = e.getElementsByTagName('ele')[0]; return x ? parseFloat(x.textContent) : null; };
@@ -22,7 +27,7 @@ export function parseGPX(text) {
   // route name: metadata > trk > rte; never a waypoint name (in a GPX without <metadata> the <wpt> come first)
   const own = tag => { for (const e of doc.getElementsByTagName(tag)) for (const c of e.children) if (c.localName === 'name' && c.textContent.trim()) return c.textContent.trim(); return ''; };
   const name = own('metadata') || own('trk') || own('rte') || 'GPX route';
-  return { name, wpts, pts: pts.map(p => [num(p, 'lat'), num(p, 'lon'), ele(p)]) };
+  return { name: routeName(name, fileName), wpts, pts: pts.map(p => [num(p, 'lat'), num(p, 'lon'), ele(p)]) };
 }
 function turnCode(a) {                        // a: degrees, + = right
   const x = Math.abs(a);
